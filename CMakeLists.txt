@@ -13,7 +13,7 @@
 # cmake -DCMAKE_INSTALL_PREFIX=/opt ..
 # cpack ..
 
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.1)
 project(MedvedDB)
 cmake_policy(SET CMP0015 NEW)
 

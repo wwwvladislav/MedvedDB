@@ -21,6 +21,7 @@ SET(PATCH_VERSION 0)
 set(VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION})
 
 set(ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(LIBS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty)
 
 
 #*********************************************************
@@ -93,12 +94,13 @@ endif()
 #*********************************************************
 # useful macros
 #*********************************************************
-macro(use_c99)
-    set (CMAKE_C_STANDARD 99)
+macro(use_c11)
+    set(CMAKE_C_STANDARD 11)
     set(CMAKE_C_STANDARD_REQUIRED ON)
-    set(CMAKE_C_EXTENSIONS OFF)
-endmacro(use_c99)
+endmacro(use_c11)
 
 
 add_subdirectory(${ROOT_DIR}/thirdparty)
-add_subdirectory(${ROOT_DIR}/service service)
+add_subdirectory(${ROOT_DIR}/platform)
+add_subdirectory(${ROOT_DIR}/core)
+add_subdirectory(${ROOT_DIR}/service)

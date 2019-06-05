@@ -1,6 +1,3 @@
-# For more information about using CMake with Android Studio, read the
-# documentation: https://d.android.com/studio/projects/add-native-code.html
-
 # usage:
 # cmake -DCMAKE_BUILD_TYPE=Release CMakeLists.txt
 # cmake -DCMAKE_BUILD_TYPE=Debug CMakeLists.txt
@@ -13,7 +10,7 @@
 # cmake -DCMAKE_INSTALL_PREFIX=/opt ..
 # cpack ..
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.2)
 project(MedvedDB)
 cmake_policy(SET CMP0015 NEW)
 
@@ -25,12 +22,14 @@ set(VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION})
 
 set(ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
+
 #*********************************************************
 # set build type
 #*********************************************************
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
+
 
 #*********************************************************
 # determine platform
@@ -54,6 +53,7 @@ endif()
 
 message("Platform: " ${CMAKE_SYSTEM_NAME} "-" ${PLATFORM})
 
+
 #*********************************************************
 # BITNESS
 #*********************************************************
@@ -67,12 +67,14 @@ else()
     message("Bitness: 32 bit")
 endif()
 
+
 #*********************************************************
 # binary directory
 #*********************************************************
 if (NOT BIN_DIR)
     set(BIN_DIR ${CMAKE_CURRENT_BINARY_DIR})
 endif()
+
 
 #*********************************************************
 # output directory
@@ -87,20 +89,16 @@ if (${PLATFORM} STREQUAL LINUX)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
 endif()
 
+
 #*********************************************************
 # useful macros
 #*********************************************************
 macro(use_c99)
-  if (CMAKE_VERSION VERSION_LESS "3.1")
-    if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
-      set (CMAKE_C_FLAGS "--std=gnu99 ${CMAKE_C_FLAGS}")
-    else()
-      set (CMAKE_C_STANDARD 99)
-    endif ()
-  else ()
     set (CMAKE_C_STANDARD 99)
-  endif ()
+    set(CMAKE_C_STANDARD_REQUIRED ON)
+    set(CMAKE_C_EXTENSIONS OFF)
 endmacro(use_c99)
+
 
 add_subdirectory(${ROOT_DIR}/thirdparty)
 add_subdirectory(${ROOT_DIR}/service service)

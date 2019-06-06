@@ -78,20 +78,6 @@ endif()
 
 
 #*********************************************************
-# output directory
-#*********************************************************
-if (NOT OUTPUT_DIR)
-    set(OUTPUT_DIR ${BIN_DIR}/output)
-endif()
-
-if (${PLATFORM} STREQUAL LINUX)
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${OUTPUT_DIR})
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_DIR})
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
-endif()
-
-
-#*********************************************************
 # useful macros
 #*********************************************************
 macro(use_c11)
@@ -101,6 +87,6 @@ endmacro(use_c11)
 
 
 add_subdirectory(${ROOT_DIR}/thirdparty)
-add_subdirectory(${ROOT_DIR}/platform)
-add_subdirectory(${ROOT_DIR}/core)
-add_subdirectory(${ROOT_DIR}/service)
+add_subdirectory(${ROOT_DIR}/mdv_platform)
+add_subdirectory(${ROOT_DIR}/mdv_core)
+add_subdirectory(${ROOT_DIR}/mdv_service)

@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <string.h>
-#include <mdv_config.h>
+#include <mdv_service.h>
 
 static int help()
 {
@@ -44,7 +44,9 @@ int main(int argc, char *argv[])
 
     int option_index = 0;
     int ret = 0;
-    bool cfg_is_loaded = false;
+
+    mdv_service service;
+    bool        service_is_ok = false;
 
     while((ret = getopt_long(argc, argv, "hc:", long_options, &option_index)) != -1)
     {
@@ -69,8 +71,7 @@ int main(int argc, char *argv[])
                 if (!optarg)
                     return usage();
 
-                cfg_is_loaded = mdv_load_config(optarg);
-                if (!cfg_is_loaded)
+                if (!(service_is_ok = mdv_service_init(&service, optarg)))
                     return -1;
 
                 break;
@@ -78,8 +79,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (!cfg_is_loaded)
+    if (!service_is_ok)
         return usage();
+
+    if (!mdv_service_start(&service))
+        return -1;
 
     return 0;
 }

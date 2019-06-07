@@ -21,7 +21,7 @@ SET(PATCH_VERSION 0)
 set(VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION})
 
 set(ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(LIBS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty)
+set(LIBS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mdv_thirdparty)
 
 
 #*********************************************************
@@ -86,7 +86,7 @@ macro(use_c11)
 endmacro(use_c11)
 
 
-add_subdirectory(${ROOT_DIR}/thirdparty)
+add_subdirectory(${ROOT_DIR}/mdv_thirdparty)
 add_subdirectory(${ROOT_DIR}/mdv_platform)
 add_subdirectory(${ROOT_DIR}/mdv_core)
 add_subdirectory(${ROOT_DIR}/mdv_service)

@@ -4,6 +4,10 @@
 #include <string.h>
 #include <mdv_service.h>
 
+
+static mdv_service service;
+
+
 static int help()
 {
     printf("NAME\n");
@@ -45,8 +49,7 @@ int main(int argc, char *argv[])
     int option_index = 0;
     int ret = 0;
 
-    mdv_service service;
-    bool        service_is_ok = false;
+    bool service_is_ok = false;
 
     while((ret = getopt_long(argc, argv, "hc:", long_options, &option_index)) != -1)
     {
@@ -84,6 +87,8 @@ int main(int argc, char *argv[])
 
     if (!mdv_service_start(&service))
         return -1;
+
+    mdv_service_free(&service);
 
     return 0;
 }

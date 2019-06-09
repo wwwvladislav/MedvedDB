@@ -16,4 +16,5 @@ typedef struct
 #define mdv_str(str)                { strlen(str), str }
 #define mdv_str_null                { 0, 0 }
 
+
 mdv_string_t mdv_str_pdup(void *mpool, char const *str);

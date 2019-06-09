@@ -8,9 +8,10 @@ use_c11()
 include_directories(
     ${LIBS_DIR}/inih
     ${LIBS_DIR}/zf_log
+    ${LIBS_DIR}/nng/include
     ${ROOT_DIR}/mdv_platform
 )
 
 add_library(mdv_core STATIC ${SOURCES})
-add_dependencies(mdv_core inih mdv_platform)
-target_link_libraries(mdv_core inih zf_log mdv_platform)
+add_dependencies(mdv_core inih mdv_platform nng)
+target_link_libraries(mdv_core inih zf_log mdv_platform nng)

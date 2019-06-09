@@ -14,6 +14,7 @@ include_directories(
     ${ROOT_DIR}/mdv_platform
     ${ROOT_DIR}/mdv_core
     ${LIBS_DIR}/zf_log
+    ${LIBS_DIR}/nng/include
 )
 
 use_c11()

@@ -38,6 +38,27 @@ struct mdv_mempool_base
 };
 
 
+void *mdv_mempool_ptr(void *mpool)
+{
+    struct mdv_mempool_base *mempool = (struct mdv_mempool_base *)mpool;
+    return mempool->buff;
+}
+
+
+size_t mdv_mempool_size(void *mpool)
+{
+    struct mdv_mempool_base *mempool = (struct mdv_mempool_base *)mpool;
+    return mempool->size;
+}
+
+
+size_t mdv_mempool_capacity(void *mpool)
+{
+    struct mdv_mempool_base *mempool = (struct mdv_mempool_base *)mpool;
+    return mempool->capacity;
+}
+
+
 void *mdv_palloc(void *mpool, size_t size)
 {
     struct mdv_mempool_base *mempool = (struct mdv_mempool_base *)mpool;

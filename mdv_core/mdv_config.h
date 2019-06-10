@@ -6,9 +6,17 @@
 
 typedef struct
 {
-    mdv_string_t listen;
+    struct
+    {
+        mdv_string listen;
+    } server;
 
-    mdv_mempool(256) mempool;
+    struct
+    {
+        mdv_string path;
+    } storage;
+
+    mdv_mempool(1024) mempool;
 } mdv_config;
 
 

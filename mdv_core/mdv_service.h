@@ -2,6 +2,7 @@
 #include "mdv_config.h"
 #include "mdv_listener.h"
 #include <stdbool.h>
+#include <mdv_uuid.h>
 
 
 typedef struct

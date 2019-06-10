@@ -10,3 +10,4 @@ include_directories(
 )
 
 add_library(mdv_platform STATIC ${SOURCES})
+target_link_libraries(mdv_platform zf_log)

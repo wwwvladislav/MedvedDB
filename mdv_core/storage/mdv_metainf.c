@@ -13,6 +13,7 @@ static const uint32_t MDV_KEY_NODE_UUID     = 1;
 
 static const char MDV_TBL_TABLES[]          = "TABLES";
 static const uint32_t MDV_KEY_NAME          = 0;
+static const uint32_t MDV_KEY_FIELDS        = 0;
 
 
 static struct

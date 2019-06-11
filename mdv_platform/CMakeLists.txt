@@ -7,7 +7,9 @@ use_c11()
 
 include_directories(
     ${LIBS_DIR}/zf_log
+    ${LIBS_DIR}/rpmalloc
 )
 
 add_library(mdv_platform STATIC ${SOURCES})
-target_link_libraries(mdv_platform zf_log)
+
+target_link_libraries(mdv_platform zf_log rpmalloc)

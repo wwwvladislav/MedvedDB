@@ -11,3 +11,4 @@ add_subdirectory(nng)
 
 add_subdirectory(binn)
 
+add_subdirectory(rpmalloc)

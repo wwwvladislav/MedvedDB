@@ -3,6 +3,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <mdv_service.h>
+#include <mdv_alloc.h>
 
 
 static mdv_service service;
@@ -85,10 +86,14 @@ int main(int argc, char *argv[])
     if (!service_is_ok)
         return usage();
 
+    mdv_alloc_initialize();
+
     if (!mdv_service_start(&service))
         return -1;
 
     mdv_service_free(&service);
+
+    mdv_alloc_finalize();
 
     return 0;
 }

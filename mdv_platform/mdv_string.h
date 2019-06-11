@@ -11,7 +11,7 @@ typedef struct
 } mdv_string;
 
 
-#define mdv_str_is_empty(str)       (str).size > 1 && (str).ptr
+#define mdv_str_empty(str)          ((str).size < 2 || !(str).ptr)
 #define mdv_str_static(str)         { sizeof(str), str }
 #define mdv_str(str)                { strlen(str) + 1, str }
 #define mdv_str_null                { 0, 0 }

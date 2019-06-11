@@ -1,6 +1,7 @@
 #pragma once
 #include "mdv_config.h"
 #include "mdv_listener.h"
+#include "storage/mdv_metainf.h"
 #include <stdbool.h>
 #include <mdv_uuid.h>
 
@@ -9,6 +10,11 @@ typedef struct
 {
     mdv_config      config;
     mdv_listener    listener;
+
+    struct
+    {
+        mdv_metainf metainf;
+    } db;
 } mdv_service;
 
 

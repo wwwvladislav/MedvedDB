@@ -11,7 +11,7 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
     #define MDV_CFG_MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
 
     #define MDV_CFG_CHECK(v)                                                                    \
-        if(mdv_str_is_empty(v))                                                                 \
+        if(mdv_str_empty(v))                                                                 \
         {                                                                                       \
             MDV_LOGI("No memory for configuration parameter %s:%s '%s'", section, name, value); \
             return 0;                                                                           \
@@ -54,8 +54,8 @@ bool mdv_load_config(char const *path, mdv_config *config)
         return false;
     }
 
-    if (mdv_str_is_empty(config->server.listen)
-        || mdv_str_is_empty(config->storage.path))
+    if (mdv_str_empty(config->server.listen)
+        || mdv_str_empty(config->storage.path))
     {
         MDV_LOGE("Mandatory configuration parameters weren't not provided\n");
         return false;

@@ -1,10 +1,15 @@
 #pragma once
 #include <mdv_uuid.h>
 #include <stdbool.h>
+#include <stdint.h>
+
+
+#define MDV_VERSION 1
 
 
 typedef struct
 {
+    uint32_t version;
     mdv_uuid uuid;
 } mdv_metainf;
 

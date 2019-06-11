@@ -8,7 +8,8 @@
 static const size_t MDV_METAINF_DBS = 2;
 
 static const char MDV_TBL_METAINF[]         = "METAINF";
-static const uint32_t MDV_KEY_NODE_UUID     = 0;
+static const uint32_t MDV_KEY_VERSION       = 0;
+static const uint32_t MDV_KEY_NODE_UUID     = 1;
 
 static const char MDV_TBL_TABLES[]          = "TABLES";
 static const uint32_t MDV_KEY_NAME          = 0;
@@ -20,7 +21,7 @@ static struct
 } db;
 
 
-static bool mdv_metainf_load(mdv_metainf *metainf)
+static bool mdv_metainf_sync(mdv_metainf *metainf)
 {
     MDB_txn *txn = 0;
 
@@ -44,36 +45,65 @@ static bool mdv_metainf_load(mdv_metainf *metainf)
     }
 
 
-    // Search NODE_UUID
-    uint32_t key_id = MDV_KEY_NODE_UUID;
-    MDB_val key = { sizeof(key_id), &key_id };
-    MDB_val value = { sizeof(metainf->uuid), &metainf->uuid };
-
-    rc = mdb_get(txn, dbi, &key, &value);
-    if (rc == MDB_NOTFOUND)
+    // Search VERSION
     {
-        // If isn't found generate new one
-        metainf->uuid = mdv_uuid_generate();
+        metainf->version = MDV_VERSION;
 
-        // Save generated node UUID
-        rc = mdb_put(txn, dbi, &key, &value, MDB_NODUPDATA);
-        if(rc != MDB_SUCCESS)
+        uint32_t key_id = MDV_KEY_VERSION;
+        MDB_val key = { sizeof(key_id), &key_id };
+        MDB_val value = { sizeof(metainf->version), &metainf->version };
+
+        rc = mdb_get(txn, dbi, &key, &value);
+        if (rc == MDB_NOTFOUND)
         {
-            MDV_LOGE("mdb_put failed: %s", mdb_strerror(rc));
-            mdb_dbi_close(db.env, dbi);
-            mdb_txn_abort(txn);
-            return false;
+            // Save version
+            rc = mdb_put(txn, dbi, &key, &value, MDB_NODUPDATA);
+            if(rc != MDB_SUCCESS)
+            {
+                MDV_LOGE("mdb_put failed: %s", mdb_strerror(rc));
+                mdb_dbi_close(db.env, dbi);
+                mdb_txn_abort(txn);
+                return false;
+            }
         }
+        else
+            metainf->version = *(uint32_t const*)value.mv_data;
     }
-    else
-        metainf->uuid = *(mdv_uuid const*)value.mv_data;
+
+
+    // Search NODE_UUID
+    {
+        uint32_t key_id = MDV_KEY_NODE_UUID;
+        MDB_val key = { sizeof(key_id), &key_id };
+        MDB_val value = { sizeof(metainf->uuid), &metainf->uuid };
+
+        rc = mdb_get(txn, dbi, &key, &value);
+        if (rc == MDB_NOTFOUND)
+        {
+            // If isn't found generate new one
+            metainf->uuid = mdv_uuid_generate();
+
+            // Save generated node UUID
+            rc = mdb_put(txn, dbi, &key, &value, MDB_NODUPDATA);
+            if(rc != MDB_SUCCESS)
+            {
+                MDV_LOGE("mdb_put failed: %s", mdb_strerror(rc));
+                mdb_dbi_close(db.env, dbi);
+                mdb_txn_abort(txn);
+                return false;
+            }
+        }
+        else
+            metainf->uuid = *(mdv_uuid const*)value.mv_data;
+    }
 
     // Commit transaction
     mdb_txn_commit(txn);
     mdb_dbi_close(db.env, dbi);
 
 
-    // Print node UUID to log
+    // Print node information to log
+    MDV_LOGI("Storage version: %u", metainf->version);
     char tmp[33];
     mdv_string uuid_str = mdv_str_static(tmp);
     if (mdv_uuid_to_str(&metainf->uuid, &uuid_str))
@@ -141,7 +171,7 @@ bool mdv_metainf_open(mdv_metainf *metainf, char const *path)
     db.env = env;
 
     // Load meta info
-    return mdv_metainf_load(metainf);
+    return mdv_metainf_sync(metainf);
 }
 
 

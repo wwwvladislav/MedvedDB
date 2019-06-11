@@ -19,14 +19,14 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
 
     if (MDV_CFG_MATCH("server", "listen"))
     {
-        config->server.listen = mdv_str_pdup(&config->mempool, value);
+        config->server.listen = mdv_str_pdup(config->mempool, value);
         MDV_CFG_CHECK(config->server.listen);
         MDV_LOGI("Listen: %s", config->server.listen.ptr);
         return 1;
     }
     else if (MDV_CFG_MATCH("storage", "path"))
     {
-        config->storage.path = mdv_str_pdup(&config->mempool, value);
+        config->storage.path = mdv_str_pdup(config->mempool, value);
         MDV_CFG_CHECK(config->storage.path);
         MDV_LOGI("Storage path: %s", config->storage.path.ptr);
         return 1;
@@ -46,7 +46,7 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
 
 bool mdv_load_config(char const *path, mdv_config *config)
 {
-    mdv_pclear(config->mempool);
+    mdv_stack_clear(config->mempool);
 
     if (ini_parse(path, mdv_cfg_handler, config) < 0)
     {

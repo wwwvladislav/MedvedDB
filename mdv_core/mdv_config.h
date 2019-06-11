@@ -1,7 +1,8 @@
 #pragma once
 #include <stdbool.h>
+#include <stdint.h>
 #include <mdv_string.h>
-#include <mdv_alloc.h>
+#include <mdv_stack.h>
 
 
 typedef struct
@@ -16,7 +17,7 @@ typedef struct
         mdv_string path;
     } storage;
 
-    mdv_mempool(1024) mempool;
+    mdv_stack(uint8_t, 1024) mempool;
 } mdv_config;
 
 

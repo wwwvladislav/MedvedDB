@@ -1,7 +1,7 @@
 #pragma once
 #include <mdv_uuid.h>
 #include <stdbool.h>
-#include "mdv_storage.h"
+#include <lmdb.h>
 
 
 typedef struct
@@ -9,8 +9,13 @@ typedef struct
     mdv_uuid uuid;
 
     uint8_t  uuid_changed:1;
+
+    struct
+    {
+        MDB_env *env;
+    } db;
 } mdv_metainf;
 
 
-mdv_metainf mdv_storage_metainf_load(mdv_storage *storage, MDB_txn *txn, MDB_dbi dbi);
-bool        mdv_storage_metainf_sync(mdv_storage *storage, MDB_txn *txn, MDB_dbi dbi, mdv_metainf *metainf);
+bool mdv_metainf_load(MDB_txn *txn, MDB_dbi dbi, mdv_metainf *metainf);
+bool mdv_metainf_save(MDB_txn *txn, MDB_dbi dbi, mdv_metainf *metainf);

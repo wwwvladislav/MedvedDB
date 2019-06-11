@@ -1,6 +1,5 @@
 #include "mdv_filesystem.h"
 #include "mdv_log.h"
-#include "mdv_alloc.h"
 #include "mdv_string.h"
 #include "mdv_limits.h"
 #include "mdv_stack.h"
@@ -11,6 +10,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 
 
 static bool mdv_mkdir_impl(char const *path)
@@ -57,10 +57,10 @@ bool mdv_mkdir(char const *str)
 
     bool const is_cur_dir = *str != '/' && *str != '.';
 
-    mdv_mempool(len + 1 + is_cur_dir) mempool;
-    mdv_pclear(mempool);
+    mdv_stack(char, len + 1 + is_cur_dir) mpool;
+    mdv_stack_clear(mpool);
 
-    mdv_string path = mdv_str_pdup(&mempool, is_cur_dir ? "." : "");
+    mdv_string path = mdv_str_pdup(mpool, is_cur_dir ? "." : "");
 
     char prev_char = *str;
     char const *dir = str;
@@ -79,7 +79,7 @@ bool mdv_mkdir(char const *str)
 
                 mdv_string pdir = { ch - dir + 1, (char*)dir };
 
-                path = mdv_str_pcat(&mempool, &path, &pdir);
+                path = mdv_str_pcat(mpool, path, pdir);
 
                 if (!mdv_mkdir_impl(path.ptr))
                     return false;
@@ -103,7 +103,7 @@ bool mdv_mkdir(char const *str)
     {
         mdv_string pdir = { last_dir_len + 1, (char*)dir };
 
-        path = mdv_str_pcat(&mempool, &path, &pdir);
+        path = mdv_str_pcat(mpool, path, pdir);
 
         if (!mdv_mkdir_impl(path.ptr))
             return false;
@@ -144,8 +144,8 @@ bool mdv_rmdir(char const *path)
     mdv_stack(dir_entry, MDV_DIRS_DEPTH_MAX) dirs;
     mdv_stack_clear(dirs);
 
-    mdv_mempool(MDV_PATH_MAX) mpool;
-    mdv_pclear(mpool);
+    mdv_stack(char, MDV_PATH_MAX) mpool;
+    mdv_stack_clear(mpool);
 
     DIR *pdir = opendir(path);
     if (!pdir)
@@ -154,7 +154,7 @@ bool mdv_rmdir(char const *path)
         return false;
     }
 
-    dir_entry root_dir = { pdir, mdv_str_pdup(&mpool, path), len + 1 };
+    dir_entry root_dir = { pdir, mdv_str_pdup(mpool, path), len + 1 };
 
     static mdv_string const dir_delimeter = mdv_str_static("/");
 
@@ -179,7 +179,7 @@ bool mdv_rmdir(char const *path)
 
             closedir(dir->pdir);
             mdv_stack_pop(dirs);
-            mdv_pfree(mpool, dir->dir_name_len);
+            mdv_stack_pop(mpool, dir->dir_name_len);
 
             continue;
         }
@@ -194,8 +194,8 @@ bool mdv_rmdir(char const *path)
 
             mdv_string const dir_name = { dlen + 1, ent->d_name };
 
-            mdv_string subdir_path = mdv_str_pcat(&mpool, &dir->path, &dir_delimeter);
-            subdir_path = mdv_str_pcat(&mpool, &subdir_path, &dir_name);
+            mdv_string subdir_path = mdv_str_pcat(mpool, dir->path, dir_delimeter);
+            subdir_path = mdv_str_pcat(mpool, subdir_path, dir_name);
 
             DIR *pdir = opendir(subdir_path.ptr);
             if (!pdir)
@@ -214,8 +214,8 @@ bool mdv_rmdir(char const *path)
         else
         {
             mdv_string const file_name = { dlen + 1, ent->d_name };
-            mdv_string file_path = mdv_str_pcat(&mpool, &dir->path, &dir_delimeter);
-            file_path = mdv_str_pcat(&mpool, &file_path, &file_name);
+            mdv_string file_path = mdv_str_pcat(mpool, dir->path, dir_delimeter);
+            file_path = mdv_str_pcat(mpool, file_path, file_name);
 
             if (remove(file_path.ptr) == -1)
             {
@@ -225,7 +225,7 @@ bool mdv_rmdir(char const *path)
                 return false;
             }
 
-            mdv_pfree(mpool, dlen + 1);
+            mdv_stack_pop(mpool, dlen + 1);
         }
     }
     while(!mdv_stack_empty(dirs));

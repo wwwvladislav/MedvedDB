@@ -1,6 +1,5 @@
 #include "mdv_storage.h"
 #include <mdv_log.h>
-#include <mdv_filesystem.h>
 #include <mdv_alloc.h>
 #include <stdatomic.h>
 #include <lmdb.h>
@@ -18,12 +17,6 @@ mdv_storage * mdv_storage_open(char const *path, uint32_t dbs_num, uint32_t flag
     if (!path)
     {
         MDV_LOGE("DB path is empty");
-        return 0;
-    }
-
-    if (!mdv_mkdir(path))
-    {
-        MDV_LOGE("DB storage directory creation failed: '%s'", path);
         return 0;
     }
 
@@ -180,4 +173,157 @@ void mdv_map_close(mdv_map *pmap)
     }
 }
 
+
+static bool mdv_map_put_impl(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data const *value, unsigned int flags)
+{
+    MDB_txn *txn = (MDB_txn*)ptransaction->ptransaction;
+    MDB_dbi dbi = (MDB_dbi)pmap->dbmap;
+
+    if (!txn)
+    {
+        MDV_LOGE("Invalid operation. The data should be inserted in transaction.");
+        return false;
+    }
+
+    MDB_val k = { key->size, key->data };
+    MDB_val v = { value->size, value->data };
+
+    int rc = mdb_put(txn, dbi, &k, &v, flags);
+    if(rc != MDB_SUCCESS)
+    {
+        MDV_LOGE("Unable to put data into the LMDB database: '%s' (%d)", mdb_strerror(rc), rc);
+        return false;
+    }
+
+    return true;
+}
+
+
+bool mdv_map_put(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data const *value)
+{
+    return mdv_map_put_impl(pmap, ptransaction, key, value, 0);
+}
+
+
+bool mdv_map_put_unique(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data const *value)
+{
+    return mdv_map_put_impl(pmap, ptransaction, key, value, MDB_NOOVERWRITE);
+}
+
+
+bool mdv_map_get(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data *value)
+{
+    MDB_txn *txn = (MDB_txn*)ptransaction->ptransaction;
+    MDB_dbi dbi = (MDB_dbi)pmap->dbmap;
+
+    if (!txn)
+    {
+        MDV_LOGE("Invalid operation. The data should be inserted in transaction.");
+        return false;
+    }
+
+    MDB_val k = { key->size, key->data };
+
+    int rc = mdb_get(txn, dbi, &k, (MDB_val*)value);
+
+    if (rc == MDB_NOTFOUND)
+        return false;
+
+    if(rc != MDB_SUCCESS)
+    {
+        MDV_LOGE("Unable to get data from LMDB database: '%s' (%d)", mdb_strerror(rc), rc);
+        return false;
+    }
+
+    return true;
+}
+
+
+bool mdv_map_del(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data const *value)
+{
+    MDB_txn *txn = (MDB_txn*)ptransaction->ptransaction;
+    MDB_dbi dbi = (MDB_dbi)pmap->dbmap;
+
+    if (!txn)
+    {
+        MDV_LOGE("Invalid operation. The data should be inserted in transaction.");
+        return false;
+    }
+
+    MDB_val k = { key->size, key->data };
+    MDB_val v = { value->size, value->data };
+
+    int rc = mdb_del(txn, dbi, &k, &v);
+
+    if (rc == MDB_NOTFOUND)
+        return false;
+
+    if(rc != MDB_SUCCESS)
+    {
+        MDV_LOGE("Unable to delete data from LMDB database: '%s' (%d)", mdb_strerror(rc), rc);
+        return false;
+    }
+
+    return true;
+}
+
+
+bool mdv_cursor_open(mdv_map *pmap, mdv_transaction *ptransaction, mdv_cursor *pcursor)
+{
+    MDB_txn *txn = (MDB_txn*)ptransaction->ptransaction;
+    MDB_dbi dbi = pmap->dbmap;
+    MDB_cursor *cursor;
+
+    int rc = mdb_cursor_open(txn, dbi, &cursor);
+
+    if(rc != MDB_SUCCESS)
+    {
+        MDV_LOGE("Unable to open new cursor: '%s' (%d)", mdb_strerror(rc), rc);
+        return false;
+    }
+
+    pcursor->pstorage = mdv_storage_retain(ptransaction->pstorage);
+    pcursor->pcursor = cursor;
+
+    return true;
+}
+
+
+void mdv_cursor_close(mdv_cursor *pcursor)
+{
+    MDB_cursor *cursor = pcursor->pcursor;
+    mdb_cursor_close(cursor);
+    mdv_storage_release(pcursor->pstorage);
+    pcursor->pstorage = 0;
+    pcursor->pcursor = 0;
+}
+
+
+bool mdv_cursor_get(mdv_cursor *pcursor, mdv_data *key, mdv_data *value, mdv_cursor_op op)
+{
+    MDB_cursor_op const cursor_op = op == MDV_CURSOR_FIRST ? MDB_FIRST :
+                                    op == MDV_CURSOR_CURRENT ? MDB_GET_CURRENT :
+                                    op == MDV_CURSOR_LAST ? MDB_LAST :
+                                    op == MDV_CURSOR_LAST_DUP ? MDB_LAST_DUP :
+                                    op == MDV_CURSOR_NEXT ? MDB_NEXT :
+                                    op == MDV_CURSOR_NEXT_DUP ? MDB_NEXT_DUP :
+                                    op == MDV_CURSOR_PREV ? MDB_PREV :
+                                    op == MDV_CURSOR_SET ? MDB_SET :
+                                    MDB_FIRST;
+    MDB_cursor *cursor = (MDB_cursor *)pcursor->pcursor;
+
+    int rc = mdb_cursor_get(cursor, (MDB_val*)key, (MDB_val*)value, cursor_op);
+
+    switch(rc)
+    {
+        case MDB_SUCCESS:
+            return true;
+        case MDB_NOTFOUND:
+            return false;
+    }
+
+    MDV_LOGE("Unable to get data by cursor: '%s' (%d)", mdb_strerror(rc), rc);
+
+    return false;
+}
 

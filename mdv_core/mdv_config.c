@@ -31,6 +31,13 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         MDV_LOGI("Storage path: %s", config->storage.path.ptr);
         return 1;
     }
+    else if (MDV_CFG_MATCH("log", "level"))
+    {
+        config->log.level = mdv_str_pdup(config->mempool, value);
+        MDV_CFG_CHECK(config->log.level);
+        MDV_LOGI("Log level: %s", config->log.level.ptr);
+        return 1;
+    }
     else
     {
         MDV_LOGE("Unknown section/name: [%s] %s", section, name);

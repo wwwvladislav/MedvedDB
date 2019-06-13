@@ -2,6 +2,24 @@
 #include <mdv_log.h>
 
 
+static void mdv_service_configure_logging(mdv_config const *config)
+{
+    if (!mdv_str_empty(config->log.level))
+    {
+        switch(*config->log.level.ptr)
+        {
+            case 'f':   mdv_logf_set_level(ZF_LOG_FATAL);   break;
+            case 'e':   mdv_logf_set_level(ZF_LOG_ERROR);   break;
+            case 'w':   mdv_logf_set_level(ZF_LOG_WARN);    break;
+            case 'i':   mdv_logf_set_level(ZF_LOG_INFO);    break;
+            case 'd':   mdv_logf_set_level(ZF_LOG_DEBUG);   break;
+            case 'v':   mdv_logf_set_level(ZF_LOG_VERBOSE); break;
+            case 'n':   mdv_logf_set_level(ZF_LOG_NONE);    break;
+        }
+    }
+}
+
+
 bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 {
     if (!mdv_load_config(cfg_file_path, &svc->config))
@@ -9,6 +27,8 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
         MDV_LOGE("Service initialization failed. Can't load '%s'\n", cfg_file_path);
         return false;
     }
+
+    mdv_service_configure_logging(&svc->config);
 
     if (!mdv_metainf_open(&svc->db.metainf, svc->config.storage.path.ptr))
     {

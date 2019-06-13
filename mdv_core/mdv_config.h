@@ -9,6 +9,11 @@ typedef struct
 {
     struct
     {
+        mdv_string level;
+    } log;
+
+    struct
+    {
         mdv_string listen;
     } server;
 
@@ -22,3 +27,4 @@ typedef struct
 
 
 bool mdv_load_config(char const *path, mdv_config *config);
+

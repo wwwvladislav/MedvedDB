@@ -13,3 +13,6 @@
 #define MDV_LOGE_MEM   ZF_LOGE_MEM
 #define MDV_LOGF       ZF_LOGF
 #define MDV_LOGF_MEM   ZF_LOGF_MEM
+
+
+#define mdv_logf_set_level zf_log_set_output_level

@@ -1,5 +1,6 @@
 #pragma once
 #include "mdv_types.h"
+#include "mdv_storage.h"
 #include <mdv_uuid.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -15,8 +16,8 @@ typedef struct
 } mdv_metainf;
 
 
-bool mdv_metainf_open       (mdv_metainf *metainf, char const *path);
-void mdv_metainf_close();
-void mdv_metainf_validate   (mdv_metainf *metainf);
-void mdv_metainf_flush      (mdv_metainf *metainf);
+mdv_storage * mdv_metainf_storage_open(char const *path);
+bool          mdv_metainf_load        (mdv_metainf *metainf, mdv_storage *storage);
+void          mdv_metainf_validate    (mdv_metainf *metainf);
+void          mdv_metainf_flush       (mdv_metainf *metainf, mdv_storage *storage);
 

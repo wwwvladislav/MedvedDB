@@ -1,6 +1,8 @@
 #include "mdv_storage.h"
 #include <mdv_log.h>
 #include <mdv_alloc.h>
+#include <mdv_string.h>
+#include <mdv_filesystem.h>
 #include <stdatomic.h>
 #include <string.h>
 #include <assert.h>
@@ -19,13 +21,44 @@ struct mdv_storage
 };
 
 
-mdv_storage * mdv_storage_open(char const *path, uint32_t dbs_num, uint32_t flags)
+mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_num, uint32_t flags)
 {
-    if (!path)
+    if (!path || !name)
     {
         MDV_LOGE("DB path is empty");
         return 0;
     }
+
+    mdv_stack(char, 1024) mpool;
+    mdv_stack_clear(mpool);
+
+    mdv_string db_path = mdv_str_pdup(mpool, path);
+
+    if (mdv_str_empty(db_path))
+    {
+        MDV_LOGE("Storage directory length is too long: '%s'", path);
+        return 0;
+    }
+
+    mdv_string const delimiter = mdv_str_static("/");
+    mdv_string const file_name = mdv_str((char*)name);
+
+    db_path = mdv_str_pcat(mpool, db_path, delimiter);
+    db_path = mdv_str_pcat(mpool, db_path, file_name);
+
+    if (mdv_str_empty(db_path))
+    {
+        MDV_LOGE("Storage directory length is too long: '%s'", name);
+        return 0;
+    }
+
+    // Create DB root directory
+    if (!mdv_mkdir(path))
+    {
+        MDV_LOGE("Storage directory creation failed: '%s'", path);
+        return 0;
+    }
+
 
     #define MDV_DB_CALL(expr)                                                               \
         if((rc = (expr)) != MDB_SUCCESS)                                                    \
@@ -36,7 +69,7 @@ mdv_storage * mdv_storage_open(char const *path, uint32_t dbs_num, uint32_t flag
             return 0;                                                                       \
         }
 
-    uint32_t mdb_flags = 0;
+    uint32_t mdb_flags = MDB_NOSUBDIR;
 
     if (flags & MDV_STRG_FIXEDMAP)      mdb_flags |= MDB_FIXEDMAP;
     if (flags & MDV_STRG_NOSUBDIR)      mdb_flags |= MDB_NOSUBDIR;
@@ -55,7 +88,7 @@ mdv_storage * mdv_storage_open(char const *path, uint32_t dbs_num, uint32_t flag
 
     MDV_DB_CALL(mdb_env_create(&env));
     MDV_DB_CALL(mdb_env_set_maxdbs(env, dbs_num));
-    MDV_DB_CALL(mdb_env_open(env, path, mdb_flags, 0664));
+    MDV_DB_CALL(mdb_env_open(env, db_path.ptr, mdb_flags, 0664));
 
     #undef MDV_DB_CALL
 

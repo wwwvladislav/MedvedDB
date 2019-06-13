@@ -2,8 +2,10 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <string.h>
+#include <signal.h>
 #include <mdv_service.h>
 #include <mdv_alloc.h>
+#include <mdv_log.h>
 
 
 static mdv_service service;
@@ -30,6 +32,12 @@ static int usage()
     return 0;
 }
 
+
+static void termination_signal_handler(int signal)
+{
+    MDV_LOGI("Service is terminating [Signal: %s]", strsignal(signal));
+    mdv_service_stop(&service);
+}
 
 int main(int argc, char *argv[])
 {
@@ -91,8 +99,15 @@ int main(int argc, char *argv[])
     if (!service_is_ok)
         return usage();
 
-    if (!mdv_service_start(&service))
-        return -1;
+    // Register signal handlers
+    signal(SIGINT,  termination_signal_handler);
+    signal(SIGTERM, termination_signal_handler);
+
+    MDV_LOGI("Service is starting...");
+
+    mdv_service_start(&service);
+
+    MDV_LOGI("Service is stoped");
 
     mdv_service_free(&service);
 

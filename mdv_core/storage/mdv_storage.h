@@ -24,7 +24,7 @@ typedef enum
 } mdv_storage_flags;
 
 
-mdv_storage * mdv_storage_open      (char const *path, uint32_t dbs_num, uint32_t flags);
+mdv_storage * mdv_storage_open      (char const *path, char const *name, uint32_t dbs_num, uint32_t flags);
 mdv_storage * mdv_storage_retain    (mdv_storage *pstorage);
 void          mdv_storage_release   (mdv_storage *pstorage);
 

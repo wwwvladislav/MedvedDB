@@ -2,7 +2,14 @@
 #include <mdv_log.h>
 #include <mdv_alloc.h>
 #include <stdatomic.h>
+#include <string.h>
+#include <assert.h>
+
+#ifndef _LMDB_H_
 #include <lmdb.h>
+#else
+#error "Only mdv_storage must be used for LMDB access"
+#endif
 
 
 struct mdv_storage
@@ -29,12 +36,26 @@ mdv_storage * mdv_storage_open(char const *path, uint32_t dbs_num, uint32_t flag
             return 0;                                                                       \
         }
 
+    uint32_t mdb_flags = 0;
+
+    if (flags & MDV_STRG_FIXEDMAP)      mdb_flags |= MDB_FIXEDMAP;
+    if (flags & MDV_STRG_NOSUBDIR)      mdb_flags |= MDB_NOSUBDIR;
+    if (flags & MDV_STRG_RDONLY)        mdb_flags |= MDB_RDONLY;
+    if (flags & MDV_STRG_WRITEMAP)      mdb_flags |= MDB_WRITEMAP;
+    if (flags & MDV_STRG_NOMETASYNC)    mdb_flags |= MDB_NOMETASYNC;
+    if (flags & MDV_STRG_NOSYNC)        mdb_flags |= MDB_NOSYNC;
+    if (flags & MDV_STRG_MAPASYNC)      mdb_flags |= MDB_MAPASYNC;
+    if (flags & MDV_STRG_NOTLS)         mdb_flags |= MDB_NOTLS;
+    if (flags & MDV_STRG_NOLOCK)        mdb_flags |= MDB_NOLOCK;
+    if (flags & MDV_STRG_NORDAHEAD)     mdb_flags |= MDB_NORDAHEAD;
+    if (flags & MDV_STRG_NOMEMINIT)     mdb_flags |= MDB_NOMEMINIT;
+
     int rc = 0;
     MDB_env *env = 0;
 
     MDV_DB_CALL(mdb_env_create(&env));
     MDV_DB_CALL(mdb_env_set_maxdbs(env, dbs_num));
-    MDV_DB_CALL(mdb_env_open(env, path, flags, 0664));
+    MDV_DB_CALL(mdb_env_open(env, path, mdb_flags, 0664));
 
     #undef MDV_DB_CALL
 
@@ -73,7 +94,7 @@ void mdv_storage_release(mdv_storage *pstorage)
 }
 
 
-bool mdv_transaction_start(mdv_storage *pstorage, mdv_transaction *ptransaction)
+mdv_transaction mdv_transaction_start(mdv_storage *pstorage)
 {
     MDB_txn *txn;
 
@@ -82,13 +103,10 @@ bool mdv_transaction_start(mdv_storage *pstorage, mdv_transaction *ptransaction)
     if(rc != MDB_SUCCESS)
     {
         MDV_LOGE("The LMDB transaction wasn't started: '%s' (%d)", mdb_strerror(rc), rc);
-        return false;
+        return (mdv_transaction){ 0, 0 };
     }
 
-    ptransaction->pstorage = mdv_storage_retain(pstorage);
-    ptransaction->ptransaction = txn;
-
-    return true;
+    return (mdv_transaction){ mdv_storage_retain(pstorage), txn };
 }
 
 
@@ -134,7 +152,7 @@ bool mdv_transaction_abort(mdv_transaction *ptransaction)
 }
 
 
-bool mdv_map_open(mdv_transaction *ptransaction, char const *name, uint32_t flags, mdv_map *pmap)
+mdv_map mdv_map_open(mdv_transaction *ptransaction, char const *name, uint32_t flags)
 {
     uint32_t mdb_flags = 0;
     if (flags & MDV_MAP_CREATE)           mdb_flags |= MDB_CREATE;
@@ -149,13 +167,10 @@ bool mdv_map_open(mdv_transaction *ptransaction, char const *name, uint32_t flag
     if(rc != MDB_SUCCESS)
     {
         MDV_LOGE("Unable to open the LMDB database: '%s' (%d)", mdb_strerror(rc), rc);
-        return false;
+        return (mdv_map){ 0, 0 };
     }
 
-    pmap->pstorage = mdv_storage_retain(ptransaction->pstorage);
-    pmap->dbmap = dbi;
-
-    return true;
+    return (mdv_map){ mdv_storage_retain(ptransaction->pstorage), dbi };
 }
 
 
@@ -185,8 +200,8 @@ static bool mdv_map_put_impl(mdv_map *pmap, mdv_transaction *ptransaction, mdv_d
         return false;
     }
 
-    MDB_val k = { key->size, key->data };
-    MDB_val v = { value->size, value->data };
+    MDB_val k = { key->size, key->ptr };
+    MDB_val v = { value->size, value->ptr };
 
     int rc = mdb_put(txn, dbi, &k, &v, flags);
     if(rc != MDB_SUCCESS)
@@ -222,7 +237,7 @@ bool mdv_map_get(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *k
         return false;
     }
 
-    MDB_val k = { key->size, key->data };
+    MDB_val k = { key->size, key->ptr };
 
     int rc = mdb_get(txn, dbi, &k, (MDB_val*)value);
 
@@ -250,8 +265,8 @@ bool mdv_map_del(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *k
         return false;
     }
 
-    MDB_val k = { key->size, key->data };
-    MDB_val v = { value->size, value->data };
+    MDB_val k = { key->size, key->ptr };
+    MDB_val v = { value->size, value->ptr };
 
     int rc = mdb_del(txn, dbi, &k, &v);
 
@@ -268,7 +283,7 @@ bool mdv_map_del(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *k
 }
 
 
-bool mdv_cursor_open(mdv_map *pmap, mdv_transaction *ptransaction, mdv_cursor *pcursor)
+mdv_cursor mdv_cursor_open(mdv_map *pmap, mdv_transaction *ptransaction)
 {
     MDB_txn *txn = (MDB_txn*)ptransaction->ptransaction;
     MDB_dbi dbi = pmap->dbmap;
@@ -279,23 +294,38 @@ bool mdv_cursor_open(mdv_map *pmap, mdv_transaction *ptransaction, mdv_cursor *p
     if(rc != MDB_SUCCESS)
     {
         MDV_LOGE("Unable to open new cursor: '%s' (%d)", mdb_strerror(rc), rc);
-        return false;
+        return (mdv_cursor){ 0, 0 };
     }
 
-    pcursor->pstorage = mdv_storage_retain(ptransaction->pstorage);
-    pcursor->pcursor = cursor;
-
-    return true;
+    return (mdv_cursor){ mdv_storage_retain(ptransaction->pstorage), cursor };
 }
 
 
-void mdv_cursor_close(mdv_cursor *pcursor)
+mdv_cursor mdv_cursor_open_first(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data *key, mdv_data *value)
+{
+    mdv_cursor cursor = mdv_cursor_open(pmap, ptransaction);
+
+    if (!mdv_cursor_ok(cursor))
+        return cursor;
+
+    if (!mdv_cursor_get(&cursor, key, value, MDV_CURSOR_FIRST))
+    {
+        mdv_cursor_close(&cursor);
+        return (mdv_cursor){ 0, 0 };
+    }
+
+    return cursor;
+}
+
+
+bool mdv_cursor_close(mdv_cursor *pcursor)
 {
     MDB_cursor *cursor = pcursor->pcursor;
     mdb_cursor_close(cursor);
     mdv_storage_release(pcursor->pstorage);
     pcursor->pstorage = 0;
     pcursor->pcursor = 0;
+    return true;
 }
 
 
@@ -327,3 +357,38 @@ bool mdv_cursor_get(mdv_cursor *pcursor, mdv_data *key, mdv_data *value, mdv_cur
     return false;
 }
 
+
+void mdv_map_read(mdv_map *pmap, mdv_transaction *ptransaction, void *map_fields)
+{
+    for(mdv_map_field_desc *field = (mdv_map_field_desc *)map_fields;
+        field;
+        field = field->next)
+    {
+        mdv_data value = {};
+        if (mdv_map_get(pmap, ptransaction, &field->key, &value))
+        {
+            assert(value.size <= field->value.size);
+            if (value.size <= field->value.size)
+            {
+                field->value.size = value.size;
+                memcpy(field->value.ptr, value.ptr, value.size);
+                field->empty = 0;
+                field->changed = 0;
+            }
+            else
+                MDV_LOGE("Map field is too long. Skipped.");
+        }
+    }
+}
+
+
+void mdv_map_write(mdv_map *pmap, mdv_transaction *ptransaction, void *map_fields)
+{
+    for(mdv_map_field_desc *field = (mdv_map_field_desc *)map_fields;
+        field;
+        field = field->next)
+    {
+        if (field->changed && mdv_map_put(pmap, ptransaction, &field->key, &field->value))
+            field->changed = 0;
+    }
+}

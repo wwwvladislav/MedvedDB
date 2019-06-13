@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 
     bool service_is_ok = false;
 
-    while((ret = getopt_long(argc, argv, "hc:", long_options, &option_index)) != -1)
+    while(!service_is_ok && (ret = getopt_long(argc, argv, "hc:", long_options, &option_index)) != -1)
     {
         char op = (char)ret;
 
@@ -75,8 +75,13 @@ int main(int argc, char *argv[])
                 if (!optarg)
                     return usage();
 
+                mdv_alloc_initialize();
+
                 if (!(service_is_ok = mdv_service_init(&service, optarg)))
+                {
+                    mdv_alloc_finalize();
                     return -1;
+                }
 
                 break;
             }
@@ -85,8 +90,6 @@ int main(int argc, char *argv[])
 
     if (!service_is_ok)
         return usage();
-
-    mdv_alloc_initialize();
 
     if (!mdv_service_start(&service))
         return -1;

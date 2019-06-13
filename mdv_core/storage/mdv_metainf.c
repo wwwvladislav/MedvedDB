@@ -1,183 +1,114 @@
 #include "mdv_metainf.h"
-#include <lmdb.h>
+#include "mdv_storage.h"
 #include <mdv_filesystem.h>
 #include <mdv_log.h>
 #include <mdv_string.h>
 
 
 static const size_t MDV_METAINF_DBS = 2;
-
 static const char MDV_TBL_METAINF[]         = "METAINF";
-static const uint32_t MDV_KEY_VERSION       = 0;
-static const uint32_t MDV_KEY_NODE_UUID     = 1;
-
 static const char MDV_TBL_TABLES[]          = "TABLES";
-static const uint32_t MDV_KEY_NAME          = 0;
-static const uint32_t MDV_KEY_FIELDS        = 0;
 
 
 static struct
 {
-    MDB_env *env;
+    mdv_storage *storage;
 } db;
 
-
-static bool mdv_metainf_sync(mdv_metainf *metainf)
+void mdv_metainf_init(mdv_metainf *m)
 {
-    MDB_txn *txn = 0;
-
-    // Create transaction
-    int rc = mdb_txn_begin(db.env, 0, 0, &txn);
-    if(rc != MDB_SUCCESS)
-    {
-        MDV_LOGE("The LMDB transaction wasn't started: '%s'", mdb_strerror(rc));
-        return false;
-    }
-
-
-    // Open "METAINF" table
-    MDB_dbi dbi = 0;
-    rc = mdb_dbi_open(txn, MDV_TBL_METAINF, MDB_CREATE | MDB_INTEGERKEY, &dbi);
-    if(rc != MDB_SUCCESS)
-    {
-        MDV_LOGE("The LMDB table '%s' wasn't opened: '%s'", MDV_TBL_METAINF, mdb_strerror(rc));
-        mdb_txn_abort(txn);
-        return false;
-    }
-
-
-    // Search VERSION
-    {
-        metainf->version = MDV_VERSION;
-
-        uint32_t key_id = MDV_KEY_VERSION;
-        MDB_val key = { sizeof(key_id), &key_id };
-        MDB_val value = { sizeof(metainf->version), &metainf->version };
-
-        rc = mdb_get(txn, dbi, &key, &value);
-        if (rc == MDB_NOTFOUND)
-        {
-            // Save version
-            rc = mdb_put(txn, dbi, &key, &value, MDB_NODUPDATA);
-            if(rc != MDB_SUCCESS)
-            {
-                MDV_LOGE("mdb_put failed: %s", mdb_strerror(rc));
-                mdb_dbi_close(db.env, dbi);
-                mdb_txn_abort(txn);
-                return false;
-            }
-        }
-        else
-            metainf->version = *(uint32_t const*)value.mv_data;
-    }
-
-
-    // Search NODE_UUID
-    {
-        uint32_t key_id = MDV_KEY_NODE_UUID;
-        MDB_val key = { sizeof(key_id), &key_id };
-        MDB_val value = { sizeof(metainf->uuid), &metainf->uuid };
-
-        rc = mdb_get(txn, dbi, &key, &value);
-        if (rc == MDB_NOTFOUND)
-        {
-            // If isn't found generate new one
-            metainf->uuid = mdv_uuid_generate();
-
-            // Save generated node UUID
-            rc = mdb_put(txn, dbi, &key, &value, MDB_NODUPDATA);
-            if(rc != MDB_SUCCESS)
-            {
-                MDV_LOGE("mdb_put failed: %s", mdb_strerror(rc));
-                mdb_dbi_close(db.env, dbi);
-                mdb_txn_abort(txn);
-                return false;
-            }
-        }
-        else
-            metainf->uuid = *(mdv_uuid const*)value.mv_data;
-    }
-
-    // Commit transaction
-    mdb_txn_commit(txn);
-    mdb_dbi_close(db.env, dbi);
-
-
-    // Print node information to log
-    MDV_LOGI("Storage version: %u", metainf->version);
-    char tmp[33];
-    mdv_string uuid_str = mdv_str_static(tmp);
-    if (mdv_uuid_to_str(&metainf->uuid, &uuid_str))
-        MDV_LOGI("Node UUID: %s", uuid_str.ptr);
-
-    return true;
+    mdv_map_field_init(m->version,      0);
+    mdv_map_field_init_last(m->uuid,    1);
 }
 
 
 bool mdv_metainf_open(mdv_metainf *metainf, char const *path)
 {
-    if (db.env)
-        return true;
-
-
-    // Get metainf file path
-    mdv_stack(char, 1024) mpool;
-    mdv_stack_clear(mpool);
-
-    mdv_string db_path = mdv_str_pdup(mpool, path);
-
-    if (mdv_str_empty(db_path))
+    // Open storage
+    if (!db.storage)
     {
-        MDV_LOGE("Metainf storage directory length is too long: '%s'", path);
-        return false;
-    }
+        // Get metainf file path
+        mdv_stack(char, 1024) mpool;
+        mdv_stack_clear(mpool);
 
-    mdv_string const metainf_file = mdv_str_static("/metainf.mdb");
+        mdv_string db_path = mdv_str_pdup(mpool, path);
 
-    db_path = mdv_str_pcat(mpool, db_path, metainf_file);
-
-    if (mdv_str_empty(db_path))
-    {
-        MDV_LOGE("Metainf storage directory length is too long: '%s'", path);
-        return false;
-    }
-
-
-    // Create DB root directory
-    if (!mdv_mkdir(path))
-    {
-        MDV_LOGE("Metainf storage directory creation failed: '%s'", path);
-        return false;
-    }
-
-
-    // Create LMDB environment
-    #define MDV_DB_CALL(expr)                                                               \
-        if((rc = (expr)) != MDB_SUCCESS)                                                    \
-        {                                                                                   \
-            MDV_LOGE("The LMDB initialization failed: '%s' (%d)", mdb_strerror(rc), rc);    \
-            mdb_env_close(env);                                                             \
-            return false;                                                                   \
+        if (mdv_str_empty(db_path))
+        {
+            MDV_LOGE("Metainf storage directory length is too long: '%s'", path);
+            return false;
         }
 
-    MDB_env *env = 0;
-    int rc = 0;
+        mdv_string const metainf_file = mdv_str_static("/metainf.mdb");
 
-    MDV_DB_CALL(mdb_env_create(&env));
-    MDV_DB_CALL(mdb_env_set_maxdbs(env, MDV_METAINF_DBS));
-    MDV_DB_CALL(mdb_env_open(env, db_path.ptr, MDB_NOSUBDIR, 0664));
+        db_path = mdv_str_pcat(mpool, db_path, metainf_file);
 
-    #undef MDV_DB_CALL
+        if (mdv_str_empty(db_path))
+        {
+            MDV_LOGE("Metainf storage directory length is too long: '%s'", path);
+            return false;
+        }
 
-    db.env = env;
 
-    // Load meta info
-    return mdv_metainf_sync(metainf);
+        // Create DB root directory
+        if (!mdv_mkdir(path))
+        {
+            MDV_LOGE("Metainf storage directory creation failed: '%s'", path);
+            return false;
+        }
+
+
+        db.storage = mdv_storage_open(db_path.ptr, MDV_METAINF_DBS, MDV_STRG_NOSUBDIR);
+        if (!db.storage)
+        {
+            MDV_LOGE("The metainf storage initialization failed");
+            return false;
+        }
+    }
+
+    mdv_metainf_init(metainf);
+
+    // Load metainf
+    mdv_transaction transaction = mdv_transaction_start(db.storage);
+    if (mdv_transaction_ok(transaction))
+    {
+        mdv_map map = mdv_map_open(&transaction, MDV_TBL_METAINF, MDV_MAP_INTEGERKEY);
+        if (mdv_map_ok(map))
+            mdv_map_read(&map, &transaction, metainf);
+        mdv_transaction_abort(&transaction);
+        mdv_map_close(&map);
+    }
+
+    return true;
 }
 
 
 void mdv_metainf_close()
 {
-    mdb_env_close(db.env);
-    db.env = 0;
+    mdv_storage_release(db.storage);
+    db.storage = 0;
+}
+
+
+void mdv_metainf_validate(mdv_metainf *metainf)
+{
+    if (metainf->version.m.empty)
+        mdv_map_field_set(metainf->version, MDV_VERSION);
+    if (metainf->uuid.m.empty)
+        mdv_map_field_set(metainf->uuid, mdv_uuid_generate());
+}
+
+
+void mdv_metainf_flush(mdv_metainf *metainf)
+{
+    // Save metainf
+    mdv_transaction transaction = mdv_transaction_start(db.storage);
+    if (mdv_transaction_ok(transaction))
+    {
+        mdv_map map = mdv_map_open(&transaction, MDV_TBL_METAINF, MDV_MAP_CREATE | MDV_MAP_INTEGERKEY);
+        if (mdv_map_ok(map))
+            mdv_map_write(&map, &transaction, metainf);
+        mdv_transaction_commit(&transaction);
+        mdv_map_close(&map);
+    }
 }

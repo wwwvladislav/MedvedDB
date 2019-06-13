@@ -1,4 +1,5 @@
 #pragma once
+#include "mdv_types.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -7,9 +8,25 @@
 typedef struct mdv_storage mdv_storage;
 
 
-mdv_storage * mdv_storage_open(char const *path, uint32_t dbs_num, uint32_t flags);
-mdv_storage * mdv_storage_retain(mdv_storage *pstorage);
-void          mdv_storage_release(mdv_storage *pstorage);
+typedef enum
+{
+    MDV_STRG_FIXEDMAP           = 1 << 0,   // Use a fixed address for the mmap region.
+    MDV_STRG_NOSUBDIR           = 1 << 1,   // Path is used as-is for the database main data file.
+    MDV_STRG_RDONLY             = 1 << 2,   // Open the environment in read-only mode.
+    MDV_STRG_WRITEMAP           = 1 << 3,   // Use a writeable memory map unless MDB_RDONLY is set.
+    MDV_STRG_NOMETASYNC         = 1 << 4,   // Flush system buffers to disk only once per transaction, omit the metadata flush.
+    MDV_STRG_NOSYNC             = 1 << 5,   // Don't flush system buffers to disk when committing a transaction.
+    MDV_STRG_MAPASYNC           = 1 << 6,   // When using MDB_WRITEMAP, use asynchronous flushes to disk.
+    MDV_STRG_NOTLS              = 1 << 7,   // Don't use Thread-Local Storage.
+    MDV_STRG_NOLOCK             = 1 << 8,   // Don't do any locking.
+    MDV_STRG_NORDAHEAD          = 1 << 9,   // Turn off readahead.
+    MDV_STRG_NOMEMINIT          = 1 << 10   // Don't initialize malloc'd memory before writing to unused spaces in the data file.
+} mdv_storage_flags;
+
+
+mdv_storage * mdv_storage_open      (char const *path, uint32_t dbs_num, uint32_t flags);
+mdv_storage * mdv_storage_retain    (mdv_storage *pstorage);
+void          mdv_storage_release   (mdv_storage *pstorage);
 
 
 typedef struct
@@ -19,9 +36,10 @@ typedef struct
 } mdv_transaction;
 
 
-bool mdv_transaction_start(mdv_storage *pstorage, mdv_transaction *ptransaction);
-bool mdv_transaction_commit(mdv_transaction *ptransaction);
-bool mdv_transaction_abort(mdv_transaction *ptransaction);
+mdv_transaction mdv_transaction_start   (mdv_storage *pstorage);
+bool            mdv_transaction_commit  (mdv_transaction *ptransaction);
+bool            mdv_transaction_abort   (mdv_transaction *ptransaction);
+#define         mdv_transaction_ok(t)   ((t).ptransaction != 0)
 
 
 typedef struct
@@ -41,19 +59,13 @@ typedef enum
 } mdv_map_flags;
 
 
-typedef struct
-{
-    size_t  size;
-    void   *data;
-} mdv_data;
-
-
-bool mdv_map_open(mdv_transaction *ptransaction, char const *name, uint32_t flags, mdv_map *pmap);
-void mdv_map_close(mdv_map *pmap);
-bool mdv_map_put(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data const *value);
-bool mdv_map_put_unique(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data const *value);
-bool mdv_map_get(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data *value);
-bool mdv_map_del(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data const *value);
+mdv_map mdv_map_open       (mdv_transaction *ptransaction, char const *name, uint32_t flags);
+void    mdv_map_close      (mdv_map *pmap);
+bool    mdv_map_put        (mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data const *value);
+bool    mdv_map_put_unique (mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data const *value);
+bool    mdv_map_get        (mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data *value);
+bool    mdv_map_del        (mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data const *value);
+#define mdv_map_ok(m)      ((m).pstorage != 0 && (m).dbmap != 0)
 
 
 typedef struct
@@ -76,28 +88,38 @@ typedef enum
 } mdv_cursor_op;
 
 
-bool mdv_cursor_open(mdv_map *pmap, mdv_transaction *ptransaction, mdv_cursor *pcursor);
-void mdv_cursor_close(mdv_cursor *pcursor);
-bool mdv_cursor_get(mdv_cursor *pcursor, mdv_data *key, mdv_data *value, mdv_cursor_op op);
+mdv_cursor  mdv_cursor_open             (mdv_map *pmap, mdv_transaction *ptransaction);
+mdv_cursor  mdv_cursor_open_first       (mdv_map *pmap, mdv_transaction *ptransaction, mdv_data *key, mdv_data *value);
+bool        mdv_cursor_close            (mdv_cursor *pcursor);
+bool        mdv_cursor_get              (mdv_cursor *pcursor, mdv_data *key, mdv_data *value, mdv_cursor_op op);
+#define     mdv_cursor_ok(c)            ((c).pstorage != 0 && (c).pcursor != 0)
 
 
+#define mdv_map_foreach(transaction, map, entry)            \
+    for(struct {                                            \
+            mdv_cursor      cursor;                         \
+            mdv_data        key;                            \
+            mdv_data        value;                          \
+        } entry = {                                         \
+            mdv_cursor_open_first(&map,                     \
+                                  &transaction,             \
+                                  &entry.key,               \
+                                  &entry.value)             \
+        };                                                  \
+        mdv_cursor_ok(entry.cursor);                        \
+        !mdv_cursor_get(&entry.cursor,                      \
+                        &entry.key,                         \
+                        &entry.value,                       \
+                        MDV_CURSOR_NEXT)                    \
+            ? mdv_cursor_close(&entry.cursor)               \
+            : false                                         \
+    )
 
-typedef struct
-{
-    //MDB_env            *env;
-} mdv_commit_log;
+
+#define mdv_map_foreach_break(transaction, entry)           \
+    mdv_cursor_close(&entry.cursor);                        \
+    break;
 
 
-typedef struct
-{
-    struct
-    {
-        //MDB_env        *env;
-    } data;
-
-    struct
-    {
-        mdv_commit_log  add;
-        mdv_commit_log  del;
-    } log;
-} mdv_table;
+void mdv_map_read (mdv_map *pmap, mdv_transaction *ptransaction, void *map_fields);
+void mdv_map_write(mdv_map *pmap, mdv_transaction *ptransaction, void *map_fields);

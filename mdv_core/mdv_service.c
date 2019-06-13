@@ -16,6 +16,16 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
         return false;
     }
 
+    mdv_metainf_validate(&svc->db.metainf);
+    mdv_metainf_flush(&svc->db.metainf);
+
+    // Print node information to log
+    MDV_LOGI("Storage version: %u", svc->db.metainf.version.value);
+    char tmp[33];
+    mdv_string uuid_str = mdv_str_static(tmp);
+    if (mdv_uuid_to_str(&svc->db.metainf.uuid.value, &uuid_str))
+        MDV_LOGI("Node UUID: %s", uuid_str.ptr);
+
     return true;
 }
 

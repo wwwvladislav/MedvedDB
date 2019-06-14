@@ -27,23 +27,36 @@ void mdv_alloc_thread_finalize()
 }
 
 
-void *mdv_alloc(size_t size)
+void * mdv_alloc(size_t size)
 {
     void *ptr = rpmalloc(size);
     if (!ptr)
         MDV_LOGE("malloc(%zu) failed", size);
-    MDV_LOGD("malloc: %p:%zu", ptr, size);
+    else
+        MDV_LOGD("malloc: %p:%zu", ptr, size);
     return ptr;
 }
 
 
-void *mdv_aligned_alloc(size_t alignment, size_t size)
+void * mdv_aligned_alloc(size_t alignment, size_t size)
 {
     void *ptr = rpaligned_alloc(alignment, size);
     if (!ptr)
         MDV_LOGE("aligned_alloc(%zu) failed", size);
-    MDV_LOGD("aligned_alloc: %p:%zu", ptr, size);
+    else
+        MDV_LOGD("aligned_alloc: %p:%zu", ptr, size);
     return ptr;
+}
+
+
+void * mdv_realloc(void *ptr, size_t size)
+{
+    void *new_ptr = rprealloc(ptr, size);
+    if (!new_ptr)
+        MDV_LOGE("realloc(%p, %zu) failed", ptr, size);
+    else
+        MDV_LOGD("realloc: %p:%zu", new_ptr, size);
+    return new_ptr;
 }
 
 

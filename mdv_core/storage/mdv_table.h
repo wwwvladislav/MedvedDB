@@ -40,7 +40,24 @@ typedef struct
 typedef mdv_table(1) mdv_table_base;
 
 
+typedef struct
+{
+    mdv_storage *data;              // table data storage
+
+    struct
+    {
+        mdv_storage *ins;           // insertion log storage
+        mdv_storage *del;           // deletion log storage
+    } log;
+} mdv_table_storage;
+
+
+#define mdv_table_storage_ok(stor) ((stor).data != 0)
+
+
 uint32_t mdv_field_size(mdv_field const *fld);
 
 
-bool mdv_table_create(mdv_storage *storage, mdv_table_base const *table);
+mdv_table_storage mdv_table_create(mdv_storage *metainf_storage, mdv_table_base const *table);
+bool              mdv_table_drop(mdv_storage *metainf_storage, char const *name);
+void              mdv_table_close(mdv_table_storage *storage);

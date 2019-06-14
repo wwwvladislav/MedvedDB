@@ -4,6 +4,9 @@
 #include <string.h>
 
 
+mdv_config MDV_CONFIG;
+
+
 static int mdv_cfg_handler(void* user, const char* section, const char* name, const char* value)
 {
     mdv_config *config = (mdv_config *)user;
@@ -51,18 +54,18 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
 }
 
 
-bool mdv_load_config(char const *path, mdv_config *config)
+bool mdv_load_config(char const *path)
 {
-    mdv_stack_clear(config->mempool);
+    mdv_stack_clear(MDV_CONFIG.mempool);
 
-    if (ini_parse(path, mdv_cfg_handler, config) < 0)
+    if (ini_parse(path, mdv_cfg_handler, &MDV_CONFIG) < 0)
     {
         MDV_LOGE("Can't load '%s'\n", path);
         return false;
     }
 
-    if (mdv_str_empty(config->server.listen)
-        || mdv_str_empty(config->storage.path))
+    if (mdv_str_empty(MDV_CONFIG.server.listen)
+        || mdv_str_empty(MDV_CONFIG.storage.path))
     {
         MDV_LOGE("Mandatory configuration parameters weren't not provided\n");
         return false;

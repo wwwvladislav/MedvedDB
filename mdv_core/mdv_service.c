@@ -1,13 +1,14 @@
 #include "mdv_service.h"
 #include <mdv_log.h>
 #include <mdv_thread.h>
+#include <mdv_binn.h>
 
 
-static void mdv_service_configure_logging(mdv_config const *config)
+static void mdv_service_configure_logging()
 {
-    if (!mdv_str_empty(config->log.level))
+    if (!mdv_str_empty(MDV_CONFIG.log.level))
     {
-        switch(*config->log.level.ptr)
+        switch(*MDV_CONFIG.log.level.ptr)
         {
             case 'f':   mdv_logf_set_level(ZF_LOG_FATAL);   break;
             case 'e':   mdv_logf_set_level(ZF_LOG_ERROR);   break;
@@ -20,27 +21,30 @@ static void mdv_service_configure_logging(mdv_config const *config)
     }
 }
 
+#include "storage/mdv_table.h"
 
 bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 {
-    if (!mdv_load_config(cfg_file_path, &svc->config))
+    if (!mdv_load_config(cfg_file_path))
     {
         MDV_LOGE("Service initialization failed. Can't load '%s'\n", cfg_file_path);
         return false;
     }
 
-    mdv_service_configure_logging(&svc->config);
+    mdv_service_configure_logging();
 
-    svc->storage.metainf = mdv_metainf_storage_open(svc->config.storage.path.ptr);
+    mdv_binn_set_allocator();
+
+    svc->storage.metainf = mdv_metainf_storage_open(MDV_CONFIG.storage.path.ptr);
     if (!svc->storage.metainf)
     {
-        MDV_LOGE("Service initialization failed. Can't create metainf storage '%s'\n", svc->config.storage.path.ptr);
+        MDV_LOGE("Service initialization failed. Can't create metainf storage '%s'\n", MDV_CONFIG.storage.path.ptr);
         return false;
     }
 
     if (!mdv_metainf_load(&svc->metainf, svc->storage.metainf))
     {
-        MDV_LOGE("DB meta information loading was failed. Path: '%s'\n", svc->config.storage.path.ptr);
+        MDV_LOGE("DB meta information loading was failed. Path: '%s'\n", MDV_CONFIG.storage.path.ptr);
         return false;
     }
 
@@ -55,6 +59,26 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
         MDV_LOGI("Node UUID: %s", uuid_str.ptr);
 
     svc->is_started = false;
+
+    // DEBUG
+    mdv_table(3) tbl =
+    {
+        .name = mdv_str_static("my_table"),
+        .size = 3,
+        .fields =
+        {
+            { MDV_FLD_TYPE_CHAR,   mdv_str_static("col1") },
+            { MDV_FLD_TYPE_BOOL,   mdv_str_static("col2") },
+            { MDV_FLD_TYPE_UINT64, mdv_str_static("col3") }
+        }
+    };
+
+    mdv_table_storage s = mdv_table_create(svc->storage.metainf, (mdv_table_base const *)&tbl);
+    if (mdv_table_storage_ok(s))
+    {
+        mdv_table_close(&s);
+    }
+    // DEBUG
 
     return true;
 }

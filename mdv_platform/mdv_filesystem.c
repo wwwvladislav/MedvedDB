@@ -1,7 +1,6 @@
 #include "mdv_filesystem.h"
 #include "mdv_log.h"
 #include "mdv_string.h"
-#include "mdv_limits.h"
 #include "mdv_stack.h"
 #include <sys/types.h>
 #include <sys/stat.h>

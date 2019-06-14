@@ -8,7 +8,6 @@
 
 typedef struct
 {
-    mdv_config      config;
     mdv_listener    listener;
     volatile bool   is_started;
     mdv_metainf     metainf;

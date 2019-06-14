@@ -13,7 +13,7 @@ void mdv_metainf_init(mdv_metainf *m)
 
 mdv_storage * mdv_metainf_storage_open(char const *path)
 {
-    mdv_storage *storage = mdv_storage_open(path, MDV_METAINF_STORAGE, MDV_METAINF_DBS, MDV_STRG_NOSUBDIR);
+    mdv_storage *storage = mdv_storage_open(path, MDV_STRG_METAINF, MDV_STRG_METAINF_MAPS, MDV_STRG_NOSUBDIR);
 
     if (!storage)
     {
@@ -34,7 +34,7 @@ bool mdv_metainf_load(mdv_metainf *metainf, mdv_storage *storage)
     mdv_transaction transaction = mdv_transaction_start(storage);
     if (mdv_transaction_ok(transaction))
     {
-        mdv_map map = mdv_map_open(&transaction, MDV_TBL_METAINF, MDV_MAP_INTEGERKEY);
+        mdv_map map = mdv_map_open(&transaction, MDV_MAP_METAINF, MDV_MAP_INTEGERKEY);
         if (mdv_map_ok(map))
             mdv_map_read(&map, &transaction, metainf);
         mdv_transaction_abort(&transaction);
@@ -60,7 +60,7 @@ void mdv_metainf_flush(mdv_metainf *metainf, mdv_storage *storage)
     mdv_transaction transaction = mdv_transaction_start(storage);
     if (mdv_transaction_ok(transaction))
     {
-        mdv_map map = mdv_map_open(&transaction, MDV_TBL_METAINF, MDV_MAP_CREATE | MDV_MAP_INTEGERKEY);
+        mdv_map map = mdv_map_open(&transaction, MDV_MAP_METAINF, MDV_MAP_CREATE | MDV_MAP_INTEGERKEY);
         if (mdv_map_ok(map))
             mdv_map_write(&map, &transaction, metainf);
         mdv_transaction_commit(&transaction);

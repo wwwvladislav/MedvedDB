@@ -26,5 +26,7 @@ typedef struct
 } mdv_config;
 
 
-bool mdv_load_config(char const *path, mdv_config *config);
+extern mdv_config MDV_CONFIG;
+
+bool mdv_load_config(char const *path);
 

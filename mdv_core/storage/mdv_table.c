@@ -730,9 +730,40 @@ bool mdv_table_insert(mdv_table_storage *storage, size_t count, mdv_row_base con
 
     mdv_rollbacker_push(rollbacker, mdv_map_close, &map);
 
-    // TODO
+    for(size_t i = 0; i < count; ++i)
+    {
+        mdv_row_base const *row = rows[i];
 
-    mdv_rollback(rollbacker);
+        binn *obj = binn_row(storage->table->fields, row);
+        if(!obj)
+        {
+            MDV_LOGE("Row serialization failed.");
+            mdv_rollback(rollbacker);
+            return false;
+        }
+
+        mdv_data k = { sizeof(row->id), (void*)&row->id };
+        mdv_data v = { binn_size(obj), binn_ptr(obj) };
+
+        if (!mdv_map_put_unique(&map, &transaction, &k, &v))
+        {
+            MDV_LOGE("Row insertion failed.");
+            mdv_rollback(rollbacker);
+            binn_free(obj);
+            return false;
+        }
+
+        binn_free(obj);
+    }
+
+    if (!mdv_transaction_commit(&transaction))
+    {
+        MDV_LOGE("Row insertion transaction failed.");
+        mdv_rollback(rollbacker);
+        return false;
+    }
+
+    mdv_map_close(&map);
 
     return false;
 }

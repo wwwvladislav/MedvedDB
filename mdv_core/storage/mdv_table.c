@@ -73,6 +73,9 @@ mdv_table_storage mdv_table_create(mdv_storage *metainf_storage, mdv_table_base 
     mdv_rollbacker(8) rollbacker;
     mdv_rollbacker_clear(rollbacker);
 
+    mdv_uuid_str(table_uuid);
+    mdv_uuid_to_str(&table->uuid, &table_uuid);
+
     // Start metainf transaction
     mdv_transaction metainf_transaction = mdv_transaction_start(metainf_storage);
     if (!mdv_transaction_ok(metainf_transaction))
@@ -105,12 +108,12 @@ mdv_table_storage mdv_table_create(mdv_storage *metainf_storage, mdv_table_base 
         }
 
         // Save short table information
-        mdv_data const k = { table->name.size, table->name.ptr };
+        mdv_data const k = { table_uuid.size, table_uuid.ptr };
         mdv_data const v = { binn_size(obj),   binn_ptr(obj) };
 
         if (!mdv_map_put_unique(&metainf_map, &metainf_transaction, &k, &v))
         {
-            MDV_LOGE("Table name '%s' isn't unique", table->name.ptr);
+            MDV_LOGE("Table uuid '%s' isn't unique", table_uuid.ptr);
             mdv_rollback(rollbacker);
             binn_free(obj);
             return table_storage;
@@ -125,7 +128,7 @@ mdv_table_storage mdv_table_create(mdv_storage *metainf_storage, mdv_table_base 
 
     static mdv_string const dir_delimeter = mdv_str_static("/");
     mdv_string path = mdv_str_pdup(mpool, MDV_CONFIG.storage.path.ptr);
-    path = mdv_str_pcat(mpool, path, dir_delimeter, table->name);
+    path = mdv_str_pcat(mpool, path, dir_delimeter, table_uuid);
 
     if (mdv_str_empty(path))
     {
@@ -137,7 +140,7 @@ mdv_table_storage mdv_table_create(mdv_storage *metainf_storage, mdv_table_base 
     // Create subdirectory for table
     if (!mdv_mkdir(path.ptr))
     {
-        MDV_LOGE("Directory for table '%s' wasn't created", table->name.ptr);
+        MDV_LOGE("Directory for table '%s' wasn't created", table_uuid.ptr);
         mdv_rollback(rollbacker);
         return table_storage;
     }
@@ -155,7 +158,7 @@ mdv_table_storage mdv_table_create(mdv_storage *metainf_storage, mdv_table_base 
         || !table_storage.log.ins
         || !table_storage.log.del)
     {
-        MDV_LOGE("Srorage for table '%s' wasn't created", table->name.ptr);
+        MDV_LOGE("Srorage for table '%s' wasn't created", table_uuid.ptr);
         mdv_rollback(rollbacker);
         return table_storage;
     }
@@ -212,11 +215,22 @@ mdv_table_storage mdv_table_create(mdv_storage *metainf_storage, mdv_table_base 
         }
     }
 
-    mdv_transaction_commit(&table_transaction);
+    if (!mdv_transaction_commit(&table_transaction))
+    {
+        mdv_rollback(rollbacker);
+        return table_storage;
+    }
+
     mdv_map_close(&table_map);
 
-    mdv_transaction_commit(&metainf_transaction);
+    if (!mdv_transaction_commit(&metainf_transaction))
+    {
+        mdv_rollback(rollbacker);
+        return table_storage;
+    }
     mdv_map_close(&metainf_map);
+
+    MDV_LOGI("Table '%s' with uuid '%s' created", table->name.ptr, table_uuid.ptr);
 
     return table_storage;
 }
@@ -233,8 +247,77 @@ void mdv_table_close(mdv_table_storage *storage)
 }
 
 
-bool mdv_table_drop(mdv_storage *metainf_storage, char const *name)
+bool mdv_table_drop(mdv_storage *metainf_storage, mdv_uuid const *uuid)
 {
-    return false;
-    // TODO
+    mdv_rollbacker(4) rollbacker;
+    mdv_rollbacker_clear(rollbacker);
+
+    mdv_uuid_str(table_uuid);
+    mdv_uuid_to_str(uuid, &table_uuid);
+
+    // Start metainf transaction
+    mdv_transaction metainf_transaction = mdv_transaction_start(metainf_storage);
+    if (!mdv_transaction_ok(metainf_transaction))
+    {
+        MDV_LOGE("Metainf storage transaction not started");
+        return false;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &metainf_transaction);
+
+    // Open tables list
+    mdv_map metainf_map = mdv_map_open(&metainf_transaction, MDV_MAP_TABLES, MDV_MAP_CREATE);
+    if (!mdv_map_ok(metainf_map))
+    {
+        MDV_LOGE("Metainf storage table '%s' not created", MDV_MAP_TABLES);
+        mdv_rollback(rollbacker);
+        return false;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &metainf_map);
+
+    // Build table subdirectory
+    mdv_stack(char, MDV_PATH_MAX) mpool;
+    mdv_stack_clear(mpool);
+
+    static mdv_string const dir_delimeter = mdv_str_static("/");
+    mdv_string path = mdv_str_pdup(mpool, MDV_CONFIG.storage.path.ptr);
+    path = mdv_str_pcat(mpool, path, dir_delimeter, table_uuid);
+
+    if (mdv_str_empty(path))
+    {
+        MDV_LOGE("Path '%s' is too long.", MDV_CONFIG.storage.path.ptr);
+        mdv_rollback(rollbacker);
+        return false;
+    }
+
+    // Remove short table information
+    {
+        mdv_data const k = { table_uuid.size, table_uuid.ptr };
+
+        if (!mdv_map_del(&metainf_map, &metainf_transaction, &k, 0))
+        {
+            MDV_LOGE("Table '%s' wasn't dropped", table_uuid.ptr);
+            mdv_rollback(rollbacker);
+            return false;
+        }
+    }
+
+    if (!mdv_transaction_commit(&metainf_transaction))
+    {
+        mdv_rollback(rollbacker);
+        return false;
+    }
+    mdv_map_close(&metainf_map);
+
+    MDV_LOGI("Table with uuid '%s' dropped", table_uuid.ptr);
+
+    // Remove table storage directories
+    if (!mdv_rmdir(path.ptr))
+    {
+        MDV_LOGE(">>>> Directory for table '%s' wasn't deleted. Delete it manually!!!", table_uuid.ptr);
+        return true;
+    }
+
+    return true;
 }

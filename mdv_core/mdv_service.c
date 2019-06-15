@@ -63,6 +63,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
     // DEBUG
     mdv_table(3) tbl =
     {
+        .uuid = mdv_uuid_generate(),
         .name = mdv_str_static("my_table"),
         .size = 3,
         .fields =
@@ -78,6 +79,8 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
     {
         mdv_table_close(&s);
     }
+
+    mdv_table_drop(svc->storage.metainf, &tbl.uuid);
     // DEBUG
 
     return true;

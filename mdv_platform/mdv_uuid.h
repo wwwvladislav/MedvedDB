@@ -25,6 +25,11 @@ typedef struct
 } mdv_uuid;
 
 
+#define mdv_uuid_str(name)                          \
+    char buff_##name[33];                           \
+    mdv_string name = mdv_str_static(buff_##name);
+
+
 mdv_uuid mdv_uuid_generate();
 int      mdv_uuid_cmp(mdv_uuid const *a, mdv_uuid const *b);
 bool     mdv_uuid_to_str(mdv_uuid const *uuid, mdv_string *dst);

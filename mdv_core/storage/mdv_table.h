@@ -1,5 +1,6 @@
 #pragma once
 #include <mdv_string.h>
+#include <mdv_uuid.h>
 #include "mdv_types.h"
 #include "mdv_storage.h"
 #include <stdint.h>
@@ -31,6 +32,7 @@ typedef struct
 #define mdv_table(N)                \
     struct mdv_table_##N            \
     {                               \
+        mdv_uuid        uuid;       \
         mdv_string      name;       \
         uint32_t        size;       \
         mdv_field       fields[N];  \
@@ -59,5 +61,5 @@ uint32_t mdv_field_size(mdv_field const *fld);
 
 
 mdv_table_storage mdv_table_create(mdv_storage *metainf_storage, mdv_table_base const *table);
-bool              mdv_table_drop(mdv_storage *metainf_storage, char const *name);
+bool              mdv_table_drop(mdv_storage *metainf_storage, mdv_uuid const *uuid);
 void              mdv_table_close(mdv_table_storage *storage);

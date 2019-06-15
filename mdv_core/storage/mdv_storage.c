@@ -299,9 +299,9 @@ bool mdv_map_del(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *k
     }
 
     MDB_val k = { key->size, key->ptr };
-    MDB_val v = { value->size, value->ptr };
+    MDB_val v = { value ? value->size : 0, value ? value->ptr : 0 };
 
-    int rc = mdb_del(txn, dbi, &k, &v);
+    int rc = mdb_del(txn, dbi, &k, value ? &v : 0);
 
     if (rc == MDB_NOTFOUND)
         return false;

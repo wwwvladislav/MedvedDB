@@ -21,7 +21,7 @@ static void mdv_service_configure_logging()
     }
 }
 
-#include "storage/mdv_table.h"
+// #include "storage/mdv_table.h"
 
 bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 {
@@ -60,6 +60,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 
     svc->is_started = false;
 
+#if 0
     // DEBUG
     mdv_table(3) tbl =
     {
@@ -68,9 +69,9 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
         .size = 3,
         .fields =
         {
-            { MDV_FLD_TYPE_CHAR,   mdv_str_static("col1") },
-            { MDV_FLD_TYPE_BOOL,   mdv_str_static("col2") },
-            { MDV_FLD_TYPE_UINT64, mdv_str_static("col3") }
+            { MDV_FLD_TYPE_CHAR,   0, mdv_str_static("string") },   // char *
+            { MDV_FLD_TYPE_BOOL,   1, mdv_str_static("bool") },     // bool
+            { MDV_FLD_TYPE_UINT64, 2, mdv_str_static("u64pair") }   // uint64[2]
         }
     };
 
@@ -80,9 +81,15 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
         mdv_table_close(&s);
     }
 
+    s = mdv_table_open(&tbl.uuid);
+    if (mdv_table_storage_ok(s))
+    {
+        mdv_table_close(&s);
+    }
+
     mdv_table_drop(svc->storage.metainf, &tbl.uuid);
     // DEBUG
-
+#endif
     return true;
 }
 

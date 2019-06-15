@@ -5,4 +5,6 @@ file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 
 use_c11()
 
+add_definitions(-DMDB_VL32)
+
 add_library(lmdb STATIC ${SOURCES})

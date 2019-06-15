@@ -5,8 +5,8 @@
 
 typedef struct
 {
-    size_t  size;
-    void   *ptr;
+    uint32_t    size;
+    void       *ptr;
 } mdv_data;
 
 

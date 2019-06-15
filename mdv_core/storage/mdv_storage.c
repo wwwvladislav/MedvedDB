@@ -8,6 +8,7 @@
 #include <assert.h>
 
 #ifndef _LMDB_H_
+#define MDB_VL32    // LMDB must use uint64_t for keys
 #include <lmdb.h>
 #else
 #error "Only mdv_storage must be used for LMDB access"

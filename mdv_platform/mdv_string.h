@@ -1,13 +1,14 @@
 #pragma once
 #include "mdv_stack.h"
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 
 typedef struct
 {
-    size_t  size;
-    char   *ptr;
+    uint32_t    size;
+    char       *ptr;
 } mdv_string;
 
 

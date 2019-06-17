@@ -15,4 +15,4 @@ add_library(mdv_platform STATIC ${SOURCES})
 
 add_dependencies(mdv_platform zf_log rpmalloc binn)
 
-target_link_libraries(mdv_platform zf_log rpmalloc binn)
+target_link_libraries(mdv_platform zf_log rpmalloc binn m)

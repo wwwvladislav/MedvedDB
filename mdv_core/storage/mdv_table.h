@@ -74,8 +74,8 @@ typedef struct
 
     struct
     {
-        mdv_storage *ins;           // insertion log storage
-        mdv_storage *del;           // deletion log storage
+        mdv_storage *add;           // add-set
+        mdv_storage *rem;           // remove-set
     } log;
 } mdv_table_storage;
 

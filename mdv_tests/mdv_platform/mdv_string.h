@@ -2,6 +2,7 @@
 #include "../minunit.h"
 #include <mdv_string.h>
 
+
 MU_TEST(platform_string)
 {
     {

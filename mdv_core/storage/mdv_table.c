@@ -432,15 +432,15 @@ mdv_table_storage mdv_table_create(mdv_storage *metainf_storage, mdv_table_base 
     // Create table storage
     table_storage.table = mdv_table_clone(table);
     table_storage.data = mdv_storage_open(path.ptr, MDV_STRG_DATA, MDV_STRG_DATA_MAPS, MDV_STRG_NOSUBDIR);
-    table_storage.log.ins = mdv_storage_open(path.ptr, MDV_STRG_INS_LOG, MDV_STRG_INS_LOG_MAPS, MDV_STRG_NOSUBDIR);
-    table_storage.log.del = mdv_storage_open(path.ptr, MDV_STRG_DEL_LOG, MDV_STRG_DEL_LOG_MAPS, MDV_STRG_NOSUBDIR);
+    table_storage.log.add = mdv_storage_open(path.ptr, MDV_STRG_ADD_SET, MDV_STRG_ADD_SET_MAPS, MDV_STRG_NOSUBDIR);
+    table_storage.log.rem = mdv_storage_open(path.ptr, MDV_STRG_REM_SET, MDV_STRG_REM_SET_MAPS, MDV_STRG_NOSUBDIR);
 
     mdv_rollbacker_push(rollbacker, mdv_table_close, &table_storage);
 
     if (!table_storage.table
         || !table_storage.data
-        || !table_storage.log.ins
-        || !table_storage.log.del)
+        || !table_storage.log.add
+        || !table_storage.log.rem)
     {
         MDV_LOGE("Srorage for table '%s' wasn't created", table_uuid.ptr);
         mdv_rollback(rollbacker);
@@ -540,12 +540,12 @@ mdv_table_storage mdv_table_open(mdv_uuid const *uuid)
 
     // Open table storages
     table_storage.data = mdv_storage_open(path.ptr, MDV_STRG_DATA, MDV_STRG_DATA_MAPS, MDV_STRG_NOSUBDIR);
-    table_storage.log.ins = mdv_storage_open(path.ptr, MDV_STRG_INS_LOG, MDV_STRG_INS_LOG_MAPS, MDV_STRG_NOSUBDIR);
-    table_storage.log.del = mdv_storage_open(path.ptr, MDV_STRG_DEL_LOG, MDV_STRG_DEL_LOG_MAPS, MDV_STRG_NOSUBDIR);
+    table_storage.log.add = mdv_storage_open(path.ptr, MDV_STRG_ADD_SET, MDV_STRG_ADD_SET_MAPS, MDV_STRG_NOSUBDIR);
+    table_storage.log.rem = mdv_storage_open(path.ptr, MDV_STRG_REM_SET, MDV_STRG_REM_SET_MAPS, MDV_STRG_NOSUBDIR);
 
     if (!table_storage.data
-        || !table_storage.log.ins
-        || !table_storage.log.del)
+        || !table_storage.log.add
+        || !table_storage.log.rem)
     {
         MDV_LOGE("Srorage for table '%s' wasn't opened", table_uuid.ptr);
         mdv_table_close(&table_storage);
@@ -619,12 +619,12 @@ void mdv_table_close(mdv_table_storage *storage)
     if (storage->table)
         mdv_free(storage->table);
     mdv_storage_release(storage->data);
-    mdv_storage_release(storage->log.ins);
-    mdv_storage_release(storage->log.del);
+    mdv_storage_release(storage->log.add);
+    mdv_storage_release(storage->log.rem);
     storage->table = 0;
     storage->data = 0;
-    storage->log.ins = 0;
-    storage->log.del = 0;
+    storage->log.add = 0;
+    storage->log.rem = 0;
 }
 
 

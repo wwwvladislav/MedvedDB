@@ -2,6 +2,7 @@
 #include "../minunit.h"
 #include <mdv_stack.h>
 
+
 MU_TEST(platform_stack)
 {
     mdv_stack(char, 5) stack;

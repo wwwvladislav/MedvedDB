@@ -11,12 +11,14 @@
     }
 
 
-uint32_t mdv_hash_murmur2a(uint8_t const *data, uint32_t const len,  uint32_t const seed)
+uint32_t mdv_hash_murmur2a(void const *buff, uint32_t const len, uint32_t const seed)
 {
     const uint32_t m = 0x5bd1e995;
 
     uint32_t l = len;
     uint32_t h = seed;
+
+    uint8_t const *data = buff;
 
     while(l >= sizeof(uint32_t))
     {

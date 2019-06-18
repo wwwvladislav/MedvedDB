@@ -334,21 +334,26 @@ mdv_cursor mdv_cursor_open(mdv_map *pmap, mdv_transaction *ptransaction)
     return (mdv_cursor){ mdv_storage_retain(ptransaction->pstorage), cursor };
 }
 
-
-mdv_cursor mdv_cursor_open_first(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data *key, mdv_data *value)
+mdv_cursor mdv_cursor_open_explicit(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data *key, mdv_data *value, mdv_cursor_op op)
 {
     mdv_cursor cursor = mdv_cursor_open(pmap, ptransaction);
 
     if (!mdv_cursor_ok(cursor))
         return cursor;
 
-    if (!mdv_cursor_get(&cursor, key, value, MDV_CURSOR_FIRST))
+    if (!mdv_cursor_get(&cursor, key, value, op))
     {
         mdv_cursor_close(&cursor);
         return (mdv_cursor){ 0, 0 };
     }
 
     return cursor;
+}
+
+
+mdv_cursor mdv_cursor_open_first(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data *key, mdv_data *value)
+{
+    return mdv_cursor_open_explicit(pmap, ptransaction, key, value, MDV_CURSOR_FIRST);
 }
 
 
@@ -373,6 +378,7 @@ bool mdv_cursor_get(mdv_cursor *pcursor, mdv_data *key, mdv_data *value, mdv_cur
                                     op == MDV_CURSOR_NEXT_DUP ? MDB_NEXT_DUP :
                                     op == MDV_CURSOR_PREV ? MDB_PREV :
                                     op == MDV_CURSOR_SET ? MDB_SET :
+                                    op == MDV_SET_RANGE ? MDB_SET_RANGE :
                                     MDB_FIRST;
     MDB_cursor *cursor = (MDB_cursor *)pcursor->pcursor;
 

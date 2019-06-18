@@ -51,6 +51,16 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
     mdv_metainf_validate(&svc->metainf);
     mdv_metainf_flush(&svc->metainf, svc->storage.metainf);
 
+    svc->tablespace = mdv_tablespace_open();
+    if (!mdv_tablespace_ok(svc->tablespace))
+        svc->tablespace = mdv_tablespace_create();
+
+    if (!mdv_tablespace_ok(svc->tablespace))
+    {
+        MDV_LOGE("DB tables space creation was failed. Path: '%s'\n", MDV_CONFIG.storage.path.ptr);
+        return false;
+    }
+
     // Print node information to log
     MDV_LOGI("Storage version: %u", svc->metainf.version.value);
     char tmp[33];
@@ -97,6 +107,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 void mdv_service_free(mdv_service *svc)
 {
     mdv_storage_release(svc->storage.metainf);
+    mdv_tablespace_close(&svc->tablespace);
 }
 
 

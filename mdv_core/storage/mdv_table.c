@@ -351,7 +351,7 @@ static binn *binn_row(mdv_field const *fields, mdv_row_base const *row)
 mdv_table_storage mdv_table_create(mdv_storage *metainf_storage, mdv_table_base const *table)
 {
     mdv_table_storage table_storage = {};
-
+/*
     mdv_rollbacker(8) rollbacker;
     mdv_rollbacker_clear(rollbacker);
 
@@ -509,7 +509,7 @@ mdv_table_storage mdv_table_create(mdv_storage *metainf_storage, mdv_table_base 
     mdv_map_close(&metainf_map);
 
     MDV_LOGI("Table '%s' with uuid '%s' created", table->name.ptr, table_uuid.ptr);
-
+*/
     return table_storage;
 }
 
@@ -630,6 +630,7 @@ void mdv_table_close(mdv_table_storage *storage)
 
 bool mdv_table_drop(mdv_storage *metainf_storage, mdv_uuid const *uuid)
 {
+/*
     mdv_rollbacker(4) rollbacker;
     mdv_rollbacker_clear(rollbacker);
 
@@ -699,7 +700,7 @@ bool mdv_table_drop(mdv_storage *metainf_storage, mdv_uuid const *uuid)
         MDV_LOGE(">>>> Directory for table '%s' wasn't deleted. Delete it manually!!!", table_uuid.ptr);
         return true;
     }
-
+*/
     return true;
 }
 
@@ -765,6 +766,6 @@ bool mdv_table_insert(mdv_table_storage *storage, size_t count, mdv_row_base con
 
     mdv_map_close(&map);
 
-    return false;
+    return true;
 }
 

@@ -2,6 +2,7 @@
 #include "mdv_config.h"
 #include "mdv_listener.h"
 #include "storage/mdv_metainf.h"
+#include "storage/mdv_tablespace.h"
 #include <stdbool.h>
 #include <mdv_uuid.h>
 
@@ -11,6 +12,7 @@ typedef struct
     mdv_listener    listener;
     volatile bool   is_started;
     mdv_metainf     metainf;
+    mdv_tablespace  tablespace;
 
     struct
     {

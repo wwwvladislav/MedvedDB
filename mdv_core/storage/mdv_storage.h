@@ -84,39 +84,50 @@ typedef enum
     MDV_CURSOR_NEXT,                        // Position at next data item
     MDV_CURSOR_NEXT_DUP,                    // Position at next data item of current key. Only for MDB_DUPSORT
     MDV_CURSOR_PREV,                        // Position at previous data item
-    MDV_CURSOR_SET                          // Position at specified key
+    MDV_CURSOR_SET,                         // Position at specified key
+    MDV_SET_RANGE                           // Position at first key greater than or equal to specified key.
 } mdv_cursor_op;
 
 
 mdv_cursor  mdv_cursor_open             (mdv_map *pmap, mdv_transaction *ptransaction);
+mdv_cursor  mdv_cursor_open_explicit    (mdv_map *pmap, mdv_transaction *ptransaction, mdv_data *key, mdv_data *value, mdv_cursor_op op);
 mdv_cursor  mdv_cursor_open_first       (mdv_map *pmap, mdv_transaction *ptransaction, mdv_data *key, mdv_data *value);
 bool        mdv_cursor_close            (mdv_cursor *pcursor);
 bool        mdv_cursor_get              (mdv_cursor *pcursor, mdv_data *key, mdv_data *value, mdv_cursor_op op);
 #define     mdv_cursor_ok(c)            ((c).pstorage != 0 && (c).pcursor != 0)
 
 
-#define mdv_map_foreach(transaction, map, entry)            \
-    for(struct {                                            \
-            mdv_cursor      cursor;                         \
-            mdv_data        key;                            \
-            mdv_data        value;                          \
-        } entry = {                                         \
-            mdv_cursor_open_first(&map,                     \
-                                  &transaction,             \
-                                  &entry.key,               \
-                                  &entry.value)             \
-        };                                                  \
-        mdv_cursor_ok(entry.cursor);                        \
-        !mdv_cursor_get(&entry.cursor,                      \
-                        &entry.key,                         \
-                        &entry.value,                       \
-                        MDV_CURSOR_NEXT)                    \
-            ? mdv_cursor_close(&entry.cursor)               \
-            : false                                         \
+#define mdv_map_foreach_explicit(transaction, map, entry, op_first, op_next)    \
+    for(struct {                                                                \
+            mdv_cursor      cursor;                                             \
+            mdv_data        key;                                                \
+            mdv_data        value;                                              \
+        } entry = {                                                             \
+            mdv_cursor_open_explicit(&map,                                      \
+                                     &transaction,                              \
+                                     &entry.key,                                \
+                                     &entry.value,                              \
+                                     op_first)                                  \
+        };                                                                      \
+        mdv_cursor_ok(entry.cursor);                                            \
+        !mdv_cursor_get(&entry.cursor,                                          \
+                        &entry.key,                                             \
+                        &entry.value,                                           \
+                        op_next)                                                \
+            ? mdv_cursor_close(&entry.cursor)                                   \
+            : false                                                             \
     )
 
 
-#define mdv_map_foreach_break(transaction, entry)           \
+#define mdv_map_foreach(transaction, map, entry)            \
+    mdv_map_foreach_explicit(transaction,                   \
+                             map,                           \
+                             entry,                         \
+                             MDV_CURSOR_FIRST,              \
+                             MDV_CURSOR_NEXT)
+
+
+#define mdv_map_foreach_break(entry)                        \
     mdv_cursor_close(&entry.cursor);                        \
     break;
 

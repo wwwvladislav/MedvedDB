@@ -10,10 +10,11 @@ include_directories(
     ${ROOT_DIR}/mdv_core
     ${LIBS_DIR}/zf_log
     ${LIBS_DIR}/nng/include
+    ${LIBS_DIR}/binn
 )
 
 use_c11()
 
 add_executable(mdv_tests ${SOURCES})
-add_dependencies(mdv_tests mdv_platform)
-target_link_libraries(mdv_tests mdv_platform)
+add_dependencies(mdv_tests mdv_platform mdv_core)
+target_link_libraries(mdv_tests mdv_platform mdv_core)

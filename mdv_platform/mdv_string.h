@@ -13,9 +13,9 @@ typedef struct
 
 
 #define mdv_str_empty(str)          ((str).size < 2 || !(str).ptr)
-#define mdv_str_static(str)         { sizeof(str), str }
-#define mdv_str(str)                { strlen(str) + 1, str }
-#define mdv_str_null                { 0, 0 }
+#define mdv_str_static(str)         (mdv_string){ sizeof(str), str }
+#define mdv_str(str)                (mdv_string){ strlen(str) + 1, str }
+#define mdv_str_null                (mdv_string){ 0, 0 }
 
 
 #define mdv_str_pdup(stack, str)                                \

@@ -22,6 +22,11 @@ typedef struct
         mdv_string path;
     } storage;
 
+    struct
+    {
+        uint32_t   batch_size;
+    } transaction;
+
     mdv_stack(uint8_t, 1024) mempool;
 } mdv_config;
 

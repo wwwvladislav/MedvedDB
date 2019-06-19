@@ -34,3 +34,15 @@ void mdv_tablespace_close(mdv_tablespace *tablespace)
 {
     mdv_cfstorage_close(&tablespace->cfstorage);
 }
+
+
+bool mdv_tablespace_add(mdv_tablespace *tablespace, size_t count, mdv_cfstorage_op const **ops)
+{
+    return mdv_cfstorage_add(&tablespace->cfstorage, count, ops);
+}
+
+
+bool mdv_tablespace_rem(mdv_tablespace *tablespace, size_t count, mdv_cfstorage_op const **ops)
+{
+    return mdv_cfstorage_rem(&tablespace->cfstorage, count, ops);
+}

@@ -2,6 +2,7 @@
 #include <mdv_log.h>
 #include <ini.h>
 #include <string.h>
+#include <stdlib.h>
 
 
 mdv_config MDV_CONFIG;
@@ -41,6 +42,12 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         MDV_LOGI("Log level: %s", config->log.level.ptr);
         return 1;
     }
+    else if (MDV_CFG_MATCH("transaction", "batch_size"))
+    {
+        config->transaction.batch_size = atoi(value);
+        MDV_LOGI("Transaction batch size: %u", config->transaction.batch_size);
+        return 1;
+    }
     else
     {
         MDV_LOGE("Unknown section/name: [%s] %s", section, name);
@@ -54,8 +61,19 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
 }
 
 
+static void mdv_set_config_defaults()
+{
+    MDV_CONFIG.log.level                = mdv_str_static("error");
+    MDV_CONFIG.server.listen            = mdv_str_static("localhost:54222");
+    MDV_CONFIG.storage.path             = mdv_str_static("./data");
+    MDV_CONFIG.transaction.batch_size   = 1000;
+}
+
+
 bool mdv_load_config(char const *path)
 {
+    mdv_set_config_defaults();
+
     mdv_stack_clear(MDV_CONFIG.mempool);
 
     if (ini_parse(path, mdv_cfg_handler, &MDV_CONFIG) < 0)

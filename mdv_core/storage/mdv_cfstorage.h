@@ -1,6 +1,8 @@
+// Conflict-free Replicated Storage
+
 #pragma once
 #include "mdv_storage.h"
-#include "mdv_key.h"
+#include "mdv_types.h"
 #include <mdv_uuid.h>
 #include <mdv_binn.h>
 #include <stdatomic.h>
@@ -29,9 +31,9 @@ typedef struct
 
 typedef struct
 {
-    mdv_key_base const *key;
-    size_t              size;
-    void const         *op;
+    mdv_data const *key;
+    size_t          size;
+    void const     *op;
 } mdv_cfstorage_op;
 
 
@@ -44,7 +46,7 @@ bool          mdv_cfstorage_drop(mdv_uuid const *uuid);
 void          mdv_cfstorage_close(mdv_cfstorage *cfstorage);
 bool          mdv_cfstorage_add(mdv_cfstorage *cfstorage, size_t count, mdv_cfstorage_op const **ops);
 bool          mdv_cfstorage_rem(mdv_cfstorage *cfstorage, size_t count, mdv_cfstorage_op const **ops);
-bool          mdv_cfstorage_is_key_deleted(mdv_cfstorage *cfstorage, mdv_key_base const *key);
+bool          mdv_cfstorage_is_key_deleted(mdv_cfstorage *cfstorage, mdv_data const *key);
 bool          mdv_cfstorage_log_seek(mdv_cfstorage *cfstorage, uint64_t pos);
 bool          mdv_cfstorage_log_tell(mdv_cfstorage *cfstorage, uint64_t *pos);
 bool          mdv_cfstorage_log_last(mdv_cfstorage *cfstorage, uint64_t *pos);

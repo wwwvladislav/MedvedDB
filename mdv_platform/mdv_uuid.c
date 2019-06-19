@@ -32,6 +32,7 @@ int mdv_uuid_cmp(mdv_uuid const *a, mdv_uuid const *b)
     else if (a->u64[1] < b->u64[1])
         return -1;
     else if (a->u64[1] > b->u64[1])
+        return 1;
     return 0;
 }
 

@@ -277,7 +277,7 @@ bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, size_t count, mdv_cfstorage_op 
 
     for(size_t i = 0; i < count; ++i)
     {
-        mdv_data k = { mdv_key_size(*ops[i]->key), (void*)ops[i]->key };
+        mdv_data k = { ops[i]->key->size, ops[i]->key->ptr };
         mdv_data v = { 0, 0 };
 
         // if delete request is unique
@@ -319,7 +319,7 @@ bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, size_t count, mdv_cfstorage_op 
 }
 
 
-bool mdv_cfstorage_is_key_deleted(mdv_cfstorage *cfstorage, mdv_key_base const *key)
+bool mdv_cfstorage_is_key_deleted(mdv_cfstorage *cfstorage, mdv_data const *key)
 {
     // TODO: Use bloom filter
 
@@ -347,7 +347,7 @@ bool mdv_cfstorage_is_key_deleted(mdv_cfstorage *cfstorage, mdv_key_base const *
 
     mdv_rollbacker_push(rollbacker, mdv_map_close, &map);
 
-    mdv_data k = { mdv_key_size(*key), (void*)key };
+    mdv_data k = { key->size, key->ptr };
     mdv_data v = { 0, 0 };
 
     bool ret = mdv_map_get(&map, &transaction, &k, &v);

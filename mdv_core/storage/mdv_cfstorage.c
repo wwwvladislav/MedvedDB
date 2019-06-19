@@ -66,7 +66,7 @@ mdv_cfstorage mdv_cfstorage_create(mdv_uuid const *uuid)
         return cfstorage;
     }
 
-    MDV_LOGI("New storage with uuid '%s' created", str_uuid.ptr);
+    MDV_LOGI("New storage '%s' created", str_uuid.ptr);
 
     return cfstorage;
 }
@@ -122,7 +122,7 @@ mdv_cfstorage mdv_cfstorage_open(mdv_uuid const *uuid)
     if (mdv_cfstorage_log_last(&cfstorage, &pos))
         atomic_init(&cfstorage.ops.log.top, pos);
 
-    MDV_LOGI("Storage with uuid '%s' opened", str_uuid.ptr);
+    MDV_LOGI("Storage '%s' opened", str_uuid.ptr);
 
     return cfstorage;
 }

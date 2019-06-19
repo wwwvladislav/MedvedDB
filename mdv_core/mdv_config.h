@@ -15,6 +15,7 @@ typedef struct
     struct
     {
         mdv_string listen;
+        uint32_t   workers;
     } server;
 
     struct
@@ -32,6 +33,7 @@ typedef struct
 
 
 extern mdv_config MDV_CONFIG;
+
 
 bool mdv_load_config(char const *path);
 

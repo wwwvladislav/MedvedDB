@@ -28,6 +28,12 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         MDV_LOGI("Listen: %s", config->server.listen.ptr);
         return 1;
     }
+    if (MDV_CFG_MATCH("server", "workers"))
+    {
+        config->server.workers = atoi(value);
+        MDV_LOGI("Server workers: %u", config->server.workers);
+        return 1;
+    }
     else if (MDV_CFG_MATCH("storage", "path"))
     {
         config->storage.path = mdv_str_pdup(config->mempool, value);
@@ -64,8 +70,12 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
 static void mdv_set_config_defaults()
 {
     MDV_CONFIG.log.level                = mdv_str_static("error");
-    MDV_CONFIG.server.listen            = mdv_str_static("localhost:54222");
+
+    MDV_CONFIG.server.listen            = mdv_str_static("tcp://localhost:54222");
+    MDV_CONFIG.server.workers           = 16;
+
     MDV_CONFIG.storage.path             = mdv_str_static("./data");
+
     MDV_CONFIG.transaction.batch_size   = 1000;
 }
 

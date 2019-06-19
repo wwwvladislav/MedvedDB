@@ -21,20 +21,23 @@ static void mdv_service_configure_logging()
     }
 }
 
-// #include "storage/mdv_table.h"
 
 bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 {
+    // Configuration
     if (!mdv_load_config(cfg_file_path))
     {
         MDV_LOGE("Service initialization failed. Can't load '%s'\n", cfg_file_path);
         return false;
     }
 
+    // Logging
     mdv_service_configure_logging();
 
+    // Serializatior allocator
     mdv_binn_set_allocator();
 
+    // DB metainformation storage
     svc->storage.metainf = mdv_metainf_storage_open(MDV_CONFIG.storage.path.ptr);
     if (!svc->storage.metainf)
     {
@@ -51,13 +54,21 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
     mdv_metainf_validate(&svc->metainf);
     mdv_metainf_flush(&svc->metainf, svc->storage.metainf);
 
-    svc->tablespace = mdv_tablespace_open();
-    if (!mdv_tablespace_ok(svc->tablespace))
-        svc->tablespace = mdv_tablespace_create();
+    // Tablespace
+    svc->storage.tablespace = mdv_tablespace_open();
+    if (!mdv_tablespace_ok(svc->storage.tablespace))
+        svc->storage.tablespace = mdv_tablespace_create();
 
-    if (!mdv_tablespace_ok(svc->tablespace))
+    if (!mdv_tablespace_ok(svc->storage.tablespace))
     {
         MDV_LOGE("DB tables space creation was failed. Path: '%s'\n", MDV_CONFIG.storage.path.ptr);
+        return false;
+    }
+
+    // Server
+    if (!mdv_server_init(&svc->server))
+    {
+        MDV_LOGE("Listener starting was failed\n");
         return false;
     }
 
@@ -70,44 +81,15 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 
     svc->is_started = false;
 
-#if 0
-    // DEBUG
-    mdv_table(3) tbl =
-    {
-        .uuid = mdv_uuid_generate(),
-        .name = mdv_str_static("my_table"),
-        .size = 3,
-        .fields =
-        {
-            { MDV_FLD_TYPE_CHAR,   0, mdv_str_static("string") },   // char *
-            { MDV_FLD_TYPE_BOOL,   1, mdv_str_static("bool") },     // bool
-            { MDV_FLD_TYPE_UINT64, 2, mdv_str_static("u64pair") }   // uint64[2]
-        }
-    };
-
-    mdv_table_storage s = mdv_table_create(svc->storage.metainf, (mdv_table_base const *)&tbl);
-    if (mdv_table_storage_ok(s))
-    {
-        mdv_table_close(&s);
-    }
-
-    s = mdv_table_open(&tbl.uuid);
-    if (mdv_table_storage_ok(s))
-    {
-        mdv_table_close(&s);
-    }
-
-    mdv_table_drop(svc->storage.metainf, &tbl.uuid);
-    // DEBUG
-#endif
     return true;
 }
 
 
 void mdv_service_free(mdv_service *svc)
 {
+    mdv_server_free(&svc->server);
     mdv_storage_release(svc->storage.metainf);
-    mdv_tablespace_close(&svc->tablespace);
+    mdv_tablespace_close(&svc->storage.tablespace);
 }
 
 

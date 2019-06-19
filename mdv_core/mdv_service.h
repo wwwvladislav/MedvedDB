@@ -1,6 +1,6 @@
 #pragma once
 #include "mdv_config.h"
-#include "mdv_listener.h"
+#include "mdv_server.h"
 #include "storage/mdv_metainf.h"
 #include "storage/mdv_tablespace.h"
 #include <stdbool.h>
@@ -9,14 +9,14 @@
 
 typedef struct
 {
-    mdv_listener    listener;
+    mdv_server      server;
     volatile bool   is_started;
     mdv_metainf     metainf;
-    mdv_tablespace  tablespace;
 
     struct
     {
-        mdv_storage *metainf;
+        mdv_storage    *metainf;
+        mdv_tablespace  tablespace;
     } storage;
 } mdv_service;
 

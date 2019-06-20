@@ -3,11 +3,10 @@
 #include <stdbool.h>
 
 
-typedef struct
-{
-    nng_socket  sock;
-    nng_aio    *aio;
-} mdv_server_work;
+struct s_mdv_server_work;
+
+
+typedef struct s_mdv_server_work mdv_server_work;
 
 
 typedef struct

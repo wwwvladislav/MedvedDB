@@ -13,6 +13,7 @@ set(SOURCES
 include_directories(
     ${ROOT_DIR}/mdv_platform
     ${ROOT_DIR}/mdv_core
+    ${ROOT_DIR}/mdv_api
     ${LIBS_DIR}/zf_log
     ${LIBS_DIR}/nng/include
     ${LIBS_DIR}/binn

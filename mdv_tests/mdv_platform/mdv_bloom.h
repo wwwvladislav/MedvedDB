@@ -11,6 +11,7 @@ MU_TEST(platform_bloom)
     mu_check(mdv_bloom_insert(bloom, "1234567891", 10));
     mu_check(mdv_bloom_insert(bloom, "1234567892", 10));
     mu_check(mdv_bloom_insert(bloom, "1234567893", 10));
+    mu_check(mdv_bloom_insert(bloom, "1234567893", 10) == false);
     mu_check(mdv_bloom_size(bloom) == 4);
 
     mu_check(mdv_bloom_contains(bloom, "1234567890", 10));

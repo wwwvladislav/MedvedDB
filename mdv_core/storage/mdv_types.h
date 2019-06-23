@@ -19,11 +19,11 @@ typedef struct
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Map
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-typedef struct s_mdv_map_field_desc
+typedef struct mdv_map_field_desc
 {
     mdv_data                     key;
     mdv_data                     value;
-    struct s_mdv_map_field_desc *next;
+    struct mdv_map_field_desc   *next;
     uint8_t                      empty:1;
     uint8_t                      changed:1;
 } mdv_map_field_desc;

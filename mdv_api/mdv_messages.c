@@ -88,7 +88,7 @@ mdv_msg_status * mdv_unbinn_status(binn *obj)
     char *message;
 
     if (!binn_object_get_int32(obj, "E", &err)
-        || !binn_object_get_str(obj, "S", &message))
+        || !binn_object_get_str(obj, "M", &message))
     {
         MDV_LOGE("unbinn_status failed");
         return 0;

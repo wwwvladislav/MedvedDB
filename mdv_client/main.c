@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <string.h>
-#include <mdv_connection.h>
+#include <mdv_client.h>
 #include <mdv_log.h>
 
 
@@ -65,10 +65,11 @@ int main(int argc, char *argv[])
 
     mdv_logf_set_level(ZF_LOG_WARN);
 
-    mdv_connection *connection = mdv_connect(argv[1]);
-    if (connection)
+    mdv_client *client = mdv_client_create(argv[1]);
+    if (client)
     {
-        mdv_disconnect(connection);
+        mdv_client_connect(client);
+        mdv_client_disconnect(client);
     }
 
     return 0;

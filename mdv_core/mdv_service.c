@@ -66,7 +66,8 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
     }
 
     // Server
-    if (!mdv_server_init(&svc->server))
+    svc->server = mdv_server_create();
+    if (!svc->server)
     {
         MDV_LOGE("Listener starting was failed\n");
         return false;
@@ -87,7 +88,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 
 void mdv_service_free(mdv_service *svc)
 {
-    mdv_server_free(&svc->server);
+    mdv_server_free(svc->server);
     mdv_storage_release(svc->storage.metainf);
     mdv_tablespace_close(&svc->storage.tablespace);
 }
@@ -95,12 +96,13 @@ void mdv_service_free(mdv_service *svc)
 
 bool mdv_service_start(mdv_service *svc)
 {
-    svc->is_started = true;
+    svc->is_started = mdv_server_start(svc->server);
 
     while(svc->is_started)
     {
         mdv_usleep(1000);
     }
+
     return true;
 }
 

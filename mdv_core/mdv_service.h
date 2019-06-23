@@ -9,7 +9,7 @@
 
 typedef struct
 {
-    mdv_server      server;
+    mdv_server     *server;
     volatile bool   is_started;
     mdv_metainf     metainf;
 

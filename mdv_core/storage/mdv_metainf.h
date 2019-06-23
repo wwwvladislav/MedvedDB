@@ -1,5 +1,6 @@
 #pragma once
 #include "mdv_types.h"
+#include "mdv_map.h"
 #include "mdv_storage.h"
 #include <mdv_uuid.h>
 #include <stdbool.h>

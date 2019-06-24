@@ -14,6 +14,7 @@ include_directories(
     ${ROOT_DIR}/mdv_platform
     ${ROOT_DIR}/mdv_core
     ${ROOT_DIR}/mdv_api
+    ${ROOT_DIR}/mdv_types
     ${LIBS_DIR}/zf_log
     ${LIBS_DIR}/nng/include
     ${LIBS_DIR}/binn
@@ -22,5 +23,5 @@ include_directories(
 use_c11()
 
 add_executable(medved ${HEADERS} ${SOURCES})
-add_dependencies(medved mdv_platform mdv_core)
-target_link_libraries(medved mdv_platform mdv_core)
+add_dependencies(medved mdv_platform mdv_core mdv_types)
+target_link_libraries(medved mdv_platform mdv_core mdv_types)

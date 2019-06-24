@@ -88,6 +88,7 @@ endmacro(use_c11)
 
 add_subdirectory(${ROOT_DIR}/mdv_thirdparty)
 add_subdirectory(${ROOT_DIR}/mdv_platform)
+add_subdirectory(${ROOT_DIR}/mdv_types)
 add_subdirectory(${ROOT_DIR}/mdv_core)
 add_subdirectory(${ROOT_DIR}/mdv_service)
 add_subdirectory(${ROOT_DIR}/mdv_api)

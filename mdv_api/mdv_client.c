@@ -1,15 +1,22 @@
 #include "mdv_client.h"
 #include "mdv_messages.h"
 #include "mdv_handler.h"
+#include "mdv_protocol.h"
 #include "mdv_version.h"
+#include "mdv_status.h"
 #include <mdv_alloc.h>
 #include <mdv_binn.h>
+#include <mdv_threads.h>
 #include <stdbool.h>
 #include <nng/nng.h>
 #include <nng/protocol/reqrep0/req.h>
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <stdatomic.h>
+
+
+// TODO: Implement MT safe client API
 
 
 static               int total_connections = 0;
@@ -58,11 +65,12 @@ typedef struct
 
 struct mdv_client
 {
-    nng_socket          sock;
-    nng_dialer          dialer;
-    mdv_client_handler  handlers[mdv_msg_count];
-    int                 err;
-    char                message[1024];
+    atomic_uint_fast32_t    req_id;
+    nng_socket              sock;
+    nng_dialer              dialer;
+    mdv_client_handler      handlers[mdv_msg_count];
+    int                     err;
+    char                    message[1024];
 };
 
 
@@ -80,7 +88,14 @@ static bool mdv_client_handler_reg(mdv_client *client, uint32_t msg_id, mdv_clie
 }
 
 
-static bool mdv_client_send(mdv_client *client, uint32_t id, binn *obj)
+static uint32_t mdv_client_new_msg_id(mdv_client *client)
+{
+    uint32_t id = atomic_fetch_add_explicit(&client->req_id, 1, memory_order_relaxed) + 1;
+    return id;
+}
+
+
+static bool mdv_client_send(mdv_client *client, uint32_t msgid, binn *obj, uint32_t *reqid)
 {
     nng_msg * msg;
     int err = nng_msg_alloc(&msg, 0);
@@ -90,29 +105,24 @@ static bool mdv_client_send(mdv_client *client, uint32_t id, binn *obj)
         return false;
     }
 
-    err = nng_msg_append_u32(msg, id);
-    if (err)
+    mdv_msg_hdr hdr =
+    {
+        .msg_id = msgid,
+        .req_id = mdv_client_new_msg_id(client)
+    };
+
+    if (0
+        || (err = nng_msg_append_u32(msg, hdr.msg_id))
+        || (err = nng_msg_append_u32(msg, hdr.req_id))
+        || (err = nng_msg_append(msg, binn_ptr(obj), binn_size(obj)))
+        || (err = nng_sendmsg(client->sock, msg, 0)))
     {
         printf("%s (%d)", nng_strerror(err), err);
         nng_msg_free(msg);
         return false;
     }
 
-    err = nng_msg_append(msg, binn_ptr(obj), binn_size(obj));
-    if (err)
-    {
-        printf("%s (%d)", nng_strerror(err), err);
-        nng_msg_free(msg);
-        return false;
-    }
-
-    err = nng_sendmsg(client->sock, msg, 0);
-    if (err)
-    {
-        printf("%s (%d)", nng_strerror(err), err);
-        nng_msg_free(msg);
-        return false;
-    }
+    *reqid = hdr.req_id;
 
     return true;
 }
@@ -136,21 +146,23 @@ static bool mdv_client_read(mdv_client *client)
         size_t len = nng_msg_len(nmsg);
         uint8_t *body = (uint8_t *)nng_msg_body(nmsg);
 
-        if (len >= sizeof(uint32_t) && body)
+        if (len >= sizeof(mdv_msg_hdr) && body)
         {
-            uint32_t msg_id = ntohl(*(uint32_t*)body);
+            mdv_msg_hdr hdr = *(mdv_msg_hdr*)body;
+            hdr.msg_id = ntohl(hdr.msg_id);
+            hdr.req_id = ntohl(hdr.req_id);
 
-            if (msg_id > mdv_msg_unknown_id && msg_id < mdv_msg_count)
+            if (hdr.msg_id > mdv_msg_unknown_id && hdr.msg_id < mdv_msg_count)
             {
-                mdv_client_handler handler = client->handlers[msg_id];
+                mdv_client_handler handler = client->handlers[hdr.msg_id];
 
                 if(handler.fn)
                 {
                     binn obj;
 
-                    if(binn_load(body + sizeof msg_id, &obj))
+                    if(binn_load(body + sizeof hdr, &obj))
                     {
-                        mdv_message request = { msg_id, &obj };
+                        mdv_message request = { hdr.msg_id, &obj };
                         ret = (handler.fn(request, handler.arg) == MDV_STATUS_OK);
                     }
                 }
@@ -194,6 +206,8 @@ mdv_client * mdv_client_create(char const *addr)
 
     mdv_client *client = mdv_alloc(sizeof(mdv_client));
 
+    atomic_init(&client->req_id, 0);
+
     mdv_client_handler_reg(client, mdv_msg_status_id, (mdv_client_handler) { client, mdv_client_status_handler });
 
     int err = nng_req0_open(&client->sock);
@@ -228,7 +242,9 @@ bool mdv_client_connect(mdv_client *client)
     if (!msg)
         return false;
 
-    if (!mdv_client_send(client, mdv_msg_hello_id, msg))
+    uint32_t req_id;
+
+    if (!mdv_client_send(client, mdv_msg_hello_id, msg, &req_id))
     {
         binn_free(msg);
         return false;
@@ -262,5 +278,32 @@ int mdv_client_errno(mdv_client *client)
 
 char const * mdv_client_status_msg(mdv_client *client)
 {
-    return client->message;
+    return *client->message
+                ? client->message
+                : mdv_status_message(client->err);
+}
+
+
+bool mdv_create_table(mdv_client *client, mdv_table_base *table)
+{
+    mdv_msg_create_table_base *create_table = (mdv_msg_create_table_base *)table;
+
+    binn *msg = mdv_binn_create_table(create_table);
+    if (!msg)
+        return false;
+
+    uint32_t req_id;
+
+    if (!mdv_client_send(client, mdv_msg_create_table_id, msg, &req_id))
+    {
+        binn_free(msg);
+        return false;
+    }
+
+    binn_free(msg);
+
+    if (!mdv_client_read(client))
+        return false;
+
+    return true;
 }

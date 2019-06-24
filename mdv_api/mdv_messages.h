@@ -29,15 +29,7 @@
 enum
 {
     mdv_msg_unknown_id = 0,
-    mdv_msg_count      = 4
-};
-
-
-enum
-{
-    MDV_STATUS_OK               = 1,
-    MDV_STATUS_INVALID_VERSION  = 2,
-    MDV_STATUS_FAILED           = 3
+    mdv_msg_count      = 5
 };
 
 
@@ -62,6 +54,11 @@ mdv_message_id_def(create_table, 3);
 typedef mdv_msg_create_table(1) mdv_msg_create_table_base;
 
 
+mdv_message_def(table_info, 4,
+    mdv_uuid    uuid;
+);
+
+
 char const *            mdv_msg_name                (uint32_t id);
 
 
@@ -78,3 +75,8 @@ mdv_msg_status *        mdv_unbinn_status           (binn *obj);
 
 binn *                      mdv_binn_create_table   (mdv_msg_create_table_base const *msg);
 mdv_msg_create_table_base * mdv_unbinn_create_table (binn *obj);
+
+
+binn *                  mdv_binn_table_info         (mdv_msg_table_info const *msg);
+mdv_msg_table_info *    mdv_unbinn_table_info       (binn *obj);
+

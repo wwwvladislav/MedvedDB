@@ -9,8 +9,9 @@ char const * mdv_msg_name(uint32_t id)
 {
     switch(id)
     {
-        case mdv_msg_hello_id:  return "hello";
-        case mdv_msg_status_id: return "status";
+        case mdv_msg_hello_id:          return "HELLO";
+        case mdv_msg_status_id:         return "STATUS";
+        case mdv_msg_create_table_id:   return "CREATE TABLE";
     }
     return "unknown";
 }
@@ -121,3 +122,55 @@ mdv_msg_create_table_base * mdv_unbinn_create_table (binn *obj)
 {
     return (mdv_msg_create_table_base *)mdv_unbinn_table(obj);
 }
+
+
+binn * mdv_binn_table_info(mdv_msg_table_info const *msg)
+{
+    binn *obj = binn_object();
+    if (!obj)
+    {
+        MDV_LOGE("binn_table_info failed");
+        return obj;
+    }
+
+    if (0
+        || !binn_object_set_uint64(obj, "0", msg->uuid.u64[0])
+        || !binn_object_set_uint64(obj, "1", msg->uuid.u64[1]))
+    {
+        binn_free(obj);
+        MDV_LOGE("binn_table_info failed");
+        return 0;
+    }
+
+    return obj;
+
+}
+
+
+mdv_msg_table_info * mdv_unbinn_table_info(binn *obj)
+{
+    uint64 uuid[2];
+
+
+    if (0
+        || !binn_object_get_uint64(obj, "0", uuid + 0)
+        || !binn_object_get_uint64(obj, "1", uuid + 1))
+    {
+        MDV_LOGE("unbinn_table_info failed");
+        return 0;
+    }
+
+    mdv_msg_table_info *msg = (mdv_msg_table_info *)mdv_alloc(sizeof(mdv_msg_table_info));
+    if (!msg)
+    {
+        MDV_LOGE("unbinn_table_info failed");
+        return 0;
+    }
+
+    msg->uuid.u64[0] = uuid[0];
+    msg->uuid.u64[1] = uuid[1];
+
+    return msg;
+
+}
+

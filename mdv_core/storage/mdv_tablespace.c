@@ -1,4 +1,5 @@
 #include "mdv_tablespace.h"
+#include <mdv_status.h>
 
 
 static const mdv_uuid MDV_TABLES_UUID = {};
@@ -36,13 +37,7 @@ void mdv_tablespace_close(mdv_tablespace *tablespace)
 }
 
 
-bool mdv_tablespace_add(mdv_tablespace *tablespace, size_t count, mdv_cfstorage_op const **ops)
+int mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *table)
 {
-    return mdv_cfstorage_add(&tablespace->cfstorage, count, ops);
-}
-
-
-bool mdv_tablespace_rem(mdv_tablespace *tablespace, size_t count, mdv_cfstorage_op const **ops)
-{
-    return mdv_cfstorage_rem(&tablespace->cfstorage, count, ops);
+    return MDV_STATUS_NOT_IMPL;
 }

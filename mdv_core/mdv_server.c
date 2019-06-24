@@ -4,9 +4,12 @@
 #include <nng/protocol/reqrep0/rep.h>
 #include <mdv_log.h>
 #include <mdv_alloc.h>
-#include <string.h>
 #include <mdv_version.h>
+#include <mdv_protocol.h>
+#include <mdv_status.h>
 #include <arpa/inet.h>
+#include <string.h>
+#include <stdio.h>
 
 
 typedef struct mdv_server_work
@@ -28,6 +31,7 @@ struct mdv_server
 {
     nng_socket      sock;
     nng_listener    listener;
+    mdv_tablespace *tablespace;
 
     struct
     {
@@ -68,11 +72,48 @@ static mdv_message mdv_server_hello_handler(mdv_message msg, void *arg)
     if(hello.version != MDV_VERSION)
     {
         MDV_LOGE("Invalid client version");
-        mdv_msg_status status = { MDV_STATUS_INVALID_VERSION, { 0 } };
+        mdv_msg_status status = { MDV_STATUS_INVALID_PROTOCOL_VERSION, { 0 } };
         return (mdv_message) { mdv_msg_status_id, mdv_binn_status(&status) };
     }
 
     mdv_msg_status status = { MDV_STATUS_OK, { 0 } };
+    return (mdv_message) { mdv_msg_status_id, mdv_binn_status(&status) };
+}
+
+
+static mdv_message mdv_server_create_table_handler(mdv_message msg, void *arg)
+{
+    mdv_tablespace *tablespace = (mdv_tablespace *)arg;
+
+    if (msg.id != mdv_msg_create_table_id)
+    {
+        MDV_LOGE("Invalid handler was registered for '%s' message", mdv_msg_name(msg.id));
+        return mdv_no_message;
+    }
+
+    mdv_msg_create_table_base *create_table = mdv_unbinn_create_table(msg.body);
+
+    if (!create_table)
+    {
+        MDV_LOGE("Invalid '%s' message", mdv_msg_name(msg.id));
+        return mdv_no_message;
+    }
+
+    int err = mdv_tablespace_create_table(tablespace, (mdv_table_base*)&create_table->table);
+
+    if (err == MDV_STATUS_OK)
+    {
+        mdv_msg_table_info table_info =
+        {
+            .uuid = create_table->table.uuid
+        };
+        mdv_free(create_table);
+        return (mdv_message) { mdv_msg_table_info_id, mdv_binn_table_info(&table_info) };
+    }
+
+    mdv_free(create_table);
+
+    mdv_msg_status status = { err, { 0 } };
     return (mdv_message) { mdv_msg_status_id, mdv_binn_status(&status) };
 }
 
@@ -109,16 +150,24 @@ static mdv_message mdv_server_handle_message(mdv_server_work *work, uint32_t msg
 }
 
 
-static bool mdv_server_nng_message_build(nng_msg *nng_msg, mdv_message message)
+static bool mdv_server_nng_message_build(nng_msg *nng_msg, uint32_t req_id, mdv_message message)
 {
     nng_msg_clear(nng_msg);
 
-    if (message.id > mdv_msg_unknown_id
-        && message.id < mdv_msg_count
+    mdv_msg_hdr const hdr =
+    {
+        .msg_id = message.id,
+        .req_id = req_id
+    };
+
+    if (hdr.msg_id > mdv_msg_unknown_id
+        && hdr.msg_id < mdv_msg_count
         && message.body)
     {
-        int err = nng_msg_append_u32(nng_msg, message.id);
-        if (!err)
+        int err;
+
+        if (!(err = nng_msg_append_u32(nng_msg, hdr.msg_id))
+            && !(err = nng_msg_append_u32(nng_msg, hdr.req_id)))
         {
             err = nng_msg_append(nng_msg, binn_ptr(message.body), binn_size(message.body));
             if (!err)
@@ -162,14 +211,17 @@ static void mdv_server_cb(mdv_server_work *work)
                     size_t len = nng_msg_len(msg);
                     uint8_t *body = (uint8_t *)nng_msg_body(msg);
 
-                    if (len >= sizeof(uint32_t) && body)
+                    if (len >= sizeof(mdv_msg_hdr) && body)
                     {
-                        uint32_t msg_id = ntohl(*(uint32_t*)body);
-                        MDV_LOGI("<<< '%s' %zu bytes", mdv_msg_name(msg_id), len - sizeof msg_id);
+                        mdv_msg_hdr hdr = *(mdv_msg_hdr*)body;
+                        hdr.msg_id = ntohl(hdr.msg_id);
+                        hdr.req_id = ntohl(hdr.req_id);
 
-                        mdv_message response = mdv_server_handle_message(work, msg_id, body + sizeof msg_id);
+                        MDV_LOGI("<<< '%s' %zu bytes", mdv_msg_name(hdr.msg_id), len - sizeof hdr);
 
-                        if (mdv_server_nng_message_build(msg, response))
+                        mdv_message response = mdv_server_handle_message(work, hdr.msg_id, body + sizeof hdr);
+
+                        if (mdv_server_nng_message_build(msg, hdr.req_id, response))
                         {
                             work->state = MDV_SERVER_WORK_SEND;
                             binn_free(response.body);
@@ -179,7 +231,7 @@ static void mdv_server_cb(mdv_server_work *work)
                             break;
                         }
                         else
-                            MDV_LOGW("Message '%s' discarded", mdv_msg_name(msg_id));
+                            MDV_LOGW("Message '%s' discarded", mdv_msg_name(hdr.msg_id));
 
                         binn_free(response.body);
                     }
@@ -263,7 +315,7 @@ static void mdv_server_works_init(mdv_server *srvr)
 }
 
 
-mdv_server * mdv_server_create()
+mdv_server * mdv_server_create(mdv_tablespace *tablespace)
 {
     mdv_server *server = mdv_alloc(sizeof(mdv_server));
     if(!server)
@@ -271,6 +323,8 @@ mdv_server * mdv_server_create()
         MDV_LOGE("Memory allocation for server was failed");
         return 0;
     }
+
+    server->tablespace = tablespace;
 
     memset(server->handlers, 0, sizeof server->handlers);
 
@@ -296,7 +350,8 @@ mdv_server * mdv_server_create()
         return 0;
     }
 
-    mdv_server_handler_reg(server, mdv_msg_hello_id, (mdv_message_handler){ 0, mdv_server_hello_handler });
+    mdv_server_handler_reg(server, mdv_msg_hello_id,        (mdv_message_handler){ 0,                  mdv_server_hello_handler });
+    mdv_server_handler_reg(server, mdv_msg_create_table_id, (mdv_message_handler){ server->tablespace, mdv_server_create_table_handler });
 
     return server;
 }

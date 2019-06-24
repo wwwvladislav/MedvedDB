@@ -1,6 +1,6 @@
 #include "mdv_service.h"
 #include <mdv_log.h>
-#include <mdv_thread.h>
+#include <mdv_threads.h>
 #include <mdv_binn.h>
 
 
@@ -66,7 +66,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
     }
 
     // Server
-    svc->server = mdv_server_create();
+    svc->server = mdv_server_create(&svc->storage.tablespace);
     if (!svc->server)
     {
         MDV_LOGE("Listener starting was failed\n");

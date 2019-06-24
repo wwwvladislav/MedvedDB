@@ -2,10 +2,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <mdv_binn.h>
+#include <mdv_types.h>
+
+
+#define mdv_message_id_def(name, id)                    \
+    enum { mdv_msg_##name##_id = id };
 
 
 #define mdv_message_def(name, id, fields)               \
-    enum { mdv_msg_##name##_id = id };                  \
+    mdv_message_id_def(name, id);                       \
     typedef struct                                      \
     {                                                   \
         fields;                                         \
@@ -24,7 +29,7 @@
 enum
 {
     mdv_msg_unknown_id = 0,
-    mdv_msg_count      = 3
+    mdv_msg_count      = 4
 };
 
 
@@ -48,16 +53,28 @@ mdv_message_def(hello, 2,
 );
 
 
-char const *        mdv_msg_name        (uint32_t id);
+mdv_message_id_def(create_table, 3);
+#define mdv_msg_create_table(N)                         \
+    struct mdv_msg_create_table_##N                     \
+    {                                                   \
+        mdv_table(N)    table;                          \
+    }
+typedef mdv_msg_create_table(1) mdv_msg_create_table_base;
 
 
-void                mdv_msg_free        (void *msg);
+char const *            mdv_msg_name                (uint32_t id);
 
 
-binn *              mdv_binn_hello      (mdv_msg_hello const *msg);
-bool                mdv_unbinn_hello    (binn *obj, mdv_msg_hello *msg);
+void                    mdv_msg_free                (void *msg);
 
 
-binn *              mdv_binn_status     (mdv_msg_status const *msg);
-mdv_msg_status *    mdv_unbinn_status   (binn *obj);
+binn *                  mdv_binn_hello              (mdv_msg_hello const *msg);
+bool                    mdv_unbinn_hello            (binn *obj, mdv_msg_hello *msg);
 
+
+binn *                  mdv_binn_status             (mdv_msg_status const *msg);
+mdv_msg_status *        mdv_unbinn_status           (binn *obj);
+
+
+binn *                      mdv_binn_create_table   (mdv_msg_create_table_base const *msg);
+mdv_msg_create_table_base * mdv_unbinn_create_table (binn *obj);

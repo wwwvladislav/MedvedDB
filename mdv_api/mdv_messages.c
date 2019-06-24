@@ -1,8 +1,8 @@
 #include "mdv_messages.h"
 #include <mdv_log.h>
 #include <mdv_alloc.h>
+#include <mdv_serialization.h>
 #include <string.h>
-
 
 
 char const * mdv_msg_name(uint32_t id)
@@ -108,4 +108,16 @@ mdv_msg_status * mdv_unbinn_status(binn *obj)
     msg->message[message_len] = 0;
 
     return msg;
+}
+
+
+binn * mdv_binn_create_table(mdv_msg_create_table_base const *msg)
+{
+    return mdv_binn_table((mdv_table_base const *)&msg->table);
+}
+
+
+mdv_msg_create_table_base * mdv_unbinn_create_table (binn *obj)
+{
+    return (mdv_msg_create_table_base *)mdv_unbinn_table(obj);
 }

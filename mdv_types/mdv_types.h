@@ -65,7 +65,7 @@ typedef struct
     }
 
 
-typedef mdv_table(1) mdv_table_base;
+typedef mdv_table(0) mdv_table_base;
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

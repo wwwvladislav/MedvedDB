@@ -59,7 +59,7 @@ static void allocator_finalize()
 typedef struct
 {
     void *arg;
-    int (*fn)(mdv_message, void *);
+    int (*fn)(mdv_message const *, void *);
 } mdv_client_handler;
 
 
@@ -71,6 +71,7 @@ struct mdv_client
     mdv_client_handler      handlers[mdv_msg_count];
     int                     err;
     char                    message[1024];
+    mdv_uuid                table_uuid;
 };
 
 
@@ -162,7 +163,7 @@ static bool mdv_client_read(mdv_client *client)
 
                     if(binn_load(body + sizeof hdr, &request.body))
                     {
-                        ret = (handler.fn(request, handler.arg) == MDV_STATUS_OK);
+                        ret = (handler.fn(&request, handler.arg) == MDV_STATUS_OK);
                         binn_free(&request.body);
                     }
                 }
@@ -176,14 +177,14 @@ static bool mdv_client_read(mdv_client *client)
 }
 
 
-static int mdv_client_status_handler(mdv_message msg, void *arg)
+static int mdv_client_status_handler(mdv_message const *msg, void *arg)
 {
-    if (msg.id != mdv_msg_status_id)
+    if (msg->id != mdv_msg_status_id)
         return MDV_STATUS_FAILED;
 
     mdv_client *client = (mdv_client *)arg;
 
-    mdv_msg_status *status = mdv_unbinn_status(&msg.body);
+    mdv_msg_status *status = mdv_unbinn_status(&msg->body);
     if (!status)
         return MDV_STATUS_FAILED;
 
@@ -200,6 +201,26 @@ static int mdv_client_status_handler(mdv_message msg, void *arg)
 }
 
 
+static int mdv_client_table_info_handler(mdv_message const *msg, void *arg)
+{
+    if (msg->id != mdv_msg_table_info_id)
+        return MDV_STATUS_FAILED;
+
+    mdv_client *client = (mdv_client *)arg;
+
+    mdv_msg_table_info table_info;
+
+    if (!mdv_unbinn_table_info(&msg->body, &table_info))
+        return MDV_STATUS_FAILED;
+
+    client->err = MDV_STATUS_OK;
+    client->message[0] = 0;
+    client->table_uuid = table_info.uuid;
+
+    return MDV_STATUS_OK;
+}
+
+
 mdv_client * mdv_client_create(char const *addr)
 {
     allocator_init();
@@ -208,7 +229,16 @@ mdv_client * mdv_client_create(char const *addr)
 
     atomic_init(&client->req_id, 0);
 
-    mdv_client_handler_reg(client, mdv_msg_status_id, (mdv_client_handler) { client, mdv_client_status_handler });
+    mdv_client_handler_reg(
+        client,
+        mdv_msg_status_id,
+        (mdv_client_handler) { client, mdv_client_status_handler }
+    );
+    mdv_client_handler_reg(
+        client,
+        mdv_msg_table_info_id,
+        (mdv_client_handler) { client, mdv_client_table_info_handler }
+    );
 
     int err = nng_req0_open(&client->sock);
     if (err)
@@ -306,6 +336,8 @@ bool mdv_create_table(mdv_client *client, mdv_table_base *table)
 
     if (!mdv_client_read(client))
         return false;
+
+    table->uuid = client->table_uuid;
 
     return true;
 }

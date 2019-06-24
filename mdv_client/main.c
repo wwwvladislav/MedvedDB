@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
             {
                 mdv_uuid_str(uuid);
                 mdv_uuid_to_str(&table.uuid, &uuid);
-                printf("New table '%s' with UUID '%s' was successfully created\n", uuid.ptr, table.name.ptr);
+                printf("New table '%s' with UUID '%s' was successfully created\n", table.name.ptr, uuid.ptr);
             }
             else
             {

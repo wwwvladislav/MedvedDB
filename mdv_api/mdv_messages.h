@@ -65,18 +65,18 @@ char const *            mdv_msg_name                (uint32_t id);
 void                    mdv_msg_free                (void *msg);
 
 
-binn *                  mdv_binn_hello              (mdv_msg_hello const *msg);
-bool                    mdv_unbinn_hello            (binn *obj, mdv_msg_hello *msg);
+bool                    mdv_binn_hello              (mdv_msg_hello const *msg, binn *obj);
+bool                    mdv_unbinn_hello            (binn const *obj, mdv_msg_hello *msg);
 
 
-binn *                  mdv_binn_status             (mdv_msg_status const *msg);
-mdv_msg_status *        mdv_unbinn_status           (binn *obj);
+bool                    mdv_binn_status             (mdv_msg_status const *msg, binn *obj);
+mdv_msg_status *        mdv_unbinn_status           (binn const *obj);
 
 
-binn *                      mdv_binn_create_table   (mdv_msg_create_table_base const *msg);
-mdv_msg_create_table_base * mdv_unbinn_create_table (binn *obj);
+bool                        mdv_binn_create_table   (mdv_msg_create_table_base const *msg, binn *obj);
+mdv_msg_create_table_base * mdv_unbinn_create_table (binn const *obj);
 
 
-binn *                  mdv_binn_table_info         (mdv_msg_table_info const *msg);
-mdv_msg_table_info *    mdv_unbinn_table_info       (binn *obj);
+bool                    mdv_binn_table_info         (mdv_msg_table_info const *msg, binn *obj);
+bool                    mdv_unbinn_table_info       (binn const *obj, mdv_msg_table_info *msg);
 

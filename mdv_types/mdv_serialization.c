@@ -157,20 +157,19 @@ static bool binn_get(binn *val, mdv_field_type type, void *data)
 }
 
 
-binn * mdv_binn_table(mdv_table_base const *table)
+bool mdv_binn_table(mdv_table_base const *table, binn *obj)
 {
+    if (!binn_create_object(obj))
+    {
+        MDV_LOGE("binn_table failed");
+        return false;
+    }
+
     // Calculate size
     uint32_t size = offsetof(mdv_table_base, fields) + table->size * sizeof(mdv_field);
     size += table->name.size;
     for(uint32_t i = 0; i < table->size; ++i)
         size += table->fields[i].name.size;
-
-    binn *obj = binn_object();
-    if (!obj)
-    {
-        MDV_LOGE("binn_table failed");
-        return obj;
-    }
 
     if (!binn_object_set_blob(obj, "U", (void *)&table->uuid, sizeof(table->uuid))
         || !binn_object_set_str(obj, "N", table->name.ptr)
@@ -179,7 +178,7 @@ binn * mdv_binn_table(mdv_table_base const *table)
     {
         MDV_LOGE("binn_table failed");
         binn_free(obj);
-        return 0;
+        return false;
     }
 
     binn *fields = binn_list();
@@ -187,7 +186,7 @@ binn * mdv_binn_table(mdv_table_base const *table)
     {
         MDV_LOGE("binn_table failed");
         binn_free(obj);
-        return 0;
+        return false;
     }
 
     for(uint32_t i = 0; i < table->size; ++i)
@@ -198,7 +197,7 @@ binn * mdv_binn_table(mdv_table_base const *table)
         {
             binn_free(fields);
             binn_free(obj);
-            return 0;
+            return false;
         }
         binn_free(field);
     }
@@ -207,19 +206,19 @@ binn * mdv_binn_table(mdv_table_base const *table)
     {
         binn_free(fields);
         binn_free(obj);
-        return 0;
+        return false;
     }
 
     binn_free(fields);
 
-    return obj;
+    return true;
 }
 
 
-mdv_table_base * mdv_unbinn_table(binn *obj)
+mdv_table_base * mdv_unbinn_table(binn const *obj)
 {
     uint32_t size = 0;
-    if (!binn_object_get_uint32(obj, "B", &size))
+    if (!binn_object_get_uint32((void*)obj, "B", &size))
     {
         MDV_LOGE("unbinn_table failed");
         return 0;
@@ -235,9 +234,9 @@ mdv_table_base * mdv_unbinn_table(binn *obj)
     char *name = 0;
     mdv_uuid *uuid = 0;
 
-    if (!binn_object_get_blob(obj, "U", (void *)&uuid, 0)
-        || !binn_object_get_str(obj, "N", &name)
-        || !binn_object_get_uint32(obj, "S", &table->size))
+    if (!binn_object_get_blob((void*)obj, "U", (void *)&uuid, 0)
+        || !binn_object_get_str((void*)obj, "N", &name)
+        || !binn_object_get_uint32((void*)obj, "S", &table->size))
     {
         MDV_LOGE("unbinn_table failed");
         mdv_free(table);
@@ -254,7 +253,7 @@ mdv_table_base * mdv_unbinn_table(binn *obj)
     memcpy(table->name.ptr, name, table->name.size);
 
     binn *fields = 0;
-    if (!binn_object_get_list(obj, "F", (void**)&fields))
+    if (!binn_object_get_list((void*)obj, "F", (void**)&fields))
     {
         MDV_LOGE("unbinn_table failed");
         mdv_free(table);
@@ -301,13 +300,12 @@ mdv_table_base * mdv_unbinn_table(binn *obj)
 }
 
 
-binn * mdv_binn_row(mdv_field const *fields, mdv_row_base const *row)
+bool mdv_binn_row(mdv_field const *fields, mdv_row_base const *row, binn *list)
 {
-    binn *list = binn_list();
-    if (!list)
+    if (!binn_create_list(list))
     {
         MDV_LOGE("binn_row failed");
-        return 0;
+        return false;
     }
 
     for(uint32_t i = 0; i < row->size; ++i)
@@ -318,14 +316,14 @@ binn * mdv_binn_row(mdv_field const *fields, mdv_row_base const *row)
         {
             MDV_LOGE("binn_row failed. Invalid field type size.");
             binn_free(list);
-            return 0;
+            return false;
         }
 
         if(row->fields[i].size % field_type_size)
         {
             MDV_LOGE("binn_row failed. Invalid field size.");
             binn_free(list);
-            return 0;
+            return false;
         }
 
         uint32_t const arr_size = row->fields[i].size / field_type_size;
@@ -334,7 +332,7 @@ binn * mdv_binn_row(mdv_field const *fields, mdv_row_base const *row)
         {
             MDV_LOGE("binn_row failed. Field is too long.");
             binn_free(list);
-            return 0;
+            return false;
         }
 
         BOOL res = true;
@@ -350,7 +348,7 @@ binn * mdv_binn_row(mdv_field const *fields, mdv_row_base const *row)
             {
                 MDV_LOGE("binn_row failed");
                 binn_free(list);
-                return 0;
+                return false;
             }
 
             for(uint32_t j = 0; res && j < arr_size; ++j)
@@ -366,11 +364,11 @@ binn * mdv_binn_row(mdv_field const *fields, mdv_row_base const *row)
         {
             MDV_LOGE("binn_row failed.");
             binn_free(list);
-            return 0;
+            return false;
         }
     }
 
-    return list;
+    return true;
 }
 
 
@@ -385,7 +383,7 @@ static uint32_t binn_list_size(binn *obj)
 }
 
 
-mdv_row_base * mdv_unbinn_row(binn *obj, mdv_field const *fields)
+mdv_row_base * mdv_unbinn_row(binn const *obj, mdv_field const *fields)
 {
     binn_iter iter;
     binn value;
@@ -394,7 +392,7 @@ mdv_row_base * mdv_unbinn_row(binn *obj, mdv_field const *fields)
     uint32_t fields_count = 0;
 
     // Calculate necessary space for row
-    binn_list_foreach(obj, value)
+    binn_list_foreach((void*)obj, value)
     {
         uint32_t const field_type_size = mdv_field_type_size(fields[fields_count].type);
 
@@ -430,7 +428,7 @@ mdv_row_base * mdv_unbinn_row(binn *obj, mdv_field const *fields)
     char *buff = (char *)(row->fields + row->size);
 
     // Deserialize row
-    binn_list_foreach(obj, value)
+    binn_list_foreach((void*)obj, value)
     {
         uint32_t const field_type_size = mdv_field_type_size(fields[fields_count].type);
 

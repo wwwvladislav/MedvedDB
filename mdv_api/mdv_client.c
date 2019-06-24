@@ -158,12 +158,12 @@ static bool mdv_client_read(mdv_client *client)
 
                 if(handler.fn)
                 {
-                    binn obj;
+                    mdv_message request = { hdr.msg_id };
 
-                    if(binn_load(body + sizeof hdr, &obj))
+                    if(binn_load(body + sizeof hdr, &request.body))
                     {
-                        mdv_message request = { hdr.msg_id, &obj };
                         ret = (handler.fn(request, handler.arg) == MDV_STATUS_OK);
+                        binn_free(&request.body);
                     }
                 }
             }
@@ -183,7 +183,7 @@ static int mdv_client_status_handler(mdv_message msg, void *arg)
 
     mdv_client *client = (mdv_client *)arg;
 
-    mdv_msg_status *status = mdv_unbinn_status(msg.body);
+    mdv_msg_status *status = mdv_unbinn_status(&msg.body);
     if (!status)
         return MDV_STATUS_FAILED;
 
@@ -238,19 +238,20 @@ bool mdv_client_connect(mdv_client *client)
         MDV_VERSION
     };
 
-    binn *msg = mdv_binn_hello(&hello);
-    if (!msg)
+    binn msg;
+
+    if (!mdv_binn_hello(&hello, &msg))
         return false;
 
     uint32_t req_id;
 
-    if (!mdv_client_send(client, mdv_msg_hello_id, msg, &req_id))
+    if (!mdv_client_send(client, mdv_msg_hello_id, &msg, &req_id))
     {
-        binn_free(msg);
+        binn_free(&msg);
         return false;
     }
 
-    binn_free(msg);
+    binn_free(&msg);
 
     if (!mdv_client_read(client))
         return false;
@@ -288,19 +289,20 @@ bool mdv_create_table(mdv_client *client, mdv_table_base *table)
 {
     mdv_msg_create_table_base *create_table = (mdv_msg_create_table_base *)table;
 
-    binn *msg = mdv_binn_create_table(create_table);
-    if (!msg)
+    binn msg;
+
+    if (!mdv_binn_create_table(create_table, &msg))
         return false;
 
     uint32_t req_id;
 
-    if (!mdv_client_send(client, mdv_msg_create_table_id, msg, &req_id))
+    if (!mdv_client_send(client, mdv_msg_create_table_id, &msg, &req_id))
     {
-        binn_free(msg);
+        binn_free(&msg);
         return false;
     }
 
-    binn_free(msg);
+    binn_free(&msg);
 
     if (!mdv_client_read(client))
         return false;

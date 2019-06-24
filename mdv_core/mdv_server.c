@@ -43,60 +43,62 @@ struct mdv_server
 };
 
 
-static mdv_message mdv_server_hello_handler(mdv_message msg, void *arg)
+static bool mdv_server_hello_handler(mdv_message const *msg, void *arg, mdv_message *response)
 {
     (void)arg;
 
-    if (msg.id != mdv_msg_hello_id)
+    if (msg->id != mdv_msg_hello_id)
     {
-        MDV_LOGE("Invalid handler was registered for '%s' message", mdv_msg_name(msg.id));
-        return mdv_no_message;
+        MDV_LOGE("Invalid handler was registered for '%s' message", mdv_msg_name(msg->id));
+        return false;
     }
 
     mdv_msg_hello hello = {};
 
-    if (!mdv_unbinn_hello(msg.body, &hello))
+    if (!mdv_unbinn_hello(&msg->body, &hello))
     {
-        MDV_LOGE("Invalid '%s' message", mdv_msg_name(msg.id));
-        return mdv_no_message;
+        MDV_LOGE("Invalid '%s' message", mdv_msg_name(msg->id));
+        return false;
     }
 
     static uint8_t const signature[] = MDV_HELLO_SIGNATURE;
 
     if (memcmp(signature, hello.signature, sizeof signature) != 0)
     {
-        MDV_LOGE("Signature for '%s' message is incorrect", mdv_msg_name(msg.id));
-        return mdv_no_message;
+        MDV_LOGE("Signature for '%s' message is incorrect", mdv_msg_name(msg->id));
+        return false;
     }
+
+    response->id = mdv_msg_status_id;
 
     if(hello.version != MDV_VERSION)
     {
         MDV_LOGE("Invalid client version");
         mdv_msg_status status = { MDV_STATUS_INVALID_PROTOCOL_VERSION, { 0 } };
-        return (mdv_message) { mdv_msg_status_id, mdv_binn_status(&status) };
+        return mdv_binn_status(&status, &response->body);
     }
 
     mdv_msg_status status = { MDV_STATUS_OK, { 0 } };
-    return (mdv_message) { mdv_msg_status_id, mdv_binn_status(&status) };
+    return mdv_binn_status(&status, &response->body);
 }
 
 
-static mdv_message mdv_server_create_table_handler(mdv_message msg, void *arg)
+static bool mdv_server_create_table_handler(mdv_message const *msg, void *arg, mdv_message *response)
 {
     mdv_tablespace *tablespace = (mdv_tablespace *)arg;
 
-    if (msg.id != mdv_msg_create_table_id)
+    if (msg->id != mdv_msg_create_table_id)
     {
-        MDV_LOGE("Invalid handler was registered for '%s' message", mdv_msg_name(msg.id));
-        return mdv_no_message;
+        MDV_LOGE("Invalid handler was registered for '%s' message", mdv_msg_name(msg->id));
+        return false;
     }
 
-    mdv_msg_create_table_base *create_table = mdv_unbinn_create_table(msg.body);
+    mdv_msg_create_table_base *create_table = mdv_unbinn_create_table(&msg->body);
 
     if (!create_table)
     {
-        MDV_LOGE("Invalid '%s' message", mdv_msg_name(msg.id));
-        return mdv_no_message;
+        MDV_LOGE("Invalid '%s' message", mdv_msg_name(msg->id));
+        return false;
     }
 
     int err = mdv_tablespace_create_table(tablespace, (mdv_table_base*)&create_table->table);
@@ -108,22 +110,28 @@ static mdv_message mdv_server_create_table_handler(mdv_message msg, void *arg)
             .uuid = create_table->table.uuid
         };
         mdv_free(create_table);
-        return (mdv_message) { mdv_msg_table_info_id, mdv_binn_table_info(&table_info) };
+
+        response->id = mdv_msg_table_info_id;
+
+        return mdv_binn_table_info(&table_info, &response->body);
     }
 
     mdv_free(create_table);
 
     mdv_msg_status status = { err, { 0 } };
-    return (mdv_message) { mdv_msg_status_id, mdv_binn_status(&status) };
+
+    response->id = mdv_msg_status_id;
+
+    return mdv_binn_status(&status, &response->body);
 }
 
 
-static mdv_message mdv_server_handle_message(mdv_server_work *work, uint32_t msg_id, uint8_t *msg_body)
+static bool mdv_server_handle_message(mdv_server_work *work, uint32_t msg_id, uint8_t *msg_body, mdv_message *response)
 {
     if (msg_id <= mdv_msg_unknown_id || msg_id >= mdv_msg_count)
     {
         MDV_LOGW("Invalid message id '%u'", msg_id);
-        return mdv_no_message;
+        return false;
     }
 
     mdv_message_handler handler = work->handlers[msg_id];
@@ -131,45 +139,44 @@ static mdv_message mdv_server_handle_message(mdv_server_work *work, uint32_t msg
     if(!handler.fn)
     {
         MDV_LOGW("Handler for '%s' message was not registered.", mdv_msg_name(msg_id));
-        return mdv_no_message;
+        return false;
     }
 
-    binn obj;
+    mdv_message request = { msg_id };
 
-    if(!binn_load(msg_body, &obj))
+    if(!binn_load(msg_body, &request.body))
     {
         MDV_LOGW("Message '%s' discarded", mdv_msg_name(msg_id));
-        return mdv_no_message;
+        return false;
     }
 
-    mdv_message request = { msg_id, &obj };
+    bool ret = handler.fn(&request, handler.arg, response);
 
-    mdv_message response = handler.fn(request, handler.arg);
+    binn_free(&request.body);
 
-    return response;
+    return ret;
 }
 
 
-static bool mdv_server_nng_message_build(nng_msg *nng_msg, uint32_t req_id, mdv_message message)
+static bool mdv_server_nng_message_build(nng_msg *nng_msg, uint32_t req_id, mdv_message const *message)
 {
     nng_msg_clear(nng_msg);
 
     mdv_msg_hdr const hdr =
     {
-        .msg_id = message.id,
+        .msg_id = message->id,
         .req_id = req_id
     };
 
     if (hdr.msg_id > mdv_msg_unknown_id
-        && hdr.msg_id < mdv_msg_count
-        && message.body)
+        && hdr.msg_id < mdv_msg_count)
     {
         int err;
 
         if (!(err = nng_msg_append_u32(nng_msg, hdr.msg_id))
             && !(err = nng_msg_append_u32(nng_msg, hdr.req_id)))
         {
-            err = nng_msg_append(nng_msg, binn_ptr(message.body), binn_size(message.body));
+            err = nng_msg_append(nng_msg, binn_ptr((void *)&message->body), binn_size((void *)&message->body));
             if (!err)
                 return true;
             MDV_LOGE("%s (%d)", nng_strerror(err), err);
@@ -219,12 +226,13 @@ static void mdv_server_cb(mdv_server_work *work)
 
                         MDV_LOGI("<<< '%s' %zu bytes", mdv_msg_name(hdr.msg_id), len - sizeof hdr);
 
-                        mdv_message response = mdv_server_handle_message(work, hdr.msg_id, body + sizeof hdr);
+                        mdv_message response;
 
-                        if (mdv_server_nng_message_build(msg, hdr.req_id, response))
+                        if (mdv_server_handle_message(work, hdr.msg_id, body + sizeof hdr, &response)
+                            && mdv_server_nng_message_build(msg, hdr.req_id, &response))
                         {
                             work->state = MDV_SERVER_WORK_SEND;
-                            binn_free(response.body);
+                            binn_free(&response.body);
                             work->msg = msg;
                             nng_aio_set_msg(work->aio, msg);
                             nng_send_aio(work->sock, work->aio);
@@ -233,7 +241,7 @@ static void mdv_server_cb(mdv_server_work *work)
                         else
                             MDV_LOGW("Message '%s' discarded", mdv_msg_name(hdr.msg_id));
 
-                        binn_free(response.body);
+                        binn_free(&response.body);
                     }
                     else
                         MDV_LOGW("Invalid message discarded. Size is %zu bytes", len);

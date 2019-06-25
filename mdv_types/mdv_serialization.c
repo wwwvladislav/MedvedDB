@@ -3,25 +3,25 @@
 #include <mdv_alloc.h>
 
 
-static binn *binn_field(mdv_field const *field)
+static bool binn_field(mdv_field const *field, binn *obj)
 {
-    binn *obj = binn_object();
-    if (!obj)
+    if (!binn_create_object(obj))
     {
         MDV_LOGE("binn_field failed");
-        return obj;
+        return false;
     }
 
-    if (!binn_object_set_uint32(obj, "T", (unsigned int)field->type)
+    if (0
+        || !binn_object_set_uint32(obj, "T", (unsigned int)field->type)
         || !binn_object_set_uint32(obj, "L", (unsigned int)field->limit)
         || !binn_object_set_str(obj, "N", field->name.ptr))
     {
         MDV_LOGE("binn_field failed");
         binn_free(obj);
-        return 0;
+        return false;
     }
 
-    return obj;
+    return true;
 }
 
 
@@ -181,8 +181,9 @@ bool mdv_binn_table(mdv_table_base const *table, binn *obj)
         return false;
     }
 
-    binn *fields = binn_list();
-    if (!fields)
+    binn fields;
+
+    if (!binn_create_list(&fields))
     {
         MDV_LOGE("binn_table failed");
         binn_free(obj);
@@ -191,25 +192,27 @@ bool mdv_binn_table(mdv_table_base const *table, binn *obj)
 
     for(uint32_t i = 0; i < table->size; ++i)
     {
-        binn *field = binn_field(table->fields + i);
-        if(!field
-           || !binn_list_add_object(fields, field))
+        binn field;
+        if(0
+           || !binn_field(table->fields + i, &field)
+           || !binn_list_add_object(&fields, &field))
         {
-            binn_free(fields);
+            binn_free(&field);
+            binn_free(&fields);
             binn_free(obj);
             return false;
         }
-        binn_free(field);
+        binn_free(&field);
     }
 
-    if (!binn_object_set_list(obj, "F", fields))
+    if (!binn_object_set_list(obj, "F", &fields))
     {
-        binn_free(fields);
+        binn_free(&fields);
         binn_free(obj);
         return false;
     }
 
-    binn_free(fields);
+    binn_free(&fields);
 
     return true;
 }

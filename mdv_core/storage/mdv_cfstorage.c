@@ -44,15 +44,13 @@ mdv_cfstorage mdv_cfstorage_create(mdv_uuid const *uuid)
     mdv_rollbacker_push(rollbacker, mdv_rmdir, path.ptr);
 
     cfstorage.data = mdv_storage_open(path.ptr, MDV_STRG_DATA, MDV_STRG_DATA_MAPS, MDV_STRG_NOSUBDIR);
-    atomic_init(&cfstorage.ops.log.top, 0);
-    cfstorage.ops.log.set = mdv_storage_open(path.ptr, MDV_STRG_ADD_SET, MDV_STRG_ADD_SET_MAPS, MDV_STRG_NOSUBDIR);
-    cfstorage.ops.rem = mdv_storage_open(path.ptr, MDV_STRG_REM_SET, MDV_STRG_REM_SET_MAPS, MDV_STRG_NOSUBDIR);
+    atomic_init(&cfstorage.log.top, 0);
+    cfstorage.log.storage = mdv_storage_open(path.ptr, MDV_STRG_TRANSACTION_LOG, MDV_STRG_TRANSACTION_LOG_MAPS, MDV_STRG_NOSUBDIR);
 
     mdv_rollbacker_push(rollbacker, mdv_cfstorage_close, &cfstorage);
 
     if (!cfstorage.data
-        || !cfstorage.ops.log.set
-        || !cfstorage.ops.rem)
+        || !cfstorage.log.storage)
     {
         MDV_LOGE("Storage '%s' wasn't created", str_uuid.ptr);
         mdv_rollback(rollbacker);
@@ -94,14 +92,12 @@ mdv_cfstorage mdv_cfstorage_open(mdv_uuid const *uuid)
     }
 
     cfstorage.data = mdv_storage_open(path.ptr, MDV_STRG_DATA, MDV_STRG_DATA_MAPS, MDV_STRG_NOSUBDIR);
-    atomic_init(&cfstorage.ops.log.top, 0);
-    atomic_init(&cfstorage.ops.log.pos, 0);
-    cfstorage.ops.log.set = mdv_storage_open(path.ptr, MDV_STRG_ADD_SET, MDV_STRG_ADD_SET_MAPS, MDV_STRG_NOSUBDIR);
-    cfstorage.ops.rem = mdv_storage_open(path.ptr, MDV_STRG_REM_SET, MDV_STRG_REM_SET_MAPS, MDV_STRG_NOSUBDIR);
+    atomic_init(&cfstorage.log.top, 0);
+    atomic_init(&cfstorage.log.pos, 0);
+    cfstorage.log.storage = mdv_storage_open(path.ptr, MDV_STRG_TRANSACTION_LOG, MDV_STRG_TRANSACTION_LOG_MAPS, MDV_STRG_NOSUBDIR);
 
     if (!cfstorage.data
-        || !cfstorage.ops.log.set
-        || !cfstorage.ops.rem)
+        || !cfstorage.log.storage)
     {
         MDV_LOGE("Storage '%s' wasn't opened", str_uuid.ptr);
         mdv_cfstorage_close(&cfstorage);
@@ -117,10 +113,10 @@ mdv_cfstorage mdv_cfstorage_open(mdv_uuid const *uuid)
         return cfstorage;
     }
 
-    atomic_init(&cfstorage.ops.log.pos, pos);
+    atomic_init(&cfstorage.log.pos, pos);
 
     if (mdv_cfstorage_log_last(&cfstorage, &pos))
-        atomic_init(&cfstorage.ops.log.top, pos);
+        atomic_init(&cfstorage.log.top, pos);
 
     MDV_LOGI("Storage '%s' opened", str_uuid.ptr);
 
@@ -131,11 +127,9 @@ mdv_cfstorage mdv_cfstorage_open(mdv_uuid const *uuid)
 void mdv_cfstorage_close(mdv_cfstorage *cfstorage)
 {
     mdv_storage_release(cfstorage->data);
-    mdv_storage_release(cfstorage->ops.log.set);
-    mdv_storage_release(cfstorage->ops.rem);
+    mdv_storage_release(cfstorage->log.storage);
     cfstorage->data = 0;
-    cfstorage->ops.log.set = 0;
-    cfstorage->ops.rem = 0;
+    cfstorage->log.storage = 0;
 }
 
 
@@ -171,13 +165,36 @@ bool mdv_cfstorage_drop(mdv_uuid const *uuid)
 }
 
 
-bool mdv_cfstorage_add(mdv_cfstorage *cfstorage, size_t count, mdv_cfstorage_op const **ops)
+static bool mdv_cfstorage_is_key_deleted(mdv_cfstorage *cfstorage, mdv_transaction transaction, mdv_data const *key)
 {
-    mdv_rollbacker(2) rollbacker;
+    // TODO: Use bloom filter
+
+    // Open removed objects table
+    mdv_map map = mdv_map_open(&transaction, MDV_MAP_REMOVED, 0);
+    if (!mdv_map_ok(map))
+    {
+        MDV_LOGE("CFstorage table '%s' not opened", MDV_MAP_REMOVED);
+        return false;
+    }
+
+    mdv_data k = { key->size, key->ptr };
+    mdv_data v = { 0, 0 };
+
+    bool ret = mdv_map_get(&map, &transaction, &k, &v);
+
+    mdv_map_close(&map);
+
+    return ret;
+}
+
+
+bool mdv_cfstorage_add(mdv_cfstorage *cfstorage, size_t count, mdv_cfstorage_op const *ops)
+{
+    mdv_rollbacker(4) rollbacker;
     mdv_rollbacker_clear(rollbacker);
 
     // Start transaction
-    mdv_transaction transaction = mdv_transaction_start(cfstorage->ops.log.set);
+    mdv_transaction transaction = mdv_transaction_start(cfstorage->log.storage);
     if (!mdv_transaction_ok(transaction))
     {
         MDV_LOGE("CFstorage transaction not started");
@@ -186,25 +203,121 @@ bool mdv_cfstorage_add(mdv_cfstorage *cfstorage, size_t count, mdv_cfstorage_op 
 
     mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
 
-    // Open add.set table
-    mdv_map map = mdv_map_open(&transaction, MDV_MAP_SET, MDV_MAP_CREATE);
+    // Open transaction log
+    mdv_map tr_log = mdv_map_open(&transaction, MDV_MAP_TRANSACTION_LOG, MDV_MAP_CREATE);
+    if (!mdv_map_ok(tr_log))
+    {
+        MDV_LOGE("CFstorage table '%s' not opened", MDV_STRG_TRANSACTION_LOG);
+        mdv_rollback(rollbacker);
+        return false;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &tr_log);
+
+    // Open added objects table
+    mdv_map added_map = mdv_map_open(&transaction, MDV_MAP_ADDED, MDV_MAP_CREATE);
+    if (!mdv_map_ok(added_map))
+    {
+        MDV_LOGE("CFstorage table '%s' not opened", MDV_MAP_ADDED);
+        mdv_rollback(rollbacker);
+        return false;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &added_map);
+
+    for(size_t i = 0; i < count; ++i)
+    {
+        // Save new unique object id
+        {
+            mdv_data k = { ops[i].key.size, ops[i].key.ptr };
+            mdv_data v = { 0, 0 };
+
+            if (!mdv_map_put_unique(&added_map, &transaction, &k, &v))
+            {
+                MDV_LOGE("OP insertion failed.");
+                mdv_rollback(rollbacker);
+                return false;
+            }
+        }
+
+        if (!mdv_cfstorage_is_key_deleted(cfstorage, transaction, &ops[i].key))  // Delete op has priority
+        {
+            uint64_t key = atomic_fetch_add_explicit(&cfstorage->log.top, 1, memory_order_relaxed) + 1;
+
+            mdv_data k = { sizeof key, &key };
+            mdv_data v = { ops[i].op.size, (void*)ops[i].op.ptr };
+
+            if (!mdv_map_put_unique(&tr_log, &transaction, &k, &v))
+            {
+                MDV_LOGE("OP insertion failed.");
+                mdv_rollback(rollbacker);
+                return false;
+            }
+        }
+    }
+
+    if (!mdv_transaction_commit(&transaction))
+    {
+        MDV_LOGE("OP insertion transaction failed.");
+        mdv_rollback(rollbacker);
+        return false;
+    }
+
+    mdv_map_close(&tr_log);
+
+    return true;
+}
+
+
+bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, size_t count, mdv_cfstorage_op const *ops)
+{
+    mdv_rollbacker(4) rollbacker;
+    mdv_rollbacker_clear(rollbacker);
+
+    // Start transaction
+    mdv_transaction transaction = mdv_transaction_start(cfstorage->log.storage);
+    if (!mdv_transaction_ok(transaction))
+    {
+        MDV_LOGE("CFstorage transaction not started");
+        return false;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
+
+    // Open transaction log
+    mdv_map map = mdv_map_open(&transaction, MDV_MAP_TRANSACTION_LOG, MDV_MAP_CREATE);
     if (!mdv_map_ok(map))
     {
-        MDV_LOGE("CFstorage table '%s' not opened", MDV_STRG_ADD_SET);
+        MDV_LOGE("CFstorage table '%s' not opened", MDV_STRG_TRANSACTION_LOG);
         mdv_rollback(rollbacker);
         return false;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_map_close, &map);
 
+    // Open removed objects table
+    mdv_map rem_map = mdv_map_open(&transaction, MDV_MAP_REMOVED, MDV_MAP_CREATE);
+    if (!mdv_map_ok(rem_map))
+    {
+        MDV_LOGE("CFstorage table '%s' not opened", MDV_MAP_REMOVED);
+        mdv_rollback(rollbacker);
+        return false;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &rem_map);
+
     for(size_t i = 0; i < count; ++i)
     {
-        if (!mdv_cfstorage_is_key_deleted(cfstorage, ops[i]->key))  // Delete op has priority
+        mdv_data k = { ops[i].key.size, ops[i].key.ptr };
+        mdv_data v = { 0, 0 };
+
+        // if delete request is unique
+        if (mdv_map_put_unique(&rem_map, &transaction, &k, &v))
         {
-            uint64_t key = atomic_fetch_add_explicit(&cfstorage->ops.log.top, 1, memory_order_relaxed) + 1;
+            uint64_t key = atomic_fetch_add_explicit(&cfstorage->log.top, 1, memory_order_relaxed) + 1;
 
             mdv_data k = { sizeof key, &key };
-            mdv_data v = { ops[i]->size, (void*)ops[i]->op };
+            mdv_data v = { ops[i].op.size, (void*)ops[i].op.ptr };
 
             if (!mdv_map_put_unique(&map, &transaction, &k, &v))
             {
@@ -222,151 +335,22 @@ bool mdv_cfstorage_add(mdv_cfstorage *cfstorage, size_t count, mdv_cfstorage_op 
         return false;
     }
 
+    mdv_map_close(&rem_map);
     mdv_map_close(&map);
 
     return true;
 }
 
 
-bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, size_t count, mdv_cfstorage_op const **ops)
-{
-    mdv_rollbacker(4) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
-
-    // Start rem transaction
-    mdv_transaction rem_transaction = mdv_transaction_start(cfstorage->ops.rem);
-    if (!mdv_transaction_ok(rem_transaction))
-    {
-        MDV_LOGE("CFstorage transaction not started");
-        return false;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &rem_transaction);
-
-    // Open rem.set table
-    mdv_map rem_map = mdv_map_open(&rem_transaction, MDV_MAP_SET, MDV_MAP_CREATE);
-    if (!mdv_map_ok(rem_map))
-    {
-        MDV_LOGE("CFstorage table '%s' not opened", MDV_STRG_REM_SET);
-        mdv_rollback(rollbacker);
-        return false;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_map_close, &rem_map);
-
-    // Start add transaction
-    mdv_transaction add_transaction = mdv_transaction_start(cfstorage->ops.log.set);
-    if (!mdv_transaction_ok(add_transaction))
-    {
-        MDV_LOGE("CFstorage transaction not started");
-        return false;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &add_transaction);
-
-    // Open add.set table
-    mdv_map add_map = mdv_map_open(&add_transaction, MDV_MAP_SET, MDV_MAP_CREATE);
-    if (!mdv_map_ok(add_map))
-    {
-        MDV_LOGE("CFstorage table '%s' not opened", MDV_STRG_ADD_SET);
-        mdv_rollback(rollbacker);
-        return false;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_map_close, &add_map);
-
-    for(size_t i = 0; i < count; ++i)
-    {
-        mdv_data k = { ops[i]->key->size, ops[i]->key->ptr };
-        mdv_data v = { 0, 0 };
-
-        // if delete request is unique
-        if (mdv_map_put_unique(&rem_map, &rem_transaction, &k, &v))
-        {
-            uint64_t key = atomic_fetch_add_explicit(&cfstorage->ops.log.top, 1, memory_order_relaxed) + 1;
-
-            mdv_data k = { sizeof key, &key };
-            mdv_data v = { ops[i]->size, (void*)ops[i]->op };
-
-            if (!mdv_map_put_unique(&add_map, &add_transaction, &k, &v))
-            {
-                MDV_LOGE("OP insertion failed.");
-                mdv_rollback(rollbacker);
-                return false;
-            }
-        }
-    }
-
-    if (!mdv_transaction_commit(&rem_transaction))
-    {
-        MDV_LOGE("OP insertion transaction failed.");
-        mdv_rollback(rollbacker);
-        return false;
-    }
-
-    mdv_map_close(&rem_map);
-
-    if (!mdv_transaction_commit(&add_transaction))
-    {
-        MDV_LOGE("OP insertion transaction failed.");
-        mdv_rollback(rollbacker);
-        return false;
-    }
-
-    mdv_map_close(&add_map);
-
-    return true;
-}
-
-
-bool mdv_cfstorage_is_key_deleted(mdv_cfstorage *cfstorage, mdv_data const *key)
-{
-    // TODO: Use bloom filter
-
-    mdv_rollbacker(2) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
-
-    // Start transaction
-    mdv_transaction transaction = mdv_transaction_start(cfstorage->ops.rem);
-    if (!mdv_transaction_ok(transaction))
-    {
-        MDV_LOGE("CFstorage transaction not started");
-        return false;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
-
-    // Open rem.set table
-    mdv_map map = mdv_map_open(&transaction, MDV_MAP_SET, MDV_MAP_CREATE);
-    if (!mdv_map_ok(map))
-    {
-        MDV_LOGE("CFstorage table '%s' not opened", MDV_STRG_REM_SET);
-        mdv_rollback(rollbacker);
-        return false;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_map_close, &map);
-
-    mdv_data k = { key->size, key->ptr };
-    mdv_data v = { 0, 0 };
-
-    bool ret = mdv_map_get(&map, &transaction, &k, &v);
-
-    mdv_rollback(rollbacker);
-
-    return ret;
-}
-
-
 bool mdv_cfstorage_log_seek(mdv_cfstorage *cfstorage, uint64_t pos)
 {
-    atomic_init(&cfstorage->ops.log.pos, pos);
+    atomic_init(&cfstorage->log.pos, pos);
 
     mdv_rollbacker(2) rollbacker;
     mdv_rollbacker_clear(rollbacker);
 
     // Start transaction
-    mdv_transaction transaction = mdv_transaction_start(cfstorage->ops.log.set);
+    mdv_transaction transaction = mdv_transaction_start(cfstorage->log.storage);
     if (!mdv_transaction_ok(transaction))
     {
         MDV_LOGE("CFstorage transaction not started");
@@ -375,11 +359,11 @@ bool mdv_cfstorage_log_seek(mdv_cfstorage *cfstorage, uint64_t pos)
 
     mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
 
-    // Open add.set table
+    // Open METAINF table in transaction log
     mdv_map map = mdv_map_open(&transaction, MDV_MAP_METAINF, MDV_MAP_CREATE | MDV_MAP_INTEGERKEY);
     if (!mdv_map_ok(map))
     {
-        MDV_LOGE("CFstorage METAINF table '%s' not opened", MDV_STRG_ADD_SET);
+        MDV_LOGE("CFstorage METAINF table '%s' not opened", MDV_STRG_TRANSACTION_LOG);
         mdv_rollback(rollbacker);
         return false;
     }
@@ -415,7 +399,7 @@ bool mdv_cfstorage_log_tell(mdv_cfstorage *cfstorage, uint64_t *pos)
     mdv_rollbacker_clear(rollbacker);
 
     // Start transaction
-    mdv_transaction transaction = mdv_transaction_start(cfstorage->ops.log.set);
+    mdv_transaction transaction = mdv_transaction_start(cfstorage->log.storage);
     if (!mdv_transaction_ok(transaction))
     {
         MDV_LOGE("CFstorage transaction not started");
@@ -424,11 +408,11 @@ bool mdv_cfstorage_log_tell(mdv_cfstorage *cfstorage, uint64_t *pos)
 
     mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
 
-    // Open add.set table
+    // Open METAINF table in transaction log
     mdv_map map = mdv_map_open(&transaction, MDV_MAP_METAINF, 0);
     if (!mdv_map_ok(map))
     {
-        MDV_LOGE("CFstorage METAINF table '%s' not opened", MDV_STRG_ADD_SET);
+        MDV_LOGE("CFstorage METAINF table in '%s' not opened", MDV_STRG_TRANSACTION_LOG);
         mdv_rollback(rollbacker);
         return false;
     }
@@ -459,7 +443,7 @@ bool mdv_cfstorage_log_last(mdv_cfstorage *cfstorage, uint64_t *pos)
     mdv_rollbacker_clear(rollbacker);
 
     // Start transaction
-    mdv_transaction transaction = mdv_transaction_start(cfstorage->ops.log.set);
+    mdv_transaction transaction = mdv_transaction_start(cfstorage->log.storage);
     if (!mdv_transaction_ok(transaction))
     {
         MDV_LOGE("CFstorage transaction not started");
@@ -468,11 +452,11 @@ bool mdv_cfstorage_log_last(mdv_cfstorage *cfstorage, uint64_t *pos)
 
     mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
 
-    // Open add.set table
-    mdv_map map = mdv_map_open(&transaction, MDV_MAP_SET, 0);
+    // Open transaction log
+    mdv_map map = mdv_map_open(&transaction, MDV_MAP_TRANSACTION_LOG, 0);
     if (!mdv_map_ok(map))
     {
-        MDV_LOGE("CFstorage dataset '%s' not opened", MDV_STRG_ADD_SET);
+        MDV_LOGE("CFstorage dataset '%s' not opened", MDV_MAP_TRANSACTION_LOG);
         mdv_rollback(rollbacker);
         return false;
     }

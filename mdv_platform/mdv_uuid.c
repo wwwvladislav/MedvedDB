@@ -2,23 +2,17 @@
 #include "mdv_log.h"
 #include <stdlib.h>
 #include <time.h>
+#include <uuid4.h>
 
 
 mdv_uuid mdv_uuid_generate()
 {
-    srand((unsigned int)time(0));
+    UUID4_STATE_T state;
+    mdv_uuid uuid;
 
-    mdv_uuid uuid =
-    {
-        .a = rand(),
-        .b = (int16_t)rand(),
-        .c = (int16_t)((rand() & 0x0fff) | 0x4000),
-        .d = (int16_t)(rand() % 0x3fff + 0x8000),
-        .e = (int16_t)rand(),
-        .f = (int16_t)rand(),
-        .g = (int16_t)rand()
+    uuid4_seed(&state);
+    uuid4_gen(&state, (UUID4_T*)&uuid);
 
-    };
     return uuid;
 }
 

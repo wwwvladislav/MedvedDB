@@ -56,7 +56,8 @@ typedef enum
     MDV_MAP_MULTI               = 1 << 1,   // Duplicate keys may be used in the map
     MDV_MAP_INTEGERKEY          = 1 << 2,   // Keys are binary integers in native byte order
     MDV_MAP_FIXED_SIZE_VALUE    = 1 << 3,   // The data items for this map are all the same size. (used only with DB_MAP_MULTI)
-    MDV_MAP_INTEGERVAL          = 1 << 4    // This option specifies that duplicate data items are binary integers
+    MDV_MAP_INTEGERVAL          = 1 << 4,   // This option specifies that duplicate data items are binary integers
+    MDV_MAP_SILENT              = 1 << 5    // Don't output error messages to log
 } mdv_map_flags;
 
 

@@ -200,7 +200,8 @@ mdv_map mdv_map_open(mdv_transaction *ptransaction, char const *name, uint32_t f
     int rc = mdb_dbi_open(txn, name, mdb_flags, &dbi);
     if(rc != MDB_SUCCESS)
     {
-        MDV_LOGE("Unable to open the LMDB database: '%s' (%d)", mdb_strerror(rc), rc);
+        if (!(MDV_MAP_SILENT & flags))
+            MDV_LOGE("Unable to open the LMDB database: '%s' (%d)", mdb_strerror(rc), rc);
         return (mdv_map){ 0, 0 };
     }
 

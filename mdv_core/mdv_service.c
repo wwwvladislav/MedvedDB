@@ -4,6 +4,9 @@
 #include <mdv_binn.h>
 
 
+enum { MDV_NODES_NUM = 256 };
+
+
 static void mdv_service_configure_logging()
 {
     if (!mdv_str_empty(MDV_CONFIG.log.level))
@@ -55,9 +58,9 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
     mdv_metainf_flush(&svc->metainf, svc->storage.metainf);
 
     // Tablespace
-    svc->storage.tablespace = mdv_tablespace_open();
+    svc->storage.tablespace = mdv_tablespace_open(MDV_NODES_NUM);
     if (!mdv_tablespace_ok(svc->storage.tablespace))
-        svc->storage.tablespace = mdv_tablespace_create();
+        svc->storage.tablespace = mdv_tablespace_create(MDV_NODES_NUM);
 
     if (!mdv_tablespace_ok(svc->storage.tablespace))
     {

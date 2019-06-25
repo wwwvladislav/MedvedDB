@@ -12,21 +12,21 @@ enum
 };
 
 
-mdv_tablespace mdv_tablespace_create()
+mdv_tablespace mdv_tablespace_create(uint32_t nodes_num)
 {
     mdv_tablespace tables =
     {
-        .cfstorage = mdv_cfstorage_create(&MDV_TABLES_UUID)
+        .cfstorage = mdv_cfstorage_create(&MDV_TABLES_UUID, nodes_num)
     };
     return tables;
 }
 
 
-mdv_tablespace mdv_tablespace_open()
+mdv_tablespace mdv_tablespace_open(uint32_t nodes_num)
 {
     mdv_tablespace tables =
     {
-        .cfstorage = mdv_cfstorage_open(&MDV_TABLES_UUID)
+        .cfstorage = mdv_cfstorage_open(&MDV_TABLES_UUID, nodes_num)
     };
     return tables;
 }
@@ -40,7 +40,8 @@ bool mdv_tablespace_drop()
 
 void mdv_tablespace_close(mdv_tablespace *tablespace)
 {
-    mdv_cfstorage_close(&tablespace->cfstorage);
+    mdv_cfstorage_close(tablespace->cfstorage);
+    tablespace->cfstorage = 0;
 }
 
 
@@ -71,7 +72,7 @@ int mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *tabl
         }
     };
 
-    int ret = mdv_cfstorage_add(&tablespace->cfstorage, 1, &op)
+    int ret = mdv_cfstorage_add(tablespace->cfstorage, 0, 1, &op)
             ? MDV_STATUS_OK
             : MDV_STATUS_FAILED;
 

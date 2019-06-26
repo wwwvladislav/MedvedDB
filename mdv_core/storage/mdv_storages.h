@@ -3,9 +3,10 @@
 
 
 #define MDV_STRG_METAINF                "metainf.mdb"
-#define MDV_STRG_METAINF_MAPS           2
+#define MDV_STRG_METAINF_MAPS           3
 #define MDV_MAP_METAINF                 "METAINF"
 #define MDV_MAP_NODES                   "NODES"
+#define MDV_MAP_LINKS                   "LINKS"
 
 
 #define MDV_STRG_DATA                   "data.mdb"

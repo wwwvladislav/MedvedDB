@@ -8,7 +8,6 @@
 #include <stdatomic.h>
 
 
-struct mdv_cfstorage;
 typedef struct mdv_cfstorage mdv_cfstorage;
 
 

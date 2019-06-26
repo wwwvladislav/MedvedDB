@@ -215,12 +215,9 @@ static bool mdv_cfstorage_is_key_deleted(mdv_cfstorage *cfstorage, mdv_transacti
     // TODO: Use bloom filter
 
     // Open removed objects table
-    mdv_map map = mdv_map_open(&transaction, MDV_MAP_REMOVED, 0);
+    mdv_map map = mdv_map_open(&transaction, MDV_MAP_REMOVED, MDV_MAP_SILENT);
     if (!mdv_map_ok(map))
-    {
-        MDV_LOGE("CFstorage table '%s' not opened", MDV_MAP_REMOVED);
         return false;
-    }
 
     mdv_data k = { key->size, key->ptr };
     mdv_data v = { 0, 0 };

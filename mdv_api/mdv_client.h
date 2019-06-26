@@ -5,9 +5,6 @@
 #include <stdint.h>
 
 
-struct mdv_client;
-
-
 typedef struct mdv_client mdv_client;
 
 

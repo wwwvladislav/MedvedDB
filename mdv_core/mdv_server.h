@@ -3,7 +3,6 @@
 #include "storage/mdv_tablespace.h"
 
 
-struct mdv_server;
 typedef struct mdv_server mdv_server;
 
 

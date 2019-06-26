@@ -4,10 +4,7 @@
 #include <stdbool.h>
 
 
-struct mdv_bloom_s;
-
-
-typedef struct mdv_bloom_s mdv_bloom;
+typedef struct mdv_bloom mdv_bloom;
 
 
 mdv_bloom * mdv_bloom_create(uint32_t entries, double err);

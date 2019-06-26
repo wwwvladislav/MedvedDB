@@ -1,7 +1,7 @@
 #include "mdv_server.h"
 #include "mdv_config.h"
 #include <nng/nng.h>
-#include <nng/protocol/reqrep0/rep.h>
+#include <nng/protocol/pair0/pair.h>
 #include <mdv_log.h>
 #include <mdv_alloc.h>
 #include <mdv_version.h>
@@ -215,6 +215,8 @@ static void mdv_server_cb(mdv_server_work *work)
 
                 if (msg)
                 {
+                    //nng_pipe pipe = nng_msg_get_pipe(msg);
+
                     size_t len = nng_msg_len(msg);
                     uint8_t *body = (uint8_t *)nng_msg_body(msg);
 
@@ -336,7 +338,7 @@ mdv_server * mdv_server_create(mdv_tablespace *tablespace)
 
     memset(server->handlers, 0, sizeof server->handlers);
 
-    int err = nng_rep0_open_raw(&server->sock);
+    int err = nng_pair0_open_raw(&server->sock);
     if (err)
     {
         MDV_LOGE("NNG socket creation failed: %s (%d)", nng_strerror(err), err);

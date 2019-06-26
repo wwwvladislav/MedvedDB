@@ -9,7 +9,7 @@
 #include <mdv_threads.h>
 #include <stdbool.h>
 #include <nng/nng.h>
-#include <nng/protocol/reqrep0/req.h>
+#include <nng/protocol/pair0/pair.h>
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -240,7 +240,7 @@ mdv_client * mdv_client_create(char const *addr)
         (mdv_client_handler) { client, mdv_client_table_info_handler }
     );
 
-    int err = nng_req0_open(&client->sock);
+    int err = nng_pair0_open_raw(&client->sock);
     if (err)
     {
         printf("%s (%d)", nng_strerror(err), err);

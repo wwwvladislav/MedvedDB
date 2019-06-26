@@ -5,6 +5,9 @@
 #include <mdv_stack.h>
 
 
+enum { MDV_MAX_CONFIGURED_CLUSTER_NODES = 256 };
+
+
 typedef struct
 {
     struct
@@ -28,7 +31,13 @@ typedef struct
         uint32_t   batch_size;
     } transaction;
 
-    mdv_stack(uint8_t, 1024) mempool;
+    struct
+    {
+        uint32_t    size;
+        char const *nodes[MDV_MAX_CONFIGURED_CLUSTER_NODES];
+    } cluster;
+
+    mdv_stack(uint8_t, 4 * 1024) mempool;
 } mdv_config;
 
 

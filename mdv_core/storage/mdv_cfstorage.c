@@ -6,6 +6,8 @@
 #include <mdv_alloc.h>
 #include <mdv_string.h>
 #include <mdv_filesystem.h>
+#include <mdv_binn.h>
+#include <stdatomic.h>
 #include <stddef.h>
 
 

@@ -231,7 +231,8 @@ static bool mdv_map_put_impl(mdv_map *pmap, mdv_transaction *ptransaction, mdv_d
 
     if (!txn)
     {
-        MDV_LOGE("Invalid operation. The data should be inserted in transaction.");
+        if (!(MDV_MAP_SILENT & flags))
+            MDV_LOGE("Invalid operation. The data should be inserted in transaction.");
         return false;
     }
 
@@ -241,7 +242,8 @@ static bool mdv_map_put_impl(mdv_map *pmap, mdv_transaction *ptransaction, mdv_d
     int rc = mdb_put(txn, dbi, &k, &v, flags);
     if(rc != MDB_SUCCESS)
     {
-        MDV_LOGE("Unable to put data into the LMDB database: '%s' (%d)", mdb_strerror(rc), rc);
+        if (!(MDV_MAP_SILENT & flags))
+            MDV_LOGE("Unable to put data into the LMDB database: '%s' (%d)", mdb_strerror(rc), rc);
         return false;
     }
 

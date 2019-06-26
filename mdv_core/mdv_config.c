@@ -26,33 +26,40 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         config->server.listen = mdv_str_pdup(config->mempool, value);
         MDV_CFG_CHECK(config->server.listen);
         MDV_LOGI("Listen: %s", config->server.listen.ptr);
-        return 1;
     }
-    if (MDV_CFG_MATCH("server", "workers"))
+    else if (MDV_CFG_MATCH("server", "workers"))
     {
         config->server.workers = atoi(value);
         MDV_LOGI("Server workers: %u", config->server.workers);
-        return 1;
     }
     else if (MDV_CFG_MATCH("storage", "path"))
     {
         config->storage.path = mdv_str_pdup(config->mempool, value);
         MDV_CFG_CHECK(config->storage.path);
         MDV_LOGI("Storage path: %s", config->storage.path.ptr);
-        return 1;
     }
     else if (MDV_CFG_MATCH("log", "level"))
     {
         config->log.level = mdv_str_pdup(config->mempool, value);
         MDV_CFG_CHECK(config->log.level);
         MDV_LOGI("Log level: %s", config->log.level.ptr);
-        return 1;
     }
     else if (MDV_CFG_MATCH("transaction", "batch_size"))
     {
         config->transaction.batch_size = atoi(value);
         MDV_LOGI("Transaction batch size: %u", config->transaction.batch_size);
-        return 1;
+    }
+    else if (MDV_CFG_MATCH("cluster", "node"))
+    {
+        mdv_string node = mdv_str_pdup(config->mempool, value);
+        MDV_CFG_CHECK(node);
+        if (config->cluster.size >= MDV_MAX_CONFIGURED_CLUSTER_NODES)
+        {
+            MDV_LOGI("No space for node '%s'", value);
+            return 0;
+        }
+        config->cluster.nodes[config->cluster.size++] = node.ptr;
+        MDV_LOGI("Cluster node: %s", node.ptr);
     }
     else
     {
@@ -77,6 +84,8 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.storage.path             = mdv_str_static("./data");
 
     MDV_CONFIG.transaction.batch_size   = 1000;
+
+    MDV_CONFIG.cluster.size             = 0;
 }
 
 

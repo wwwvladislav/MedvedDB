@@ -4,8 +4,6 @@
 #include "mdv_storage.h"
 #include "mdv_types.h"
 #include <mdv_uuid.h>
-#include <mdv_binn.h>
-#include <stdatomic.h>
 
 
 typedef struct mdv_cfstorage mdv_cfstorage;

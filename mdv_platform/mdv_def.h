@@ -1,4 +1,5 @@
 #pragma once
+#include "mdv_platform.h"
 #include "mdv_errno.h"
 #include <stddef.h>
 

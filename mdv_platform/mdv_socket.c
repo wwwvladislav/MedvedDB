@@ -133,7 +133,11 @@ mdv_descriptor mdv_socket(mdv_socket_type type)
 
     MDV_LOGD("Socket %d opened", s);
 
-    return (mdv_descriptor)(size_t)s;
+    mdv_descriptor sock = 0;
+
+    *(int*)&sock = s;
+
+    return sock;
 }
 
 
@@ -152,6 +156,7 @@ void mdv_socket_close(mdv_descriptor sock)
 mdv_errno mdv_socket_reuse_addr(mdv_descriptor sock)
 {
     int optval = 1;
+
     int s = *(int*)&sock;
 
     int err = setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
@@ -271,13 +276,51 @@ mdv_errno mdv_socket_connect(mdv_descriptor sock, mdv_sockaddr const *addr)
 }
 
 
-mdv_errno mdv_socket_send(mdv_descriptor sock, void const *data, size_t len)
+mdv_errno mdv_socket_send(mdv_descriptor sock, void const *data, size_t len, size_t *write_len)
 {
-    // TODO
+    if (!len)
+    {
+        *write_len = 0;
+        return MDV_OK;
+    }
+
+    int s = *(int*)&sock;
+
+    int res = send(s, data, len, 0);
+
+    if (res == -1)
+    {
+        return errno == EAGAIN
+                ? MDV_EAGAIN
+                : errno;
+    }
+
+    *write_len = res;
+
+    return MDV_OK;
 }
 
 
 mdv_errno mdv_socket_recv(mdv_descriptor sock, void *data, size_t len, size_t *read_len)
 {
-    // TODO
+    if (!len)
+    {
+        *read_len = 0;
+        return MDV_OK;
+    }
+
+    int s = *(int*)&sock;
+
+    int res = recv(s, data, len, 0);
+
+    switch(res)
+    {
+        case -1:    return errno == EAGAIN ? MDV_EAGAIN : errno;
+        case 0:     return MDV_CLOSED;
+        default:    break;
+    }
+
+    *read_len = res;
+
+    return MDV_OK;
 }

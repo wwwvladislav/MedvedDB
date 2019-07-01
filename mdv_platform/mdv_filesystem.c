@@ -2,11 +2,11 @@
 #include "mdv_log.h"
 #include "mdv_string.h"
 #include "mdv_stack.h"
+#include "mdv_errno.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -18,7 +18,7 @@ static bool mdv_mkdir_impl(char const *path)
 
     if (stat(path, &st) != 0)
     {
-        if (mkdir(path, 0777) != 0 && errno != EEXIST)
+        if (mkdir(path, 0777) != 0 && mdv_error() != MDV_EEXIST)
         {
             MDV_LOGE("mkdir failed. Unable to create directory: %s", path);
             return false;
@@ -149,7 +149,7 @@ bool mdv_rmdir(char const *path)
     DIR *pdir = opendir(path);
     if (!pdir)
     {
-        MDV_LOGE("rmdir failed. Directory could not be opened due the error: %d", errno);
+        MDV_LOGE("rmdir failed. Directory could not be opened due the error: %d", mdv_error());
         return false;
     }
 
@@ -172,7 +172,7 @@ bool mdv_rmdir(char const *path)
             {
                 mdv_stack_foreach(dirs, dir_entry, dir)
                     closedir(dir->pdir);
-                MDV_LOGE("rmdir failed. Directory could not be removed due the error: %d", errno);
+                MDV_LOGE("rmdir failed. Directory could not be removed due the error: %d", mdv_error());
                 return false;
             }
 
@@ -201,7 +201,7 @@ bool mdv_rmdir(char const *path)
             {
                 mdv_stack_foreach(dirs, dir_entry , dir)
                     closedir(dir->pdir);
-                MDV_LOGE("rmdir failed. Directory could not be opened due the error: %d", errno);
+                MDV_LOGE("rmdir failed. Directory could not be opened due the error: %d", mdv_error());
                 return false;
             }
 
@@ -220,7 +220,7 @@ bool mdv_rmdir(char const *path)
             {
                 mdv_stack_foreach(dirs, dir_entry, dir)
                     closedir(dir->pdir);
-                MDV_LOGE("rmdir failed. File could not be removed due the error: %d", errno);
+                MDV_LOGE("rmdir failed. File could not be removed due the error: %d", mdv_error());
                 return false;
             }
 

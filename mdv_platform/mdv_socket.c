@@ -1,10 +1,10 @@
 #include "mdv_socket.h"
 #include "mdv_log.h"
 #include "mdv_limits.h"
+#include "mdv_errno.h"
 #include <string.h>
 #include <netdb.h>
 #include <stdio.h>
-#include <errno.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -127,7 +127,8 @@ mdv_descriptor mdv_socket(mdv_socket_type type)
 
     if (s == -1)
     {
-        MDV_LOGE("Socket creation was failed");
+        int err = mdv_error();
+        MDV_LOGE("Socket creation was failed with error: '%s' (%d)", mdv_strerror(err), err);
         return MDV_INVALID_DESCRIPTOR;
     }
 
@@ -164,7 +165,7 @@ mdv_errno mdv_socket_reuse_addr(mdv_descriptor sock)
     if (err == -1)
     {
         MDV_LOGE("Unable to reuse address");
-        return errno;
+        return mdv_error();
     }
 
     return MDV_OK;
@@ -182,7 +183,7 @@ mdv_errno mdv_socket_reuse_port(mdv_descriptor sock)
     if (err == -1)
     {
         MDV_LOGE("Unable to reuse port");
-        return errno;
+        return mdv_error();
     }
 
     return MDV_OK;
@@ -197,7 +198,7 @@ mdv_errno mdv_socket_nonblock(mdv_descriptor sock)
     if (err == -1)
     {
         MDV_LOGE("Switching socket %d to nonblocking mode was failed", s);
-        return errno;
+        return mdv_error();
     }
 
     return MDV_OK;
@@ -213,7 +214,7 @@ mdv_errno mdv_socket_listen(mdv_descriptor sock)
     if (err == -1)
     {
         MDV_LOGE("Socket %d listening was failed", s);
-        return errno;
+        return mdv_error();
     }
 
     return MDV_OK;
@@ -251,7 +252,7 @@ mdv_errno mdv_socket_bind(mdv_descriptor sock, mdv_sockaddr const *addr)
     if (err == -1)
     {
         MDV_LOGE("Socket %d binding was failed", s);
-        return errno;
+        return mdv_error();
     }
 
     return MDV_OK;
@@ -269,7 +270,7 @@ mdv_errno mdv_socket_connect(mdv_descriptor sock, mdv_sockaddr const *addr)
     if (err == -1)
     {
         MDV_LOGE("Socket %d connecting was failed", s);
-        return errno;
+        return mdv_error();
     }
 
     return MDV_OK;
@@ -290,9 +291,7 @@ mdv_errno mdv_socket_send(mdv_descriptor sock, void const *data, size_t len, siz
 
     if (res == -1)
     {
-        return errno == EAGAIN
-                ? MDV_EAGAIN
-                : errno;
+        return mdv_error();
     }
 
     *write_len = res;
@@ -315,7 +314,7 @@ mdv_errno mdv_socket_recv(mdv_descriptor sock, void *data, size_t len, size_t *r
 
     switch(res)
     {
-        case -1:    return errno == EAGAIN ? MDV_EAGAIN : errno;
+        case -1:    return mdv_error();
         case 0:     return MDV_CLOSED;
         default:    break;
     }

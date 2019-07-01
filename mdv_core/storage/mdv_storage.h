@@ -1,8 +1,8 @@
 /**
- * \file
- * \brief API for key-value storage access.
+ * @file
+ * @brief API for key-value storage access.
  *
- * \details This file contains main functions and type definitions to access the key-value storage.
+ * @details This file contains main functions and type definitions to access the key-value storage.
 */
 
 #pragma once
@@ -80,9 +80,9 @@ bool    mdv_map_del        (mdv_map *pmap, mdv_transaction *ptransaction, mdv_da
 
 
 /**
- * \brief Cursor for key-value storage iteration.
+ * @brief Cursor for key-value storage iteration.
  *
- * \details Within the transaction, cursor can be created with mdv_cursor_open().
+ * @details Within the transaction, cursor can be created with mdv_cursor_open().
  */
 typedef struct
 {
@@ -107,7 +107,7 @@ typedef enum
 
 
 /**
- * \brief Open new cursor within transaction.
+ * @brief Open new cursor within transaction.
  *
  * @param pmap [in]         Map which was created by the mdv_map_open().
  * @param ptransaction [in] Transaction
@@ -126,15 +126,14 @@ bool        mdv_cursor_get              (mdv_cursor *pcursor, mdv_data *key, mdv
  * @param c [in]    Cursor, created with mdv_cursor_open().
  *
  * Usage example:
- * \code
+ * @code
  * mdv_cursor cursor = {};
  *
  * if(mdv_cursor_ok(cursor))
  *     printf("Cursor is valid!");
  * else
  *     printf("Cursor isn't valid!");
- * \endcode
-
+ * @endcode
  */
 #define     mdv_cursor_ok(c)            ((c).pstorage != 0 && (c).pcursor != 0)
 

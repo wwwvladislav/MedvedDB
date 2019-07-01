@@ -1,7 +1,7 @@
 #include "mdv_pipe.h"
 #include "mdv_log.h"
+#include "mdv_errno.h"
 #include <unistd.h>
-#include <errno.h>
 
 
 mdv_errno mdv_pipe_open(mdv_pipe *p)
@@ -11,7 +11,7 @@ mdv_errno mdv_pipe_open(mdv_pipe *p)
     if (pipe(pipefd) == -1)
     {
         MDV_LOGE("Unable to create new pipe");
-        return errno;
+        return mdv_error();
     }
 
     *(size_t*)&p->rd = pipefd[0];
@@ -36,9 +36,9 @@ mdv_errno pipe_write(mdv_pipe *p, void const *buf, size_t len)
 
     ssize_t ret = write(wd, buf, len);
 
-    return ret == -1 ? errno
+    return ret == -1 ? mdv_error()
             : ret == len ? MDV_OK
-            : -1;
+            : MDV_FAILED;
 }
 
 
@@ -48,8 +48,8 @@ mdv_errno pipe_read(mdv_pipe *p, void *buf, size_t len)
 
     ssize_t ret = read(rd, buf, len);
 
-    return ret == -1 ? errno
+    return ret == -1 ? mdv_error()
             : ret == len ? MDV_OK
-            : -1;
+            : MDV_FAILED;
 }
 

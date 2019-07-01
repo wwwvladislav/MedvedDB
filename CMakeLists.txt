@@ -86,6 +86,8 @@ macro(use_c11)
 endmacro(use_c11)
 
 
+include(cmake/doxygen.cmake)
+
 add_subdirectory(${ROOT_DIR}/mdv_thirdparty)
 add_subdirectory(${ROOT_DIR}/mdv_platform)
 add_subdirectory(${ROOT_DIR}/mdv_types)
@@ -94,3 +96,17 @@ add_subdirectory(${ROOT_DIR}/mdv_service)
 add_subdirectory(${ROOT_DIR}/mdv_api)
 add_subdirectory(${ROOT_DIR}/mdv_client)
 add_subdirectory(${ROOT_DIR}/mdv_tests)
+
+set(DOXY_INPUT
+    ${ROOT_DIR}/mdv_api
+    ${ROOT_DIR}/mdv_client
+    ${ROOT_DIR}/mdv_core
+    ${ROOT_DIR}/mdv_platform
+    ${ROOT_DIR}/mdv_service
+    ${ROOT_DIR}/mdv_types
+)
+
+set(DOXY_OUTPUT_DIRECTORY "${BIN_DIR}/doc")
+
+add_documentation(doc Doxyfile)
+

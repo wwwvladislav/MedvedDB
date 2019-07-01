@@ -110,7 +110,7 @@ bool mdv_service_start(mdv_service *svc)
 
     while(svc->is_started)
     {
-        mdv_usleep(1000);
+        mdv_sleep(1000);
     }
 
     return true;

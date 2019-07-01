@@ -24,7 +24,7 @@ typedef enum mdv_epoll_events
 
 
 /**
- * \brief The event description which is associated with file descriptor in mdv_epoll_add/mdv_epoll_del functions.
+ * @brief The event description which is associated with file descriptor in mdv_epoll_add/mdv_epoll_del functions.
  */
 typedef struct
 {

@@ -7,7 +7,7 @@ int _mdv_queue_push_one(mdv_queue_base *queue, void const *data, size_t size)
         return 0;
 
     size_t const head = atomic_load_explicit(&queue->head, memory_order_relaxed);
-    size_t const tail = atomic_load_explicit(&queue->tail, memory_order_relaxed);
+    size_t const tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
     size_t const capacity = queue->capacity + 1;
     size_t const data_size = head <= tail
                                 ? tail - head
@@ -19,7 +19,7 @@ int _mdv_queue_push_one(mdv_queue_base *queue, void const *data, size_t size)
 
     memcpy(queue->data + tail * queue->item_size, data, size);
 
-    atomic_store_explicit(&queue->tail, (tail + 1) % capacity, memory_order_relaxed);
+    atomic_store_explicit(&queue->tail, (tail + 1) % capacity, memory_order_release);
 
     return 1;
 }
@@ -33,7 +33,7 @@ int _mdv_queue_push_multiple(mdv_queue_base *queue, void const *data, size_t siz
         return 0;
 
     size_t const head = atomic_load_explicit(&queue->head, memory_order_relaxed);
-    size_t const tail = atomic_load_explicit(&queue->tail, memory_order_relaxed);
+    size_t const tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
     size_t const capacity = queue->capacity + 1;
 
     if (head <= tail)
@@ -66,7 +66,7 @@ int _mdv_queue_push_multiple(mdv_queue_base *queue, void const *data, size_t siz
         memcpy(queue->data + tail * queue->item_size, data, size);
     }
 
-    atomic_store_explicit(&queue->tail, (tail + items_count) % capacity, memory_order_relaxed);
+    atomic_store_explicit(&queue->tail, (tail + items_count) % capacity, memory_order_release);
 
     return 1;
 }
@@ -77,7 +77,7 @@ int _mdv_queue_pop_one(mdv_queue_base *queue, void *data, size_t size)
     if (size != queue->item_size)
         return 0;
 
-    size_t const head = atomic_load_explicit(&queue->head, memory_order_relaxed);
+    size_t const head = atomic_load_explicit(&queue->head, memory_order_acquire);
     size_t const tail = atomic_load_explicit(&queue->tail, memory_order_relaxed);
     size_t const capacity = queue->capacity + 1;
     size_t const data_size = head <= tail
@@ -89,7 +89,7 @@ int _mdv_queue_pop_one(mdv_queue_base *queue, void *data, size_t size)
 
     memcpy(data, queue->data + head * queue->item_size, size);
 
-    atomic_store_explicit(&queue->head, (head + 1) % capacity, memory_order_relaxed);
+    atomic_store_explicit(&queue->head, (head + 1) % capacity, memory_order_release);
 
     return 1;
 }
@@ -102,7 +102,7 @@ int _mdv_queue_pop_multiple(mdv_queue_base *queue, void *data, size_t size)
     if (size != items_count * queue->item_size)
         return 0;
 
-    size_t const head = atomic_load_explicit(&queue->head, memory_order_relaxed);
+    size_t const head = atomic_load_explicit(&queue->head, memory_order_acquire);
     size_t const tail = atomic_load_explicit(&queue->tail, memory_order_relaxed);
     size_t const capacity = queue->capacity + 1;
 
@@ -134,7 +134,7 @@ int _mdv_queue_pop_multiple(mdv_queue_base *queue, void *data, size_t size)
         }
     }
 
-    atomic_store_explicit(&queue->head, (head + items_count) % capacity, memory_order_relaxed);
+    atomic_store_explicit(&queue->head, (head + items_count) % capacity, memory_order_release);
 
     return 1;
 }

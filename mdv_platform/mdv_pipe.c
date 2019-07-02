@@ -29,27 +29,3 @@ void mdv_pipe_close(mdv_pipe *p)
     p->wd = MDV_INVALID_DESCRIPTOR;
 }
 
-
-mdv_errno pipe_write(mdv_pipe *p, void const *buf, size_t len)
-{
-    int wd = (int)(size_t)p->wd;
-
-    ssize_t ret = write(wd, buf, len);
-
-    return ret == -1 ? mdv_error()
-            : ret == len ? MDV_OK
-            : MDV_FAILED;
-}
-
-
-mdv_errno pipe_read(mdv_pipe *p, void *buf, size_t len)
-{
-    int rd = (int)(size_t)p->rd;
-
-    ssize_t ret = read(rd, buf, len);
-
-    return ret == -1 ? mdv_error()
-            : ret == len ? MDV_OK
-            : MDV_FAILED;
-}
-

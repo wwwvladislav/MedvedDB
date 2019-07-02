@@ -17,6 +17,7 @@ struct mdv_deque
     size_t size;            // items count
     size_t offset;          // first item offset in first block
     size_t blocks_number;   // blocks number
+    size_t allocated;       // total number of allocated bytes
     uint8_t **blocks;       // data blocks
 };
 
@@ -31,13 +32,18 @@ mdv_deque * mdv_deque_create(size_t entry_size)
         deque->size = 0;
         deque->offset = 0;
         deque->blocks_number = MDV_DEQUE_BLOCKS_INC_SIZE;
+
         deque->blocks = (uint8_t **)mdv_alloc(sizeof(uint8_t*) * deque->blocks_number);
+
         if (!deque->blocks)
         {
             mdv_free(deque);
             return 0;
         }
+
         memset(deque->blocks, 0, sizeof(uint8_t*) * deque->blocks_number);
+
+        deque->allocated = sizeof(uint8_t*) * deque->blocks_number;
     }
 
     return deque;
@@ -54,7 +60,12 @@ void mdv_deque_free(mdv_deque *deque)
                 i < deque->blocks_number
                     && deque->blocks[i];
                 ++i)
+            {
                 mdv_free(deque->blocks[i]);
+                deque->allocated -= deque->entry_size * MDV_DEQUE_BLOCK_SIZE;
+            }
+            mdv_free(deque->blocks);
+            deque->allocated -= sizeof(uint8_t*) * deque->blocks_number;
         }
         mdv_free(deque);
     }
@@ -63,7 +74,7 @@ void mdv_deque_free(mdv_deque *deque)
 
 bool mdv_deque_push_back(mdv_deque *deque, void const *data, size_t data_size)
 {
-    if (data_size > deque->entry_size)
+    if (data_size != deque->entry_size)
         return false;
 
     size_t const size           = deque->size + deque->offset;
@@ -82,12 +93,13 @@ bool mdv_deque_push_back(mdv_deque *deque, void const *data, size_t data_size)
 
         if (filled_blocks < deque->blocks_number)
         {
-            block = deque->blocks[filled_blocks - 1];
+            block = deque->blocks[filled_blocks];
             if (!block)
             {
-                block = deque->blocks[filled_blocks - 1] = (uint8_t*)mdv_alloc(deque->entry_size * MDV_DEQUE_BLOCK_SIZE);
+                block = deque->blocks[filled_blocks] = (uint8_t*)mdv_alloc(deque->entry_size * MDV_DEQUE_BLOCK_SIZE);
                 if (!block)
                     return false;
+                deque->allocated += deque->entry_size * MDV_DEQUE_BLOCK_SIZE;
             }
         }
         else    // no space for new block
@@ -98,11 +110,13 @@ bool mdv_deque_push_back(mdv_deque *deque, void const *data, size_t data_size)
             memset(blocks + deque->blocks_number, 0, sizeof(uint8_t*) * MDV_DEQUE_BLOCKS_INC_SIZE);
             deque->blocks = blocks;
             deque->blocks_number += MDV_DEQUE_BLOCKS_INC_SIZE;
+            deque->allocated += sizeof(uint8_t*) * MDV_DEQUE_BLOCKS_INC_SIZE;
 
             // Allocate new block
             block = deque->blocks[filled_blocks] = (uint8_t*)mdv_alloc(deque->entry_size * MDV_DEQUE_BLOCK_SIZE);
             if (!block)
                 return false;
+            deque->allocated += deque->entry_size * MDV_DEQUE_BLOCK_SIZE;
         }
 
         memcpy(block, data, data_size);
@@ -111,3 +125,29 @@ bool mdv_deque_push_back(mdv_deque *deque, void const *data, size_t data_size)
 
     return true;
 }
+
+
+bool mdv_deque_pop_back(mdv_deque *deque, void *e)
+{
+    if (!deque->size)
+        return false;
+
+    size_t const size           = deque->size + deque->offset;
+    size_t const filled_blocks  = (size + MDV_DEQUE_BLOCK_SIZE - 1) / MDV_DEQUE_BLOCK_SIZE;
+
+    uint8_t *block              = deque->blocks[filled_blocks - 1];
+    size_t const offset         = (size + MDV_DEQUE_BLOCK_SIZE - 1) % MDV_DEQUE_BLOCK_SIZE;
+
+    memcpy(e, block + deque->entry_size * offset, deque->entry_size);
+    deque->size--;
+
+    if (!offset)    // block is emptry
+    {
+        mdv_free(block);
+        deque->blocks[filled_blocks - 1] = 0;
+        deque->allocated -= deque->entry_size * MDV_DEQUE_BLOCK_SIZE;
+    }
+
+    return true;
+}
+

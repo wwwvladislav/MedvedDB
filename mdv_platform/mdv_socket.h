@@ -31,5 +31,3 @@ mdv_errno      mdv_socket_listen(mdv_descriptor sock);
 mdv_descriptor mdv_socket_accept(mdv_descriptor sock, mdv_sockaddr *peer);
 mdv_errno      mdv_socket_bind(mdv_descriptor sock, mdv_sockaddr const *addr);
 mdv_errno      mdv_socket_connect(mdv_descriptor sock, mdv_sockaddr const *addr);
-mdv_errno      mdv_socket_send(mdv_descriptor sock, void const *data, size_t len, size_t *write_len);
-mdv_errno      mdv_socket_recv(mdv_descriptor sock, void *data, size_t len, size_t *read_len);

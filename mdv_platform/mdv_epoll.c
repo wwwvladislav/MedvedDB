@@ -41,7 +41,7 @@ void mdv_epoll_close(mdv_descriptor epfd)
 }
 
 
-inline uint32_t mdv_epoll_to_platform_events(uint32_t events)
+static inline uint32_t mdv_epoll_to_platform_events(uint32_t events)
 {
     uint32_t platform_events = 0;
 
@@ -57,7 +57,7 @@ inline uint32_t mdv_epoll_to_platform_events(uint32_t events)
 }
 
 
-inline uint32_t mdv_epoll_from_platform_events(uint32_t platform_events)
+static inline uint32_t mdv_epoll_from_platform_events(uint32_t platform_events)
 {
     uint32_t events = 0;
 

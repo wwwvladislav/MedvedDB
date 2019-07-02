@@ -8,10 +8,12 @@
 
 
 /// @cond Doxygen_Suppress
+
 struct mdv_mutex
 {
     pthread_mutex_t mutex;
 };
+
 /// @endcond
 
 
@@ -28,12 +30,14 @@ void mdv_sleep(size_t msec)
 
 
 /// @cond Doxygen_Suppress
+
 typedef struct
 {
     volatile int    is_started;
     mdv_thread_fn   fn;
     void           *arg;
 } mdv_thread_arg;
+
 /// @endcond
 
 
@@ -42,11 +46,15 @@ static void *mdv_thread_function(void *arg)
     mdv_thread_arg *thread_arg = (mdv_thread_arg*)arg;
 
     mdv_thread_fn fn = thread_arg->fn;
+
     arg = thread_arg->arg;
+
     thread_arg->is_started = 0xABCDEF;
 
     mdv_alloc_thread_initialize();
+
     void *ret = fn(arg);
+
     mdv_alloc_thread_finalize();
 
     return ret;

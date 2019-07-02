@@ -12,6 +12,10 @@
 typedef void* mdv_thread;
 
 
+/// Mutex descriptor
+typedef struct mdv_mutex mdv_mutex;
+
+
 /**
  * @brief Suspends execution of the calling thread for msec milliseconds.
  *
@@ -65,3 +69,53 @@ int mdv_thread_equal(mdv_thread t1, mdv_thread t2);
  * @return non zero value if error has occurred
  */
 mdv_errno mdv_thread_join(mdv_thread thread);
+
+
+/**
+ * @brief Create new mutex
+ *
+ * @return On success, return new mutex
+ * @return On error, return NULL
+ */
+mdv_mutex * mdv_mutex_create();
+
+
+/**
+ * @brief Free mutex
+ *
+ * @param m [in]   mutex
+ */
+void mdv_mutex_free(mdv_mutex *m);
+
+
+/**
+ * @brief Lock a mutex
+ *
+ * @param m [in] mutex
+ *
+ * @return MDV_OK mutex is successfully locked
+ * @return non zero value if error has occurred
+ */
+mdv_errno mdv_mutex_lock(mdv_mutex *m);
+
+
+/**
+ * @brief Try to lock a mutex
+ *
+ * @param m [in] mutex
+ *
+ * @return MDV_OK mutex is successfully locked
+ * @return non zero value if error has occurred
+ */
+mdv_errno mdv_mutex_trylock(mdv_mutex *m);
+
+
+/**
+ * @brief Unlock a mutex
+ *
+ * @param m [in] mutex
+ *
+ * @return MDV_OK mutex is successfully unlocked
+ * @return non zero value if error has occurred
+ */
+mdv_errno mdv_mutex_unlock(mdv_mutex *m);

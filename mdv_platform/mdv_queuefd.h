@@ -73,6 +73,17 @@ size_t _mdv_queuefd_events_count(mdv_queuefd_base *queue);
 
 
 /**
+ * @brief Return items count in queuefd.
+ *
+ * @param q [in] Queue
+ *
+ * @return queue size
+ */
+#define mdv_queuefd_size(q)                   \
+    mdv_queue_size((q).queue)
+
+
+/**
  * @brief Check is queue valid.
  *
  * @param q [in] Queue allocated by mdv_queuefd()

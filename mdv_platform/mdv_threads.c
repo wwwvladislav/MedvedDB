@@ -1,18 +1,19 @@
 #include "mdv_threads.h"
 #include "mdv_log.h"
-#include "mdv_errno.h"
 #include "mdv_alloc.h"
 #include <time.h>
 #include <pthread.h>
-//#include <semaphore.h>
+#include <stdatomic.h>
 
 
 /// @cond Doxygen_Suppress
 
-struct mdv_mutex
+typedef struct
 {
-    pthread_mutex_t mutex;
-};
+    atomic_bool     is_started;
+    mdv_thread_fn   fn;
+    void           *arg;
+} mdv_thread_arg;
 
 /// @endcond
 
@@ -29,18 +30,6 @@ void mdv_sleep(size_t msec)
 }
 
 
-/// @cond Doxygen_Suppress
-
-typedef struct
-{
-    volatile int    is_started;
-    mdv_thread_fn   fn;
-    void           *arg;
-} mdv_thread_arg;
-
-/// @endcond
-
-
 static void *mdv_thread_function(void *arg)
 {
     mdv_thread_arg *thread_arg = (mdv_thread_arg*)arg;
@@ -49,7 +38,7 @@ static void *mdv_thread_function(void *arg)
 
     arg = thread_arg->arg;
 
-    thread_arg->is_started = 0xABCDEF;
+    atomic_store_explicit(&thread_arg->is_started, 1, memory_order_release);
 
     mdv_alloc_thread_initialize();
 
@@ -83,10 +72,12 @@ mdv_errno mdv_thread_create(mdv_thread *thread, mdv_thread_fn fn, void *arg)
         return err;
     }
 
-    for(int i = 0; !thread_arg.is_started && i < 500; ++i)
+    for(int i = 0;
+        !atomic_load_explicit(&thread_arg.is_started, memory_order_acquire) && i < 500;
+        ++i)
         mdv_sleep(10);
 
-    if (!thread_arg.is_started)
+    if (!atomic_load_explicit(&thread_arg.is_started, memory_order_acquire))
         MDV_LOGW("Thread is starting too long: %p", thread);
 
     *(pthread_t*)thread = pthread;
@@ -127,76 +118,3 @@ mdv_errno mdv_thread_join(mdv_thread thread)
     return MDV_OK;
 }
 
-
-mdv_mutex * mdv_mutex_create()
-{
-    mdv_mutex *m = (mdv_mutex *)mdv_alloc(sizeof(mdv_mutex));
-
-    if (m)
-    {
-        int err = pthread_mutex_init(&m->mutex, 0);
-
-        if (err)
-        {
-            MDV_LOGE("mutex initialization failed with error %d", err);
-            mdv_free(m);
-            m = 0;
-        }
-    }
-    else
-        MDV_LOGE("mutex_create failed");
-
-    return m;
-}
-
-
-void mdv_mutex_free(mdv_mutex *m)
-{
-    if (m)
-    {
-        pthread_mutex_destroy(&m->mutex);
-        mdv_free(m);
-    }
-}
-
-
-mdv_errno mdv_mutex_lock(mdv_mutex *m)
-{
-    int err = pthread_mutex_lock(&m->mutex);
-
-    if(!err)
-    {
-        MDV_LOGD("Mutex %p locked", m);
-        return MDV_OK;
-    }
-
-    return mdv_error();
-}
-
-
-mdv_errno mdv_mutex_trylock(mdv_mutex *m)
-{
-    int err = pthread_mutex_trylock(&m->mutex);
-
-    if(!err)
-    {
-        MDV_LOGD("Mutex %p locked", m);
-        return MDV_OK;
-    }
-
-    return mdv_error();
-}
-
-
-mdv_errno mdv_mutex_unlock(mdv_mutex *m)
-{
-    int err = pthread_mutex_unlock(&m->mutex);
-
-    if(!err)
-    {
-        MDV_LOGD("Mutex %p unlocked", m);
-        return MDV_OK;
-    }
-
-    return mdv_error();
-}

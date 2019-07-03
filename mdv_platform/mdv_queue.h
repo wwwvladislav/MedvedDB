@@ -110,11 +110,11 @@ int     _mdv_queue_empty(mdv_queue_base const *queue);
 
 /// @cond Doxygen_Suppress
 #define mdv_queue_push_multiple(q, items, count)    \
-    _mdv_queue_push_multiple((mdv_queue_base *)&(q), items, sizeof(items))
+    _mdv_queue_push_multiple((mdv_queue_base *)&(q), items, count * sizeof(*items))
 
 
 #define mdv_queue_pop_multiple(q, items, count)    \
-    _mdv_queue_pop_multiple((mdv_queue_base *)&(q), items, sizeof(items))
+    _mdv_queue_pop_multiple((mdv_queue_base *)&(q), items, count * sizeof(*items))
 
 
 #define mdv_queue_push_one(q, item)         \

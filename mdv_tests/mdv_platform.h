@@ -6,6 +6,7 @@
 #include "mdv_platform/mdv_string.h"
 #include "mdv_platform/mdv_bloom.h"
 #include "mdv_platform/mdv_eventfd.h"
+#include "mdv_platform/mdv_queuefd.h"
 
 
 MU_TEST_SUITE(platform)
@@ -17,4 +18,5 @@ MU_TEST_SUITE(platform)
     MU_RUN_TEST(platform_string);
     MU_RUN_TEST(platform_bloom);
     MU_RUN_TEST(platform_eventfd);
+    MU_RUN_TEST(platform_queuefd);
 }

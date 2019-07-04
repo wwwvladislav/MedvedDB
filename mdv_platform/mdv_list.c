@@ -4,7 +4,7 @@
 #include <string.h>
 
 
-int _mdv_list_push_back(mdv_list *l, void const *val, size_t size)
+mdv_list_entry_base * _mdv_list_push_back(mdv_list *l, void const *val, size_t size)
 {
     mdv_list_entry_base *entry = (mdv_list_entry_base *)mdv_alloc(offsetof(mdv_list_entry_base, item) + size);
 
@@ -19,7 +19,7 @@ int _mdv_list_push_back(mdv_list *l, void const *val, size_t size)
 
     _mdv_list_emplace_back(l, entry);
 
-    return 1;
+    return entry;
 }
 
 

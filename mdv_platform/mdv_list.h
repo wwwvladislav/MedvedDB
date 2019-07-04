@@ -44,10 +44,10 @@ typedef struct mdv_list
 
 
 /// @cond Doxygen_Suppress
-int  _mdv_list_push_back(mdv_list *l, void const *val, size_t size);
-void _mdv_list_emplace_back(mdv_list *l, mdv_list_entry_base *entry);
-void _mdv_list_clear(mdv_list *l);
-void _mdv_list_remove_next(mdv_list *l, mdv_list_entry_base *entry);
+mdv_list_entry_base * _mdv_list_push_back(mdv_list *l, void const *val, size_t size);
+void                  _mdv_list_emplace_back(mdv_list *l, mdv_list_entry_base *entry);
+void                  _mdv_list_clear(mdv_list *l);
+void                  _mdv_list_remove_next(mdv_list *l, mdv_list_entry_base *entry);
 /// @endcond
 
 
@@ -57,8 +57,8 @@ void _mdv_list_remove_next(mdv_list *l, mdv_list_entry_base *entry);
  * @param l [in]    list
  * @param val [in]  value
  *
- * @return nonzero if new item is inserted
- * @return zero if non memory
+ * @return nonzero pointer to entry if new item is inserted
+ * @return NULL if non memory
  */
 #define mdv_list_push_back(l, val)          \
     _mdv_list_push_back(&(l), &(val), sizeof(val))

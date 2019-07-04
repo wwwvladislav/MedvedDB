@@ -47,10 +47,11 @@ void mdv_threadpool_free(mdv_threadpool *threadpool);
 /**
  * @brief Add new task to thread pool
  *
- * @param task [in]   New task
- * @param events [in] Epoll events. It should be the bitwise OR combination of the mdv_epoll_events.
+ * @param threadpool [in] thread pool
+ * @param task [in]       New task
+ * @param events [in]     Epoll events. It should be the bitwise OR combination of the mdv_epoll_events.
  *
  * @return MDV_OK on success
  * @return nonzero value on error
  */
-mdv_errno mdv_threadpool_add(uint32_t events, mdv_threadpool_task const *task);
+mdv_errno mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_threadpool_task const *task);

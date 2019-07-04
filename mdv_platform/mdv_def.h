@@ -24,6 +24,29 @@ enum mdv_descriptors
 
 
 /**
+ * @brief Function for hash calculation for file descriptor
+ *
+ * @param fd [in]   file descriptor
+ *
+ * @return hash for file descriptor.
+ */
+size_t mdv_descriptor_hash(mdv_descriptor const *fd);
+
+
+/**
+ * @brief Function for file descriptors comparison
+ *
+ * @param fd1 [in]   first file descriptor
+ * @param fd2 [in]   second file descriptor
+ *
+ * @return 0 if file descriptors are equal
+ * @return > 0 if first file descriptor is greater then second file descriptor
+ * @return < 0 if first file descriptor is less then second file descriptor
+ */
+int mdv_descriptor_cmp(mdv_descriptor const *fd1, mdv_descriptor const *fd2);
+
+
+/**
  * @brief Function for writing to a file descriptor.
  *
  * @param fd [in]   file descriptor

@@ -2,6 +2,18 @@
 #include <unistd.h>
 
 
+size_t mdv_descriptor_hash(mdv_descriptor const *fd)
+{
+    return (size_t)*fd;
+}
+
+
+int mdv_descriptor_cmp(mdv_descriptor const *fd1, mdv_descriptor const *fd2)
+{
+    return (int)(*fd1 - *fd2);
+}
+
+
 mdv_errno mdv_write(mdv_descriptor fd, void const *data, size_t *len)
 {
     if (!*len)

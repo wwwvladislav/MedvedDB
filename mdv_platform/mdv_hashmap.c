@@ -99,7 +99,7 @@ int _mdv_hashmap_resize(mdv_hashmap *hm, size_t capacity)
 }
 
 
-int _mdv_hashmap_insert(mdv_hashmap *hm, void const *item, size_t size)
+mdv_list_entry_base * _mdv_hashmap_insert(mdv_hashmap *hm, void const *item, size_t size)
 {
     if (size != hm->entry_size)
     {
@@ -125,15 +125,17 @@ int _mdv_hashmap_insert(mdv_hashmap *hm, void const *item, size_t size)
         {
             // Replace previous value
             memcpy(entry->item, item, size);
-            return 1;
+            return entry;
         }
     }
 
     // Insert new value
-    if (mdv_list_push_back_ptr(*bucket, item, size))
+    mdv_list_entry_base * entry = mdv_list_push_back_ptr(*bucket, item, size);
+
+    if (entry)
     {
         hm->size++;
-        return 1;
+        return entry;
     }
 
     return 0;

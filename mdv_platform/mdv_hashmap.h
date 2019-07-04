@@ -25,18 +25,18 @@ typedef struct mdv_hashmap
 
 
 /// @cond Doxygen_Suppress
-int    _mdv_hashmap_init(mdv_hashmap *hm,
-                         size_t capacity,
-                         size_t key_offset,
-                         size_t entry_size,
-                         size_t (*hash_fn)(void const *),
-                         int (*key_cmp_fn)(void const *, void const *));
-void   _mdv_hashmap_free(mdv_hashmap *hm);
-void   _mdv_hashmap_clear(mdv_hashmap *hm);
-int    _mdv_hashmap_resize(mdv_hashmap *hm, size_t capacity);
-int    _mdv_hashmap_insert(mdv_hashmap *hm, void const *item, size_t size);
-void * _mdv_hashmap_find(mdv_hashmap *hm, void const *key);
-int    _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
+int                   _mdv_hashmap_init(mdv_hashmap *hm,
+                                        size_t capacity,
+                                        size_t key_offset,
+                                        size_t entry_size,
+                                        size_t (*hash_fn)(void const *),
+                                        int (*key_cmp_fn)(void const *, void const *));
+void                  _mdv_hashmap_free(mdv_hashmap *hm);
+void                  _mdv_hashmap_clear(mdv_hashmap *hm);
+int                   _mdv_hashmap_resize(mdv_hashmap *hm, size_t capacity);
+mdv_list_entry_base * _mdv_hashmap_insert(mdv_hashmap *hm, void const *item, size_t size);
+void *                _mdv_hashmap_find(mdv_hashmap *hm, void const *key);
+int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
 /// @endcond
 
 
@@ -59,7 +59,7 @@ int    _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
     _mdv_hashmap_init(&hm,                                                      \
                       capacity,                                                 \
                       offsetof(type, key_field),                                \
-                      offsetof(type, key_field) + sizeof(((type*)0)->key_field),\
+                      sizeof(type),                                             \
                       (size_t (*)(void const *))hash_fn,                        \
                       (int (*)(void const *, void const *))key_cmp_fn)
 
@@ -111,7 +111,7 @@ int    _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @param hm [in] Hash map allocated by mdv_hashmap()
  * @param item [in] New item
  *
- * @return 1 if item is inserted
+ * @return nonzero pointer to new entry if item is inserted
  * @return 0 if no memory
  */
 #define mdv_hashmap_insert(hm, item)                            \

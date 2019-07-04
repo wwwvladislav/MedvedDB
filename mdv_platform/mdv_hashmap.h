@@ -1,0 +1,144 @@
+/**
+ * @file
+ * @brief Hash map.
+ */
+#pragma once
+#include <stddef.h>
+#include "mdv_list.h"
+
+
+/// Hash map entry
+typedef mdv_list mdv_hashmap_bucket;
+
+
+/// Hash map
+typedef struct mdv_hashmap
+{
+    size_t               capacity;                          ///< Hash map capacity
+    size_t               size;                              ///< Items number stored in hash map
+    size_t               key_offset;                        ///< key offset inside hash map value
+    size_t               entry_size;                        ///< entry size (in bytes)
+    mdv_hashmap_bucket  *buckets;                           ///< pointer to hash table
+    size_t    (*hash_fn)(void const *);                     ///< Hash function
+    int       (*key_cmp_fn)(void const *, void const *);    ///< Keys comparison function (used if hash collision happens)
+} mdv_hashmap;
+
+
+/// @cond Doxygen_Suppress
+int    _mdv_hashmap_init(mdv_hashmap *hm,
+                         size_t capacity,
+                         size_t key_offset,
+                         size_t entry_size,
+                         size_t (*hash_fn)(void const *),
+                         int (*key_cmp_fn)(void const *, void const *));
+void   _mdv_hashmap_free(mdv_hashmap *hm);
+void   _mdv_hashmap_clear(mdv_hashmap *hm);
+int    _mdv_hashmap_resize(mdv_hashmap *hm, size_t capacity);
+int    _mdv_hashmap_insert(mdv_hashmap *hm, void const *item, size_t size);
+void * _mdv_hashmap_find(mdv_hashmap *hm, void const *key);
+int    _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
+/// @endcond
+
+
+/**
+ * @brief Initialize hash map.
+ *
+ * @details Allocates space for hash map and initializes fields.
+ *
+ * @param hm [in]         hash map
+ * @param type [in]       hash map items type
+ * @param key_field [in]  key field name in type
+ * @param capacity [in]   hash map capacity
+ * @param hash_fn [in]    hash function
+ * @param key_cmp_fn [in] Keys comparison function
+  *
+ * @return 1 if hash map is initialized
+ * @return 0 if hash map is not initialized
+ */
+#define mdv_hashmap_init(hm, type, key_field, capacity, hash_fn, key_cmp_fn)    \
+    _mdv_hashmap_init(&hm,                                                      \
+                      capacity,                                                 \
+                      offsetof(type, key_field),                                \
+                      offsetof(type, key_field) + sizeof(((type*)0)->key_field),\
+                      (size_t (*)(void const *))hash_fn,                        \
+                      (int (*)(void const *, void const *))key_cmp_fn)
+
+
+/**
+ * @brief Free hash map.
+ *
+ * @param hm [in] Hash map allocated by mdv_hashmap()
+ */
+#define mdv_hashmap_free(hm)                                    \
+    _mdv_hashmap_free(&hm)
+
+
+/**
+ * @brief Clear hash map.
+ *
+ * @param hm [in] Hash map allocated by mdv_hashmap()
+ */
+#define mdv_hashmap_clear(hm)                                    \
+    _mdv_hashmap_clear(&hm)
+
+
+/**
+ * @brief Return hash map size
+ *
+ * @param hm [in]         hash map
+ *
+ * @return hash map size
+ */
+#define mdv_hashmap_size(hm) ((hm).size)
+
+
+/**
+ * @brief Resize hash map capacity.
+ *
+ * @param hm [in] Hash map allocated by mdv_hashmap()
+ * @param capacity [in] New hash map capacity
+ *
+ * @return 1 if hash map resized
+ * @return 0 if hash map wasn't resized
+ */
+#define mdv_hashmap_resize(hm, capacity)                        \
+    _mdv_hashmap_resize(&hm, capacity)
+
+
+/**
+ * @brief Insert item into the hash map
+ *
+ * @param hm [in] Hash map allocated by mdv_hashmap()
+ * @param item [in] New item
+ *
+ * @return 1 if item is inserted
+ * @return 0 if no memory
+ */
+#define mdv_hashmap_insert(hm, item)                            \
+    _mdv_hashmap_insert(&hm, &item, sizeof(item))
+
+
+/**
+ * @brief Find item by key
+ *
+ * @param hm [in]           hash map allocated by mdv_hashmap()
+ * @param key [in]          key
+ *
+ * @return On success, returns pointer to found entry
+ * @return NULL if no entry found
+ */
+#define mdv_hashmap_find(hm, key)                               \
+    _mdv_hashmap_find(&hm, &key)
+
+
+/**
+ * @brief Remove value by key
+ *
+ * @param hm [in]           hash map allocated by mdv_hashmap()
+ * @param key [in]          key
+ *
+ * @return 1 if hash item was removed
+ * @return 0 if hash map wasn't removed
+ */
+#define mdv_hashmap_erase(hm, key)                              \
+    _mdv_hashmap_erase(&hm, &key)

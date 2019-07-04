@@ -54,6 +54,8 @@ size_t _mdv_queuefd_events_count(mdv_queuefd_base *queue);
 /**
  * @brief Initialize queuefd.
  *
+ * @details Use mdv_queuefd_ok() to check queuefd validity
+ *
  * @param q [in] Queue allocated by mdv_queuefd()
  */
 #define mdv_queuefd_init(q)                                     \

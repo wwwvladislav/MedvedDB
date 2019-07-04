@@ -11,7 +11,6 @@ int main(int argc, char *argv[])
     (void)argv;
 
     mdv_alloc_initialize();
-    mdv_logf_set_level(ZF_LOG_WARN);
     MU_RUN_SUITE(platform);
     MU_RUN_SUITE(core);
     MU_REPORT();

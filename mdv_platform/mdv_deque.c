@@ -6,8 +6,8 @@
 
 enum
 {
-    MDV_DEQUE_BLOCK_SIZE        = 256,      // items in one block
-    MDV_DEQUE_BLOCKS_INC_SIZE   = 64        // blocks number grow size
+    MDV_DEQUE_BLOCK_SIZE        = 1024,     // items in one block
+    MDV_DEQUE_BLOCKS_INC_SIZE   = 256       // blocks number grow size
 };
 
 

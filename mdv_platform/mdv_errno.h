@@ -15,7 +15,8 @@ enum
     MDV_INVALID_ARG,    ///< Function argument is invalid.
     MDV_EAGAIN,         ///< Resource temporarily unavailable. There is no data available right now, try again later.
     MDV_CLOSED,         ///< File descriptor was closed.
-    MDV_EEXIST          ///< File exists
+    MDV_EEXIST,         ///< File exists
+    MDV_NO_MEM,         ///< No free space of memory
 };
 
 

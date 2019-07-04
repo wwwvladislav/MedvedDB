@@ -29,7 +29,7 @@ typedef enum mdv_epoll_events
 typedef struct
 {
     uint32_t     events;    ///< Epoll events. It should be the bitwise OR combination of the mdv_epoll_events.
-    void        *data;      ///< User data variable
+    void        *data;      ///< User data associated with event
 } mdv_epoll_event;
 
 

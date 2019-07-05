@@ -55,3 +55,16 @@ void mdv_threadpool_free(mdv_threadpool *threadpool);
  * @return nonzero value on error
  */
 mdv_errno mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_threadpool_task const *task);
+
+
+/**
+ * @brief Remove task associated with file descriptor
+ *
+ * @param threadpool [in] thread pool
+ * @param fd [in]         file descriptor
+ *
+ * @return MDV_OK on success
+ * @return nonzero value on error
+ */
+mdv_errno mdv_threadpool_remove(mdv_threadpool *threadpool, mdv_descriptor fd);
+

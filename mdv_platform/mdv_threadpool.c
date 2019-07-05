@@ -247,3 +247,28 @@ mdv_errno mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_th
 
     return err;
 }
+
+
+mdv_errno mdv_threadpool_remove(mdv_threadpool *threadpool, mdv_descriptor fd)
+{
+    mdv_errno err = mdv_mutex_lock(threadpool->tasks_mtx);
+
+    if(err == MDV_OK)
+    {
+        err = mdv_epoll_del(threadpool->epollfd, fd);
+
+        if (err == MDV_OK)
+        {
+            mdv_hashmap_erase(threadpool->tasks, fd);
+        }
+        else
+            MDV_LOGE("Threadpool task removing failed with error '%s' (%d)", mdv_strerror(err), err);
+
+        mdv_mutex_unlock(threadpool->tasks_mtx);
+    }
+    else
+        MDV_LOGE("Threadpool task removing failed");
+
+    return err;
+}
+

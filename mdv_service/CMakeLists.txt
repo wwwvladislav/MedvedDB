@@ -16,7 +16,6 @@ include_directories(
     ${ROOT_DIR}/mdv_api
     ${ROOT_DIR}/mdv_types
     ${LIBS_DIR}/zf_log
-    ${LIBS_DIR}/nng/include
     ${LIBS_DIR}/binn
 )
 

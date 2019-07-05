@@ -66,6 +66,19 @@ mdv_errno mdv_epoll_add(mdv_descriptor epfd, mdv_descriptor fd, mdv_epoll_event 
 
 
 /**
+ * @brief Change the event associated with the target file descriptor fd.
+ *
+ * @param epfd [in]     epoll instance descriptor
+ * @param fd [in]       file descriptor
+ * @param event [in]    event description
+ *
+ * @return MDV_OK if fd is successfully registered in epoll instance
+ * @return non zero value if error has occurred
+ */
+mdv_errno mdv_epoll_mod(mdv_descriptor epfd, mdv_descriptor fd, mdv_epoll_event event);
+
+
+/**
  * @brief Remove the target file descriptor fd from the epoll instance epfd.
  *
  * @param epfd [in] epoll instance descriptor

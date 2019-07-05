@@ -15,12 +15,14 @@ typedef struct sockaddr_storage mdv_sockaddr;
 typedef enum
 {
     MDV_SOCK_STREAM = 0,
-    MDV_SOCK_DGRAM
+    MDV_SOCK_DGRAM,
+    MDV_SOCK_UNKNOWN
 } mdv_socket_type;
 
 
-mdv_errno      mdv_str2sockaddr(mdv_string const str, mdv_sockaddr *addr);
-mdv_errno      mdv_sockaddr2str(mdv_sockaddr const *addr, mdv_string *str);
+mdv_errno      mdv_str2sockaddr(mdv_string const str, mdv_socket_type *protocol, mdv_sockaddr *addr);
+mdv_errno      mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr, mdv_string *str);
+
 
 mdv_descriptor mdv_socket(mdv_socket_type type);
 void           mdv_socket_close(mdv_descriptor sock);

@@ -1,7 +1,5 @@
 #include "mdv_server.h"
 #include "mdv_config.h"
-#include <nng/nng.h>
-#include <nng/protocol/pair0/pair.h>
 #include <mdv_log.h>
 #include <mdv_alloc.h>
 #include <mdv_version.h>
@@ -20,17 +18,17 @@ typedef struct mdv_server_work
         MDV_SERVER_WORK_RECV,
         MDV_SERVER_WORK_SEND
     }                           state;
-    nng_socket                  sock;
-    nng_aio                    *aio;
-    nng_msg                    *msg;
+//    nng_socket                  sock;
+//    nng_aio                    *aio;
+//    nng_msg                    *msg;
     mdv_message_handler        *handlers;
 } mdv_server_work;
 
 
 struct mdv_server
 {
-    nng_socket      sock;
-    nng_listener    listener;
+//    nng_socket      sock;
+//    nng_listener    listener;
     mdv_tablespace *tablespace;
 
     struct
@@ -157,7 +155,7 @@ static bool mdv_server_handle_message(mdv_server_work *work, uint32_t msg_id, ui
     return ret;
 }
 
-
+/*
 static bool mdv_server_nng_message_build(nng_msg *nng_msg, uint32_t req_id, mdv_message const *message)
 {
     nng_msg_clear(nng_msg);
@@ -187,12 +185,12 @@ static bool mdv_server_nng_message_build(nng_msg *nng_msg, uint32_t req_id, mdv_
 
     return false;
 }
-
+*/
 
 static void mdv_server_cb(mdv_server_work *work)
 {
     mdv_alloc_thread_initialize();
-
+/*
     switch(work->state)
     {
         case MDV_SERVER_WORK_INIT:
@@ -281,6 +279,7 @@ static void mdv_server_cb(mdv_server_work *work)
             break;
         }
     }
+*/
 }
 
 
@@ -300,18 +299,18 @@ static bool mdv_server_works_create(mdv_server *srvr)
 
     for(uint32_t i = 0; i < srvr->works.count; ++i)
     {
-        srvr->works.list[i].sock = srvr->sock;
-        srvr->works.list[i].state = MDV_SERVER_WORK_INIT;
-        srvr->works.list[i].msg = 0;
-        srvr->works.list[i].handlers = srvr->handlers;
+//        srvr->works.list[i].sock = srvr->sock;
+//        srvr->works.list[i].state = MDV_SERVER_WORK_INIT;
+//        srvr->works.list[i].msg = 0;
+//        srvr->works.list[i].handlers = srvr->handlers;
 
-        int rv = nng_aio_alloc(&srvr->works.list[i].aio, (void (*)(void *))mdv_server_cb, &srvr->works.list[i]);
+//        int rv = nng_aio_alloc(&srvr->works.list[i].aio, (void (*)(void *))mdv_server_cb, &srvr->works.list[i]);
 
-        if (rv != 0)
-        {
-            MDV_LOGE("nng_aio_alloc failed: %d", rv);
-            return false;
-	}
+//        if (rv != 0)
+//        {
+//            MDV_LOGE("nng_aio_alloc failed: %d", rv);
+//            return false;
+//        }
     }
 
     return true;
@@ -337,7 +336,7 @@ mdv_server * mdv_server_create(mdv_tablespace *tablespace)
     server->tablespace = tablespace;
 
     memset(server->handlers, 0, sizeof server->handlers);
-
+/*
     int err = nng_pair0_open_raw(&server->sock);
     if (err)
     {
@@ -359,7 +358,7 @@ mdv_server * mdv_server_create(mdv_tablespace *tablespace)
         mdv_server_free(server);
         return 0;
     }
-
+*/
     mdv_server_handler_reg(server, mdv_msg_hello_id,        (mdv_message_handler){ 0,                  mdv_server_hello_handler });
     mdv_server_handler_reg(server, mdv_msg_create_table_id, (mdv_message_handler){ server->tablespace, mdv_server_create_table_handler });
 
@@ -369,6 +368,7 @@ mdv_server * mdv_server_create(mdv_tablespace *tablespace)
 
 bool mdv_server_start(mdv_server *srvr)
 {
+/*
     int err = nng_listener_start(srvr->listener, 0);
 
     if (!err)
@@ -378,13 +378,14 @@ bool mdv_server_start(mdv_server *srvr)
     }
 
     MDV_LOGE("NNG listener not started: %s (%d)", nng_strerror(err), err);
-
+*/
     return false;
 }
 
 
 void mdv_server_free(mdv_server *srvr)
 {
+/*
     nng_listener_close(srvr->listener);
 
     nng_close(srvr->sock);
@@ -395,7 +396,7 @@ void mdv_server_free(mdv_server *srvr)
         nng_aio_free(srvr->works.list[i].aio);
         nng_msg_free(srvr->works.list[i].msg);
     }
-
+*/
     mdv_free(srvr->works.list);
 
     mdv_free(srvr);

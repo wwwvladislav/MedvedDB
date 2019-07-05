@@ -47,10 +47,7 @@ static void * mdv_threadpool_worker(void *arg)
         mdv_errno err = mdv_epoll_wait(threadpool->epollfd, events, &size, -1);
 
         if (err != MDV_OK)
-        {
-            MDV_LOGE("Worker thread stopped due the error '%s' (%d)", mdv_strerror(err), err);
-            break;
-        }
+            continue;
 
         for(uint32_t i = 0; i < size; ++i)
         {
@@ -244,6 +241,41 @@ mdv_errno mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_th
     }
     else
         MDV_LOGE("Threadpool task registration failed");
+
+    return err;
+}
+
+
+mdv_errno mdv_threadpool_mod(mdv_threadpool *threadpool, uint32_t events, mdv_threadpool_task const *task)
+{
+    mdv_errno err = mdv_mutex_lock(threadpool->tasks_mtx);
+
+    if(err == MDV_OK)
+    {
+        mdv_list_entry_base *entry = mdv_hashmap_insert(threadpool->tasks, *task);
+
+        if (entry)
+        {
+            mdv_epoll_event evt = { events, entry->item };
+
+            err = mdv_epoll_mod(threadpool->epollfd, task->fd, evt);
+
+            if (err != MDV_OK)
+            {
+                mdv_hashmap_erase(threadpool->tasks, task->fd);
+                MDV_LOGE("Threadpool task modification failed with error '%s' (%d)", mdv_strerror(err), err);
+            }
+        }
+        else
+        {
+            MDV_LOGE("Threadpool task modification failed");
+            err = MDV_FAILED;
+        }
+
+        mdv_mutex_unlock(threadpool->tasks_mtx);
+    }
+    else
+        MDV_LOGE("Threadpool task modification failed");
 
     return err;
 }

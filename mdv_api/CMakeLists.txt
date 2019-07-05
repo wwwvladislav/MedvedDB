@@ -7,13 +7,12 @@ use_c11()
 
 include_directories(
     ${LIBS_DIR}/binn
-    ${LIBS_DIR}/nng/include
     ${ROOT_DIR}/mdv_platform
     ${ROOT_DIR}/mdv_types
 )
 
 add_library(mdv_api STATIC ${SOURCES})
 
-add_dependencies(mdv_api nng mdv_platform mdv_types)
+add_dependencies(mdv_api mdv_platform mdv_types)
 
-target_link_libraries(mdv_api nng mdv_platform mdv_types)
+target_link_libraries(mdv_api mdv_platform mdv_types)

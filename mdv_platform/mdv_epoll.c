@@ -94,6 +94,27 @@ mdv_errno mdv_epoll_add(mdv_descriptor epfd, mdv_descriptor fd, mdv_epoll_event 
 }
 
 
+mdv_errno mdv_epoll_mod(mdv_descriptor epfd, mdv_descriptor fd, mdv_epoll_event event)
+{
+    int epoll_fd = *(int*)&epfd;
+
+    struct epoll_event epoll_event = {0};
+    epoll_event.data.ptr = event.data;
+    epoll_event.events = mdv_epoll_to_platform_events(event.events);
+
+    int err = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, *(int*)&fd, &epoll_event);
+
+    if(err == -1)
+    {
+        err = mdv_error();
+        MDV_LOGE("epoll_add failed due the error '%s' (%d)", mdv_strerror(err), err);
+        return err;
+    }
+
+    return MDV_OK;
+}
+
+
 mdv_errno mdv_epoll_del(mdv_descriptor epfd, mdv_descriptor fd)
 {
     int epoll_fd = *(int*)&epfd;

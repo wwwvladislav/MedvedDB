@@ -33,7 +33,17 @@ void mdv_netlib_uninit()
 }
 
 
-mdv_errno mdv_str2sockaddr(mdv_string const str, mdv_sockaddr *addr)
+static mdv_socket_type mdv_proto2socket_type(char const *str)
+{
+    if(strncasecmp("tcp", str, 3) == 0)
+        return MDV_SOCK_STREAM;
+    if(strncasecmp("udp", str, 3) == 0)
+        return MDV_SOCK_DGRAM;
+    return MDV_SOCK_UNKNOWN;
+}
+
+
+mdv_errno mdv_str2sockaddr(mdv_string const str, mdv_socket_type *protocol, mdv_sockaddr *addr)
 {
     if (mdv_str_empty(str) || !addr)
     {
@@ -49,8 +59,21 @@ mdv_errno mdv_str2sockaddr(mdv_string const str, mdv_sockaddr *addr)
 
     memset(addr, 0, sizeof *addr);
 
-    char host[str.size];
-    memcpy(host, str.ptr, str.size);
+    char buf[str.size];
+    memcpy(buf, str.ptr, str.size);
+
+    char *host = buf;
+
+    char *proto = strstr(host, "://");
+    if (proto)
+    {
+        *(proto++) = 0;
+        host = proto + 2;
+        proto = buf;
+    }
+
+    if (protocol && proto)
+        *protocol = mdv_proto2socket_type(proto);
 
     char *port = strrchr(host, ':');
     if (port) *(port++) = 0;
@@ -95,7 +118,7 @@ mdv_errno mdv_str2sockaddr(mdv_string const str, mdv_sockaddr *addr)
 }
 
 
-mdv_errno mdv_sockaddr2str(mdv_sockaddr const *addr, mdv_string *str)
+mdv_errno mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr, mdv_string *str)
 {
     if (mdv_str_empty(*str) || !addr)
     {
@@ -231,7 +254,8 @@ mdv_descriptor mdv_socket_accept(mdv_descriptor sock, mdv_sockaddr *peer)
 
     if (peer_sock == -1)
     {
-        MDV_LOGE("Socket %d accepting was failed", s);
+        mdv_errno err = mdv_error();
+        MDV_LOGE("Socket %d accepting was failed with error '%s' (%d)", s, mdv_strerror(err), err);
         return MDV_INVALID_DESCRIPTOR;
     }
 
@@ -247,7 +271,7 @@ mdv_errno mdv_socket_bind(mdv_descriptor sock, mdv_sockaddr const *addr)
 
     const struct sockaddr *saddr = (const struct sockaddr *)addr;
 
-    int err = bind(s, saddr, sizeof(mdv_sockaddr));
+    int err = bind(s, saddr, sizeof(struct sockaddr));
 
     if (err == -1)
     {

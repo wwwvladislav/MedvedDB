@@ -58,6 +58,19 @@ mdv_errno mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_th
 
 
 /**
+ * @brief Modify existing task in thread pool
+ *
+ * @param threadpool [in] thread pool
+ * @param task [in]       New task
+ * @param events [in]     Epoll events. It should be the bitwise OR combination of the mdv_epoll_events.
+ *
+ * @return MDV_OK on success
+ * @return nonzero value on error
+ */
+mdv_errno mdv_threadpool_mod(mdv_threadpool *threadpool, uint32_t events, mdv_threadpool_task const *task);
+
+
+/**
  * @brief Remove task associated with file descriptor
  *
  * @param threadpool [in] thread pool

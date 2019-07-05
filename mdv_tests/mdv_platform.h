@@ -10,6 +10,7 @@
 #include "mdv_platform/mdv_eventfd.h"
 #include "mdv_platform/mdv_queuefd.h"
 #include "mdv_platform/mdv_threadpool.h"
+#include "mdv_platform/mdv_chaman.h"
 
 
 MU_TEST_SUITE(platform)
@@ -25,4 +26,5 @@ MU_TEST_SUITE(platform)
     MU_RUN_TEST(platform_eventfd);
     MU_RUN_TEST(platform_queuefd);
     MU_RUN_TEST(platform_threadpool);
+    MU_RUN_TEST(platform_chaman);
 }

@@ -12,8 +12,10 @@ include_directories(
     ${LIBS_DIR}/uuid4
 )
 
+find_package(Threads REQUIRED)
+
 add_library(mdv_platform STATIC ${SOURCES})
 
 add_dependencies(mdv_platform zf_log rpmalloc binn uuid4)
 
-target_link_libraries(mdv_platform zf_log rpmalloc binn m uuid4)
+target_link_libraries(mdv_platform zf_log rpmalloc binn m uuid4 Threads::Threads)

@@ -8,8 +8,6 @@
 #include <mdv_binn.h>
 #include <mdv_threads.h>
 #include <stdbool.h>
-#include <nng/nng.h>
-#include <nng/protocol/pair0/pair.h>
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -66,8 +64,8 @@ typedef struct
 struct mdv_client
 {
     atomic_uint_fast32_t    req_id;
-    nng_socket              sock;
-    nng_dialer              dialer;
+//    nng_socket              sock;
+//    nng_dialer              dialer;
     mdv_client_handler      handlers[mdv_msg_count];
     int                     err;
     char                    message[1024];
@@ -98,6 +96,7 @@ static uint32_t mdv_client_new_msg_id(mdv_client *client)
 
 static bool mdv_client_send(mdv_client *client, uint32_t msgid, binn *obj, uint32_t *reqid)
 {
+/*
     nng_msg * msg;
     int err = nng_msg_alloc(&msg, 0);
     if (err)
@@ -124,13 +123,14 @@ static bool mdv_client_send(mdv_client *client, uint32_t msgid, binn *obj, uint3
     }
 
     *reqid = hdr.req_id;
-
+*/
     return true;
 }
 
 
 static bool mdv_client_read(mdv_client *client)
 {
+/*
     nng_msg *nmsg = 0;
 
     int err = nng_recvmsg(client->sock, &nmsg, 0);
@@ -174,6 +174,7 @@ static bool mdv_client_read(mdv_client *client)
     }
 
     return ret;
+*/
 }
 
 
@@ -239,7 +240,7 @@ mdv_client * mdv_client_create(char const *addr)
         mdv_msg_table_info_id,
         (mdv_client_handler) { client, mdv_client_table_info_handler }
     );
-
+/*
     int err = nng_pair0_open_raw(&client->sock);
     if (err)
     {
@@ -255,7 +256,7 @@ mdv_client * mdv_client_create(char const *addr)
         mdv_client_disconnect(client);
         return 0;
     }
-
+*/
     return client;
 }
 
@@ -294,8 +295,8 @@ void mdv_client_disconnect(mdv_client *client)
 {
     if (!client)
         return;
-    nng_dialer_close(client->dialer);
-    nng_close(client->sock);
+//    nng_dialer_close(client->dialer);
+//    nng_close(client->sock);
     mdv_free(client);
     allocator_finalize();
 }

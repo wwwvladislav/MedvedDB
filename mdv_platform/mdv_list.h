@@ -1,13 +1,13 @@
 /**
  * @file
- * @brief List.
+ * @brief Double linked list.
  */
 
 /*
     List structure:
-        head -> entry1-> ... ->entryN-> NULL
+        head <-> entry1<-> ... <->entryN-> NULL
 
-    Each list entry contains pointer to the next entry and data. Last entry points to null.
+    Each list entry contains pointer to the next and previous entry and data. Last entry points to null.
  */
 
 #pragma once
@@ -18,7 +18,8 @@
 typedef struct mdv_list_entry_base
 {
     struct mdv_list_entry_base *next;       ///< Pointer to the next list entry
-    char item[1];                           ///< List item
+    struct mdv_list_entry_base *prev;       ///< Pointer to the previous list entry
+    char data[1];                           ///< List item data
 } mdv_list_entry_base;
 
 
@@ -31,7 +32,8 @@ typedef struct mdv_list_entry_base
     struct                                  \
     {                                       \
         mdv_list_entry_base *next;          \
-        type item;                          \
+        mdv_list_entry_base *prev;          \
+        type data;                          \
     }
 
 
@@ -47,7 +49,8 @@ typedef struct mdv_list
 mdv_list_entry_base * _mdv_list_push_back(mdv_list *l, void const *val, size_t size);
 void                  _mdv_list_emplace_back(mdv_list *l, mdv_list_entry_base *entry);
 void                  _mdv_list_clear(mdv_list *l);
-void                  _mdv_list_remove_next(mdv_list *l, mdv_list_entry_base *entry);
+void                  _mdv_list_remove(mdv_list *l, mdv_list_entry_base *entry);
+void                  _mdv_list_pop_back(mdv_list *l);
 /// @endcond
 
 
@@ -117,15 +120,24 @@ void                  _mdv_list_remove_next(mdv_list *l, mdv_list_entry_base *en
  * @param type [in]     list item type
  * @param entry [out]   list entry
  */
-#define mdv_list_foreach(l, type, entry)                    \
+#define mdv_list_foreach(l, type, entry)    \
     for(mdv_list_entry(type) *entry = (void*)(l).next; entry; entry = (void*)entry->next)
 
 
 /**
- * @brief Remove next entry from the list
+ * @brief Remove entry from the list
  *
  * @param l [in]        list
  * @param entry [in]    list entry
  */
-#define mdv_list_remove_next(l, entry)                      \
-    _mdv_list_remove_next(&(l), (mdv_list_entry_base *)(entry))
+#define mdv_list_remove(l, entry)           \
+    _mdv_list_remove(&(l), (mdv_list_entry_base *)(entry))
+
+
+/**
+ * @brief Remove last entry from the list
+ *
+ * @param l [in]        list
+ */
+#define mdv_list_pop_back(l)                \
+    _mdv_list_pop_back(&(l))

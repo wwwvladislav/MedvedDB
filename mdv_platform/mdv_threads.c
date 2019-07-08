@@ -82,7 +82,7 @@ mdv_errno mdv_thread_create(mdv_thread *thread, mdv_thread_fn fn, void *arg)
 
     *(pthread_t*)thread = pthread;
 
-    MDV_LOGI("New thread started: %p", thread);
+    MDV_LOGI("New thread started: %p", *thread);
 
     return MDV_OK;
 }

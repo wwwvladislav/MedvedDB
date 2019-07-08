@@ -6,14 +6,39 @@
 
 MU_TEST(platform_chaman)
 {
-    mdv_chaman *chaman = mdv_chaman_create(2);
+    mdv_chaman_config server_config =
+    {
+        .tp_size = 2,
+        .uuid = mdv_uuid_generate(),
+        .peer =
+        {
+            .reconnect_timeout = 5000,
+            .keepalive_timeout = 5000
+        }
+    };
 
-    mu_check(chaman);
+    mdv_chaman_config client_config =
+    {
+        .tp_size = 2,
+        .uuid = mdv_uuid_generate(),
+        .peer =
+        {
+            .reconnect_timeout = 5000,
+            .keepalive_timeout = 5000
+        }
+    };
 
-    mdv_errno err = mdv_chaman_listen(chaman, mdv_str_static("tcp://localhost:55555"));
+    mdv_chaman *server = mdv_chaman_create(&server_config);
+    mdv_errno err = mdv_chaman_listen(server, mdv_str_static("tcp://localhost:55555"));
+    mu_check(server && err == MDV_OK);
 
-    mdv_sleep(5 * 60 * 1000);
+    mdv_chaman *client = mdv_chaman_create(&client_config);
+    mu_check(client);
 
-    mdv_chaman_free(chaman);
+    err = mdv_chaman_connect(client, mdv_str_static("tcp://localhost:55555"));
+    mu_check(err == MDV_OK);
+
+    mdv_chaman_free(client);
+    mdv_chaman_free(server);
 }
 

@@ -6,7 +6,7 @@
 
 mdv_list_entry_base * _mdv_list_push_back(mdv_list *l, void const *val, size_t size)
 {
-    mdv_list_entry_base *entry = (mdv_list_entry_base *)mdv_alloc(offsetof(mdv_list_entry_base, item) + size);
+    mdv_list_entry_base *entry = (mdv_list_entry_base *)mdv_alloc(offsetof(mdv_list_entry_base, data) + size);
 
     if (!entry)
     {
@@ -14,8 +14,7 @@ mdv_list_entry_base * _mdv_list_push_back(mdv_list *l, void const *val, size_t s
         return 0;
     }
 
-    memcpy(entry->item, val, size);
-    entry->next = 0;
+    memcpy(entry->data, val, size);
 
     _mdv_list_emplace_back(l, entry);
 
@@ -35,31 +34,22 @@ void _mdv_list_clear(mdv_list *l)
     l->last = 0;
 }
 
-void _mdv_list_remove_next(mdv_list *l, mdv_list_entry_base *entry)
+
+void _mdv_list_remove(mdv_list *l, mdv_list_entry_base *entry)
 {
-    if (!entry)
-    {
-        // Remove first entry
-        mdv_list_entry_base *entry4remove = l->next;
-        if (entry4remove)
-        {
-            l->next = entry4remove->next;
-            mdv_free(entry4remove);
-        }
-        if (!l->next)
-            l->last = 0;
-    }
+    mdv_list_entry_base *entry4remove = entry;
+
+    if (entry->prev)
+        entry->prev->next = entry->next;
     else
-    {
-        mdv_list_entry_base *entry4remove = entry->next;
-        if (entry4remove)
-        {
-            entry->next = entry4remove->next;
-            mdv_free(entry4remove);
-        }
-        if (!entry->next)
-            l->last = entry;
-    }
+        l->next = entry->next;
+
+    if (entry->next)
+        entry->next->prev = entry->prev;
+    else
+        l->last = entry->prev;
+
+    mdv_free(entry4remove);
 }
 
 
@@ -67,12 +57,22 @@ void _mdv_list_emplace_back(mdv_list *l, mdv_list_entry_base *entry)
 {
     if (!l->next)
     {
+        entry->prev = 0;
+        entry->next = 0;
         l->next = entry;
         l->last = entry;
     }
     else
     {
+        entry->prev = l->last;
+        entry->next = 0;
         l->last->next = entry;
         l->last = entry;
     }
+}
+
+
+void _mdv_list_pop_back(mdv_list *l)
+{
+    _mdv_list_remove(l, l->last);
 }

@@ -33,13 +33,24 @@ void mdv_netlib_uninit()
 }
 
 
-static mdv_socket_type mdv_proto2socket_type(char const *str)
+static mdv_socket_type mdv_str2socket_type(char const *str)
 {
     if(strncasecmp("tcp", str, 3) == 0)
         return MDV_SOCK_STREAM;
     if(strncasecmp("udp", str, 3) == 0)
         return MDV_SOCK_DGRAM;
     return MDV_SOCK_UNKNOWN;
+}
+
+
+static char const * mdv_socket_type2str(mdv_socket_type t)
+{
+    switch(t)
+    {
+        case MDV_SOCK_STREAM:   return "tcp";
+        case MDV_SOCK_DGRAM:    return "udp";
+    }
+    return "";
 }
 
 
@@ -73,7 +84,7 @@ mdv_errno mdv_str2sockaddr(mdv_string const str, mdv_socket_type *protocol, mdv_
     }
 
     if (protocol && proto)
-        *protocol = mdv_proto2socket_type(proto);
+        *protocol = mdv_str2socket_type(proto);
 
     char *port = strrchr(host, ':');
     if (port) *(port++) = 0;
@@ -126,7 +137,16 @@ mdv_errno mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr, m
         return MDV_INVALID_ARG;
     }
 
-    int err = getnameinfo((struct sockaddr const *)addr, sizeof *addr, str->ptr, str->size, 0, 0, NI_NUMERICHOST | NI_NUMERICSERV);
+    char const *proto = mdv_socket_type2str(protocol);
+
+    unsigned proto_len = strlen(proto);
+
+    if (proto_len && proto_len + 3 < str->size)
+        snprintf(str->ptr, str->size, "%s://", proto);
+
+    proto_len += 3;
+
+    int err = getnameinfo((struct sockaddr const *)addr, sizeof *addr, str->ptr + proto_len, str->size - proto_len, 0, 0, NI_NUMERICHOST | NI_NUMERICSERV);
 
     if (err)
         return err;

@@ -221,7 +221,7 @@ mdv_errno mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_th
 
         if (entry)
         {
-            mdv_epoll_event evt = { events, entry->item };
+            mdv_epoll_event evt = { events, entry->data };
 
             err = mdv_epoll_add(threadpool->epollfd, task->fd, evt);
 
@@ -256,7 +256,7 @@ mdv_errno mdv_threadpool_mod(mdv_threadpool *threadpool, uint32_t events, mdv_th
 
         if (entry)
         {
-            mdv_epoll_event evt = { events, entry->item };
+            mdv_epoll_event evt = { events, entry->data };
 
             err = mdv_epoll_mod(threadpool->epollfd, task->fd, evt);
 

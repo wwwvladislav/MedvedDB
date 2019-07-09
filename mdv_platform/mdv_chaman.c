@@ -25,7 +25,11 @@ struct mdv_chaman
 };
 
 
-typedef mdv_threadpool_task(mdv_chaman*) mdv_listener_task;
+typedef struct mdv_listener_context
+{
+    mdv_chaman *chaman;
+} mdv_listener_context;
+
 
 /// @endcond
 
@@ -193,16 +197,16 @@ static void mdv_chaman_new_peer(mdv_chaman *chaman, mdv_descriptor sock, mdv_soc
 }
 
 
-static void mdv_chaman_accept_handler(mdv_descriptor fd, uint32_t events, void *context)
+static void mdv_chaman_accept_handler(mdv_descriptor fd, uint32_t events, void *data)
 {
-    mdv_chaman *chaman = *(mdv_chaman **)context;
+    mdv_listener_context *context = (mdv_listener_context*)data;
 
     mdv_sockaddr addr;
 
     mdv_descriptor sock = mdv_socket_accept(fd, &addr);
 
     if (sock != MDV_INVALID_DESCRIPTOR)
-        mdv_chaman_new_peer(chaman, sock, &addr);
+        mdv_chaman_new_peer(context->chaman, sock, &addr);
 }
 
 
@@ -261,12 +265,15 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr)
     }
 
 
-    mdv_listener_task task =
+    mdv_threadpool_task(mdv_listener_context) task =
     {
         .fd = sd,
         .fn = mdv_chaman_accept_handler,
         .context_size = sizeof(mdv_chaman*),
-        .context = chaman
+        .context =
+        {
+            .chaman = chaman
+        }
     };
 
     err = mdv_threadpool_add(chaman->threadpool, MDV_EPOLLEXCLUSIVE | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)&task);

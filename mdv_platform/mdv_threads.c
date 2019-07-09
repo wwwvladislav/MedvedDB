@@ -50,11 +50,28 @@ static void *mdv_thread_function(void *arg)
 }
 
 
-mdv_errno mdv_thread_create(mdv_thread *thread, mdv_thread_fn fn, void *arg)
+mdv_errno mdv_thread_create(mdv_thread *thread, mdv_thread_attrs const *attrs, mdv_thread_fn fn, void *arg)
 {
     pthread_t pthread;
 
     *thread = 0;
+
+    pthread_attr_t attr;
+
+    if (pthread_attr_init(&attr))
+    {
+        mdv_errno err = mdv_error();
+        MDV_LOGE("Thread attributes initialization was failed with error '%s' (%d)", mdv_strerror(err), err);
+        return err;
+    }
+
+    if (pthread_attr_setstacksize(&attr, attrs->stack_size))
+    {
+        mdv_errno err = mdv_error();
+        MDV_LOGE("Thread stack size changing failed with error '%s' (%d)", mdv_strerror(err), err);
+        pthread_attr_destroy(&attr);
+        return err;
+    }
 
     mdv_thread_arg thread_arg =
     {
@@ -63,14 +80,15 @@ mdv_errno mdv_thread_create(mdv_thread *thread, mdv_thread_fn fn, void *arg)
         .arg = arg
     };
 
-    int err = pthread_create(&pthread, 0, mdv_thread_function, &thread_arg);
-
-    if (err)
+    if (pthread_create(&pthread, &attr, mdv_thread_function, &thread_arg))
     {
-        err = mdv_error();
+        mdv_errno err = mdv_error();
         MDV_LOGE("Thread starting was failed with error %d", err);
+        pthread_attr_destroy(&attr);
         return err;
     }
+
+    pthread_attr_destroy(&attr);
 
     for(int i = 0;
         !atomic_load_explicit(&thread_arg.is_started, memory_order_acquire) && i < 500;

@@ -11,26 +11,36 @@
 typedef mdv_list mdv_hashmap_bucket;
 
 
+/// Hash function type
+typedef size_t (*mdv_hash_fn)(void const *);
+
+
+/// Keys comparison function type
+typedef int (*mdv_key_cmp_fn)(void const *, void const *);
+
+
 /// Hash map
 typedef struct mdv_hashmap
 {
     size_t               capacity;                          ///< Hash map capacity
     size_t               size;                              ///< Items number stored in hash map
     size_t               key_offset;                        ///< key offset inside hash map value
-    size_t               entry_size;                        ///< entry size (in bytes)
+    size_t               key_size;                          ///< key size
     mdv_hashmap_bucket  *buckets;                           ///< pointer to hash table
-    size_t    (*hash_fn)(void const *);                     ///< Hash function
-    int       (*key_cmp_fn)(void const *, void const *);    ///< Keys comparison function (used if hash collision happens)
+    mdv_hash_fn          hash_fn;                           ///< Hash function
+    mdv_key_cmp_fn       key_cmp_fn;                        ///< Keys comparison function (used if hash collision happens)
 } mdv_hashmap;
 
 
 /// @cond Doxygen_Suppress
+
+
 int                   _mdv_hashmap_init(mdv_hashmap *hm,
                                         size_t capacity,
                                         size_t key_offset,
-                                        size_t entry_size,
-                                        size_t (*hash_fn)(void const *),
-                                        int (*key_cmp_fn)(void const *, void const *));
+                                        size_t key_size,
+                                        mdv_hash_fn hash_fn,
+                                        mdv_key_cmp_fn key_cmp_fn);
 void                  _mdv_hashmap_free(mdv_hashmap *hm);
 void                  _mdv_hashmap_clear(mdv_hashmap *hm);
 int                   _mdv_hashmap_resize(mdv_hashmap *hm, size_t capacity);
@@ -59,9 +69,9 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
     _mdv_hashmap_init(&hm,                                                      \
                       capacity,                                                 \
                       offsetof(type, key_field),                                \
-                      sizeof(type),                                             \
-                      (size_t (*)(void const *))hash_fn,                        \
-                      (int (*)(void const *, void const *))key_cmp_fn)
+                      sizeof(((type*)0)->key_field),                            \
+                      (mdv_hash_fn)hash_fn,                                     \
+                      (mdv_key_cmp_fn)key_cmp_fn)
 
 
 /**
@@ -142,3 +152,15 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  */
 #define mdv_hashmap_erase(hm, key)                              \
     _mdv_hashmap_erase(&hm, &key)
+
+
+/**
+ * @brief hash map entries iterator
+ *
+ * @param hm [in]           hash map allocated by mdv_hashmap()
+ * @param type [in]         hash map type
+ * @param entry [out]       hash map entry
+ */
+#define mdv_hashmap_foreach(hm, type, entry)                    \
+    for(size_t i = 0; i < hm.capacity; ++i)                     \
+        mdv_list_foreach(hm.buckets[i], type, entry)

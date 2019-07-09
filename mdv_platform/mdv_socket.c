@@ -3,11 +3,15 @@
 #include "mdv_limits.h"
 #include "mdv_errno.h"
 #include <string.h>
-#include <netdb.h>
 #include <stdio.h>
-#include <sys/types.h>
 #include <unistd.h>
-#include <fcntl.h>
+
+#ifdef MDV_PLATFORM_LINUX
+    #include <linux/tcp.h>
+    #include <sys/types.h>
+    #include <fcntl.h>
+    #include <netdb.h>
+#endif
 
 
 static volatile int mdv_netlib_init_count = 0;
@@ -241,6 +245,87 @@ mdv_errno mdv_socket_nonblock(mdv_descriptor sock)
     if (err == -1)
     {
         MDV_LOGE("Switching socket %d to nonblocking mode was failed", s);
+        return mdv_error();
+    }
+
+    return MDV_OK;
+}
+
+
+
+mdv_errno mdv_socket_tcp_keepalive(mdv_descriptor sock, int keepidle, int keepcnt, int keepintvl)
+{
+    int optval = 1;
+
+    int s = *(int*)&sock;
+
+    if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof optval) == -1 ||
+        setsockopt(s, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof keepcnt) == -1 ||
+        setsockopt(s, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof keepintvl) == -1 ||
+        setsockopt(s, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof keepidle) == -1)
+    {
+        MDV_LOGE("Unable to enable KEEPALIVE option for TCP socket");
+        return mdv_error();
+    }
+
+    return MDV_OK;
+}
+
+
+mdv_errno mdv_socket_tcp_defer_accept(mdv_descriptor sock)
+{
+    int optval = 1;
+
+    int s = *(int*)&sock;
+
+    if (setsockopt(s, IPPROTO_TCP, TCP_DEFER_ACCEPT, &optval, sizeof optval) == -1)
+    {
+        MDV_LOGE("Unable to enable TCP_DEFER_ACCEPT option for TCP socket");
+        return mdv_error();
+    }
+
+    return MDV_OK;
+}
+
+
+mdv_errno mdv_socket_tcp_cork(mdv_descriptor sock)
+{
+    int optval = 1;
+
+    int s = *(int*)&sock;
+
+    if (setsockopt(s, IPPROTO_TCP, TCP_CORK, &optval, sizeof optval) == -1)
+    {
+        MDV_LOGE("Unable to enable TCP_CORK option for TCP socket");
+        return mdv_error();
+    }
+
+    return MDV_OK;
+}
+
+
+mdv_errno mdv_socket_min_recv_size(mdv_descriptor sock, int size)
+{
+    int s = *(int*)&sock;
+
+    if (setsockopt(s, SOL_SOCKET, SO_RCVLOWAT, &size, sizeof size) == -1)
+    {
+        MDV_LOGE("Unable to enable SO_RCVLOWAT option for TCP socket");
+        return mdv_error();
+    }
+
+    return MDV_OK;
+
+}
+
+
+mdv_errno mdv_socket_min_send_size(mdv_descriptor sock, int size)
+{
+    int s = *(int*)&sock;
+
+    if (setsockopt(s, SOL_SOCKET, SO_SNDLOWAT, &size, sizeof size) == -1)
+    {
+        MDV_LOGE("Unable to enable SO_SNDLOWAT option for TCP socket");
         return mdv_error();
     }
 

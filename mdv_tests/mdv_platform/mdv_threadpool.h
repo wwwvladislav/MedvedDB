@@ -29,32 +29,41 @@ static void test_fd_handler(mdv_descriptor fd, uint32_t events, void *data)
 
 MU_TEST(platform_threadpool)
 {
-    mdv_threadpool *tp = mdv_threadpool_create(4);
+    mdv_threadpool_config config =
+    {
+        .size = 4,
+        .thread_attrs =
+        {
+            .stack_size = MDV_THREAD_STACK_SIZE
+        }
+    };
+
+
+    mdv_threadpool *tp = mdv_threadpool_create(&config);
     mu_check(tp);
 
-    int data[] = { 1, 2, 3 };
     mdv_descriptor fd[] = { mdv_eventfd(), mdv_eventfd(), mdv_eventfd() };
 
     mu_check(fd[0] != MDV_INVALID_DESCRIPTOR);
     mu_check(fd[1] != MDV_INVALID_DESCRIPTOR);
     mu_check(fd[2] != MDV_INVALID_DESCRIPTOR);
 
-    mdv_threadpool_task tasks[] =
+    mdv_threadpool_task_base tasks[] =
     {
         {
             .fd = fd[0],
-            .data = data + 0,
-            .fn = test_fd_handler
+            .fn = test_fd_handler,
+            .context_size = 1
         },
         {
             .fd = fd[1],
-            .data = data + 1,
-            .fn = test_fd_handler
+            .fn = test_fd_handler,
+            .context_size = 1
         },
         {
             .fd = fd[2],
-            .data = data + 2,
-            .fn = test_fd_handler
+            .fn = test_fd_handler,
+            .context_size = 1
         }
     };
 

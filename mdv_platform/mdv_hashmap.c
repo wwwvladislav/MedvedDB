@@ -11,14 +11,14 @@
 int _mdv_hashmap_init(mdv_hashmap *hm,
                       size_t capacity,
                       size_t key_offset,
-                      size_t entry_size,
-                      size_t (*hash_fn)(void const *),
-                      int (*key_cmp_fn)(void const *, void const *))
+                      size_t key_size,
+                      mdv_hash_fn hash_fn,
+                      mdv_key_cmp_fn key_cmp_fn)
 {
     hm->capacity = capacity;
     hm->size = 0;
     hm->key_offset = key_offset;
-    hm->entry_size = entry_size;
+    hm->key_size = key_size;
     hm->hash_fn = hash_fn;
     hm->key_cmp_fn = key_cmp_fn;
     hm->buckets = mdv_alloc(capacity * sizeof(mdv_hashmap_bucket));
@@ -101,9 +101,9 @@ int _mdv_hashmap_resize(mdv_hashmap *hm, size_t capacity)
 
 mdv_list_entry_base * _mdv_hashmap_insert(mdv_hashmap *hm, void const *item, size_t size)
 {
-    if (size != hm->entry_size)
+    if (size < hm->key_offset + hm->key_size)
     {
-        MDV_LOGE("Hash map entry is too small: %zu)", size);
+        MDV_LOGE("New item is too small: %zu", size);
         return 0;
     }
 
@@ -123,9 +123,10 @@ mdv_list_entry_base * _mdv_hashmap_insert(mdv_hashmap *hm, void const *item, siz
     {
         if(hm->key_cmp_fn(key, entry->data + hm->key_offset) == 0)
         {
-            // Replace previous value
-            memcpy(entry->data, item, size);
-            return entry;
+            // Remove old value
+            mdv_list_remove(*bucket, entry);
+            hm->size--;
+            break;
         }
     }
 

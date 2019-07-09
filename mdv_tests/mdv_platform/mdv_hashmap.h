@@ -33,6 +33,17 @@ MU_TEST(platform_hashmap)
     mu_check(mdv_hashmap_insert(map, entry)); entry.key++; entry.val++;
     mu_check(mdv_hashmap_insert(map, entry)); entry.key++; entry.val++;
     mu_check(mdv_hashmap_insert(map, entry)); entry.key++; entry.val++;
+
+    int s = 0;
+
+    mdv_hashmap_foreach(map, map_entry, entry)
+    {
+        mu_check(entry->data.key == s && entry->data.val == s);
+        ++s;
+    }
+
+    mu_check(s == 5);
+
     mu_check(mdv_hashmap_insert(map, entry)); entry.val = 42;
     mu_check(mdv_hashmap_insert(map, entry));
 

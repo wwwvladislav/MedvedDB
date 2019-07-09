@@ -23,13 +23,13 @@ enum
 /// Thread pool descriptor
 struct mdv_threadpool
 {
-    size_t          size;           ///< Number of threasds in thread pool
-    mdv_descriptor  stopfd;         ///< eventfd for thread pool stop notification
-    mdv_descriptor  epollfd;        ///< epoll file descriptor
-    mdv_thread     *threads;        ///< threads array
-    mdv_mutex      *tasks_mtx;      ///< mutex for tasks protection
-    mdv_hashmap     tasks;          ///< file descriptors and handlers
-    uint8_t         data_space[1];  ///< data space
+    mdv_threadpool_config   config;         ///< Thread pool configuration
+    mdv_descriptor          stopfd;         ///< eventfd for thread pool stop notification
+    mdv_descriptor          epollfd;        ///< epoll file descriptor
+    mdv_thread             *threads;        ///< threads array
+    mdv_mutex              *tasks_mtx;      ///< mutex for tasks protection
+    mdv_hashmap             tasks;          ///< file descriptors and handlers
+    uint8_t                 data_space[1];  ///< data space
 };
 
 
@@ -51,7 +51,7 @@ static void * mdv_threadpool_worker(void *arg)
 
         for(uint32_t i = 0; i < size; ++i)
         {
-            mdv_threadpool_task *task = (mdv_threadpool_task *)events[i].data;
+            mdv_threadpool_task_base *task = (mdv_threadpool_task_base *)events[i].data;
 
             if(task->fd == threadpool->stopfd)
             {
@@ -60,7 +60,7 @@ static void * mdv_threadpool_worker(void *arg)
             }
 
             if (task->fn)
-                task->fn(task->fd, events[i].events, task->data);
+                task->fn(task->fd, events[i].events, task->context);
             else
                 MDV_LOGE("Thread pool task without handler was skipped");
         }
@@ -72,9 +72,11 @@ static void * mdv_threadpool_worker(void *arg)
 
 static mdv_errno mdv_threadpool_add_default_tasks(mdv_threadpool *threadpool)
 {
-    mdv_threadpool_task task =
+    mdv_threadpool_task_base task =
     {
-        .fd = threadpool->stopfd
+        .fd = threadpool->stopfd,
+        .fn = 0,
+        .context_size = 0
     };
 
     mdv_errno err = mdv_threadpool_add(threadpool, MDV_EPOLLIN | MDV_EPOLLERR, &task);
@@ -83,12 +85,12 @@ static mdv_errno mdv_threadpool_add_default_tasks(mdv_threadpool *threadpool)
 }
 
 
-mdv_threadpool * mdv_threadpool_create(size_t size)
+mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
 {
     mdv_rollbacker(4) rollbacker;
     mdv_rollbacker_clear(rollbacker);
 
-    size_t const mem_size = offsetof(mdv_threadpool, data_space) + size * sizeof(mdv_thread);
+    size_t const mem_size = offsetof(mdv_threadpool, data_space) + config->size * sizeof(mdv_thread);
 
     mdv_threadpool *tp = (mdv_threadpool *)mdv_alloc(mem_size);
 
@@ -98,12 +100,11 @@ mdv_threadpool * mdv_threadpool_create(size_t size)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, tp);
-
     memset(tp->data_space, 0, mem_size - offsetof(mdv_threadpool, data_space));
 
+    tp->config = *config;
 
-    tp->size = size;
+    mdv_rollbacker_push(rollbacker, mdv_free, tp);
 
 
     tp->epollfd = mdv_epoll_create();
@@ -142,7 +143,12 @@ mdv_threadpool * mdv_threadpool_create(size_t size)
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, tp->tasks_mtx);
 
 
-    if (!mdv_hashmap_init(tp->tasks, mdv_threadpool_task, fd, 256, mdv_descriptor_hash, mdv_descriptor_cmp))
+    if (!_mdv_hashmap_init(&tp->tasks,
+                           256,
+                           offsetof(mdv_threadpool_task_base, fd),
+                           sizeof(mdv_descriptor),
+                           (mdv_hash_fn)mdv_descriptor_hash,
+                           (mdv_key_cmp_fn)mdv_descriptor_cmp))
     {
         MDV_LOGE("threadpool_create failed");
         mdv_rollback(rollbacker);
@@ -160,9 +166,9 @@ mdv_threadpool * mdv_threadpool_create(size_t size)
 
     tp->threads = (mdv_thread*)tp->data_space;
 
-    for(size_t i = 0; i < size; ++i)
+    for(size_t i = 0; i < config->size; ++i)
     {
-        mdv_errno err = mdv_thread_create(tp->threads + i, mdv_threadpool_worker, tp);
+        mdv_errno err = mdv_thread_create(tp->threads + i, &config->thread_attrs, mdv_threadpool_worker, tp);
         if (err != MDV_OK)
         {
             MDV_LOGE("threadpool_create failed");
@@ -185,7 +191,7 @@ static void mdv_threadpool_stop(mdv_threadpool *tp)
         len = sizeof data;
     }
 
-    for(size_t i = 0; i < tp->size; ++i)
+    for(size_t i = 0; i < tp->config.size; ++i)
     {
         if (tp->threads[i])
         {
@@ -211,13 +217,16 @@ void mdv_threadpool_free(mdv_threadpool *tp)
 }
 
 
-mdv_errno mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_threadpool_task const *task)
+mdv_errno mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_threadpool_task_base const *task)
 {
     mdv_errno err = mdv_mutex_lock(threadpool->tasks_mtx);
 
     if(err == MDV_OK)
     {
-        mdv_list_entry_base *entry = mdv_hashmap_insert(threadpool->tasks, *task);
+        size_t const size = offsetof(mdv_threadpool_task_base, context)
+                            + task->context_size;
+
+        mdv_list_entry_base *entry = _mdv_hashmap_insert(&threadpool->tasks, task, size);
 
         if (entry)
         {
@@ -246,19 +255,21 @@ mdv_errno mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_th
 }
 
 
-mdv_errno mdv_threadpool_mod(mdv_threadpool *threadpool, uint32_t events, mdv_threadpool_task const *task)
+mdv_errno mdv_threadpool_mod(mdv_threadpool *threadpool, uint32_t events, mdv_descriptor fd)
 {
     mdv_errno err = mdv_mutex_lock(threadpool->tasks_mtx);
 
     if(err == MDV_OK)
     {
-        mdv_list_entry_base *entry = mdv_hashmap_insert(threadpool->tasks, *task);
+        mdv_threadpool_task_base *task = mdv_hashmap_find(threadpool->tasks, fd);
 
-        if (entry)
+        if (task)
         {
-            mdv_epoll_event evt = { events, entry->data };
+            task->fn = task->fd;
 
-            err = mdv_epoll_mod(threadpool->epollfd, task->fd, evt);
+            mdv_epoll_event evt = { events, task };
+
+            err = mdv_epoll_mod(threadpool->epollfd, fd, evt);
 
             if (err != MDV_OK)
             {

@@ -22,17 +22,32 @@ void mdv_sleep(size_t msec);
 /// Thread entry point.
 typedef void *(*mdv_thread_fn) (void *);
 
+
+enum
+{
+    MDV_THREAD_STACK_SIZE = 1 * 1024 * 1024     ///< default stack size for thread
+};
+
+
+/// Attributes for a new thread
+typedef struct mdv_thread_attrs
+{
+    size_t stack_size;      ///< stack size
+} mdv_thread_attrs;
+
+
 /**
  * @brief Start a new thread in the calling process.
  *
  * @param thread [out]  pointer for a new thread ID
+ * @param attrs [in]    attributes for the new thread
  * @param fn [in]       thread function
  * @param arg [in]      argument which is passed to thread function
  *
  * @return MDV_OK if new thread is successfully started. The thread pointer should contain new thread descriptor.
  * @return non zero value if error has occurred
  */
-mdv_errno mdv_thread_create(mdv_thread *thread, mdv_thread_fn fn, void *arg);
+mdv_errno mdv_thread_create(mdv_thread *thread, mdv_thread_attrs const *attrs, mdv_thread_fn fn, void *arg);
 
 
 /**

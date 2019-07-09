@@ -7,35 +7,51 @@
 #include <stddef.h>
 #include "mdv_errno.h"
 #include "mdv_string.h"
-#include "mdv_uuid.h"
+#include "mdv_threadpool.h"
+#include "mdv_def.h"
 
 
 /// Channels manager descriptor
 typedef struct mdv_chaman mdv_chaman;
 
 
-/// Unique peer identifier
-typedef mdv_uuid mdv_peer_id;
+/// channel initialization handler type
+typedef void (*mdv_channel_init_fn)(void *context, mdv_descriptor fd);
 
 
-/// Channels manager configuration
+/// data receiving handler type
+typedef void (*mdv_channel_recv_fn)(void *context, mdv_descriptor fd);
+
+/// channel closing handler type
+typedef void (*mdv_channel_close_fn)(void *context);
+
+
+/// Channels manager configuration. All options are mandatory.
 typedef struct
 {
-    size_t          tp_size;            ///< threads count in thread pool
-    mdv_peer_id     uuid;               ///< current peer identifier
+    struct
+    {
+        int         reconnect_timeout;  ///< reconnection timeout to the peer (in seconds)
+        int         keepidle;           ///< Start keeplives after this period (in seconds)
+        int         keepcnt;            ///< Number of keepalives before death
+        int         keepintvl;          ///< Interval between keepalives (in seconds)
+    } peer;                             ///< peer configuration
+
+    mdv_threadpool_config   threadpool; ///< thread pool options
 
     struct
     {
-        size_t      reconnect_timeout;  ///< reconnection timeout to the peer (in milliseconds)
-        size_t      keepalive_timeout;  ///< timeout for keepalive packages send (in milliseconds)
-    } peer;                             ///< peer configuration
+        mdv_channel_init_fn  init;      ///< channel initialization handler
+        mdv_channel_recv_fn  recv;      ///< data receiving handler
+        mdv_channel_close_fn close;     ///< channel closing handler
+    } channel;
 } mdv_chaman_config;
 
 
 /**
  * @brief Create new channels manager
  *
- * @param tp_size [in] threads count in thread pool
+ * @param config [in] channels manager configuration
  *
  * @return On success, return pointer to a new created channels manager
  * @return On error, return NULL

@@ -12,14 +12,14 @@ static atomic_int_fast32_t test_fd_data_sum = 0;
 static atomic_int_fast32_t test_fd_events_num = 0;
 
 
-static void test_fd_handler(mdv_descriptor fd, uint32_t events, void *data)
+static void test_fd_handler(uint32_t events, mdv_threadpool_task_base *task)
 {
     (void)events;
-    (void)data;
+    (void)task;
 
     uint64_t counter = 0;
     size_t len = sizeof counter;
-    mdv_errno err = mdv_read(fd, &counter, &len);
+    mdv_errno err = mdv_read(task->fd, &counter, &len);
     (void)err;
 
     atomic_fetch_add_explicit(&test_fd_data_sum, counter, memory_order_release);
@@ -89,6 +89,7 @@ MU_TEST(platform_threadpool)
     mdv_eventfd_close(fd[1]);
     mdv_eventfd_close(fd[2]);
 
+    mdv_threadpool_stop(tp);
     mdv_threadpool_free(tp);
 }
 

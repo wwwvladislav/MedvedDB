@@ -153,7 +153,10 @@ mdv_errno mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr, m
     int err = getnameinfo((struct sockaddr const *)addr, sizeof *addr, str->ptr + proto_len, str->size - proto_len, 0, 0, NI_NUMERICHOST | NI_NUMERICSERV);
 
     if (err)
+    {
+        str->ptr[0] = 0;
         return err;
+    }
 
     unsigned addr_len = strlen(str->ptr);
     if (addr_len < str->size)

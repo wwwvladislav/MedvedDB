@@ -2,18 +2,41 @@
 #include "../minunit.h"
 #include <mdv_chaman.h>
 #include <mdv_threads.h>
+#include <stdio.h>
 
 
 static void mdv_channel_init(void *context, mdv_descriptor fd)
-{}
+{
+    (void)fd;
+    printf("channel %p initialized\n", context);
+}
 
 
-static void mdv_channel_recv(void *context, mdv_descriptor fd)
-{}
+static mdv_errno mdv_channel_recv(void *context, mdv_descriptor fd)
+{
+    static _Thread_local char buffer[1024];
+
+    size_t len = sizeof(buffer) - 1;
+
+    mdv_errno err = mdv_read(fd, buffer, &len);
+
+    while(err == MDV_OK)
+    {
+        buffer[len] = 0;
+        printf("recv from channel %p: '%s'\n", context, buffer);
+
+        len = sizeof(buffer) - 1;
+        err = mdv_read(fd, buffer, &len);
+    }
+
+    return err;
+}
 
 
 static void mdv_channel_close(void *context)
-{}
+{
+    printf("channel %p closed\n", context);
+}
 
 
 MU_TEST(platform_chaman)
@@ -37,6 +60,11 @@ MU_TEST(platform_chaman)
         },
         .channel =
         {
+            .context =
+            {
+                .size = 4,
+                .guardsize = 4
+            },
             .init = mdv_channel_init,
             .recv = mdv_channel_recv,
             .close = mdv_channel_close
@@ -62,6 +90,11 @@ MU_TEST(platform_chaman)
         },
         .channel =
         {
+            .context =
+            {
+                .size = 4,
+                .guardsize = 4
+            },
             .init = mdv_channel_init,
             .recv = mdv_channel_recv,
             .close = mdv_channel_close
@@ -78,7 +111,7 @@ MU_TEST(platform_chaman)
     err = mdv_chaman_connect(client, mdv_str_static("tcp://localhost:55555"));
     mu_check(err == MDV_OK);
 
-    mdv_sleep(5 * 60 * 1000);
+    mdv_sleep(1000);
 
     mdv_chaman_free(client);
     mdv_chaman_free(server);

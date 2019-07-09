@@ -20,7 +20,8 @@ typedef void (*mdv_channel_init_fn)(void *context, mdv_descriptor fd);
 
 
 /// data receiving handler type
-typedef void (*mdv_channel_recv_fn)(void *context, mdv_descriptor fd);
+typedef mdv_errno (*mdv_channel_recv_fn)(void *context, mdv_descriptor fd);
+
 
 /// channel closing handler type
 typedef void (*mdv_channel_close_fn)(void *context);
@@ -41,10 +42,16 @@ typedef struct
 
     struct
     {
+        struct
+        {
+            size_t      size;           ///< channel context size
+            size_t      guardsize;      ///< context guard size (small buffer at the end of context)
+        } context;                      ///< context configuration
+
         mdv_channel_init_fn  init;      ///< channel initialization handler
         mdv_channel_recv_fn  recv;      ///< data receiving handler
         mdv_channel_close_fn close;     ///< channel closing handler
-    } channel;
+    } channel;                          ///< channel configuration
 } mdv_chaman_config;
 
 

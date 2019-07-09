@@ -60,7 +60,7 @@ static void * mdv_threadpool_worker(void *arg)
             }
 
             if (task->fn)
-                task->fn(task->fd, events[i].events, task->context);
+                task->fn(events[i].events, task);
             else
                 MDV_LOGE("Thread pool task without handler was skipped");
         }
@@ -172,6 +172,7 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
         if (err != MDV_OK)
         {
             MDV_LOGE("threadpool_create failed");
+            mdv_threadpool_stop(tp);
             mdv_threadpool_free(tp);
             return 0;
         }
@@ -181,7 +182,7 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
 }
 
 
-static void mdv_threadpool_stop(mdv_threadpool *tp)
+void mdv_threadpool_stop(mdv_threadpool *tp)
 {
     uint64_t data = 0xDEADFA11;
     size_t len = sizeof data;
@@ -207,7 +208,6 @@ void mdv_threadpool_free(mdv_threadpool *tp)
 {
     if (tp)
     {
-        mdv_threadpool_stop(tp);
         mdv_epoll_close(tp->epollfd);
         mdv_eventfd_close(tp->stopfd);
         mdv_hashmap_free(tp->tasks);
@@ -255,38 +255,14 @@ mdv_errno mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_th
 }
 
 
-mdv_errno mdv_threadpool_mod(mdv_threadpool *threadpool, uint32_t events, mdv_descriptor fd)
+mdv_errno mdv_threadpool_rearm(mdv_threadpool *threadpool, uint32_t events, mdv_threadpool_task_base *task)
 {
-    mdv_errno err = mdv_mutex_lock(threadpool->tasks_mtx);
+    mdv_epoll_event evt = { events, task };
 
-    if(err == MDV_OK)
-    {
-        mdv_threadpool_task_base *task = mdv_hashmap_find(threadpool->tasks, fd);
+    mdv_errno err = mdv_epoll_mod(threadpool->epollfd, task->fd, evt);
 
-        if (task)
-        {
-            task->fn = task->fd;
-
-            mdv_epoll_event evt = { events, task };
-
-            err = mdv_epoll_mod(threadpool->epollfd, fd, evt);
-
-            if (err != MDV_OK)
-            {
-                mdv_hashmap_erase(threadpool->tasks, task->fd);
-                MDV_LOGE("Threadpool task modification failed with error '%s' (%d)", mdv_strerror(err), err);
-            }
-        }
-        else
-        {
-            MDV_LOGE("Threadpool task modification failed");
-            err = MDV_FAILED;
-        }
-
-        mdv_mutex_unlock(threadpool->tasks_mtx);
-    }
-    else
-        MDV_LOGE("Threadpool task modification failed");
+    if (err != MDV_OK)
+        MDV_LOGE("Threadpool task rearming failed with error '%s' (%d)", mdv_strerror(err), err);
 
     return err;
 }
@@ -311,6 +287,25 @@ mdv_errno mdv_threadpool_remove(mdv_threadpool *threadpool, mdv_descriptor fd)
     }
     else
         MDV_LOGE("Threadpool task removing failed");
+
+    return err;
+}
+
+
+mdv_errno mdv_threadpool_foreach(mdv_threadpool *threadpool, void (*fn)(mdv_descriptor fd, void *context))
+{
+    mdv_errno err = mdv_mutex_lock(threadpool->tasks_mtx);
+
+    if(err == MDV_OK)
+    {
+        mdv_hashmap_foreach(threadpool->tasks, mdv_threadpool_task_base, entry)
+        {
+            if (entry->data.fd != threadpool->stopfd)
+                fn(entry->data.fd, entry->data.context_size ? entry->data.context : 0);
+        }
+
+        mdv_mutex_unlock(threadpool->tasks_mtx);
+    }
 
     return err;
 }

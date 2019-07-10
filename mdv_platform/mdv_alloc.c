@@ -1,6 +1,37 @@
 #include "mdv_alloc.h"
 #include "mdv_log.h"
 #include <rpmalloc.h>
+#include <stdatomic.h>
+
+
+#define MDV_COUNT_ALLOCS_STAT
+
+
+#ifdef MDV_COUNT_ALLOCS_STAT
+
+    static atomic_int MDV_ALLOCS = 0;
+
+    #define MDV_ALLOCATION(fn, ptr, size)                                                           \
+        {                                                                                           \
+            int allocs_counter = atomic_fetch_add_explicit(&MDV_ALLOCS, 1, memory_order_relaxed);   \
+            MDV_LOGD("%s: %p:%zu, (allocations: %d)", #fn, ptr, size, allocs_counter + 1);          \
+        }
+
+    #define MDV_DEALLOCATION(fn, ptr)                                                               \
+        {                                                                                           \
+            int allocs_counter = atomic_fetch_sub_explicit(&MDV_ALLOCS, 1, memory_order_relaxed);   \
+            MDV_LOGD("%s: %p, (allocations: %d)", #fn, ptr, allocs_counter - 1);                    \
+        }
+
+#else
+
+    #define MDV_ALLOCATION(fn, ptr, size)           \
+        MDV_LOGD("%s: %p:%zu", #fn, ptr, size);
+
+    #define MDV_DEALLOCATION(fn, ptr)               \
+            MDV_LOGD("%s: %p", #fn, ptr);
+
+#endif
 
 
 int mdv_alloc_initialize()
@@ -33,7 +64,7 @@ void * mdv_alloc(size_t size)
     if (!ptr)
         MDV_LOGE("malloc(%zu) failed", size);
     else
-        MDV_LOGD("malloc: %p:%zu", ptr, size);
+        MDV_ALLOCATION(malloc, ptr, size);
     return ptr;
 }
 
@@ -44,7 +75,7 @@ void * mdv_aligned_alloc(size_t alignment, size_t size)
     if (!ptr)
         MDV_LOGE("aligned_alloc(%zu) failed", size);
     else
-        MDV_LOGD("aligned_alloc: %p:%zu", ptr, size);
+        MDV_ALLOCATION(aligned_alloc, ptr, size);
     return ptr;
 }
 
@@ -55,13 +86,16 @@ void * mdv_realloc(void *ptr, size_t size)
     if (!new_ptr)
         MDV_LOGE("realloc(%p, %zu) failed", ptr, size);
     else
-        MDV_LOGD("realloc: %p:%zu", new_ptr, size);
+        MDV_ALLOCATION(realloc, new_ptr, size);
     return new_ptr;
 }
 
 
 void mdv_free(void *ptr)
 {
-    MDV_LOGD("free: %p", ptr);
-    rpfree(ptr);
+    if (ptr)
+    {
+        rpfree(ptr);
+        MDV_DEALLOCATION(free, ptr);
+    }
 }

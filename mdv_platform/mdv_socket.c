@@ -133,36 +133,38 @@ mdv_errno mdv_str2sockaddr(mdv_string const str, mdv_socket_type *protocol, mdv_
 }
 
 
-mdv_errno mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr, mdv_string *str)
+mdv_string mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr)
 {
-    if (mdv_str_empty(*str) || !addr)
+    if (!addr)
     {
         MDV_LOGE("Invalid argument");
-        return MDV_INVALID_ARG;
+        return mdv_str_null;
     }
+
+    static _Thread_local char buf[MDV_ADDR_LEN_MAX];
+    buf[0];
+
+    mdv_string str = mdv_str_static(buf);
 
     char const *proto = mdv_socket_type2str(protocol);
 
     unsigned proto_len = strlen(proto);
 
-    if (proto_len && proto_len + 3 < str->size)
-        snprintf(str->ptr, str->size, "%s://", proto);
+    if (proto_len && proto_len + 3 < str.size)
+        snprintf(str.ptr, str.size, "%s://", proto);
 
     proto_len += 3;
 
-    int err = getnameinfo((struct sockaddr const *)addr, sizeof *addr, str->ptr + proto_len, str->size - proto_len, 0, 0, NI_NUMERICHOST | NI_NUMERICSERV);
+    int err = getnameinfo((struct sockaddr const *)addr, sizeof *addr, str.ptr + proto_len, str.size - proto_len, 0, 0, NI_NUMERICHOST | NI_NUMERICSERV);
 
     if (err)
-    {
-        str->ptr[0] = 0;
-        return err;
-    }
+        return mdv_str_null;
 
-    unsigned addr_len = strlen(str->ptr);
-    if (addr_len < str->size)
-        snprintf(str->ptr + addr_len, str->size - addr_len, ":%u", ntohs(((struct sockaddr_in const *)addr)->sin_port));
+    unsigned addr_len = strlen(str.ptr);
+    if (addr_len < str.size)
+        snprintf(str.ptr + addr_len, str.size - addr_len, ":%u", ntohs(((struct sockaddr_in const *)addr)->sin_port));
 
-    return MDV_OK;
+    return str;
 }
 
 

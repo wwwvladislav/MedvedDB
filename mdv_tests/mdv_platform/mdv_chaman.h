@@ -111,7 +111,7 @@ MU_TEST(platform_chaman)
     err = mdv_chaman_connect(client, mdv_str_static("tcp://localhost:55555"));
     mu_check(err == MDV_OK);
 
-    mdv_sleep(1000);
+    mdv_sleep(10 * 60 * 1000);
 
     mdv_chaman_free(client);
     mdv_chaman_free(server);

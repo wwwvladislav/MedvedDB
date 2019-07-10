@@ -17,6 +17,7 @@ enum
     MDV_CLOSED      = -4,   ///< File descriptor was closed.
     MDV_EEXIST      = -5,   ///< File exists
     MDV_NO_MEM      = -6,   ///< No free space of memory
+    MDV_INPROGRESS  = -7    ///< Operation now in progress
 };
 
 

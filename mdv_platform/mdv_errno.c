@@ -7,8 +7,9 @@ mdv_errno mdv_error()
 {
     switch(errno)
     {
-        case EAGAIN:    return MDV_EAGAIN;
-        case EEXIST:    return MDV_EEXIST;
+        case EAGAIN:        return MDV_EAGAIN;
+        case EEXIST:        return MDV_EEXIST;
+        case EINPROGRESS:   return MDV_INPROGRESS;
     }
     return errno;
 }
@@ -24,6 +25,7 @@ char const * mdv_strerror(mdv_errno err)
         case MDV_EAGAIN:        return "Resource temporarily unavailable";
         case MDV_CLOSED:        return "File descriptor was closed";
         case MDV_EEXIST:        return "File exists";
+        case MDV_INPROGRESS:    return "Operation now in progress";
     }
 
     static _Thread_local char buf[1024];

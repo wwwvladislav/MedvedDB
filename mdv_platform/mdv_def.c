@@ -30,6 +30,37 @@ mdv_errno mdv_write(mdv_descriptor fd, void const *data, size_t *len)
 }
 
 
+mdv_errno mdv_write_all(mdv_descriptor fd, void const *data, size_t len)
+{
+    size_t total = 0;
+
+    while(total < len)
+    {
+        size_t wlen = len - total;
+
+        mdv_errno err = mdv_write(fd, data, &wlen);
+
+        switch (err)
+        {
+            case MDV_EAGAIN:
+                continue;
+
+            case MDV_OK:
+            {
+                data += wlen;
+                total += wlen;
+                continue;
+            }
+
+            default:
+                return err;
+        }
+    }
+
+    return MDV_OK;
+}
+
+
 mdv_errno mdv_read(mdv_descriptor fd, void *data, size_t *len)
 {
     if (!*len)

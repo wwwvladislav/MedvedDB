@@ -75,7 +75,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
     }
 
     // Server
-    svc->server = mdv_server_create(&svc->storage.tablespace);
+    svc->server = mdv_server_create(&svc->storage.tablespace, &svc->metainf.uuid.value);
     if (!svc->server)
     {
         MDV_LOGE("Listener starting was failed");

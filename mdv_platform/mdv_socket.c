@@ -11,6 +11,7 @@
     #include <sys/types.h>
     #include <fcntl.h>
     #include <netdb.h>
+    #include <arpa/inet.h>
 #endif
 
 
@@ -203,6 +204,19 @@ void mdv_socket_close(mdv_descriptor sock)
         MDV_LOGD("Socket %d closed", s);
         mdv_netlib_uninit();
     }
+}
+
+
+void mdv_socket_shutdown(mdv_descriptor sock, int how)
+{
+    int s = *(int*)&sock;
+
+    if ((how & MDV_SOCK_SHUT_RD) && (how & MDV_SOCK_SHUT_WR))
+        shutdown(s, SHUT_RDWR);
+    else if (how & MDV_SOCK_SHUT_RD)
+        shutdown(s, SHUT_RD);
+    else
+        shutdown(s, SHUT_WR);
 }
 
 
@@ -410,3 +424,23 @@ mdv_errno mdv_socket_connect(mdv_descriptor sock, mdv_sockaddr const *addr)
     return MDV_OK;
 }
 
+
+uint32_t mdv_hton32(uint32_t hostlong)
+{
+    return htonl(hostlong);
+}
+
+uint16_t mdv_hton16(uint16_t hostshort)
+{
+    return htons(hostshort);
+}
+
+uint32_t mdv_ntoh32(uint32_t netlong)
+{
+    return ntohl(netlong);
+}
+
+uint16_t mdv_ntoh16(uint16_t netshort)
+{
+    return ntohs(netshort);
+}

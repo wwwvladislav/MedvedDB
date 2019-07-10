@@ -17,13 +17,6 @@
     } mdv_msg_##name;
 
 
-#define MDV_HELLO_SIGNATURE                             \
-    {                                                   \
-        0xee, 0xe1, 0x78, 0xa7, 0x13, 0xed, 0xeb, 0xd0, \
-        0xdb, 0x54, 0x3e, 0xb4, 0x59, 0x9b, 0xa5, 0x66  \
-    }
-
-
 enum
 {
     mdv_msg_unknown_id = 0,
@@ -38,8 +31,8 @@ mdv_message_def(status, 1,
 
 
 mdv_message_def(hello, 2,
-    uint8_t     signature[16];
     uint32_t    version;
+    mdv_uuid    uuid;
 );
 
 

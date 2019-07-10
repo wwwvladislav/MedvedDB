@@ -61,6 +61,19 @@ mdv_errno mdv_write(mdv_descriptor fd, void const *data, size_t *len);
 
 
 /**
+ * @brief Function for writing to a file descriptor.
+ *
+ * @param fd [in]   file descriptor
+ * @param data [in] pointer to the buffer with data
+ * @param len [in]  data buffer size in bytes
+ *
+ * @return MDV_OK on success
+ * @return nonzero value on error
+ */
+mdv_errno mdv_write_all(mdv_descriptor fd, void const *data, size_t len);
+
+
+/**
  * @brief Function for reading from the file descriptor.
  *
  * @param fd [in]   file descriptor

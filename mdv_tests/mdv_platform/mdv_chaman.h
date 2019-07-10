@@ -5,15 +5,26 @@
 #include <stdio.h>
 
 
-static void mdv_channel_init(void *context, mdv_descriptor fd)
+static volatile int mdv_init_count = 0;
+static volatile int mdv_close_count = 0;
+static volatile int mdv_recv_size = 0;
+static volatile mdv_descriptor fds[2];
+
+
+static void mdv_channel_init(void *userdata, void *context, mdv_descriptor fd)
 {
     (void)fd;
-    printf("channel %p initialized\n", context);
+    (void)context;
+    (void)userdata;
+    fds[mdv_init_count++] = fd;
 }
 
 
-static mdv_errno mdv_channel_recv(void *context, mdv_descriptor fd)
+static mdv_errno mdv_channel_recv(void *userdata, void *context, mdv_descriptor fd)
 {
+    (void)context;
+    (void)userdata;
+
     static _Thread_local char buffer[1024];
 
     size_t len = sizeof(buffer) - 1;
@@ -22,8 +33,7 @@ static mdv_errno mdv_channel_recv(void *context, mdv_descriptor fd)
 
     while(err == MDV_OK)
     {
-        buffer[len] = 0;
-        printf("recv from channel %p: '%s'\n", context, buffer);
+        mdv_recv_size += len;
 
         len = sizeof(buffer) - 1;
         err = mdv_read(fd, buffer, &len);
@@ -33,9 +43,11 @@ static mdv_errno mdv_channel_recv(void *context, mdv_descriptor fd)
 }
 
 
-static void mdv_channel_close(void *context)
+static void mdv_channel_close(void *userdata, void *context)
 {
-    printf("channel %p closed\n", context);
+    (void)context;
+    (void)userdata;
+    ++mdv_close_count;
 }
 
 
@@ -45,7 +57,6 @@ MU_TEST(platform_chaman)
     {
         .peer =
         {
-            .reconnect_timeout = 5,
             .keepidle          = 5,
             .keepcnt           = 10,
             .keepintvl         = 5
@@ -58,6 +69,7 @@ MU_TEST(platform_chaman)
                 .stack_size = MDV_THREAD_STACK_SIZE
             }
         },
+        .userdata = 0,
         .channel =
         {
             .context =
@@ -75,7 +87,6 @@ MU_TEST(platform_chaman)
     {
         .peer =
         {
-            .reconnect_timeout = 5,
             .keepidle          = 5,
             .keepcnt           = 10,
             .keepintvl         = 5
@@ -88,6 +99,7 @@ MU_TEST(platform_chaman)
                 .stack_size = MDV_THREAD_STACK_SIZE
             }
         },
+        .userdata = 0,
         .channel =
         {
             .context =
@@ -111,7 +123,22 @@ MU_TEST(platform_chaman)
     err = mdv_chaman_connect(client, mdv_str_static("tcp://localhost:55555"));
     mu_check(err == MDV_OK);
 
-    mdv_sleep(10 * 60 * 1000);
+    while(mdv_init_count != 2)
+        mdv_sleep(10);
+
+    char const msg[] = "The quick brown fox jumps over the lazy dog";
+    size_t len = sizeof msg;
+
+    mu_check(mdv_write(fds[0], msg, &len) == MDV_OK && len == sizeof msg);
+    mu_check(mdv_write(fds[1], msg, &len) == MDV_OK && len == sizeof msg);
+
+    while(mdv_recv_size != 2 * sizeof msg)
+        mdv_sleep(10);
+
+    mdv_socket_shutdown(fds[0], MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+
+    while(mdv_close_count != 2)
+        mdv_sleep(10);
 
     mdv_chaman_free(client);
     mdv_chaman_free(server);

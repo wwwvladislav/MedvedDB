@@ -31,8 +31,10 @@ bool mdv_binn_hello(mdv_msg_hello const *msg, binn *obj)
         return false;
     }
 
-    if (!binn_object_set_uint32(obj, "V", msg->version)
-        || !binn_object_set_blob(obj, "S", (void*)msg->signature, sizeof(msg->signature)))
+    if (0
+        || !binn_object_set_uint32(obj, "V", msg->version)
+        || !binn_object_set_uint64(obj, "U0", msg->uuid.u64[0])
+        || !binn_object_set_uint64(obj, "U1", msg->uuid.u64[1]))
     {
         binn_free(obj);
         MDV_LOGE("binn_hello failed");
@@ -45,17 +47,14 @@ bool mdv_binn_hello(mdv_msg_hello const *msg, binn *obj)
 
 bool mdv_unbinn_hello(binn const *obj, mdv_msg_hello *msg)
 {
-    uint8_t *signature;
-    int      signature_size = 0;
-
-    if (!binn_object_get_uint32((void*)obj, "V", &msg->version)
-        || !binn_object_get_blob((void*)obj, "S", (void**)&signature, &signature_size))
+    if (0
+        || !binn_object_get_uint32((void*)obj, "V", &msg->version)
+        || !binn_object_get_uint64((void*)obj, "U0", (uint64 *)(msg->uuid.u64 + 0))
+        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)(msg->uuid.u64 + 1)))
     {
         MDV_LOGE("unbinn_hello failed");
         return false;
     }
-
-    memcpy(msg->signature, signature, signature_size);
 
     return true;
 }

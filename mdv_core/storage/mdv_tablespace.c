@@ -1,5 +1,4 @@
 #include "mdv_tablespace.h"
-#include <mdv_status.h>
 #include <mdv_serialization.h>
 #include <mdv_alloc.h>
 
@@ -46,13 +45,13 @@ void mdv_tablespace_close(mdv_tablespace *tablespace)
 }
 
 
-int mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *table)
+mdv_errno mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *table)
 {
     table->uuid = mdv_uuid_generate();
 
     binn obj;
     if (!mdv_binn_table(table, &obj))
-        return MDV_STATUS_FAILED;
+        return MDV_FAILED;
 
     int const obj_size = binn_size(&obj);
 
@@ -61,7 +60,7 @@ int mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *tabl
     if (!data)
     {
         binn_free(&obj);
-        return MDV_STATUS_NO_MEM;
+        return MDV_NO_MEM;
     }
 
     *(uint32_t*)data = MDV_OP_TABLE_CREATE;
@@ -83,8 +82,8 @@ int mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *tabl
     };
 
     int ret = mdv_cfstorage_add(tablespace->cfstorage, 0, 1, &op)
-            ? MDV_STATUS_OK
-            : MDV_STATUS_FAILED;
+            ? MDV_OK
+            : MDV_FAILED;
 
     mdv_free(data);
 

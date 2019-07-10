@@ -23,6 +23,14 @@ typedef struct
 
     struct
     {
+        uint32_t retry_interval;
+        uint32_t keep_idle;
+        uint32_t keep_count;
+        uint32_t keep_interval;
+    } connection;
+
+    struct
+    {
         mdv_string path;
     } storage;
 

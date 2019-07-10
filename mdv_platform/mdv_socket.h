@@ -3,9 +3,9 @@
 #include "mdv_string.h"
 
 #ifdef MDV_PLATFORM_LINUX
-    #include <sys/socket.h>
+    #include <sys/socket.h>         // sockaddr_storage
 #elif defined(MDV_PLATFORM_WINDOWS)
-     #include <ws2def.h>
+     #include <ws2def.h>            // sockaddr_storage
 #endif
 
 
@@ -20,12 +20,20 @@ typedef enum
 } mdv_socket_type;
 
 
+typedef enum
+{
+    MDV_SOCK_SHUT_RD = 1 << 0,
+    MDV_SOCK_SHUT_WR = 1 << 1
+} mdv_socket_shutdown_type;
+
+
 mdv_errno      mdv_str2sockaddr(mdv_string const str, mdv_socket_type *protocol, mdv_sockaddr *addr);
 mdv_string     mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr);
 
 
 mdv_descriptor mdv_socket(mdv_socket_type type);
 void           mdv_socket_close(mdv_descriptor sock);
+void           mdv_socket_shutdown(mdv_descriptor sock, int how);
 mdv_errno      mdv_socket_listen(mdv_descriptor sock);
 mdv_descriptor mdv_socket_accept(mdv_descriptor sock, mdv_sockaddr *peer);
 mdv_errno      mdv_socket_bind(mdv_descriptor sock, mdv_sockaddr const *addr);
@@ -95,4 +103,26 @@ mdv_errno mdv_socket_tcp_defer_accept(mdv_descriptor sock);
  * @return On error, return nonzero value
  */
 mdv_errno mdv_socket_tcp_cork(mdv_descriptor sock);
+
+
+/**
+ * @brief convert values between host and network byte order
+ */
+uint32_t mdv_hton32(uint32_t hostlong);
+
+/**
+ * @brief convert values between host and network byte order
+ */
+uint16_t mdv_hton16(uint16_t hostshort);
+
+/**
+ * @brief convert values between host and network byte order
+ */
+uint32_t mdv_ntoh32(uint32_t netlong);
+
+
+/**
+ * @brief convert values between host and network byte order
+ */
+uint16_t mdv_ntoh16(uint16_t netshort);
 

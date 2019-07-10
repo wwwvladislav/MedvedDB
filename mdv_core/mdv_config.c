@@ -61,6 +61,26 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         config->cluster.nodes[config->cluster.size++] = node.ptr;
         MDV_LOGI("Cluster node: %s", node.ptr);
     }
+    else if (MDV_CFG_MATCH("connection", "retry_interval"))
+    {
+        MDV_CONFIG.connection.retry_interval = atoi(value);
+        MDV_LOGI("Interval between reconnections: %u", MDV_CONFIG.connection.retry_interval);
+    }
+    else if (MDV_CFG_MATCH("connection", "keep_idle"))
+    {
+        MDV_CONFIG.connection.keep_idle = atoi(value);
+        MDV_LOGI("Start keeplives after: %u seconds", MDV_CONFIG.connection.keep_idle);
+    }
+    else if (MDV_CFG_MATCH("connection", "keep_count"))
+    {
+        MDV_CONFIG.connection.keep_count = atoi(value);
+        MDV_LOGI("Number of keepalives before death: %u", MDV_CONFIG.connection.keep_count);
+    }
+    else if (MDV_CFG_MATCH("connection", "keep_interval"))
+    {
+        MDV_CONFIG.connection.keep_interval = atoi(value);
+        MDV_LOGI("Interval between keepalives: %u seconds", MDV_CONFIG.connection.keep_interval);
+    }
     else
     {
         MDV_LOGE("Unknown section/name: [%s] %s", section, name);
@@ -76,16 +96,21 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
 
 static void mdv_set_config_defaults()
 {
-    MDV_CONFIG.log.level                = mdv_str_static("error");
+    MDV_CONFIG.log.level                    = mdv_str_static("error");
 
-    MDV_CONFIG.server.listen            = mdv_str_static("tcp://localhost:54222");
-    MDV_CONFIG.server.workers           = 16;
+    MDV_CONFIG.server.listen                = mdv_str_static("tcp://localhost:54222");
+    MDV_CONFIG.server.workers               = 16;
 
-    MDV_CONFIG.storage.path             = mdv_str_static("./data");
+    MDV_CONFIG.connection.retry_interval    = 5;
+    MDV_CONFIG.connection.keep_idle         = 5;
+    MDV_CONFIG.connection.keep_count        = 10;
+    MDV_CONFIG.connection.keep_interval     = 5;
 
-    MDV_CONFIG.transaction.batch_size   = 1000;
+    MDV_CONFIG.storage.path                 = mdv_str_static("./data");
 
-    MDV_CONFIG.cluster.size             = 0;
+    MDV_CONFIG.transaction.batch_size       = 1000;
+
+    MDV_CONFIG.cluster.size                 = 0;
 }
 
 

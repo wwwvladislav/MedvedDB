@@ -3,7 +3,6 @@
 #include "mdv_handler.h"
 #include "mdv_protocol.h"
 #include "mdv_version.h"
-#include "mdv_status.h"
 #include <mdv_alloc.h>
 #include <mdv_binn.h>
 #include <mdv_threads.h>
@@ -67,7 +66,7 @@ struct mdv_client
 //    nng_socket              sock;
 //    nng_dialer              dialer;
     mdv_client_handler      handlers[mdv_msg_count];
-    int                     err;
+    mdv_errno               err;
     char                    message[1024];
     mdv_uuid                table_uuid;
 };
@@ -178,16 +177,16 @@ static bool mdv_client_read(mdv_client *client)
 }
 
 
-static int mdv_client_status_handler(mdv_message const *msg, void *arg)
+static mdv_errno mdv_client_status_handler(mdv_message const *msg, void *arg)
 {
     if (msg->id != mdv_msg_status_id)
-        return MDV_STATUS_FAILED;
+        return MDV_FAILED;
 
     mdv_client *client = (mdv_client *)arg;
 
     mdv_msg_status *status = mdv_unbinn_status(&msg->body);
     if (!status)
-        return MDV_STATUS_FAILED;
+        return MDV_FAILED;
 
     client->err = status->err;
     strncpy(client->message, status->message, sizeof client->message);
@@ -202,23 +201,23 @@ static int mdv_client_status_handler(mdv_message const *msg, void *arg)
 }
 
 
-static int mdv_client_table_info_handler(mdv_message const *msg, void *arg)
+static mdv_errno mdv_client_table_info_handler(mdv_message const *msg, void *arg)
 {
     if (msg->id != mdv_msg_table_info_id)
-        return MDV_STATUS_FAILED;
+        return MDV_FAILED;
 
     mdv_client *client = (mdv_client *)arg;
 
     mdv_msg_table_info table_info;
 
     if (!mdv_unbinn_table_info(&msg->body, &table_info))
-        return MDV_STATUS_FAILED;
+        return MDV_FAILED;
 
-    client->err = MDV_STATUS_OK;
+    client->err = MDV_OK;
     client->message[0] = 0;
     client->table_uuid = table_info.uuid;
 
-    return MDV_STATUS_OK;
+    return MDV_OK;
 }
 
 
@@ -263,6 +262,7 @@ mdv_client * mdv_client_create(char const *addr)
 
 bool mdv_client_connect(mdv_client *client)
 {
+/*
     mdv_msg_hello hello =
     {
         MDV_HELLO_SIGNATURE,
@@ -288,6 +288,8 @@ bool mdv_client_connect(mdv_client *client)
         return false;
 
     return true;
+ */
+    return false;
 }
 
 
@@ -312,7 +314,7 @@ char const * mdv_client_status_msg(mdv_client *client)
 {
     return *client->message
                 ? client->message
-                : mdv_status_message(client->err);
+                : mdv_strerror(client->err);
 }
 
 

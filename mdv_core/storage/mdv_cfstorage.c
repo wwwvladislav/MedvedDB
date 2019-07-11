@@ -57,8 +57,7 @@ mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num)
 
     mdv_rollbacker_push(rollbacker, mdv_cfstorage_close, cfstorage);
 
-    mdv_uuid_str(str_uuid);
-    mdv_uuid_to_str(uuid, &str_uuid);
+    mdv_string const str_uuid = mdv_uuid_to_str(uuid);
 
     // Build table subdirectory
     mdv_stack(char, MDV_PATH_MAX) mpool;
@@ -123,8 +122,7 @@ mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num)
     cfstorage->data = 0;
     cfstorage->tr_log = 0;
 
-    mdv_uuid_str(str_uuid);
-    mdv_uuid_to_str(uuid, &str_uuid);
+    mdv_string const str_uuid = mdv_uuid_to_str(uuid);
 
     // Build table subdirectory
     mdv_stack(char, MDV_PATH_MAX) mpool;
@@ -182,8 +180,7 @@ void mdv_cfstorage_close(mdv_cfstorage *cfstorage)
 
 bool mdv_cfstorage_drop(mdv_uuid const *uuid)
 {
-    mdv_uuid_str(str_uuid);
-    mdv_uuid_to_str(uuid, &str_uuid);
+    mdv_string const str_uuid = mdv_uuid_to_str(uuid);
 
     // Build table subdirectory
     mdv_stack(char, MDV_PATH_MAX) mpool;

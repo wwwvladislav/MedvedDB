@@ -16,7 +16,7 @@ mdv_descriptor mdv_epoll_create()
     if (epoll_fd < 0)
     {
         int err = mdv_error();
-        MDV_LOGE("Epoll creation was failed with error: '%s' %d", mdv_strerror(err), err);
+        MDV_LOGE("Epoll creation failed with error: '%s' %d", mdv_strerror(err), err);
         return MDV_INVALID_DESCRIPTOR;
     }
 

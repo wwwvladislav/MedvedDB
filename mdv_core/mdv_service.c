@@ -50,7 +50,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 
     if (!mdv_metainf_load(&svc->metainf, svc->storage.metainf))
     {
-        MDV_LOGE("DB meta information loading was failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
+        MDV_LOGE("DB meta information loading failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
         return false;
     }
 
@@ -59,7 +59,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 
     if (!mdv_nodes_load(&svc->nodes, svc->storage.metainf))
     {
-        MDV_LOGE("Nodes list loading from DB was failed");
+        MDV_LOGE("Nodes list loading from DB failed");
         return false;
     }
 
@@ -70,7 +70,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 
     if (!mdv_tablespace_ok(svc->storage.tablespace))
     {
-        MDV_LOGE("DB tables space creation was failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
+        MDV_LOGE("DB tables space creation failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
         return false;
     }
 
@@ -78,16 +78,14 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
     svc->server = mdv_server_create(&svc->storage.tablespace, &svc->metainf.uuid.value);
     if (!svc->server)
     {
-        MDV_LOGE("Listener starting was failed");
+        MDV_LOGE("Listener starting failed");
         return false;
     }
 
     // Print node information to log
     MDV_LOGI("Storage version: %u", svc->metainf.version.value);
-    char tmp[33];
-    mdv_string uuid_str = mdv_str_static(tmp);
-    if (mdv_uuid_to_str(&svc->metainf.uuid.value, &uuid_str))
-        MDV_LOGI("Node UUID: %s", uuid_str.ptr);
+
+    MDV_LOGI("Node UUID: %s", mdv_uuid_to_str(&svc->metainf.uuid.value).ptr);
 
     svc->is_started = false;
 

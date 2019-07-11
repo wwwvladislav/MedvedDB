@@ -5,7 +5,6 @@
 #include <mdv_chaman.h>
 #include <mdv_rollbacker.h>
 #include <mdv_socket.h>
-#include <mdv_timerfd.h>
 #include "mdv_peer.h"
 
 
@@ -26,30 +25,39 @@ static void mdv_channel_init(void *userdata, void *context, mdv_descriptor fd)
     mdv_server *server = (mdv_server *)userdata;
     mdv_peer *peer = (mdv_peer *)context;
 
-    peer->fd = fd;
-    peer->initialized = 0;
-    atomic_init(&peer->req_id, 0);
-    peer->created_time = mdv_gettime();
-
-    mdv_errno err = mdv_peer_wave(peer, &server->uuid);
-
-    if (err != MDV_OK)
+    if (mdv_peer_init(peer, fd, &server->uuid) != MDV_OK)
         mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
 }
 
 
 static mdv_errno mdv_channel_recv(void *userdata, void *context, mdv_descriptor fd)
 {
-    (void)context;
-    (void)fd;
+    mdv_server *server = (mdv_server *)userdata;
+    mdv_peer *peer = (mdv_peer *)context;
+    (void)server;
 
-    return MDV_OK;
+    mdv_errno err = mdv_peer_recv(peer);
+
+    switch(err)
+    {
+        case MDV_OK:
+        case MDV_EAGAIN:
+            break;
+
+        default:
+            mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+    }
+
+    return err;
 }
 
 
 static void mdv_channel_close(void *userdata, void *context)
 {
-    (void)context;
+    mdv_server *server = (mdv_server *)userdata;
+    mdv_peer *peer = (mdv_peer *)context;
+    (void)server;
+    mdv_peer_free(peer);
 }
 
 
@@ -62,7 +70,7 @@ mdv_server * mdv_server_create(mdv_tablespace *tablespace, mdv_uuid const *uuid)
 
     if(!server)
     {
-        MDV_LOGE("Memory allocation for server was failed");
+        MDV_LOGE("Memory allocation for server failed");
         return 0;
     }
 
@@ -71,7 +79,7 @@ mdv_server * mdv_server_create(mdv_tablespace *tablespace, mdv_uuid const *uuid)
 
     mdv_rollbacker_push(rollbacker, mdv_free, server);
 
-   mdv_chaman_config const config =
+    mdv_chaman_config const config =
     {
         .peer =
         {
@@ -95,9 +103,9 @@ mdv_server * mdv_server_create(mdv_tablespace *tablespace, mdv_uuid const *uuid)
                 .size = sizeof(mdv_peer),
                 .guardsize = 16
             },
-            .init = mdv_channel_init,
-            .recv = mdv_channel_recv,
-            .close = mdv_channel_close
+            .init = &mdv_channel_init,
+            .recv = &mdv_channel_recv,
+            .close = &mdv_channel_close
         }
     };
 
@@ -105,7 +113,7 @@ mdv_server * mdv_server_create(mdv_tablespace *tablespace, mdv_uuid const *uuid)
 
     if (!server->chaman)
     {
-        MDV_LOGE("Chaman was not created");
+        MDV_LOGE("Chaman not created");
         mdv_rollback(rollbacker);
         return 0;
     }
@@ -138,20 +146,5 @@ void mdv_server_free(mdv_server *srvr)
         mdv_chaman_free(srvr->chaman);
         mdv_free(srvr);
     }
-}
-
-
-bool mdv_server_handler_reg(mdv_server *srvr, uint32_t msg_id, mdv_message_handler handler)
-{
-/*
-    if (msg_id >= sizeof srvr->handlers / sizeof *srvr->handlers)
-    {
-        MDV_LOGE("Server message handler not registered. Message ID %u is invalid.", msg_id);
-        return false;
-    }
-
-    srvr->handlers[msg_id] = handler;
-*/
-    return true;
 }
 

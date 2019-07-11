@@ -179,19 +179,18 @@ static void mdv_chaman_recv_handler(uint32_t events, mdv_threadpool_task_base *t
 
     mdv_errno err = chaman->config.channel.recv(chaman->config.userdata, task->context.dataspace, fd);
 
-    if (err == MDV_CLOSED
-        || (events & MDV_EPOLLERR))
-    {
-        MDV_LOGI("Peer %p was disconnected", fd);
-        chaman->config.channel.close(chaman->config.userdata, task->context.dataspace);
-        mdv_threadpool_remove(threadpool, fd);
-        mdv_socket_close(fd);
-    }
-    else
+    if ((events & MDV_EPOLLERR) == 0 && (err == MDV_EAGAIN || err == MDV_OK))
     {
         err = mdv_threadpool_rearm(threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base*)task);
         if (err != MDV_OK)
             MDV_LOGE("Connection modification failed with error '%s' (%u)", mdv_strerror(err), err);
+    }
+    else
+    {
+        MDV_LOGI("Peer %p disconnected", fd);
+        chaman->config.channel.close(chaman->config.userdata, task->context.dataspace);
+        mdv_threadpool_remove(threadpool, fd);
+        mdv_socket_close(fd);
     }
 }
 
@@ -221,25 +220,27 @@ static void mdv_chaman_new_peer(mdv_chaman *chaman, mdv_descriptor sock, mdv_soc
     memset(task->context.dataspace, -1, chaman->config.channel.context.size
                                         + chaman->config.channel.context.guardsize);
 
-    mdv_errno err = mdv_threadpool_add(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)task);
+    chaman->config.channel.init(chaman->config.userdata, task->context.dataspace, sock);
+
+    task = (mdv_peer_task *)mdv_threadpool_add(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)task);
 
     mdv_string str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, addr);
 
-    if (err != MDV_OK)
+    if (!task)
     {
         if (mdv_str_empty(str_addr))
-            MDV_LOGE("Connection registration failed with error '%s' (%u)", mdv_strerror(err), err);
+            MDV_LOGE("Connection registration failed");
         else
-            MDV_LOGE("Connection with '%s' registration failed with error '%s' (%u)", str_addr.ptr, mdv_strerror(err), err);
+            MDV_LOGE("Connection with '%s' registration failed", str_addr.ptr);
+        chaman->config.channel.close(chaman->config.userdata, task->context.dataspace);
         mdv_socket_close(sock);
     }
     else
     {
         if (mdv_str_empty(str_addr))
-            MDV_LOGI("New connection was successfully registered");
+            MDV_LOGI("New connection successfully registered");
         else
-            MDV_LOGI("New connection with '%s' was successfully registered", str_addr.ptr);
-        chaman->config.channel.init(chaman->config.userdata, task->context.dataspace, sock);
+            MDV_LOGI("New connection with '%s' successfully registered", str_addr.ptr);
     }
 }
 
@@ -271,7 +272,7 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr)
 
     if (err != MDV_OK)
     {
-        MDV_LOGE("Address resolution was failed with error '%s' (%d)", mdv_strerror(err), err);
+        MDV_LOGE("Address resolution failed with error '%s' (%d)", mdv_strerror(err), err);
         return err;
     }
 
@@ -280,7 +281,7 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr)
 
     if(sd == MDV_INVALID_DESCRIPTOR)
     {
-        MDV_LOGE("Listener socket '%s' was not created", addr.ptr);
+        MDV_LOGE("Listener socket '%s' not created", addr.ptr);
         return MDV_FAILED;
     }
 
@@ -326,11 +327,9 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr)
         }
     };
 
-    err = mdv_threadpool_add(chaman->threadpool, MDV_EPOLLEXCLUSIVE | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)&task);
-
-    if (err != MDV_OK)
+    if (!mdv_threadpool_add(chaman->threadpool, MDV_EPOLLEXCLUSIVE | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)&task))
     {
-        MDV_LOGE("Address '%s' listening failed with error '%s' (%u)", addr.ptr, mdv_strerror(err), err);
+        MDV_LOGE("Address '%s' listening failed", addr.ptr);
         mdv_rollback(rollbacker);
         return err;
     }
@@ -359,7 +358,7 @@ mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr)
 
     if(sd == MDV_INVALID_DESCRIPTOR)
     {
-        MDV_LOGE("Listener socket '%s' was not created", addr.ptr);
+        MDV_LOGE("Listener socket '%s' not created", addr.ptr);
         return MDV_FAILED;
     }
 
@@ -389,11 +388,9 @@ mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr)
         }
     };
 
-    err = mdv_threadpool_add(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLOUT | MDV_EPOLLERR, (mdv_threadpool_task_base const *)&task);
-
-    if (err != MDV_OK)
+    if (!mdv_threadpool_add(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLOUT | MDV_EPOLLERR, (mdv_threadpool_task_base const *)&task))
     {
-        MDV_LOGE("Address '%s' listening failed with error '%s' (%u)", addr.ptr, mdv_strerror(err), err);
+        MDV_LOGE("Connection to %s failed", addr.ptr);
         mdv_rollback(rollbacker);
         return err;
     }

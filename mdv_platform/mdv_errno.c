@@ -19,11 +19,11 @@ char const * mdv_strerror(mdv_errno err)
 {
     switch(err)
     {
-        case MDV_OK:            return "Operation was successfully completed";
-        case MDV_FAILED:        return "Operation failed due the unknown error";
+        case MDV_OK:            return "Operation successfully completed";
+        case MDV_FAILED:        return "Unknown error";
         case MDV_INVALID_ARG:   return "Function argument is invalid";
         case MDV_EAGAIN:        return "Resource temporarily unavailable";
-        case MDV_CLOSED:        return "File descriptor was closed";
+        case MDV_CLOSED:        return "File descriptor closed";
         case MDV_EEXIST:        return "File exists";
         case MDV_INPROGRESS:    return "Operation now in progress";
     }

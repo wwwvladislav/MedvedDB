@@ -62,7 +62,7 @@ static void * mdv_threadpool_worker(void *arg)
             if (task->fn)
                 task->fn(events[i].events, task);
             else
-                MDV_LOGE("Thread pool task without handler was skipped");
+                MDV_LOGE("Thread pool task without handler skipped");
         }
     }
 
@@ -79,9 +79,9 @@ static mdv_errno mdv_threadpool_add_default_tasks(mdv_threadpool *threadpool)
         .context_size = 0
     };
 
-    mdv_errno err = mdv_threadpool_add(threadpool, MDV_EPOLLIN | MDV_EPOLLERR, &task);
-
-    return err;
+    return mdv_threadpool_add(threadpool, MDV_EPOLLIN | MDV_EPOLLERR, &task) != 0
+            ? MDV_OK
+            : MDV_FAILED;
 }
 
 
@@ -217,11 +217,11 @@ void mdv_threadpool_free(mdv_threadpool *tp)
 }
 
 
-mdv_errno mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_threadpool_task_base const *task)
+mdv_threadpool_task_base * mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_threadpool_task_base const *task)
 {
-    mdv_errno err = mdv_mutex_lock(threadpool->tasks_mtx);
+    mdv_threadpool_task_base *ret = 0;
 
-    if(err == MDV_OK)
+    if(mdv_mutex_lock(threadpool->tasks_mtx) == MDV_OK)
     {
         size_t const size = offsetof(mdv_threadpool_task_base, context)
                             + task->context_size;
@@ -232,26 +232,25 @@ mdv_errno mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_th
         {
             mdv_epoll_event evt = { events, entry->data };
 
-            err = mdv_epoll_add(threadpool->epollfd, task->fd, evt);
+            mdv_errno err = mdv_epoll_add(threadpool->epollfd, task->fd, evt);
 
-            if (err != MDV_OK)
+            if (err == MDV_OK)
+                ret = (mdv_threadpool_task_base *)entry->data;
+            else
             {
                 mdv_hashmap_erase(threadpool->tasks, task->fd);
                 MDV_LOGE("Threadpool task registration failed with error '%s' (%d)", mdv_strerror(err), err);
             }
         }
         else
-        {
             MDV_LOGE("Threadpool task registration failed");
-            err = MDV_FAILED;
-        }
 
         mdv_mutex_unlock(threadpool->tasks_mtx);
     }
     else
         MDV_LOGE("Threadpool task registration failed");
 
-    return err;
+    return ret;
 }
 
 

@@ -67,9 +67,9 @@ MU_TEST(platform_threadpool)
         }
     };
 
-    mu_check(mdv_threadpool_add(tp, MDV_EPOLLET | MDV_EPOLLEXCLUSIVE | MDV_EPOLLIN | MDV_EPOLLERR, tasks + 0) == MDV_OK);
-    mu_check(mdv_threadpool_add(tp, MDV_EPOLLET | MDV_EPOLLEXCLUSIVE | MDV_EPOLLIN | MDV_EPOLLERR, tasks + 1) == MDV_OK);
-    mu_check(mdv_threadpool_add(tp, MDV_EPOLLET | MDV_EPOLLEXCLUSIVE | MDV_EPOLLIN | MDV_EPOLLERR, tasks + 2) == MDV_OK);
+    mu_check(mdv_threadpool_add(tp, MDV_EPOLLET | MDV_EPOLLEXCLUSIVE | MDV_EPOLLIN | MDV_EPOLLERR, tasks + 0) != 0);
+    mu_check(mdv_threadpool_add(tp, MDV_EPOLLET | MDV_EPOLLEXCLUSIVE | MDV_EPOLLIN | MDV_EPOLLERR, tasks + 1) != 0);
+    mu_check(mdv_threadpool_add(tp, MDV_EPOLLET | MDV_EPOLLEXCLUSIVE | MDV_EPOLLIN | MDV_EPOLLERR, tasks + 2) != 0);
 
     mu_check(atomic_load_explicit(&test_fd_data_sum, memory_order_relaxed) == 0);
 

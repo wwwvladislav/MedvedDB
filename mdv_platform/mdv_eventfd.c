@@ -14,7 +14,7 @@ mdv_descriptor mdv_eventfd()
     if (ret == -1)
     {
         int err = mdv_error();
-        MDV_LOGE("eventfd creation was failed with error: '%s' (%d)", mdv_strerror(err), err);
+        MDV_LOGE("eventfd creation failed with error: '%s' (%d)", mdv_strerror(err), err);
         return MDV_INVALID_DESCRIPTOR;
     }
 

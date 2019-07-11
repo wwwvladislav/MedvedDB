@@ -181,7 +181,7 @@ mdv_descriptor mdv_socket(mdv_socket_type type)
     if (s == -1)
     {
         int err = mdv_error();
-        MDV_LOGE("Socket creation was failed with error: '%s' (%d)", mdv_strerror(err), err);
+        MDV_LOGE("Socket creation failed with error: '%s' (%d)", mdv_strerror(err), err);
         return MDV_INVALID_DESCRIPTOR;
     }
 
@@ -263,7 +263,7 @@ mdv_errno mdv_socket_nonblock(mdv_descriptor sock)
 
     if (err == -1)
     {
-        MDV_LOGE("Switching socket %d to nonblocking mode was failed", s);
+        MDV_LOGE("Switching socket %d to nonblocking mode failed", s);
         return mdv_error();
     }
 
@@ -360,7 +360,7 @@ mdv_errno mdv_socket_listen(mdv_descriptor sock)
 
     if (err == -1)
     {
-        MDV_LOGE("Socket %d listening was failed", s);
+        MDV_LOGE("Port listening failed (socket: %d)", s);
         return mdv_error();
     }
 
@@ -379,7 +379,10 @@ mdv_descriptor mdv_socket_accept(mdv_descriptor sock, mdv_sockaddr *peer)
     if (peer_sock == -1)
     {
         mdv_errno err = mdv_error();
-        MDV_LOGE("Socket %d accepting was failed with error '%s' (%d)", s, mdv_strerror(err), err);
+
+        if (err != MDV_EAGAIN)
+            MDV_LOGE("Peer accepting failed with error '%s' (%d) (socket: %d)", mdv_strerror(err), err, s);
+
         return MDV_INVALID_DESCRIPTOR;
     }
 
@@ -399,7 +402,7 @@ mdv_errno mdv_socket_bind(mdv_descriptor sock, mdv_sockaddr const *addr)
 
     if (err == -1)
     {
-        MDV_LOGE("Socket %d binding was failed", s);
+        MDV_LOGE("Socket %d binding failed", s);
         return mdv_error();
     }
 
@@ -413,12 +416,14 @@ mdv_errno mdv_socket_connect(mdv_descriptor sock, mdv_sockaddr const *addr)
 
     const struct sockaddr *saddr = (const struct sockaddr *)addr;
 
-    int err = connect(s, saddr, sizeof(mdv_sockaddr));
-
-    if (err == -1)
+    if (connect(s, saddr, sizeof(mdv_sockaddr)) == -1)
     {
-        MDV_LOGE("Socket %d connecting was failed", s);
-        return mdv_error();
+        mdv_errno err = mdv_error();
+
+        if (err != MDV_INPROGRESS)
+            MDV_LOGE("Connection failed (socket: %d)", s);
+
+        return err;
     }
 
     return MDV_OK;

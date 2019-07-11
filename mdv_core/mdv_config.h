@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief Server configuration
+ * @details This file contains server configuration parameters.
+ */
 #pragma once
 #include <stdbool.h>
 #include <stdint.h>
@@ -5,52 +10,64 @@
 #include <mdv_stack.h>
 
 
-enum { MDV_MAX_CONFIGURED_CLUSTER_NODES = 256 };
+enum
+{
+    MDV_MAX_CONFIGURED_CLUSTER_NODES = 256      ///< Limit for configured nodes in cluster
+};
 
 
+/// Server configuration
 typedef struct
 {
     struct
     {
-        mdv_string level;
-    } log;
+        mdv_string level;       ///< Log output level
+    } log;                      ///< Log settings
 
     struct
     {
-        mdv_string listen;
-        uint32_t   workers;
-    } server;
+        mdv_string listen;      ///< Server IP and port for listening
+        uint32_t   workers;     ///< Number of threadpool workers
+    } server;                   ///< Server settings
 
     struct
     {
-        uint32_t retry_interval;
-        uint32_t keep_idle;
-        uint32_t keep_count;
-        uint32_t keep_interval;
-    } connection;
+        uint32_t retry_interval;///< Interval between reconnections (in seconds)
+        uint32_t keep_idle;     ///< Start keeplives after this period (in seconds)
+        uint32_t keep_count;    ///< Number of keepalives before death
+        uint32_t keep_interval; ///< Interval between keepalives (in seconds)
+    } connection;               ///< Connection settings
 
     struct
     {
-        mdv_string path;
-    } storage;
+        mdv_string path;        ///< Directory where the database is placed
+    } storage;                  ///< Storage settings
 
     struct
     {
-        uint32_t   batch_size;
-    } transaction;
+        uint32_t   batch_size;  ///< Batch size for commit to transaction log
+    } transaction;              ///< Transaction settings
 
     struct
     {
-        uint32_t    size;
-        char const *nodes[MDV_MAX_CONFIGURED_CLUSTER_NODES];
-    } cluster;
+        uint32_t    size;       ///< Nimber of defined cluster nodes
+        char const *nodes[MDV_MAX_CONFIGURED_CLUSTER_NODES];    ///< Defined cluster nodes
+    } cluster;                  ///< Cluster settings
 
-    mdv_stack(uint8_t, 4 * 1024) mempool;
+    mdv_stack(uint8_t, 4 * 1024) mempool;   ///< Memory pool for strings allocation
 } mdv_config;
 
 
+/// Global server configuration
 extern mdv_config MDV_CONFIG;
 
-
+/**
+ * @brief Load configuration from file
+ *
+ * @param path [in] Configuration file path
+ *
+ * @return On success returns true
+ * @return On error returns false
+ */
 bool mdv_load_config(char const *path);
 

@@ -3,11 +3,9 @@
 #include "mdv_storage.h"
 #include <mdv_uuid.h>
 #include <mdv_types.h>
+#include <mdv_version.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-
-#define MDV_VERSION 1
 
 
 typedef struct

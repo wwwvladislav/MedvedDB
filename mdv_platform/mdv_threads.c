@@ -61,7 +61,7 @@ mdv_errno mdv_thread_create(mdv_thread *thread, mdv_thread_attrs const *attrs, m
     if (pthread_attr_init(&attr))
     {
         mdv_errno err = mdv_error();
-        MDV_LOGE("Thread attributes initialization was failed with error '%s' (%d)", mdv_strerror(err), err);
+        MDV_LOGE("Thread attributes initialization failed with error '%s' (%d)", mdv_strerror(err), err);
         return err;
     }
 
@@ -83,7 +83,7 @@ mdv_errno mdv_thread_create(mdv_thread *thread, mdv_thread_attrs const *attrs, m
     if (pthread_create(&pthread, &attr, mdv_thread_function, &thread_arg))
     {
         mdv_errno err = mdv_error();
-        MDV_LOGE("Thread starting was failed with error %d", err);
+        MDV_LOGE("Thread starting failed with error %d", err);
         pthread_attr_destroy(&attr);
         return err;
     }
@@ -129,7 +129,7 @@ mdv_errno mdv_thread_join(mdv_thread thread)
     if (err)
     {
         err = mdv_error();
-        MDV_LOGE("Thread joining was failed with error %d", err);
+        MDV_LOGE("Thread joining failed with error %d", err);
         return err;
     }
 

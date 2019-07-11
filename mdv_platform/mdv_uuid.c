@@ -31,13 +31,10 @@ int mdv_uuid_cmp(mdv_uuid const *a, mdv_uuid const *b)
 }
 
 
-bool mdv_uuid_to_str(mdv_uuid const *uuid, mdv_string *dst)
+mdv_string mdv_uuid_to_str(mdv_uuid const *uuid)
 {
-    if (dst->size != 2 * sizeof uuid->u8 + 1)
-    {
-        MDV_LOGE("uuid_to_str failed. Destination buffer is too small.");
-        return false;
-    }
+    static _Thread_local char buff[33];
+    mdv_string dst = mdv_str_static(buff);
 
     static char const hex[] = "0123456789ABCDEF";
     size_t const size = 2 * sizeof uuid->u8;
@@ -45,12 +42,12 @@ bool mdv_uuid_to_str(mdv_uuid const *uuid, mdv_string *dst)
     for(size_t i = 0; i < size; ++i)
     {
         uint8_t const d = (uuid->u8[i / 2] >> ((1 - i % 2) * 4)) & 0xF;
-        dst->ptr[i] = hex[d];
+        dst.ptr[i] = hex[d];
     }
 
-    dst->ptr[size] = 0;
+    dst.ptr[size] = 0;
 
-    return true;
+    return dst;
 }
 
 

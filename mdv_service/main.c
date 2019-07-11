@@ -102,6 +102,7 @@ int main(int argc, char *argv[])
     // Register signal handlers
     signal(SIGINT,  termination_signal_handler);
     signal(SIGTERM, termination_signal_handler);
+    signal(SIGPIPE, SIG_IGN);
 
     MDV_LOGI("Service is starting...");
 

@@ -14,7 +14,7 @@ typedef struct mdv_threadpool mdv_threadpool;
 
 /**
  * @brief Thread pool task.
- * @details Thread pool waits (on epoll) and triggers event handler function for some event was raised on file descriptor.
+ * @details Thread pool waits (on epoll) and triggers event handler function for some event raised on file descriptor.
  */
 typedef struct mdv_threadpool_task_base
 {
@@ -80,10 +80,10 @@ void mdv_threadpool_free(mdv_threadpool *threadpool);
  * @param task [in]       New task
  * @param events [in]     Epoll events. It should be the bitwise OR combination of the mdv_epoll_events.
  *
- * @return MDV_OK on success
- * @return nonzero value on error
+ * @return On success, nonzero pointer to new inserted task
+ * @return On error, NULL pointer
  */
-mdv_errno mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_threadpool_task_base const *task);
+mdv_threadpool_task_base * mdv_threadpool_add(mdv_threadpool *threadpool, uint32_t events, mdv_threadpool_task_base const *task);
 
 
 /**

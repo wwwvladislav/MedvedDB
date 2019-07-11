@@ -65,35 +65,53 @@ int main(int argc, char *argv[])
 
     mdv_logf_set_level(ZF_LOG_WARN);
 
-    mdv_client *client = mdv_client_create(argv[1]);
+    mdv_client_config config =
+    {
+        .db =
+        {
+            .addr = argv[1]
+        },
+        .connection =
+        {
+            .timeout    = 15,
+            .keepidle   = 5,
+            .keepcnt    = 10,
+            .keepintvl  = 5
+        },
+        .threadpool =
+        {
+            .size = 4
+        }
+    };
+
+    mdv_client *client = mdv_client_connect(&config);
+
     if (client)
     {
-        if (mdv_client_connect(client))
+        mdv_table(3) table =
         {
-            mdv_table(3) table =
+            .name = mdv_str_static("MyTable"),
+            .size = 3,
+            .fields =
             {
-                .name = mdv_str_static("MyTable"),
-                .size = 3,
-                .fields =
-                {
-                    { MDV_FLD_TYPE_CHAR,  0, mdv_str_static("Col1") },  // char *
-                    { MDV_FLD_TYPE_INT32, 2, mdv_str_static("Col2") },  // pair { int, int }
-                    { MDV_FLD_TYPE_BOOL,  1, mdv_str_static("Col3") }   // bool
-                }
-            };
+                { MDV_FLD_TYPE_CHAR,  0, mdv_str_static("Col1") },  // char *
+                { MDV_FLD_TYPE_INT32, 2, mdv_str_static("Col2") },  // pair { int, int }
+                { MDV_FLD_TYPE_BOOL,  1, mdv_str_static("Col3") }   // bool
+            }
+        };
 
-            if (mdv_create_table(client, (mdv_table_base *)&table))
-            {
-                mdv_uuid_str(uuid);
-                mdv_uuid_to_str(&table.uuid, &uuid);
-                printf("New table '%s' with UUID '%s' was successfully created\n", table.name.ptr, uuid.ptr);
-            }
-            else
-            {
-                printf("Unable to create table '%s' due the error '%s' (%d)\n", table.name.ptr, mdv_client_status_msg(client), mdv_client_errno(client));
-            }
+        mdv_errno err = mdv_create_table(client, (mdv_table_base *)&table);
+
+        if (err == MDV_OK)
+        {
+            printf("New table '%s' with UUID '%s' was successfully created\n", table.name.ptr, mdv_uuid_to_str(&table.uuid).ptr);
         }
-        mdv_client_disconnect(client);
+        else
+        {
+            printf("Table '%s' creation failed with error '%s' (%d)\n", table.name.ptr, mdv_strerror(err), err);
+        }
+
+        mdv_client_close(client);
     }
 
     return 0;

@@ -4,11 +4,13 @@
 #include <mdv_def.h>
 #include <stdatomic.h>
 #include <mdv_msg.h>
+#include "storage/mdv_tablespace.h"
 
 
 /// Peer context used for storing different type of information about active peer
 typedef struct mdv_peer
 {
+    mdv_tablespace     *tablespace;     ///< tablespace
     mdv_uuid            uuid;           ///< peer uuid
     mdv_descriptor      fd;             ///< file decriptoir associated with peer
     atomic_ushort       id;             ///< id generator
@@ -22,13 +24,14 @@ typedef struct mdv_peer
  * @brief   Initialize peer
  *
  * @param peer [in] peer node
+ * @param tablespace [in] table space
  * @param fd [in] peer socket descriptor
  * @param uuid [in] current process uuid
  *
  * @return On success, return MDV_OK
  * @return On error, return non zero value
  */
-mdv_errno mdv_peer_init(mdv_peer *peer, mdv_descriptor fd, mdv_uuid const *uuid);
+mdv_errno mdv_peer_init(mdv_peer *peer, mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *uuid);
 
 
 /**

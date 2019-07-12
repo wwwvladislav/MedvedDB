@@ -25,7 +25,7 @@ static void mdv_channel_init(void *userdata, void *context, mdv_descriptor fd)
     mdv_server *server = (mdv_server *)userdata;
     mdv_peer *peer = (mdv_peer *)context;
 
-    if (mdv_peer_init(peer, fd, &server->uuid) != MDV_OK)
+    if (mdv_peer_init(peer, server->tablespace, fd, &server->uuid) != MDV_OK)
         mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
 }
 

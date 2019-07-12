@@ -3,22 +3,15 @@
 #include <mdv_version.h>
 #include <mdv_timerfd.h>
 #include <mdv_log.h>
+#include <stddef.h>
+#include <string.h>
 
 
-/**
- * @brief   Say Hey! to peer node
- */
-static mdv_errno mdv_peer_wave(mdv_peer *peer, mdv_uuid const *uuid)
+static mdv_errno mdv_peer_wave(mdv_peer *peer, uint16_t id, mdv_msg_hello const *msg)
 {
-    mdv_msg_hello const msg =
-    {
-        .uuid = *uuid,
-        .version = MDV_VERSION
-    };
-
     binn hey;
 
-    if (!mdv_binn_hello(&msg, &hey))
+    if (!mdv_binn_hello(msg, &hey))
         return MDV_FAILED;
 
     mdv_msg const message =
@@ -26,7 +19,7 @@ static mdv_errno mdv_peer_wave(mdv_peer *peer, mdv_uuid const *uuid)
         .hdr =
         {
             .id = mdv_msg_hello_id,
-            .number = atomic_fetch_add_explicit(&peer->id, 1, memory_order_relaxed),
+            .number = id,
             .size = binn_size(&hey)
         },
         .payload = binn_ptr(&hey)
@@ -40,16 +33,65 @@ static mdv_errno mdv_peer_wave(mdv_peer *peer, mdv_uuid const *uuid)
 }
 
 
-/**
- * @brief   Handle incoming HELLO message
- */
+static mdv_errno mdv_peer_status(mdv_peer *peer, uint16_t id, mdv_msg_status const *msg)
+{
+    binn status;
+
+    if (!mdv_binn_status(msg, &status))
+        return MDV_FAILED;
+
+    mdv_msg const message =
+    {
+        .hdr =
+        {
+            .id = mdv_msg_status_id,
+            .number = id,
+            .size = binn_size(&status)
+        },
+        .payload = binn_ptr(&status)
+    };
+
+    mdv_errno err = mdv_peer_send(peer, &message);
+
+    binn_free(&status);
+
+    return err;
+}
+
+
+static mdv_errno mdv_peer_table_info(mdv_peer *peer, uint16_t id, mdv_msg_table_info const *msg)
+{
+    binn table_info;
+
+    if (!mdv_binn_table_info(msg, &table_info))
+        return MDV_FAILED;
+
+    mdv_msg const message =
+    {
+        .hdr =
+        {
+            .id = mdv_msg_table_info_id,
+            .number = id,
+            .size = binn_size(&table_info)
+        },
+        .payload = binn_ptr(&table_info)
+    };
+
+    mdv_errno err = mdv_peer_send(peer, &message);
+
+    binn_free(&table_info);
+
+    return err;
+}
+
+
 static mdv_errno mdv_peer_wave_handler(mdv_peer *peer, binn const *message)
 {
     mdv_msg_hello hello = {};
 
     if (!mdv_unbinn_hello(message, &hello))
     {
-        MDV_LOGE("Invalid HEELO message");
+        MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_hello_id));
         return MDV_FAILED;
     }
 
@@ -66,14 +108,58 @@ static mdv_errno mdv_peer_wave_handler(mdv_peer *peer, binn const *message)
 }
 
 
-mdv_errno mdv_peer_init(mdv_peer *peer, mdv_descriptor fd, mdv_uuid const *uuid)
+static mdv_errno mdv_peer_create_table_handler(mdv_peer *peer, uint16_t id, binn const *message)
 {
+    mdv_msg_create_table_base *create_table = mdv_unbinn_create_table(message);
+
+    if (!create_table)
+    {
+        MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_create_table_id));
+        return MDV_FAILED;
+    }
+
+    mdv_errno err = mdv_tablespace_create_table(peer->tablespace, (mdv_table_base*)&create_table->table);
+
+    if (err == MDV_OK)
+    {
+        mdv_msg_table_info const msg =
+        {
+            .uuid = create_table->table.uuid
+        };
+
+        err = mdv_peer_table_info(peer, id, &msg);
+    }
+    else
+    {
+        mdv_msg_status const msg =
+        {
+            .err = err,
+            .message = { 0 }
+        };
+
+        err = mdv_peer_status(peer, id, &msg);
+    }
+
+    return err;
+}
+
+
+mdv_errno mdv_peer_init(mdv_peer *peer, mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *uuid)
+{
+    peer->tablespace = tablespace;
     peer->fd = fd;
     peer->initialized = 0;
     atomic_init(&peer->id, 0);
     peer->created_time = mdv_gettime();
     memset(&peer->message, 0, sizeof peer->message);
-    return mdv_peer_wave(peer, uuid);
+
+    mdv_msg_hello const msg =
+    {
+        .uuid = *uuid,
+        .version = MDV_VERSION
+    };
+
+    return mdv_peer_wave(peer, 0, &msg);
 }
 
 
@@ -105,6 +191,10 @@ mdv_errno mdv_peer_recv(mdv_peer *peer)
         {
             case mdv_msg_hello_id:
                 err = mdv_peer_wave_handler(peer, &binn_msg);
+                break;
+
+            case mdv_msg_create_table_id:
+                err = mdv_peer_create_table_handler(peer, peer->message.hdr.number, &binn_msg);
                 break;
 
             default:

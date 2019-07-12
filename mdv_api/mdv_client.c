@@ -328,7 +328,6 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
 }
 
 
-
 void mdv_client_close(mdv_client *client)
 {
     if (client)
@@ -342,5 +341,27 @@ void mdv_client_close(mdv_client *client)
 
 mdv_errno mdv_create_table(mdv_client *client, mdv_table_base *table)
 {
-    return MDV_FAILED;
+    mdv_msg_create_table_base *create_table = (mdv_msg_create_table_base *)table;
+
+    binn create_table_msg;
+
+    if (!mdv_binn_create_table(create_table, &create_table_msg))
+        return MDV_FAILED;
+
+    mdv_msg const message =
+    {
+        .hdr =
+        {
+            .id = mdv_msg_create_table_id,
+            .number = atomic_fetch_add_explicit(&client->id, 1, memory_order_relaxed),
+            .size = binn_size(&create_table_msg)
+        },
+        .payload = binn_ptr(&create_table_msg)
+    };
+
+    mdv_errno err = mdv_client_send(client, &message);
+
+    binn_free(&create_table_msg);
+
+    return err;
 }

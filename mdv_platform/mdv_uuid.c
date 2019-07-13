@@ -31,6 +31,20 @@ int mdv_uuid_cmp(mdv_uuid const *a, mdv_uuid const *b)
 }
 
 
+size_t mdv_uuid_hash(mdv_uuid const *a)
+{
+    static size_t const FNV_offset_basis = 0xcbf29ce484222325;
+    static size_t const FNV_prime = 0x100000001b3;
+
+    uint64_t hash = FNV_offset_basis;
+
+    hash = (hash * FNV_prime) ^ a->u64[0];
+    hash = (hash * FNV_prime) ^ a->u64[1];
+
+    return (size_t)hash;
+}
+
+
 mdv_string mdv_uuid_to_str(mdv_uuid const *uuid)
 {
     static _Thread_local char buff[33];

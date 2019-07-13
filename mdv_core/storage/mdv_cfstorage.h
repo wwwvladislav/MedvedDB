@@ -23,7 +23,7 @@ mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num);
 mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num);
 bool            mdv_cfstorage_drop(mdv_uuid const *uuid);
 void            mdv_cfstorage_close(mdv_cfstorage *cfstorage);
-bool            mdv_cfstorage_add(mdv_cfstorage *cfstorage, uint32_t node_id, size_t count, mdv_cfstorage_op const *ops);
-bool            mdv_cfstorage_rem(mdv_cfstorage *cfstorage, uint32_t node_id, size_t count, mdv_cfstorage_op const *ops);
+bool            mdv_cfstorage_add(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count, mdv_cfstorage_op const *ops);
+bool            mdv_cfstorage_rem(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count, mdv_cfstorage_op const *ops);
 bool            mdv_cfstorage_log_apply(mdv_cfstorage *cfstorage, mdv_cfstorage_log_handler handler);
 

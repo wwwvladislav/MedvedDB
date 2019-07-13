@@ -3,49 +3,66 @@
 #include <mdv_alloc.h>
 
 
-static const mdv_uuid MDV_TABLES_UUID = {};
+/// Storage for DB tables
+static const mdv_uuid MDV_DB_TABLES = {};
 
 
+/// DB operations list
 enum
 {
-    MDV_OP_TABLE_CREATE = 0
+    MDV_OP_TABLE_CREATE = 0,    ///< Create table
+    MDV_OP_TABLE_DROP,          ///< Drop table
+    MDV_OP_ROW_INSERT           ///< Insert data into a table
 };
 
 
-mdv_tablespace mdv_tablespace_create(uint32_t nodes_num)
+/// DB operation
+typedef struct
 {
-    mdv_tablespace tables =
-    {
-        .cfstorage = mdv_cfstorage_create(&MDV_TABLES_UUID, nodes_num)
-    };
-    return tables;
+    uint32_t op;                ///< operation id
+    uint32_t alignment;         ///< alignment (unused)
+    uint8_t  payload[1];        ///< operation payload
+} mdv_op;
+
+
+mdv_errno mdv_tablespace_create(mdv_tablespace *tablespace, uint32_t nodes_num)
+{
+    tablespace->tables = mdv_cfstorage_create(&MDV_DB_TABLES, nodes_num);
+
+    mdv_errno err = tablespace->tables
+                        ? MDV_OK
+                        : MDV_FAILED;
+    return err;
 }
 
 
-mdv_tablespace mdv_tablespace_open(uint32_t nodes_num)
+mdv_errno mdv_tablespace_open(mdv_tablespace *tablespace, uint32_t nodes_num)
 {
-    mdv_tablespace tables =
-    {
-        .cfstorage = mdv_cfstorage_open(&MDV_TABLES_UUID, nodes_num)
-    };
-    return tables;
+    tablespace->tables = mdv_cfstorage_open(&MDV_DB_TABLES, nodes_num);
+
+    mdv_errno err = tablespace->tables
+                        ? MDV_OK
+                        : MDV_FAILED;
+    return err;
 }
 
 
-bool mdv_tablespace_drop()
+mdv_errno mdv_tablespace_drop()
 {
-    return mdv_cfstorage_drop(&MDV_TABLES_UUID);
+    return mdv_cfstorage_drop(&MDV_DB_TABLES)
+                ? MDV_OK
+                : MDV_FAILED;
 }
 
 
 void mdv_tablespace_close(mdv_tablespace *tablespace)
 {
-    mdv_cfstorage_close(tablespace->cfstorage);
-    tablespace->cfstorage = 0;
+    mdv_cfstorage_close(tablespace->tables);
+    tablespace->tables = 0;
 }
 
 
-mdv_errno mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *table)
+mdv_errno mdv_tablespace_log_create_table(mdv_tablespace *tablespace, uint32_t peer_id, mdv_table_base *table)
 {
     table->uuid = mdv_uuid_generate();
 
@@ -55,19 +72,21 @@ mdv_errno mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base
 
     int const obj_size = binn_size(&obj);
 
-    uint8_t *data = (uint8_t*)mdv_alloc(sizeof(uint32_t) + obj_size);
+    mdv_op *op = (mdv_op*)mdv_alloc_tmp(offsetof(mdv_op, payload) + obj_size);
 
-    if (!data)
+    if (!op)
     {
         binn_free(&obj);
         return MDV_NO_MEM;
     }
 
-    *(uint32_t*)data = MDV_OP_TABLE_CREATE;
-    memcpy(data + sizeof(uint32_t), binn_ptr(&obj), obj_size);
+    op->op = MDV_OP_TABLE_CREATE;
+
+    memcpy(op->payload, binn_ptr(&obj), obj_size);
+
     binn_free(&obj);
 
-    mdv_cfstorage_op op =
+    mdv_cfstorage_op cfop =
     {
         .key =
         {
@@ -76,16 +95,16 @@ mdv_errno mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base
         },
         .op =
         {
-            .size = sizeof(data),
-            .ptr = data
+            .size = sizeof(op),
+            .ptr = op
         }
     };
 
-    int ret = mdv_cfstorage_add(tablespace->cfstorage, 0, 1, &op)
-            ? MDV_OK
-            : MDV_FAILED;
+    mdv_errno ret = mdv_cfstorage_add(tablespace->tables, peer_id, 1, &cfop)
+                        ? MDV_OK
+                        : MDV_FAILED;
 
-    mdv_free(data);
+    mdv_free(op);
 
     return ret;
 }

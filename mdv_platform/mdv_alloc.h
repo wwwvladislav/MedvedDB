@@ -10,5 +10,5 @@ void  mdv_alloc_thread_finalize();
 void *mdv_alloc(size_t size);
 void *mdv_aligned_alloc(size_t alignment, size_t size);
 void *mdv_realloc(void *ptr, size_t size);
+void *mdv_alloc_tmp(size_t size);
 void  mdv_free(void *ptr);
-

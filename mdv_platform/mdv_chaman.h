@@ -14,15 +14,15 @@
 typedef struct mdv_chaman mdv_chaman;
 
 
-/// channel initialization handler type
-typedef void (*mdv_channel_init_fn)(void *userdata, void *context, mdv_descriptor fd);
+/// channel initialization handler
+typedef void (*mdv_channel_init_fn)(void *userdata, void *context, mdv_descriptor fd, mdv_string const *addr);
 
 
-/// data receiving handler type
+/// data receiving handler
 typedef mdv_errno (*mdv_channel_recv_fn)(void *userdata, void *context, mdv_descriptor fd);
 
 
-/// channel closing handler type
+/// channel closing handler
 typedef void (*mdv_channel_close_fn)(void *userdata, void *context);
 
 

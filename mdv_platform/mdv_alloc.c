@@ -34,6 +34,23 @@
 #endif
 
 
+enum
+{
+    MDV_THREAD_LOCAL_STORAGE_SIZE = 128 * 1024
+};
+
+
+static _Thread_local struct
+{
+    char buffer[MDV_THREAD_LOCAL_STORAGE_SIZE];
+    int  is_used;
+}
+_thread_local_tmp_buff =
+{
+    .is_used = 0
+};
+
+
 int mdv_alloc_initialize()
 {
     return rpmalloc_initialize();
@@ -91,11 +108,31 @@ void * mdv_realloc(void *ptr, size_t size)
 }
 
 
+void *mdv_alloc_tmp(size_t size)
+{
+    if (size < sizeof _thread_local_tmp_buff.buffer)
+    {
+        if (!_thread_local_tmp_buff.is_used)
+        {
+            _thread_local_tmp_buff.is_used = 1;
+            return _thread_local_tmp_buff.buffer;
+        }
+        MDV_LOGW("Thread local buffer is busy. Dynamic allocation is performed.");
+    }
+    return mdv_alloc(size);
+}
+
+
 void mdv_free(void *ptr)
 {
     if (ptr)
     {
-        rpfree(ptr);
-        MDV_DEALLOCATION(free, ptr);
+        if (ptr != _thread_local_tmp_buff.buffer)
+        {
+            rpfree(ptr);
+            MDV_DEALLOCATION(free, ptr);
+        }
+        else
+            _thread_local_tmp_buff.is_used = 0;
     }
 }

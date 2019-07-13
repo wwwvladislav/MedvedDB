@@ -6,12 +6,6 @@
 #include <string.h>
 
 
-enum
-{
-    MDV_THREAD_LOCAL_STORAGE_SIZE = 128 * 1024
-};
-
-
 mdv_errno mdv_write_msg(mdv_descriptor fd, mdv_msg const *msg)
 {
     if (msg->hdr.size > MDV_MSG_SIZE_MAX)
@@ -63,25 +57,14 @@ mdv_errno mdv_read_msg(mdv_descriptor fd, mdv_msg *msg)
                 return MDV_FAILED;
             }
 
-            static _Thread_local char buffer[MDV_THREAD_LOCAL_STORAGE_SIZE];
 
-            if (msg->hdr.size <= sizeof buffer)
+            msg->payload = mdv_alloc_tmp(msg->hdr.size);
+
+            if (!msg->payload)
             {
-                msg->payload = buffer;
-                msg->flags &= ~MDV_MSG_DYNALLOC;
-            }
-            else
-            {
-                msg->payload = mdv_alloc(msg->hdr.size);
-
-                if (!msg->payload)
-                {
-                    MDV_LOGE("No memory for incoming message");
-                    memset(msg, 0, sizeof *msg);
-                    return MDV_NO_MEM;
-                }
-
-                msg->flags |= MDV_MSG_DYNALLOC;
+                MDV_LOGE("No memory for incoming message");
+                memset(msg, 0, sizeof *msg);
+                return MDV_NO_MEM;
             }
 
             break;
@@ -108,7 +91,6 @@ mdv_errno mdv_read_msg(mdv_descriptor fd, mdv_msg *msg)
 
 void mdv_free_msg(mdv_msg *msg)
 {
-    if (msg->flags & MDV_MSG_DYNALLOC)
-        mdv_free(msg->payload);
+    mdv_free(msg->payload);
     memset(msg, 0, sizeof *msg);
 }

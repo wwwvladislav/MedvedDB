@@ -11,6 +11,8 @@
 #include <stddef.h>
 
 
+/// @cond Doxygen_Suppress
+
 typedef struct
 {
     atomic_uint_fast64_t top;   // last insertion point
@@ -30,6 +32,8 @@ struct mdv_cfstorage
 static bool mdv_cfstorage_log_seek(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, uint64_t pos);
 static bool mdv_cfstorage_log_tell(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, mdv_cfstorage_applied_pos *pos);
 static void mdv_cfstorage_log_last(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, mdv_cfstorage_applied_pos *pos);
+
+/// @endcond
 
 
 mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num)
@@ -229,7 +233,7 @@ static bool mdv_cfstorage_is_key_deleted(mdv_cfstorage *cfstorage, mdv_transacti
 }
 
 
-bool mdv_cfstorage_add(mdv_cfstorage *cfstorage, uint32_t node_id, size_t count, mdv_cfstorage_op const *ops)
+bool mdv_cfstorage_add(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count, mdv_cfstorage_op const *ops)
 {
     mdv_rollbacker(4) rollbacker;
     mdv_rollbacker_clear(rollbacker);
@@ -245,7 +249,7 @@ bool mdv_cfstorage_add(mdv_cfstorage *cfstorage, uint32_t node_id, size_t count,
     mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
 
     // Open transaction log
-    mdv_map tr_log = mdv_map_open(&transaction, MDV_MAP_TRANSACTION_LOG(node_id), MDV_MAP_CREATE);
+    mdv_map tr_log = mdv_map_open(&transaction, MDV_MAP_TRANSACTION_LOG(peer_id), MDV_MAP_CREATE);
     if (!mdv_map_ok(tr_log))
     {
         MDV_LOGE("CFstorage table '%s' not opened", MDV_STRG_TRANSACTION_LOG);
@@ -283,7 +287,7 @@ bool mdv_cfstorage_add(mdv_cfstorage *cfstorage, uint32_t node_id, size_t count,
 
         if (!mdv_cfstorage_is_key_deleted(cfstorage, transaction, &ops[i].key))  // Delete op has priority
         {
-            uint64_t key = atomic_fetch_add_explicit(&cfstorage->applied[node_id].top, 1, memory_order_relaxed) + 1;
+            uint64_t key = atomic_fetch_add_explicit(&cfstorage->applied[peer_id].top, 1, memory_order_relaxed) + 1;
 
             mdv_data k = { sizeof key, &key };
             mdv_data v = { ops[i].op.size, (void*)ops[i].op.ptr };
@@ -310,7 +314,7 @@ bool mdv_cfstorage_add(mdv_cfstorage *cfstorage, uint32_t node_id, size_t count,
 }
 
 
-bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, uint32_t node_id, size_t count, mdv_cfstorage_op const *ops)
+bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count, mdv_cfstorage_op const *ops)
 {
     mdv_rollbacker(4) rollbacker;
     mdv_rollbacker_clear(rollbacker);
@@ -326,7 +330,7 @@ bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, uint32_t node_id, size_t count,
     mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
 
     // Open transaction log
-    mdv_map map = mdv_map_open(&transaction, MDV_MAP_TRANSACTION_LOG(node_id), MDV_MAP_CREATE);
+    mdv_map map = mdv_map_open(&transaction, MDV_MAP_TRANSACTION_LOG(peer_id), MDV_MAP_CREATE);
     if (!mdv_map_ok(map))
     {
         MDV_LOGE("CFstorage table '%s' not opened", MDV_STRG_TRANSACTION_LOG);
@@ -355,7 +359,7 @@ bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, uint32_t node_id, size_t count,
         // if delete request is unique
         if (mdv_map_put_unique(&rem_map, &transaction, &k, &v))
         {
-            uint64_t key = atomic_fetch_add_explicit(&cfstorage->applied[node_id].top, 1, memory_order_relaxed) + 1;
+            uint64_t key = atomic_fetch_add_explicit(&cfstorage->applied[peer_id].top, 1, memory_order_relaxed) + 1;
 
             mdv_data k = { sizeof key, &key };
             mdv_data v = { ops[i].op.size, (void*)ops[i].op.ptr };

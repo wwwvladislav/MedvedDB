@@ -196,10 +196,11 @@ static mdv_errno mdv_client_send(mdv_client *client, mdv_msg const *message)
 }
 
 
-static void mdv_channel_init(void *userdata, void *context, mdv_descriptor fd)
+static void mdv_channel_init(void *userdata, void *context, mdv_descriptor fd, mdv_string const *addr)
 {
     mdv_client *client = (mdv_client *)userdata;
     (void)context;
+    (void)addr;
 
     client->fd = fd;
 

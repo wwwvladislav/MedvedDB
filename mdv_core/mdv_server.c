@@ -14,18 +14,19 @@ struct mdv_server
 {
     mdv_uuid            uuid;
     mdv_chaman         *chaman;
+    mdv_nodes          *nodes;
     mdv_tablespace     *tablespace;
 };
 
 /// @endcond
 
 
-static void mdv_channel_init(void *userdata, void *context, mdv_descriptor fd)
+static void mdv_channel_init(void *userdata, void *context, mdv_descriptor fd, mdv_string const *addr)
 {
     mdv_server *server = (mdv_server *)userdata;
     mdv_peer *peer = (mdv_peer *)context;
 
-    if (mdv_peer_init(peer, server->tablespace, fd, &server->uuid) != MDV_OK)
+    if (mdv_peer_init(peer, server->tablespace, server->nodes, fd, addr, &server->uuid) != MDV_OK)
         mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
 }
 
@@ -61,7 +62,7 @@ static void mdv_channel_close(void *userdata, void *context)
 }
 
 
-mdv_server * mdv_server_create(mdv_tablespace *tablespace, mdv_uuid const *uuid)
+mdv_server * mdv_server_create(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_uuid const *uuid)
 {
     mdv_rollbacker(2) rollbacker;
     mdv_rollbacker_clear(rollbacker);
@@ -75,6 +76,7 @@ mdv_server * mdv_server_create(mdv_tablespace *tablespace, mdv_uuid const *uuid)
     }
 
     server->uuid = *uuid;
+    server->nodes = nodes;
     server->tablespace = tablespace;
 
     mdv_rollbacker_push(rollbacker, mdv_free, server);

@@ -220,11 +220,11 @@ static void mdv_chaman_new_peer(mdv_chaman *chaman, mdv_descriptor sock, mdv_soc
     memset(task->context.dataspace, -1, chaman->config.channel.context.size
                                         + chaman->config.channel.context.guardsize);
 
-    chaman->config.channel.init(chaman->config.userdata, task->context.dataspace, sock);
+    mdv_string str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, addr);
+
+    chaman->config.channel.init(chaman->config.userdata, task->context.dataspace, sock, &str_addr);
 
     task = (mdv_peer_task *)mdv_threadpool_add(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)task);
-
-    mdv_string str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, addr);
 
     if (!task)
     {

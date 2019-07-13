@@ -11,11 +11,12 @@ static volatile int mdv_recv_size = 0;
 static volatile mdv_descriptor fds[2];
 
 
-static void mdv_channel_init(void *userdata, void *context, mdv_descriptor fd)
+static void mdv_channel_init(void *userdata, void *context, mdv_descriptor fd, mdv_string const *addr)
 {
     (void)fd;
     (void)context;
     (void)userdata;
+    (void)addr;
     fds[mdv_init_count++] = fd;
 }
 

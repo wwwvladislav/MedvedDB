@@ -6,7 +6,7 @@
 /// Message flags
 enum mdv_msg_flags
 {
-    MDV_MSG_DYNALLOC = 1 << 0   ///< payload buffer allocated dynamically. It needs to be freed with mdv_free().
+    MDV_MSG_RESERVED = 1 << 0   ///< reserved flag
 };
 
 
@@ -19,6 +19,7 @@ typedef struct mdv_msghdr
 } mdv_msghdr;
 
 
+/// Message type
 typedef struct mdv_msg
 {
     mdv_msghdr  hdr;            ///< Message header

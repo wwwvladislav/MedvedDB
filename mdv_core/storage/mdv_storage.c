@@ -15,11 +15,15 @@
 #endif
 
 
+/// @cond Doxygen_Suppress
+
 struct mdv_storage
 {
     atomic_int  ref_counter;
     MDB_env    *env;
 };
+
+/// @endcond
 
 
 mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_num, uint32_t flags)

@@ -57,25 +57,23 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
     mdv_metainf_validate(&svc->metainf);
     mdv_metainf_flush(&svc->metainf, svc->storage.metainf);
 
-    if (!mdv_nodes_load(&svc->nodes, svc->storage.metainf))
+    if (mdv_nodes_load(&svc->nodes, svc->storage.metainf) != MDV_OK)
     {
-        MDV_LOGE("Nodes list loading from DB failed");
+        MDV_LOGE("Nodes loading failed");
         return false;
     }
 
     // Tablespace
-    svc->storage.tablespace = mdv_tablespace_open(MDV_NODES_NUM);
-    if (!mdv_tablespace_ok(svc->storage.tablespace))
-        svc->storage.tablespace = mdv_tablespace_create(MDV_NODES_NUM);
-
-    if (!mdv_tablespace_ok(svc->storage.tablespace))
+    if (mdv_tablespace_open(&svc->storage.tablespace, MDV_NODES_NUM) != MDV_OK
+        && mdv_tablespace_create(&svc->storage.tablespace, MDV_NODES_NUM) != MDV_OK)
     {
         MDV_LOGE("DB tables space creation failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
         return false;
     }
 
     // Server
-    svc->server = mdv_server_create(&svc->storage.tablespace, &svc->metainf.uuid.value);
+    svc->server = mdv_server_create(&svc->storage.tablespace, &svc->nodes, &svc->metainf.uuid.value);
+
     if (!svc->server)
     {
         MDV_LOGE("Listener starting failed");

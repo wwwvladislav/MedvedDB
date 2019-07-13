@@ -1,7 +1,6 @@
 /**
  * @file
  * @brief API for key-value storage access.
- *
  * @details This file contains main functions and type definitions to access the key-value storage.
 */
 
@@ -13,6 +12,7 @@
 #include <stddef.h>
 
 
+/// Key-value storage descriptor
 typedef struct mdv_storage mdv_storage;
 
 
@@ -33,28 +33,91 @@ typedef enum
 } mdv_storage_flags;
 
 
-mdv_storage * mdv_storage_open      (char const *path, char const *name, uint32_t dbs_num, uint32_t flags);
-mdv_storage * mdv_storage_retain    (mdv_storage *pstorage);
-void          mdv_storage_release   (mdv_storage *pstorage);
+/**
+ * @brief Open new key-value storage
+ *
+ * @param path [in] Directory where storage placed
+ * @param name [in] Storage name
+ * @param dbs_num [in] Maximum number of named databases
+ * @param flags [in] Flags for key-value storage opening (see mdv_storage_flags)
+ *
+ * @return On success, return nonzero pointer to opened storage
+ * @return On error, return NULL pointer
+ */
+mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_num, uint32_t flags);
 
 
+/**
+ * @brief Add reference counter
+ *
+ * @param pstorage [in] storage
+ *
+ * @return pointer which provided as argument
+ */
+mdv_storage * mdv_storage_retain(mdv_storage *pstorage);
+
+
+/**
+ * @brief Decrement references counter. Storage is closed and memory is freed if references counter is zero.
+ *
+ * @param pstorage [in] storage
+ */
+void mdv_storage_release(mdv_storage *pstorage);
+
+
+/// Transaction descriptor
 typedef struct
 {
-    mdv_storage *pstorage;
-    void        *ptransaction;
+    mdv_storage *pstorage;      ///< storage
+    void        *ptransaction;  ///< transaction
 } mdv_transaction;
 
 
-mdv_transaction mdv_transaction_start   (mdv_storage *pstorage);
-bool            mdv_transaction_commit  (mdv_transaction *ptransaction);
-bool            mdv_transaction_abort   (mdv_transaction *ptransaction);
-#define         mdv_transaction_ok(t)   ((t).ptransaction != 0)
+/**
+ * @brief Start new transaction
+ *
+ * @param pstorage [in] storage opened with mdv_storage_open()
+ *
+ * @return On success return valid filled transaction descriptor. Validity can be checked with mdv_transaction_ok() macro.
+ */
+mdv_transaction mdv_transaction_start(mdv_storage *pstorage);
 
 
+/**
+ * @brief Commit transaction. After the successfully commit all data modifications are stored in DB.
+ *
+ * @param ptransaction [in] transaction started with mdv_transaction_start()
+ *
+ * @return On success returns true, otherwise returns false.
+ */
+bool mdv_transaction_commit(mdv_transaction *ptransaction);
+
+
+/**
+ * @brief Abort transaction. After the abort all data modifications are canceled.
+ *
+ * @param ptransaction [in] transaction started with mdv_transaction_start()
+ *
+ * @return On success returns true, otherwise returns false.
+ */
+bool mdv_transaction_abort(mdv_transaction *ptransaction);
+
+
+/**
+ * @brief Check the transaction validity
+ *
+ * @param t [in] transaction started with mdv_transaction_start()
+ *
+ * @return If transaction is valid returns true, otherwise returns false.
+ */
+#define mdv_transaction_ok(t) ((t).ptransaction != 0)
+
+
+/// Key-value storage map descriptor
 typedef struct
 {
-    mdv_storage *pstorage;
-    unsigned int dbmap;
+    mdv_storage *pstorage;  ///< Storage
+    unsigned int dbmap;     ///< map internal descriptor
 } mdv_map;
 
 
@@ -122,6 +185,7 @@ bool        mdv_cursor_get              (mdv_cursor *pcursor, mdv_data *key, mdv
 
 
 /**
+ * @brief Check cursor validity
  *
  * @param c [in]    Cursor, created with mdv_cursor_open().
  *
@@ -160,6 +224,23 @@ bool        mdv_cursor_get              (mdv_cursor *pcursor, mdv_data *key, mdv
     )
 
 
+
+/**
+ * @brief Iterate all map entries
+ *
+ * @param transaction [in]  Transaction, started with mdv_transaction_start().
+ * @param map [in]          Map, opened with mdv_map_open()
+ * @param entry [out]       Item stored in map
+ *
+ * Usage example:
+ * @code
+ *   mdv_map_foreach(transaction, map, entry)
+ *   {
+ *       mdv_data const *key = &entry.key;
+ *       mdv_data const *value = &entry.value;
+ *   }
+ * @endcode
+ */
 #define mdv_map_foreach(transaction, map, entry)            \
     mdv_map_foreach_explicit(transaction,                   \
                              map,                           \

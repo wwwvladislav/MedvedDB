@@ -7,6 +7,10 @@
 #include <string.h>
 
 
+/// Client UUID
+static mdv_uuid const MDV_CLIENT_UUID = {};
+
+
 static mdv_errno mdv_peer_wave(mdv_peer *peer, uint16_t id, mdv_msg_hello const *msg)
 {
     binn hey;
@@ -104,6 +108,27 @@ static mdv_errno mdv_peer_wave_handler(mdv_peer *peer, binn const *message)
     peer->uuid = hello.uuid;
     peer->initialized = 1;
 
+
+    if (mdv_uuid_cmp(&MDV_CLIENT_UUID, &hello.uuid) != 0)
+    {
+        char buff[offsetof(mdv_node, addr) + peer->addr.size];
+        mdv_node *node = (mdv_node *)buff;
+
+        node->size = offsetof(mdv_node, addr) + peer->addr.size;
+        node->uuid = hello.uuid;
+        node->id = 0;
+        memcpy(node->addr, peer->addr.ptr, peer->addr.size);
+
+        mdv_errno err = mdv_nodes_reg(peer->nodes, node);
+
+        if (err == MDV_OK)
+            peer->id = node->id;
+        else
+            MDV_LOGE("Peer node registration failed with error '%s' (%d)", mdv_strerror(err), err);
+
+        return err;
+    }
+
     return MDV_OK;
 }
 
@@ -118,7 +143,7 @@ static mdv_errno mdv_peer_create_table_handler(mdv_peer *peer, uint16_t id, binn
         return MDV_FAILED;
     }
 
-    mdv_errno err = mdv_tablespace_create_table(peer->tablespace, (mdv_table_base*)&create_table->table);
+    mdv_errno err = mdv_tablespace_log_create_table(peer->tablespace, 0, (mdv_table_base*)&create_table->table);
 
     if (err == MDV_OK)
     {
@@ -144,14 +169,26 @@ static mdv_errno mdv_peer_create_table_handler(mdv_peer *peer, uint16_t id, binn
 }
 
 
-mdv_errno mdv_peer_init(mdv_peer *peer, mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *uuid)
+mdv_errno mdv_peer_init(mdv_peer *peer, mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_descriptor fd, mdv_string const *addr, mdv_uuid const *uuid)
 {
-    peer->tablespace = tablespace;
-    peer->fd = fd;
-    peer->initialized = 0;
-    atomic_init(&peer->id, 0);
-    peer->created_time = mdv_gettime();
+    peer->tablespace    = tablespace;
+    peer->nodes         = nodes;
+    peer->id            = 0;
+    peer->fd            = fd;
+    peer->addr          = mdv_str_static(peer->buff);
+    peer->initialized   = 0;
+    atomic_init(&peer->id_gen, 0);
+    peer->created_time  = mdv_gettime();
+
     memset(&peer->message, 0, sizeof peer->message);
+    memset(&peer->buff, 0, sizeof peer->buff);
+
+    size_t const addr_len = strlen(addr->ptr) + 1;
+    peer->addr.size = peer->addr.size < addr_len
+                        ? peer->addr.size
+                        : addr_len;
+    memcpy(peer->addr.ptr, addr->ptr, addr_len);
+    peer->addr.ptr[peer->addr.size - 1] = 0;
 
     mdv_msg_hello const msg =
     {

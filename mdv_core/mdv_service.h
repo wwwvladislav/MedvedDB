@@ -13,11 +13,11 @@ typedef struct
     mdv_server     *server;
     volatile bool   is_started;
     mdv_metainf     metainf;
-    mdv_nodes       nodes;
 
     struct
     {
         mdv_storage    *metainf;
+        mdv_nodes       nodes;
         mdv_tablespace  tablespace;
     } storage;
 } mdv_service;

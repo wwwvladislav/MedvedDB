@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Message format for transmission over the network.
+ */
 #pragma once
 #include "mdv_def.h"
 #include <stdint.h>

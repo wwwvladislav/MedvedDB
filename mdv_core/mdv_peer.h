@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief Remote peers connections processing logic.
+ * @details Remote peer might be a user or other cluster node.
+ */
 #pragma once
 #include <mdv_uuid.h>
 #include <mdv_errno.h>
@@ -70,5 +75,5 @@ mdv_errno mdv_peer_send(mdv_peer *peer, mdv_msg const *message);
  * @brief Free message
  *
  * @param peer [in] peer node
-  */
+ */
 void mdv_peer_free(mdv_peer *peer);

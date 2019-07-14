@@ -10,6 +10,7 @@ mdv_errno mdv_error()
         case EAGAIN:        return MDV_EAGAIN;
         case EEXIST:        return MDV_EEXIST;
         case EINPROGRESS:   return MDV_INPROGRESS;
+        case ETIMEDOUT:     return MDV_ETIMEDOUT;
     }
     return errno;
 }
@@ -26,6 +27,7 @@ char const * mdv_strerror(mdv_errno err)
         case MDV_CLOSED:        return "File descriptor closed";
         case MDV_EEXIST:        return "File exists";
         case MDV_INPROGRESS:    return "Operation now in progress";
+        case MDV_ETIMEDOUT:     return "Timed out";
     }
 
     static _Thread_local char buf[1024];

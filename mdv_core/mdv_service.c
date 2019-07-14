@@ -57,7 +57,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
     mdv_metainf_validate(&svc->metainf);
     mdv_metainf_flush(&svc->metainf, svc->storage.metainf);
 
-    if (mdv_nodes_load(&svc->nodes, svc->storage.metainf) != MDV_OK)
+    if (mdv_nodes_load(&svc->storage.nodes, svc->storage.metainf) != MDV_OK)
     {
         MDV_LOGE("Nodes loading failed");
         return false;
@@ -72,7 +72,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
     }
 
     // Server
-    svc->server = mdv_server_create(&svc->storage.tablespace, &svc->nodes, &svc->metainf.uuid.value);
+    svc->server = mdv_server_create(&svc->storage.tablespace, &svc->storage.nodes, &svc->metainf.uuid.value);
 
     if (!svc->server)
     {
@@ -94,7 +94,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 void mdv_service_free(mdv_service *svc)
 {
     mdv_server_free(svc->server);
-    mdv_nodes_free(&svc->nodes);
+    mdv_nodes_free(&svc->storage.nodes);
     mdv_storage_release(svc->storage.metainf);
     mdv_tablespace_close(&svc->storage.tablespace);
 }

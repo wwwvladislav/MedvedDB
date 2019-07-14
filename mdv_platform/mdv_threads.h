@@ -25,7 +25,7 @@ typedef void *(*mdv_thread_fn) (void *);
 
 enum
 {
-    MDV_THREAD_STACK_SIZE = 1 * 1024 * 1024     ///< default stack size for thread
+    MDV_THREAD_STACK_SIZE       = 1 * 1024 * 1024   ///< default stack size for thread
 };
 
 

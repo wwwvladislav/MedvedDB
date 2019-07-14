@@ -109,6 +109,7 @@ static mdv_errno mdv_peer_wave_handler(mdv_peer *peer, binn const *message)
     peer->initialized = 1;
 
 
+/*
     if (mdv_uuid_cmp(&MDV_CLIENT_UUID, &hello.uuid) != 0)
     {
         char buff[offsetof(mdv_node, addr) + peer->addr.size];
@@ -128,6 +129,7 @@ static mdv_errno mdv_peer_wave_handler(mdv_peer *peer, binn const *message)
 
         return err;
     }
+*/
 
     return MDV_OK;
 }

@@ -80,6 +80,7 @@ struct mdv_client
 
 
 static mdv_errno mdv_client_send(mdv_client *client, mdv_msg const *message);
+static mdv_errno mdv_client_post(mdv_client *client, mdv_msg const *message);
 static mdv_errno mdv_client_recv(mdv_client *client);
 
 
@@ -116,7 +117,7 @@ static mdv_errno mdv_client_wave(mdv_client *client)
         .payload = binn_ptr(&hey)
     };
 
-    mdv_errno err = mdv_client_send(client, &message);
+    mdv_errno err = mdv_client_post(client, &message);
 
     binn_free(&hey);
 
@@ -189,7 +190,20 @@ static mdv_errno mdv_client_recv(mdv_client *client)
 }
 
 
+/**
+ * @brief The response is required.
+ */
 static mdv_errno mdv_client_send(mdv_client *client, mdv_msg const *message)
+{
+    MDV_LOGI(">>>>> '%s'", mdv_msg_name(message->hdr.id));
+    return mdv_write_msg(client->fd, message);
+}
+
+
+/**
+ * @brief Send message but response isn't needed.
+ */
+static mdv_errno mdv_client_post(mdv_client *client, mdv_msg const *message)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(message->hdr.id));
     return mdv_write_msg(client->fd, message);

@@ -18,7 +18,8 @@ enum
     MDV_EEXIST      = -5,   ///< File exists
     MDV_NO_MEM      = -6,   ///< No free space of memory
     MDV_INPROGRESS  = -7,   ///< Operation now in progress
-    MDV_ETIMEDOUT   = -8    ///< Timed out
+    MDV_ETIMEDOUT   = -8,   ///< Timed out
+    MDV_BUSY        = -9    ///< Resource is busy
 };
 
 

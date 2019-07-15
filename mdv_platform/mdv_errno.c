@@ -28,6 +28,7 @@ char const * mdv_strerror(mdv_errno err)
         case MDV_EEXIST:        return "File exists";
         case MDV_INPROGRESS:    return "Operation now in progress";
         case MDV_ETIMEDOUT:     return "Timed out";
+        case MDV_BUSY:          return "Resource is busy";
     }
 
     static _Thread_local char buf[1024];

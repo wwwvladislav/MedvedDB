@@ -58,7 +58,7 @@ mdv_errno mdv_read_msg(mdv_descriptor fd, mdv_msg *msg)
             }
 
 
-            msg->payload = mdv_alloc_tmp(msg->hdr.size);
+            msg->payload = mdv_alloc(msg->hdr.size);
 
             if (!msg->payload)
             {

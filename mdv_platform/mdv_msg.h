@@ -7,13 +7,6 @@
 #include <stdint.h>
 
 
-/// Message flags
-enum mdv_msg_flags
-{
-    MDV_MSG_RESERVED = 1 << 0   ///< reserved flag
-};
-
-
 /// Message header description
 typedef struct mdv_msghdr
 {
@@ -27,7 +20,6 @@ typedef struct mdv_msghdr
 typedef struct mdv_msg
 {
     mdv_msghdr  hdr;            ///< Message header
-    uint32_t    flags;          ///< Flags (see mdv_msg_flags)
     uint32_t    available_size; ///< Available data size in header + payload
     void       *payload;        ///< Pointer to the message payload
 } mdv_msg;

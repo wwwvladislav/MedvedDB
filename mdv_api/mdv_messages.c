@@ -9,18 +9,12 @@ char const * mdv_msg_name(uint32_t id)
 {
     switch(id)
     {
-        case mdv_msg_hello_id:          return "HELLO";
-        case mdv_msg_status_id:         return "STATUS";
-        case mdv_msg_create_table_id:   return "CREATE TABLE";
-        case mdv_msg_table_info_id:     return "TABLE INFO";
+        case mdv_message_id(hello):         return "HELLO";
+        case mdv_message_id(status):        return "STATUS";
+        case mdv_message_id(create_table):  return "CREATE TABLE";
+        case mdv_message_id(table_info):    return "TABLE INFO";
     }
     return "UNKOWN";
-}
-
-
-void mdv_msg_free(void *msg)
-{
-    mdv_free(msg);
 }
 
 

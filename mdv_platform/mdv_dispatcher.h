@@ -90,6 +90,19 @@ mdv_errno mdv_dispatcher_post(mdv_dispatcher *pd, mdv_msg *msg);
 
 
 /**
+ * @brief Write raw data
+ *
+ * @param pd [in]       messages dispatcher
+ * @param data [in]     data
+ * @param size [in]     data size
+ *
+ * @return On success returns MDV_OK
+ * @return On error return nonzero error code.
+ */
+mdv_errno mdv_dispatcher_write_raw(mdv_dispatcher *pd, void const *data, size_t size);
+
+
+/**
  * @brief Send response
  *
  * @param pd [in]       messages dispatcher

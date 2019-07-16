@@ -21,7 +21,8 @@ struct mdv_chaman
 
 typedef enum
 {
-    MDV_CT_LISTENER = 0,
+    MDV_CT_SELECTOR = 0,
+    MDV_CT_LISTENER,
     MDV_CT_DIALER,
     MDV_CT_PEER
 } mdv_context_type;
@@ -31,6 +32,14 @@ typedef struct mdv_context_base
 {
     mdv_context_type type;
 } mdv_context_base;
+
+
+typedef struct mdv_selector_context
+{
+    mdv_context_type type;
+    mdv_chaman      *chaman;
+    mdv_sockaddr     addr;
+} mdv_selector_context;
 
 
 typedef struct mdv_listener_context
@@ -58,15 +67,18 @@ typedef struct mdv_peer_context
 
 
 typedef mdv_threadpool_task(mdv_listener_context)   mdv_listener_task;
+typedef mdv_threadpool_task(mdv_selector_context)   mdv_selector_task;
 typedef mdv_threadpool_task(mdv_dialer_context)     mdv_dialer_task;
 typedef mdv_threadpool_task(mdv_peer_context)       mdv_peer_task;
 
 
-static void mdv_chaman_new_peer(mdv_chaman *chaman, mdv_descriptor sock, mdv_sockaddr const *addr);
+static void mdv_chaman_new_connection(mdv_chaman *chaman, mdv_descriptor sock, mdv_sockaddr const *addr, uint32_t type, mdv_channel_dir dir);
 
 static void mdv_chaman_dialer_handler(uint32_t events, mdv_threadpool_task_base *task_base);
 static void mdv_chaman_recv_handler(uint32_t events, mdv_threadpool_task_base *task_base);
 static void mdv_chaman_accept_handler(uint32_t events, mdv_threadpool_task_base *task_base);
+static void mdv_chaman_select_handler(uint32_t events, mdv_threadpool_task_base *task_base);
+
 
 /// @endcond
 
@@ -114,6 +126,7 @@ static void mdv_fd_close(mdv_descriptor fd, void *data)
 
     switch(context->type)
     {
+        case MDV_CT_SELECTOR:
         case MDV_CT_LISTENER:
         case MDV_CT_PEER:
             mdv_socket_close(fd);
@@ -165,7 +178,7 @@ static void mdv_chaman_dialer_handler(uint32_t events, mdv_threadpool_task_base 
     {
         if (!mdv_str_empty(str_addr))
             MDV_LOGI("Connection to '%s' established", str_addr.ptr);
-        mdv_chaman_new_peer(chaman, fd, &task->context.addr);
+        mdv_chaman_new_connection(chaman, fd, &task->context.addr, 0, MDV_CHOUT);
     }
 }
 
@@ -195,7 +208,7 @@ static void mdv_chaman_recv_handler(uint32_t events, mdv_threadpool_task_base *t
 }
 
 
-static void mdv_chaman_new_peer(mdv_chaman *chaman, mdv_descriptor sock, mdv_sockaddr const *addr)
+static void mdv_chaman_new_connection(mdv_chaman *chaman, mdv_descriptor sock, mdv_sockaddr const *addr, uint32_t type, mdv_channel_dir dir)
 {
     mdv_socket_nonblock(sock);
     mdv_socket_tcp_keepalive(sock, chaman->config.peer.keepidle,
@@ -213,7 +226,7 @@ static void mdv_chaman_new_peer(mdv_chaman *chaman, mdv_descriptor sock, mdv_soc
         {
             .type = MDV_CT_PEER,
             .chaman = chaman,
-            .peer = chaman->config.channel.accept(sock, &str_addr, chaman->config.userdata)
+            .peer = chaman->config.channel.create(sock, &str_addr, chaman->config.userdata, type, dir)
         }
     };
 
@@ -238,6 +251,45 @@ static void mdv_chaman_new_peer(mdv_chaman *chaman, mdv_descriptor sock, mdv_soc
 }
 
 
+
+static void mdv_chaman_select_handler(uint32_t events, mdv_threadpool_task_base *task_base)
+{
+    mdv_selector_task *selector_task = (mdv_selector_task*)task_base;
+    mdv_chaman *chaman = selector_task->context.chaman;
+
+    uint32_t type = 0;
+
+    mdv_errno err = chaman->config.channel.select(selector_task->fd, &type);
+
+    if ((events & MDV_EPOLLERR) == 0 && err == MDV_EAGAIN)
+    {
+        err = mdv_threadpool_rearm(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base*)selector_task);
+
+        if (err != MDV_OK)
+        {
+            MDV_LOGE("Connection modification failed with error '%s' (%u)", mdv_strerror(err), err);
+            mdv_threadpool_remove(chaman->threadpool, selector_task->fd);
+            mdv_socket_close(selector_task->fd);
+        }
+    }
+    else
+    {
+        mdv_threadpool_remove(chaman->threadpool, selector_task->fd);
+
+        if (err == MDV_OK)
+        {
+            mdv_chaman_new_connection(chaman, selector_task->fd, &selector_task->context.addr, type, MDV_CHIN);
+        }
+        else
+        {
+            mdv_string str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, &selector_task->context.addr);
+            MDV_LOGE("Channel selection failed for %s", str_addr.ptr);
+            mdv_socket_close(selector_task->fd);
+        }
+    }
+}
+
+
 static void mdv_chaman_accept_handler(uint32_t events, mdv_threadpool_task_base *task_base)
 {
     mdv_listener_task *listener_task = (mdv_listener_task*)task_base;
@@ -249,7 +301,32 @@ static void mdv_chaman_accept_handler(uint32_t events, mdv_threadpool_task_base 
     mdv_chaman *chaman = listener_task->context.chaman;
 
     if (sock != MDV_INVALID_DESCRIPTOR)
-        mdv_chaman_new_peer(chaman, sock, &addr);
+    {
+        mdv_socket_nonblock(sock);
+        mdv_socket_tcp_keepalive(sock, chaman->config.peer.keepidle,
+                                       chaman->config.peer.keepcnt,
+                                       chaman->config.peer.keepintvl);
+
+        mdv_selector_task selector_task =
+        {
+            .fd = sock,
+            .fn = mdv_chaman_select_handler,
+            .context_size = sizeof(mdv_selector_task),
+            .context =
+            {
+                .type = MDV_CT_SELECTOR,
+                .chaman = chaman,
+                .addr = addr
+            }
+        };
+
+        if (!mdv_threadpool_add(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)&selector_task))
+        {
+            mdv_string str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, &addr);
+            MDV_LOGE("Connection '%s' accepting failed", str_addr.ptr);
+            mdv_socket_close(sock);
+        }
+    }
 }
 
 

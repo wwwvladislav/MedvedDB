@@ -147,12 +147,23 @@ static mdv_errno mdv_client_table_info_handler(mdv_client *client, mdv_msg const
 }
 
 
+static mdv_errno mdv_client_tag(mdv_client *client)
+{
+    mdv_msg_tag tag =
+    {
+        .tag = MDV_CLI_USER
+    };
+
+    return mdv_dispatcher_write_raw(client->dispatcher, &tag, sizeof tag);
+}
+
+
 /**
- * @brief   Say Hey! to peer node
+ * @brief   Say Hey! to server
  */
 static mdv_errno mdv_client_wave(mdv_client *client, size_t timeout)
 {
-    mdv_msg_hello const msg =
+    mdv_msg_hello const hello =
     {
         .uuid    = {},
         .version = MDV_VERSION
@@ -160,14 +171,14 @@ static mdv_errno mdv_client_wave(mdv_client *client, size_t timeout)
 
     binn hey;
 
-    if (!mdv_binn_hello(&msg, &hey))
+    if (!mdv_binn_hello(&hello, &hey))
         return MDV_FAILED;
 
     mdv_msg message =
     {
         .hdr =
         {
-            .id = mdv_msg_hello_id,
+            .id = mdv_message_id(hello),
             .size = binn_size(&hey)
         },
         .payload = binn_ptr(&hey)
@@ -209,10 +220,12 @@ static mdv_errno mdv_client_post(mdv_client *client, mdv_msg *msg)
 }
 
 
-static void * mdv_channel_accept(mdv_descriptor fd, mdv_string const *addr, void *userdata)
+static void * mdv_channel_create(mdv_descriptor fd, mdv_string const *addr, void *userdata, uint32_t type, mdv_channel_dir dir)
 {
     mdv_client *client = userdata;
     (void)addr;
+    (void)type;
+    (void)dir;
 
     client->sock = fd;
 
@@ -339,9 +352,9 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
         .userdata = client,
         .channel =
         {
-            .accept = &mdv_channel_accept,
-            .recv = &mdv_channel_recv,
-            .close = &mdv_channel_close
+            .create = mdv_channel_create,
+            .recv = mdv_channel_recv,
+            .close = mdv_channel_close
         }
     };
 
@@ -373,6 +386,16 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
     // Wait connection
 
     err = mdv_condvar_timedwait(client->connected, config->connection.timeout * 1000);
+
+    if (err != MDV_OK)
+    {
+        MDV_LOGE("Connection to '%s' failed", config->db.addr);
+        mdv_rollback(rollbacker);
+        mdv_client_finalize();
+        return 0;
+    }
+
+    err = mdv_client_tag(client);
 
     if (err != MDV_OK)
     {

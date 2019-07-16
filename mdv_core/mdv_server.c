@@ -3,7 +3,9 @@
 #include <mdv_log.h>
 #include <mdv_alloc.h>
 #include <mdv_chaman.h>
+#include <mdv_def.h>
 #include <mdv_rollbacker.h>
+#include <mdv_messages.h>
 #include "mdv_peer.h"
 
 
@@ -20,13 +22,35 @@ struct mdv_server
 /// @endcond
 
 
-static void * mdv_channel_accept(mdv_descriptor fd, mdv_string const *addr, void *userdata)
+static mdv_errno mdv_channel_select(mdv_descriptor fd, uint32_t *type)
+{
+    mdv_msg_tag tag;
+    size_t len = sizeof tag;
+
+    mdv_errno err = mdv_read(fd, &tag, &len);
+
+    if (err == MDV_OK)
+        *type = tag.tag;
+
+    return err;
+}
+
+
+static void * mdv_channel_create(mdv_descriptor fd, mdv_string const *addr, void *userdata, uint32_t type, mdv_channel_dir dir)
 {
     mdv_server *server = (mdv_server *)userdata;
 
-    mdv_peer *peer = mdv_peer_accept(server->tablespace, server->nodes, fd, addr, &server->uuid);
+    // TODO: seperate peer and client logic
 
-    return peer;
+    switch(type)
+    {
+        case MDV_CLI_USER:  return mdv_peer_accept(server->tablespace, server->nodes, fd, addr, &server->uuid);
+        case MDV_CLI_PEER:  return mdv_peer_accept(server->tablespace, server->nodes, fd, addr, &server->uuid);
+        default:
+            MDV_LOGE("Undefined client type: %u", type);
+    }
+
+    return 0;
 }
 
 
@@ -82,9 +106,10 @@ mdv_server * mdv_server_create(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv
         .userdata = server,
         .channel =
         {
-            .accept = &mdv_channel_accept,
-            .recv = &mdv_channel_recv,
-            .close = &mdv_channel_close
+            .select = mdv_channel_select,
+            .create = mdv_channel_create,
+            .recv = mdv_channel_recv,
+            .close = mdv_channel_close
         }
     };
 

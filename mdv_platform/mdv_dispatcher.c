@@ -6,6 +6,7 @@
 #include "mdv_hashmap.h"
 #include "mdv_rollbacker.h"
 #include "mdv_stack.h"
+#include "mdv_def.h"
 #include <string.h>
 #include <stdatomic.h>
 
@@ -34,7 +35,7 @@ typedef struct
 struct mdv_dispatcher
 {
     mdv_descriptor volatile fd;             ///< File descriptor
-    mdv_mutex              *fd_mutex;       ///< Mutex for requests fd guard
+    mdv_mutex              *fd_mutex;       ///< Mutex for fd guard
     mdv_msg                 message;        ///< Current message
     mdv_hashmap             handlers;       ///< Message handlers (id -> mdv_msg_handler)
     mdv_hashmap             requests;       ///< Requests map (request_id -> mdv_request)
@@ -312,6 +313,24 @@ mdv_errno mdv_dispatcher_reply(mdv_dispatcher *pd, mdv_msg const *msg)
     if (mdv_mutex_lock(pd->fd_mutex) == MDV_OK)
     {
         err = mdv_write_msg(pd->fd, msg);
+
+        if (err != MDV_OK)
+            MDV_LOGE("Message posting failed");
+
+        mdv_mutex_unlock(pd->fd_mutex);
+    }
+
+    return err;
+}
+
+
+mdv_errno mdv_dispatcher_write_raw(mdv_dispatcher *pd, void const *data, size_t size)
+{
+    mdv_errno err = MDV_FAILED;
+
+    if (mdv_mutex_lock(pd->fd_mutex) == MDV_OK)
+    {
+        err = mdv_write_all(pd->fd, data, size);
 
         if (err != MDV_OK)
             MDV_LOGE("Message posting failed");

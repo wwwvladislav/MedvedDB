@@ -11,11 +11,23 @@ static volatile int mdv_recv_size = 0;
 static volatile mdv_descriptor fds[2];
 
 
-static void * mdv_channel_accept(mdv_descriptor fd, mdv_string const *addr, void *userdata)
+static mdv_errno mdv_channel_select(mdv_descriptor fd, uint32_t *type)
+{
+    size_t len = 1;
+    char ch;
+    mdv_read(fd, &ch, &len);
+    *type = ch;
+    return MDV_OK;
+}
+
+
+static void * mdv_channel_create(mdv_descriptor fd, mdv_string const *addr, void *userdata, uint32_t type, mdv_channel_dir dir)
 {
     (void)fd;
     (void)userdata;
     (void)addr;
+    (void)type;
+    (void)dir;
     fds[mdv_init_count++] = fd;
     return fd;
 }
@@ -72,7 +84,8 @@ MU_TEST(platform_chaman)
         .userdata = 0,
         .channel =
         {
-            .accept = mdv_channel_accept,
+            .select = mdv_channel_select,
+            .create = mdv_channel_create,
             .recv = mdv_channel_recv,
             .close = mdv_channel_close
         }
@@ -97,7 +110,8 @@ MU_TEST(platform_chaman)
         .userdata = 0,
         .channel =
         {
-            .accept = mdv_channel_accept,
+            .select = mdv_channel_select,
+            .create = mdv_channel_create,
             .recv = mdv_channel_recv,
             .close = mdv_channel_close
         }
@@ -113,11 +127,18 @@ MU_TEST(platform_chaman)
     err = mdv_chaman_connect(client, mdv_str_static("tcp://localhost:55555"));
     mu_check(err == MDV_OK);
 
+    while(mdv_init_count != 1)
+        mdv_sleep(10);
+
+    char ch = 'a';
+    size_t len = 1;
+    mu_check(mdv_write(fds[0], &ch, &len) == MDV_OK && len == 1);
+
     while(mdv_init_count != 2)
         mdv_sleep(10);
 
     char const msg[] = "The quick brown fox jumps over the lazy dog";
-    size_t len = sizeof msg;
+    len = sizeof msg;
 
     mu_check(mdv_write(fds[0], msg, &len) == MDV_OK && len == sizeof msg);
     mu_check(mdv_write(fds[1], msg, &len) == MDV_OK && len == sizeof msg);

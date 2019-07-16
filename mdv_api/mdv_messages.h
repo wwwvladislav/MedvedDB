@@ -5,6 +5,14 @@
 #include <mdv_types.h>
 
 
+/// Client types
+enum
+{
+    MDV_CLI_USER = 0,       ///< User
+    MDV_CLI_PEER = 1        ///< Peer
+};
+
+
 #define mdv_message_id_def(name, id)                    \
     enum { mdv_msg_##name##_id = id };
 
@@ -20,26 +28,24 @@
     } mdv_msg_##name;
 
 
-enum
-{
-    mdv_msg_unknown_id = 0,
-    mdv_msg_count      = 5
-};
+mdv_message_def(tag, 1,
+    uint8_t tag;
+);
 
 
-mdv_message_def(status, 1,
+mdv_message_def(status, 2,
     int         err;
     char        message[1];
 );
 
 
-mdv_message_def(hello, 2,
+mdv_message_def(hello, 3,
     uint32_t    version;
     mdv_uuid    uuid;
 );
 
 
-mdv_message_id_def(create_table, 3);
+mdv_message_id_def(create_table, 4);
 #define mdv_msg_create_table(N)                         \
     struct mdv_msg_create_table_##N                     \
     {                                                   \
@@ -48,15 +54,12 @@ mdv_message_id_def(create_table, 3);
 typedef mdv_msg_create_table(1) mdv_msg_create_table_base;
 
 
-mdv_message_def(table_info, 4,
+mdv_message_def(table_info, 5,
     mdv_uuid    uuid;
 );
 
 
 char const *                mdv_msg_name            (uint32_t id);
-
-
-void                        mdv_msg_free            (void *msg);
 
 
 bool                        mdv_binn_hello          (mdv_msg_hello const *msg, binn *obj);

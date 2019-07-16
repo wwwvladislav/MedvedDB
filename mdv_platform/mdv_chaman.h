@@ -14,15 +14,31 @@
 typedef struct mdv_chaman mdv_chaman;
 
 
-/// channel initialization handler
-typedef void * (*mdv_channel_accept_fn)(mdv_descriptor fd, mdv_string const *addr, void *userdata);
+/// Connection type select handler
+typedef mdv_errno (*mdv_channel_select_fn)(mdv_descriptor fd, uint32_t *type);
 
 
-/// data receiving handler
+/// Channel direction
+typedef enum
+{
+    MDV_CHIN = 0,       ///< Incomming connection
+    MDV_CHOUT           ///< Outgoing connection
+} mdv_channel_dir;
+
+
+/// Connection creation handler
+typedef void * (*mdv_channel_create_fn)(mdv_descriptor fd,
+                                        mdv_string const *addr,
+                                        void *userdata,
+                                        uint32_t type,
+                                        mdv_channel_dir dir);
+
+
+/// Data receiving handler
 typedef mdv_errno (*mdv_channel_recv_fn)(void *channel);
 
 
-/// channel closing handler
+/// Connection closing handler
 typedef void (*mdv_channel_close_fn)(void *channel);
 
 
@@ -42,7 +58,8 @@ typedef struct
 
     struct
     {
-        mdv_channel_accept_fn   accept; ///< channel accepting function
+        mdv_channel_select_fn   select; ///< channel selecting function (return channel type)
+        mdv_channel_create_fn   create; ///< channel creation function
         mdv_channel_recv_fn     recv;   ///< data receiving handler
         mdv_channel_close_fn    close;  ///< channel closing function
     } channel;                          ///< channel configuration

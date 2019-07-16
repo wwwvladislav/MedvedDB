@@ -220,7 +220,7 @@ mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_des
 
     peer->tablespace    = tablespace;
     peer->nodes         = nodes;
-    peer->sock            = fd;
+    peer->sock          = fd;
     peer->id            = 0;
     peer->addr          = mdv_str_static(peer->buff);
     peer->current_uuid  = *uuid;

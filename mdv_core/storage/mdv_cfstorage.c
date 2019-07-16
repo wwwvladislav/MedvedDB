@@ -309,6 +309,7 @@ bool mdv_cfstorage_add(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count,
     }
 
     mdv_map_close(&tr_log);
+    mdv_map_close(&added_map);
 
     return true;
 }
@@ -330,15 +331,15 @@ bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count,
     mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
 
     // Open transaction log
-    mdv_map map = mdv_map_open(&transaction, MDV_MAP_TRANSACTION_LOG(peer_id), MDV_MAP_CREATE);
-    if (!mdv_map_ok(map))
+    mdv_map tr_log = mdv_map_open(&transaction, MDV_MAP_TRANSACTION_LOG(peer_id), MDV_MAP_CREATE);
+    if (!mdv_map_ok(tr_log))
     {
         MDV_LOGE("CFstorage table '%s' not opened", MDV_STRG_TRANSACTION_LOG);
         mdv_rollback(rollbacker);
         return false;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_map_close, &map);
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &tr_log);
 
     // Open removed objects table
     mdv_map rem_map = mdv_map_open(&transaction, MDV_MAP_REMOVED, MDV_MAP_CREATE);
@@ -364,7 +365,7 @@ bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count,
             mdv_data k = { sizeof key, &key };
             mdv_data v = { ops[i].op.size, (void*)ops[i].op.ptr };
 
-            if (!mdv_map_put_unique(&map, &transaction, &k, &v))
+            if (!mdv_map_put_unique(&tr_log, &transaction, &k, &v))
             {
                 MDV_LOGE("OP insertion failed.");
                 mdv_rollback(rollbacker);
@@ -380,8 +381,8 @@ bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count,
         return false;
     }
 
+    mdv_map_close(&tr_log);
     mdv_map_close(&rem_map);
-    mdv_map_close(&map);
 
     return true;
 }

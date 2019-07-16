@@ -18,10 +18,11 @@ typedef struct
 
     struct
     {
-        uint32_t    timeout;            ///< connection timeout (in seconds)
+        uint32_t    timeout;            ///< Connection timeout (in seconds)
         uint32_t    keepidle;           ///< Start keeplives after this period (in seconds)
         uint32_t    keepcnt;            ///< Number of keepalives before death
         uint32_t    keepintvl;          ///< Interval between keepalives (in seconds)
+        uint32_t    response_timeout;   ///< Timeout for responses (in seconds)
     } connection;                       ///< connection configuration
 
     struct
@@ -31,7 +32,7 @@ typedef struct
 } mdv_client_config;
 
 
-/// DB client descriptor
+/// Client descriptor
 typedef struct mdv_client mdv_client;
 
 

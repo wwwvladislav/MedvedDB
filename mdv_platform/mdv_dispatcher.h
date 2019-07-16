@@ -46,6 +46,23 @@ void mdv_dispatcher_free(mdv_dispatcher *pd);
 
 
 /**
+ * @brief Set file descriptor
+ *
+ * @param pd [in] messages dispatcher
+ * @param fd [in] file descriptor for messages dispatching
+ */
+void mdv_dispatcher_set_fd(mdv_dispatcher *pd, mdv_descriptor fd);
+
+
+/**
+ * @brief Close file descriptor
+ *
+ * @param pd [in] messages dispatcher
+ */
+void mdv_dispatcher_close_fd(mdv_dispatcher *pd);
+
+
+/**
  * @brief Send message and wait response.
  *
  * @param pd [in]       messages dispatcher
@@ -57,7 +74,7 @@ void mdv_dispatcher_free(mdv_dispatcher *pd);
  * @return MDV_BUSY if there is no free slots for request. At this case caller should wait and try again later.
  * @return On error return nonzero error code
  */
-mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg const *req, mdv_msg *resp, size_t timeout);
+mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg *req, mdv_msg *resp, size_t timeout);
 
 
 /**
@@ -69,8 +86,19 @@ mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg const *req, mdv_msg *r
  * @return On success returns MDV_OK
  * @return On error return nonzero error code.
  */
-mdv_errno mdv_dispatcher_post(mdv_dispatcher *pd, mdv_msg const *msg);
+mdv_errno mdv_dispatcher_post(mdv_dispatcher *pd, mdv_msg *msg);
 
+
+/**
+ * @brief Send response
+ *
+ * @param pd [in]       messages dispatcher
+ * @param msg [in]      message to be sent
+ *
+ * @return On success returns MDV_OK
+ * @return On error return nonzero error code.
+ */
+mdv_errno mdv_dispatcher_reply(mdv_dispatcher *pd, mdv_msg const *msg);
 
 
 /**
@@ -82,3 +110,4 @@ mdv_errno mdv_dispatcher_post(mdv_dispatcher *pd, mdv_msg const *msg);
  * @return On error return nonzero error code
  */
 mdv_errno mdv_dispatcher_read(mdv_dispatcher *pd);
+

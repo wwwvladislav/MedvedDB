@@ -73,10 +73,11 @@ int main(int argc, char *argv[])
         },
         .connection =
         {
-            .timeout    = 15,
-            .keepidle   = 5,
-            .keepcnt    = 10,
-            .keepintvl  = 5
+            .timeout            = 15,
+            .keepidle           = 5,
+            .keepcnt            = 10,
+            .keepintvl          = 5,
+            .response_timeout   = 15
         },
         .threadpool =
         {

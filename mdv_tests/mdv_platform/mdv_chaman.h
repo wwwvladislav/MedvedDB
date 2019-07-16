@@ -11,20 +11,19 @@ static volatile int mdv_recv_size = 0;
 static volatile mdv_descriptor fds[2];
 
 
-static void mdv_channel_init(void *userdata, void *context, mdv_descriptor fd, mdv_string const *addr)
+static void * mdv_channel_accept(mdv_descriptor fd, mdv_string const *addr, void *userdata)
 {
     (void)fd;
-    (void)context;
     (void)userdata;
     (void)addr;
     fds[mdv_init_count++] = fd;
+    return fd;
 }
 
 
-static mdv_errno mdv_channel_recv(void *userdata, void *context, mdv_descriptor fd)
+static mdv_errno mdv_channel_recv(void *channel)
 {
-    (void)context;
-    (void)userdata;
+    mdv_descriptor fd = channel;
 
     static _Thread_local char buffer[1024];
 
@@ -44,10 +43,10 @@ static mdv_errno mdv_channel_recv(void *userdata, void *context, mdv_descriptor 
 }
 
 
-static void mdv_channel_close(void *userdata, void *context)
+static void mdv_channel_close(void *channel)
 {
-    (void)context;
-    (void)userdata;
+    (void)channel;
+
     ++mdv_close_count;
 }
 
@@ -73,12 +72,7 @@ MU_TEST(platform_chaman)
         .userdata = 0,
         .channel =
         {
-            .context =
-            {
-                .size = 4,
-                .guardsize = 4
-            },
-            .init = mdv_channel_init,
+            .accept = mdv_channel_accept,
             .recv = mdv_channel_recv,
             .close = mdv_channel_close
         }
@@ -103,12 +97,7 @@ MU_TEST(platform_chaman)
         .userdata = 0,
         .channel =
         {
-            .context =
-            {
-                .size = 4,
-                .guardsize = 4
-            },
-            .init = mdv_channel_init,
+            .accept = mdv_channel_accept,
             .recv = mdv_channel_recv,
             .close = mdv_channel_close
         }

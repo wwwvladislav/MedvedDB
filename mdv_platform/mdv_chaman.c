@@ -53,7 +53,7 @@ typedef struct mdv_peer_context
 {
     mdv_context_type type;
     mdv_chaman      *chaman;
-    char             dataspace[1];
+    void            *peer;
 } mdv_peer_context;
 
 
@@ -177,7 +177,7 @@ static void mdv_chaman_recv_handler(uint32_t events, mdv_threadpool_task_base *t
     mdv_chaman *chaman = task->context.chaman;
     mdv_threadpool *threadpool = chaman->threadpool;
 
-    mdv_errno err = chaman->config.channel.recv(chaman->config.userdata, task->context.dataspace, fd);
+    mdv_errno err = chaman->config.channel.recv(task->context.peer);
 
     if ((events & MDV_EPOLLERR) == 0 && (err == MDV_EAGAIN || err == MDV_OK))
     {
@@ -188,7 +188,7 @@ static void mdv_chaman_recv_handler(uint32_t events, mdv_threadpool_task_base *t
     else
     {
         MDV_LOGI("Peer %p disconnected", fd);
-        chaman->config.channel.close(chaman->config.userdata, task->context.dataspace);
+        chaman->config.channel.close(task->context.peer);
         mdv_threadpool_remove(threadpool, fd);
         mdv_socket_close(fd);
     }
@@ -202,37 +202,30 @@ static void mdv_chaman_new_peer(mdv_chaman *chaman, mdv_descriptor sock, mdv_soc
                                    chaman->config.peer.keepcnt,
                                    chaman->config.peer.keepintvl);
 
-    size_t const context_size = offsetof(mdv_peer_context, dataspace)
-                                + chaman->config.channel.context.size
-                                + chaman->config.channel.context.guardsize;
-    size_t const size = offsetof(mdv_threadpool_task(mdv_peer_context), context)
-                        + context_size;
-    char buff[size];
-
-    mdv_peer_task *task = (mdv_peer_task*)buff;
-
-    task->fd = sock;
-    task->fn = mdv_chaman_recv_handler;
-    task->context_size = context_size;
-    task->context.type = MDV_CT_PEER;
-    task->context.chaman = chaman;
-
-    memset(task->context.dataspace, -1, chaman->config.channel.context.size
-                                        + chaman->config.channel.context.guardsize);
-
     mdv_string str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, addr);
 
-    chaman->config.channel.init(chaman->config.userdata, task->context.dataspace, sock, &str_addr);
+    mdv_peer_task task =
+    {
+        .fd = sock,
+        .fn = mdv_chaman_recv_handler,
+        .context_size = sizeof(mdv_peer_context),
+        .context =
+        {
+            .type = MDV_CT_PEER,
+            .chaman = chaman,
+            .peer = chaman->config.channel.accept(sock, &str_addr, chaman->config.userdata)
+        }
+    };
 
-    task = (mdv_peer_task *)mdv_threadpool_add(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)task);
-
-    if (!task)
+    if (!task.context.peer
+        || !mdv_threadpool_add(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)&task))
     {
         if (mdv_str_empty(str_addr))
             MDV_LOGE("Connection registration failed");
         else
             MDV_LOGE("Connection with '%s' registration failed", str_addr.ptr);
-        chaman->config.channel.close(chaman->config.userdata, task->context.dataspace);
+        if (task.context.peer)
+            chaman->config.channel.close(task.context.peer);
         mdv_socket_close(sock);
     }
     else

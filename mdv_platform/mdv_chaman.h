@@ -15,15 +15,15 @@ typedef struct mdv_chaman mdv_chaman;
 
 
 /// channel initialization handler
-typedef void (*mdv_channel_init_fn)(void *userdata, void *context, mdv_descriptor fd, mdv_string const *addr);
+typedef void * (*mdv_channel_accept_fn)(mdv_descriptor fd, mdv_string const *addr, void *userdata);
 
 
 /// data receiving handler
-typedef mdv_errno (*mdv_channel_recv_fn)(void *userdata, void *context, mdv_descriptor fd);
+typedef mdv_errno (*mdv_channel_recv_fn)(void *channel);
 
 
 /// channel closing handler
-typedef void (*mdv_channel_close_fn)(void *userdata, void *context);
+typedef void (*mdv_channel_close_fn)(void *channel);
 
 
 /// Channels manager configuration. All options are mandatory.
@@ -42,15 +42,9 @@ typedef struct
 
     struct
     {
-        struct
-        {
-            size_t      size;           ///< channel context size
-            size_t      guardsize;      ///< context guard size (small buffer at the end of context)
-        } context;                      ///< context configuration
-
-        mdv_channel_init_fn  init;      ///< channel initialization handler
-        mdv_channel_recv_fn  recv;      ///< data receiving handler
-        mdv_channel_close_fn close;     ///< channel closing handler
+        mdv_channel_accept_fn   accept; ///< channel accepting function
+        mdv_channel_recv_fn     recv;   ///< data receiving handler
+        mdv_channel_close_fn    close;  ///< channel closing function
     } channel;                          ///< channel configuration
 } mdv_chaman_config;
 

@@ -29,6 +29,7 @@ char const * mdv_strerror(mdv_errno err)
         case MDV_INPROGRESS:    return "Operation now in progress";
         case MDV_ETIMEDOUT:     return "Timed out";
         case MDV_BUSY:          return "Resource is busy";
+        case MDV_NO_IMPL:       return "No implementaion";
     }
 
     static _Thread_local char buf[1024];

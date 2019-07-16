@@ -4,7 +4,6 @@
 #include <mdv_alloc.h>
 #include <mdv_chaman.h>
 #include <mdv_rollbacker.h>
-#include <mdv_socket.h>
 #include "mdv_peer.h"
 
 
@@ -21,43 +20,26 @@ struct mdv_server
 /// @endcond
 
 
-static void mdv_channel_init(void *userdata, void *context, mdv_descriptor fd, mdv_string const *addr)
+static void * mdv_channel_accept(mdv_descriptor fd, mdv_string const *addr, void *userdata)
 {
     mdv_server *server = (mdv_server *)userdata;
-    mdv_peer *peer = (mdv_peer *)context;
 
-    if (mdv_peer_init(peer, server->tablespace, server->nodes, fd, addr, &server->uuid) != MDV_OK)
-        mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+    mdv_peer *peer = mdv_peer_accept(server->tablespace, server->nodes, fd, addr, &server->uuid);
+
+    return peer;
 }
 
 
-static mdv_errno mdv_channel_recv(void *userdata, void *context, mdv_descriptor fd)
+static mdv_errno mdv_channel_recv(void *channel)
 {
-    mdv_server *server = (mdv_server *)userdata;
-    mdv_peer *peer = (mdv_peer *)context;
-    (void)server;
-
-    mdv_errno err = mdv_peer_recv(peer);
-
-    switch(err)
-    {
-        case MDV_OK:
-        case MDV_EAGAIN:
-            break;
-
-        default:
-            mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-    }
-
-    return err;
+    mdv_peer *peer = (mdv_peer *)channel;
+    return mdv_peer_recv(peer);
 }
 
 
-static void mdv_channel_close(void *userdata, void *context)
+static void mdv_channel_close(void *channel)
 {
-    mdv_server *server = (mdv_server *)userdata;
-    mdv_peer *peer = (mdv_peer *)context;
-    (void)server;
+    mdv_peer *peer = (mdv_peer *)channel;
     mdv_peer_free(peer);
 }
 
@@ -100,12 +82,7 @@ mdv_server * mdv_server_create(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv
         .userdata = server,
         .channel =
         {
-            .context =
-            {
-                .size = sizeof(mdv_peer),
-                .guardsize = 16
-            },
-            .init = &mdv_channel_init,
+            .accept = &mdv_channel_accept,
             .recv = &mdv_channel_recv,
             .close = &mdv_channel_close
         }

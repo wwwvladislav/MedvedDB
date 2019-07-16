@@ -9,6 +9,9 @@
     enum { mdv_msg_##name##_id = id };
 
 
+#define mdv_message_id(name) mdv_msg_##name##_id
+
+
 #define mdv_message_def(name, id, fields)               \
     mdv_message_id_def(name, id);                       \
     typedef struct                                      \

@@ -58,14 +58,19 @@ mdv_errno mdv_read_msg(mdv_descriptor fd, mdv_msg *msg)
             }
 
 
-            msg->payload = mdv_alloc(msg->hdr.size);
-
-            if (!msg->payload)
+            if (msg->hdr.size)
             {
-                MDV_LOGE("No memory for incoming message");
-                memset(msg, 0, sizeof *msg);
-                return MDV_NO_MEM;
+                msg->payload = mdv_alloc(msg->hdr.size);
+
+                if (!msg->payload)
+                {
+                    MDV_LOGE("No memory for incoming message");
+                    memset(msg, 0, sizeof *msg);
+                    return MDV_NO_MEM;
+                }
             }
+            else
+                msg->payload = 0;
 
             break;
         }

@@ -1,4 +1,4 @@
-#include "mdv_msg_dispatcher.h"
+#include "mdv_dispatcher.h"
 #include "mdv_condvar.h"
 #include "mdv_mutex.h"
 #include "mdv_alloc.h"
@@ -11,12 +11,12 @@
 
 enum
 {
-    MDV_MSG_DISP_REQS = 16      ///< Number of simultaneously sent requests
+    MDV_DISP_REQS = 16      ///< Number of simultaneously sent requests
 };
 
 
 /// Conditional variables pool
-typedef mdv_stack(mdv_condvar*, MDV_MSG_DISP_REQS) mdv_condvars_pool;
+typedef mdv_stack(mdv_condvar*, MDV_DISP_REQS) mdv_condvars_pool;
 
 
 /// Request state
@@ -30,7 +30,7 @@ typedef struct
 
 
 /// Messages dispatcher
-struct mdv_msg_dispatcher
+struct mdv_dispatcher
 {
     mdv_descriptor      fd;             ///< File descriptor
     mdv_mutex          *fd_mutex;       ///< Mutex for requests fd guard
@@ -47,12 +47,12 @@ static size_t mdv_id_hash(void const *id)               { return *(uint16_t*)id;
 static int mdv_id_cmp(void const *id1, void const *id2) { return (int)*(uint16_t*)id1 - *(uint16_t*)id2; }
 
 
-mdv_msg_dispatcher * mdv_msg_dispatcher_create(mdv_descriptor fd, size_t size, mdv_msg_handler const *handlers)
+mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd, size_t size, mdv_dispatcher_handler const *handlers)
 {
     mdv_rollbacker(5) rollbacker;
     mdv_rollbacker_clear(rollbacker);
 
-    mdv_msg_dispatcher *pd = (mdv_msg_dispatcher *)mdv_alloc(sizeof(mdv_msg_dispatcher));
+    mdv_dispatcher *pd = (mdv_dispatcher *)mdv_alloc(sizeof(mdv_dispatcher));
 
     if (!pd)
     {
@@ -90,7 +90,7 @@ mdv_msg_dispatcher * mdv_msg_dispatcher_create(mdv_descriptor fd, size_t size, m
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, pd->requests_mutex);
 
 
-    if (!mdv_hashmap_init(pd->handlers, mdv_msg_handler, id, size, &mdv_id_hash, &mdv_id_cmp))
+    if (!mdv_hashmap_init(pd->handlers, mdv_dispatcher_handler, id, size, &mdv_id_hash, &mdv_id_cmp))
     {
         MDV_LOGE("Handlers map for messages dispatcher not created");
         mdv_rollback(rollbacker);
@@ -99,8 +99,18 @@ mdv_msg_dispatcher * mdv_msg_dispatcher_create(mdv_descriptor fd, size_t size, m
 
     mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &pd->handlers);
 
+    for(size_t i = 0; i < size; ++i)
+    {
+        if (!mdv_hashmap_insert(pd->handlers, handlers[i]))
+        {
+            MDV_LOGE("No memoyr for message handler");
+            mdv_rollback(rollbacker);
+            return 0;
+        }
+    }
 
-    if (!mdv_hashmap_init(pd->requests, mdv_request, request_id, MDV_MSG_DISP_REQS, &mdv_id_hash, &mdv_id_cmp))
+
+    if (!mdv_hashmap_init(pd->requests, mdv_request, request_id, MDV_DISP_REQS, &mdv_id_hash, &mdv_id_cmp))
     {
         MDV_LOGE("Requests map for messages dispatcher not created");
         mdv_rollback(rollbacker);
@@ -112,7 +122,7 @@ mdv_msg_dispatcher * mdv_msg_dispatcher_create(mdv_descriptor fd, size_t size, m
 
     mdv_stack_clear(pd->cvs);
 
-    for (size_t i = 0; i < MDV_MSG_DISP_REQS; ++i)
+    for (size_t i = 0; i < MDV_DISP_REQS; ++i)
     {
         mdv_condvar *cv = mdv_condvar_create();
 
@@ -132,7 +142,7 @@ mdv_msg_dispatcher * mdv_msg_dispatcher_create(mdv_descriptor fd, size_t size, m
 }
 
 
-void mdv_msg_dispatcher_free(mdv_msg_dispatcher *pd)
+void mdv_dispatcher_free(mdv_dispatcher *pd)
 {
     if (pd)
     {
@@ -149,7 +159,7 @@ void mdv_msg_dispatcher_free(mdv_msg_dispatcher *pd)
 }
 
 
-mdv_errno mdv_msg_dispatcher_send(mdv_msg_dispatcher *pd, mdv_msg const *req, mdv_msg *resp, size_t timeout)
+mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg const *req, mdv_msg *resp, size_t timeout)
 {
     mdv_errno err = MDV_OK;
 
@@ -189,23 +199,18 @@ mdv_errno mdv_msg_dispatcher_send(mdv_msg_dispatcher *pd, mdv_msg const *req, md
     // Send request
     if (err == MDV_OK)
     {
-        if (mdv_mutex_lock(pd->fd_mutex) == MDV_OK)
+        err = mdv_dispatcher_post(pd, req);
+
+        if (err != MDV_OK)
         {
-            err = mdv_write_msg(pd->fd, req);
+            MDV_LOGE("Request sending failed");
 
-            if (err != MDV_OK)
+            if (mdv_mutex_lock(pd->requests_mutex) == MDV_OK)
             {
-                MDV_LOGE("Request sending failed");
-
-                if (mdv_mutex_lock(pd->requests_mutex) == MDV_OK)
-                {
-                    mdv_stack_push(pd->cvs, entry->data.cv);
-                    mdv_hashmap_erase(pd->requests, entry->data.request_id);
-                    mdv_mutex_unlock(pd->requests_mutex);
-                }
+                mdv_stack_push(pd->cvs, entry->data.cv);
+                mdv_hashmap_erase(pd->requests, entry->data.request_id);
+                mdv_mutex_unlock(pd->requests_mutex);
             }
-
-            mdv_mutex_unlock(pd->fd_mutex);
         }
     }
 
@@ -250,18 +255,32 @@ mdv_errno mdv_msg_dispatcher_send(mdv_msg_dispatcher *pd, mdv_msg const *req, md
 }
 
 
-mdv_errno mdv_msg_dispatcher_post(mdv_msg_dispatcher *pd, mdv_msg const *msg)
+mdv_errno mdv_dispatcher_post(mdv_dispatcher *pd, mdv_msg const *msg)
 {
-    return mdv_write_msg(pd->fd, msg);
+    mdv_errno err = MDV_FAILED;
+
+    if (mdv_mutex_lock(pd->fd_mutex) == MDV_OK)
+    {
+        err = mdv_write_msg(pd->fd, msg);
+
+        if (err != MDV_OK)
+            MDV_LOGE("Request posting failed");
+
+        mdv_mutex_unlock(pd->fd_mutex);
+    }
+
+    return err;
 }
 
 
-mdv_errno mdv_msg_dispatcher_read(mdv_msg_dispatcher *pd)
+mdv_errno mdv_dispatcher_read(mdv_dispatcher *pd)
 {
     mdv_errno err = mdv_read_msg(pd->fd, &pd->message);
 
     if (err != MDV_OK)
         return err;
+
+    int msg_is_handled = 0;
 
     if (mdv_mutex_lock(pd->requests_mutex) == MDV_OK)
     {
@@ -269,6 +288,7 @@ mdv_errno mdv_msg_dispatcher_read(mdv_msg_dispatcher *pd)
 
         if (req)
         {
+            msg_is_handled = 1;
             *req->resp = pd->message;
             req->is_ready = 1;
             memset(&pd->message, 0, sizeof pd->message);
@@ -286,9 +306,9 @@ mdv_errno mdv_msg_dispatcher_read(mdv_msg_dispatcher *pd)
     }
 
     // Message not handled
-    if (pd->message.payload)
+    if (!msg_is_handled)
     {
-        mdv_msg_handler *handler = mdv_hashmap_find(pd->handlers, pd->message.hdr.id);
+        mdv_dispatcher_handler *handler = mdv_hashmap_find(pd->handlers, pd->message.hdr.id);
 
         if (handler)
             err = handler->fn(&pd->message, handler->arg);

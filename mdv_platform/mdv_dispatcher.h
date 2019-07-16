@@ -8,20 +8,20 @@
 
 
 /// Messages dispatcher
-typedef struct mdv_msg_dispatcher mdv_msg_dispatcher;
+typedef struct mdv_dispatcher mdv_dispatcher;
 
 
 /// Message handler function
-typedef mdv_errno (*mdv_msg_handler_fn)(mdv_msg const *msg, void *arg);
+typedef mdv_errno (*mdv_dispatcher_handler_fn)(mdv_msg const *msg, void *arg);
 
 
 /// Message handler
-typedef struct mdv_msg_handler
+typedef struct mdv_dispatcher_handler
 {
-    uint16_t             id;
-    mdv_msg_handler_fn   fn;
-    void                *arg;
-} mdv_msg_handler;
+    uint16_t                    id;     ///< Message identifier
+    mdv_dispatcher_handler_fn   fn;     ///< Message handler
+    void                       *arg;    ///< Argument which passed to message handler
+} mdv_dispatcher_handler;
 
 
 /**
@@ -34,15 +34,15 @@ typedef struct mdv_msg_handler
  * @return On success return new messages dispatcher.
  * @return On error return NULL pointer
  */
-mdv_msg_dispatcher * mdv_msg_dispatcher_create(mdv_descriptor fd, size_t size, mdv_msg_handler const *handlers);
+mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd, size_t size, mdv_dispatcher_handler const *handlers);
 
 
 /**
- * @breief Free messages dispatcher
+ * @brief Free messages dispatcher
  *
  * @param pd [in] messages dispatcher
  */
-void mdv_msg_dispatcher_free(mdv_msg_dispatcher *pd);
+void mdv_dispatcher_free(mdv_dispatcher *pd);
 
 
 /**
@@ -57,7 +57,7 @@ void mdv_msg_dispatcher_free(mdv_msg_dispatcher *pd);
  * @return MDV_BUSY if there is no free slots for request. At this case caller should wait and try again later.
  * @return On error return nonzero error code
  */
-mdv_errno mdv_msg_dispatcher_send(mdv_msg_dispatcher *pd, mdv_msg const *req, mdv_msg *resp, size_t timeout);
+mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg const *req, mdv_msg *resp, size_t timeout);
 
 
 /**
@@ -69,7 +69,7 @@ mdv_errno mdv_msg_dispatcher_send(mdv_msg_dispatcher *pd, mdv_msg const *req, md
  * @return On success returns MDV_OK
  * @return On error return nonzero error code.
  */
-mdv_errno mdv_msg_dispatcher_post(mdv_msg_dispatcher *pd, mdv_msg const *msg);
+mdv_errno mdv_dispatcher_post(mdv_dispatcher *pd, mdv_msg const *msg);
 
 
 
@@ -77,9 +77,8 @@ mdv_errno mdv_msg_dispatcher_post(mdv_msg_dispatcher *pd, mdv_msg const *msg);
  * @brief External notification for data reading
  *
  * @param pd [in]       messages dispatcher
- * @param msg [out]     received message
  *
  * @return On success returns MDV_OK
  * @return On error return nonzero error code
  */
-mdv_errno mdv_msg_dispatcher_read(mdv_msg_dispatcher *pd);
+mdv_errno mdv_dispatcher_read(mdv_dispatcher *pd);

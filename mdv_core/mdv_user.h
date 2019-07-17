@@ -25,8 +25,8 @@ typedef struct mdv_user mdv_user;
  * @param fd [in]         user socket descriptor
  * @param uuid [in]       current process uuid
  *
- * @return On success, return MDV_OK
- * @return On error, return non zero value
+ * @return On success, return pointer to new user connection context
+ * @return On error, return NULL pointer
  */
 mdv_user * mdv_user_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *uuid);
 

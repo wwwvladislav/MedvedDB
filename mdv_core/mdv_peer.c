@@ -17,13 +17,12 @@ typedef struct mdv_peer
 {
     mdv_cli_type        type;                       ///< Client type
     mdv_tablespace     *tablespace;                 ///< tablespace
-    mdv_nodes          *nodes;                      ///< nodes storage
     mdv_dispatcher     *dispatcher;                 ///< Messages dispatcher
     mdv_descriptor      sock;                       ///< Socket associated with peer
     mdv_uuid            peer_uuid;                  ///< peer uuid
     mdv_uuid            current_uuid;               ///< current node uuid
-    uint32_t            id;                         ///< Unique peer identifier inside current server
     size_t              created_time;               ///< time, when peer registered
+    uint8_t             chin:1;                     ///< channel direction (1 - in, 0 - out)
     char                listen[MDV_ADDR_LEN_MAX];   ///< Peer listen address
 } mdv_peer;
 
@@ -59,9 +58,9 @@ static mdv_errno mdv_peer_hello_reply(mdv_peer *peer, uint16_t id, mdv_msg_p2p_h
 
 static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 {
-    MDV_LOGI("<<<<< '%s'", mdv_p2p_msg_name(msg->hdr.id));
-
     mdv_peer *peer = arg;
+
+    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
     binn binn_msg;
 
@@ -85,6 +84,7 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
     if(peer_hello->version != MDV_VERSION)
     {
         MDV_LOGE("Invalid peer version");
+        mdv_free(peer_hello);
         return MDV_FAILED;
     }
 
@@ -93,14 +93,21 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
     strncpy(peer->listen, peer_hello->listen, sizeof peer->listen);
     peer->listen[sizeof peer->listen - 1] = 0;
 
-    mdv_msg_p2p_hello hello =
-    {
-        .version = MDV_VERSION,
-        .uuid = peer->current_uuid,
-        .listen = MDV_CONFIG.server.listen.ptr
-    };
+    mdv_free(peer_hello);
 
-    return mdv_peer_hello_reply(peer, msg->hdr.number, &hello);
+    if(peer->chin)
+    {
+        mdv_msg_p2p_hello hello =
+        {
+            .version = MDV_VERSION,
+            .uuid = peer->current_uuid,
+            .listen = MDV_CONFIG.server.listen.ptr
+        };
+
+        return mdv_peer_hello_reply(peer, msg->hdr.number, &hello);
+    }
+
+    return MDV_OK;
 }
 
 
@@ -149,7 +156,7 @@ static mdv_errno mdv_peer_hello(mdv_peer *peer)
 }
 
 
-mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_descriptor fd, mdv_uuid const *current_uuid)
+mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *current_uuid)
 {
     mdv_peer *peer = mdv_alloc(sizeof(mdv_peer));
 
@@ -164,11 +171,10 @@ mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_des
 
     peer->type          = MDV_CLI_PEER;
     peer->tablespace    = tablespace;
-    peer->nodes         = nodes;
     peer->sock          = fd;
-    peer->id            = 0;
     peer->current_uuid  = *current_uuid;
     peer->created_time  = mdv_gettime();
+    peer->chin          = 1;
 
     mdv_dispatcher_handler const handlers[] =
     {
@@ -191,7 +197,7 @@ mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_des
 }
 
 
-mdv_peer * mdv_peer_connect(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_descriptor fd, mdv_uuid const *current_uuid)
+mdv_peer * mdv_peer_connect(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *current_uuid)
 {
     mdv_peer *peer = mdv_alloc(sizeof(mdv_peer));
 
@@ -206,11 +212,10 @@ mdv_peer * mdv_peer_connect(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_de
 
     peer->type          = MDV_CLI_PEER;
     peer->tablespace    = tablespace;
-    peer->nodes         = nodes;
     peer->sock          = fd;
-    peer->id            = 0;
     peer->current_uuid  = *current_uuid;
     peer->created_time  = mdv_gettime();
+    peer->chin          = 0;
 
     mdv_dispatcher_handler const handlers[] =
     {

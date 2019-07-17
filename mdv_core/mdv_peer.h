@@ -23,28 +23,26 @@ typedef struct mdv_peer mdv_peer;
  * @brief Initialize incoming peer
  *
  * @param tablespace [in]   tables space
- * @param nodes [in]        nodes storage
  * @param fd [in]           peer socket descriptor
  * @param current_uuid[in]  current process uuid
  *
- * @return On success, return MDV_OK
- * @return On error, return non zero value
+ * @return On success, return pointer to new peer context
+ * @return On error, return NULL pointer
  */
-mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_descriptor fd, mdv_uuid const *current_uuid);
+mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *current_uuid);
 
 
 /**
  * @brief Initialize outgoing peer
  *
  * @param tablespace [in]   tables space
- * @param nodes [in]        nodes storage
  * @param fd [in]           peer socket descriptor
  * @param current_uuid [in] current process uuid
  *
- * @return On success, return MDV_OK
- * @return On error, return non zero value
+ * @return On success, return pointer to new peer context
+ * @return On error, return NULL pointer
  */
-mdv_peer * mdv_peer_connect(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_descriptor fd, mdv_uuid const *current_uuid);
+mdv_peer * mdv_peer_connect(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *current_uuid);
 
 
 /**

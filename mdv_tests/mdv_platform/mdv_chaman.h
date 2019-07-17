@@ -124,7 +124,7 @@ MU_TEST(platform_chaman)
     mdv_chaman *client = mdv_chaman_create(&client_config);
     mu_check(client);
 
-    err = mdv_chaman_connect(client, mdv_str_static("tcp://localhost:55555"));
+    err = mdv_chaman_connect(client, mdv_str_static("tcp://localhost:55555"), 0);
     mu_check(err == MDV_OK);
 
     while(mdv_init_count != 1)

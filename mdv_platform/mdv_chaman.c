@@ -55,6 +55,7 @@ typedef struct mdv_dialer_context
     mdv_chaman      *chaman;
     mdv_sockaddr     addr;
     mdv_socket_type  protocol;
+    uint32_t         channel_type;
 } mdv_dialer_context;
 
 
@@ -128,9 +129,16 @@ static void mdv_fd_close(mdv_descriptor fd, void *data)
     {
         case MDV_CT_SELECTOR:
         case MDV_CT_LISTENER:
-        case MDV_CT_PEER:
             mdv_socket_close(fd);
             break;
+
+        case MDV_CT_PEER:
+        {
+            mdv_peer_context *peer_context = data;
+            peer_context->chaman->config.channel.close(peer_context->peer);
+            mdv_socket_close(fd);
+            break;
+        }
 
         default:
             break;
@@ -178,7 +186,7 @@ static void mdv_chaman_dialer_handler(uint32_t events, mdv_threadpool_task_base 
     {
         if (!mdv_str_empty(str_addr))
             MDV_LOGI("Connection to '%s' established", str_addr.ptr);
-        mdv_chaman_new_connection(chaman, fd, &task->context.addr, 0, MDV_CHOUT);
+        mdv_chaman_new_connection(chaman, fd, &task->context.addr, task->context.channel_type, MDV_CHOUT);
     }
 }
 
@@ -408,7 +416,7 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr)
 }
 
 
-mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr)
+mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr, uint32_t type)
 {
     mdv_rollbacker(2) rollbacker;
     mdv_rollbacker_clear(rollbacker);
@@ -451,10 +459,11 @@ mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr)
         .context_size = sizeof(mdv_dialer_context),
         .context =
         {
-            .type = MDV_CT_DIALER,
-            .chaman = chaman,
-            .addr = sockaddr,
-            .protocol = socktype
+            .type         = MDV_CT_DIALER,
+            .chaman       = chaman,
+            .addr         = sockaddr,
+            .protocol     = socktype,
+            .channel_type = type
         }
     };
 

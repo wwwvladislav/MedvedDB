@@ -373,7 +373,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
 
     // Connect to server
 
-    mdv_errno err = mdv_chaman_connect(client->chaman, mdv_str((char*)config->db.addr));
+    mdv_errno err = mdv_chaman_connect(client->chaman, mdv_str((char*)config->db.addr), MDV_CLI_USER);
 
     if (err != MDV_OK)
     {

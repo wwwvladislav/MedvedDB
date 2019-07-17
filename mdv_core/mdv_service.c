@@ -71,12 +71,12 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
         return false;
     }
 
-    // Server
-    svc->server = mdv_server_create(&svc->storage.tablespace, &svc->storage.nodes, &svc->metainf.uuid.value);
+    // Cluster
+    svc->cluster = mdv_cluster_create(&svc->storage.tablespace, &svc->storage.nodes, &svc->metainf.uuid.value);
 
-    if (!svc->server)
+    if (!svc->cluster)
     {
-        MDV_LOGE("Listener starting failed");
+        MDV_LOGE("Cluster creation failed");
         return false;
     }
 
@@ -93,7 +93,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 
 void mdv_service_free(mdv_service *svc)
 {
-    mdv_server_free(svc->server);
+    mdv_cluster_free(svc->cluster);
     mdv_nodes_free(&svc->storage.nodes);
     mdv_storage_release(svc->storage.metainf);
     mdv_tablespace_close(&svc->storage.tablespace);
@@ -102,7 +102,9 @@ void mdv_service_free(mdv_service *svc)
 
 bool mdv_service_start(mdv_service *svc)
 {
-    svc->is_started = mdv_server_start(svc->server);
+    svc->is_started = true;
+
+    mdv_cluster_update(svc->cluster);
 
     while(svc->is_started)
     {

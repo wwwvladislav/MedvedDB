@@ -17,14 +17,15 @@
 static const uint32_t MDV_HASH_SEED = 836091947u;
 
 
+/// Bloom filter
 struct mdv_bloom
 {
-    size_t   bits;      // number of bits in bloom filter
-    uint32_t capacity;  // max entries number
-    uint32_t size;      // actually added number of entries
-    uint32_t hashes;    // hash functions number
-    double   err;       // error
-    uint8_t  bf[1];     // bloom filter
+    size_t   bits;      ///< number of bits in bloom filter
+    uint32_t capacity;  ///< max entries number
+    uint32_t size;      ///< actually added number of entries
+    uint32_t hashes;    ///< hash functions number
+    double   err;       ///< error
+    uint8_t  bf[1];     ///< bloom filter
 };
 
 

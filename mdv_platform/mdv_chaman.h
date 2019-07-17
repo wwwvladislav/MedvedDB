@@ -102,11 +102,12 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr);
  *
  * @details Channels manager periodically tries to connect to this peer.
  *
- * @param chaman [in] channels manager
- * @param addr [in] peer address
+ * @param chaman [in]   channels manager
+ * @param addr [in]     peer address
+ * @param type [in]     channel type
  *
  * @return On success, return MDV_OK
  * @return On error, return non zero value
  */
-mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr);
+mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr, uint32_t type);
 

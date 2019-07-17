@@ -1,5 +1,4 @@
 #include "mdv_timerfd.h"
-#include <sys/timerfd.h>
 #include "mdv_log.h"
 #include <unistd.h>
 
@@ -67,19 +66,5 @@ mdv_errno mdv_timerfd_settime(mdv_descriptor fd, size_t start, size_t interval)
     }
 
     return MDV_OK;
-}
-
-
-size_t mdv_gettime()
-{
-    struct timespec tp = {};
-
-    if (clock_gettime(CLOCK_REALTIME, &tp) != 0)
-    {
-        mdv_errno err = mdv_error();
-        MDV_LOGE("gettime failed with error: '%s' (%d)", mdv_strerror(err), err);
-    }
-
-    return tp.tv_sec * 1000 + tp.tv_nsec / 1000000;
 }
 

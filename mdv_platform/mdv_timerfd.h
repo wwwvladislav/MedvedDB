@@ -36,8 +36,3 @@ void mdv_timerfd_close(mdv_descriptor fd);
  */
 mdv_errno mdv_timerfd_settime(mdv_descriptor fd, size_t start, size_t interval);
 
-
-/**
- * @brief Return system-wide clock time (i.e., wall-clock time) in milliseconds
- */
-size_t mdv_gettime();

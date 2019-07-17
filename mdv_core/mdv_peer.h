@@ -15,23 +15,36 @@
 #include "storage/mdv_nodes.h"
 
 
-/// Peer context used for storing different type of information about active peer
+/// Peer context used for storing different type of information about active peer (it should be cast to mdv_conctx)
 typedef struct mdv_peer mdv_peer;
 
 
 /**
- * @brief Initialize peer
+ * @brief Initialize incoming peer
  *
- * @param tablespace [in] tables space
- * @param nodes [in] nodes storage
- * @param fd [in] peer socket descriptor
- * @param addr [in] peer address
- * @param uuid [in] current process uuid
+ * @param tablespace [in]   tables space
+ * @param nodes [in]        nodes storage
+ * @param fd [in]           peer socket descriptor
+ * @param current_uuid[in]  current process uuid
  *
  * @return On success, return MDV_OK
  * @return On error, return non zero value
  */
-mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_descriptor fd, mdv_string const *addr, mdv_uuid const *uuid);
+mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_descriptor fd, mdv_uuid const *current_uuid);
+
+
+/**
+ * @brief Initialize outgoing peer
+ *
+ * @param tablespace [in]   tables space
+ * @param nodes [in]        nodes storage
+ * @param fd [in]           peer socket descriptor
+ * @param current_uuid [in] current process uuid
+ *
+ * @return On success, return MDV_OK
+ * @return On error, return non zero value
+ */
+mdv_peer * mdv_peer_connect(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_descriptor fd, mdv_uuid const *current_uuid);
 
 
 /**

@@ -6,11 +6,11 @@
 
 
 /// Client types
-enum
+typedef enum mdv_cli_type
 {
     MDV_CLI_USER = 0,       ///< User
     MDV_CLI_PEER = 1        ///< Peer
-};
+} mdv_cli_type;
 
 
 #define mdv_message_id_def(name, id)                    \

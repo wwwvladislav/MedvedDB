@@ -6,7 +6,9 @@
 #include <mdv_def.h>
 #include <mdv_rollbacker.h>
 #include <mdv_messages.h>
+#include "mdv_user.h"
 #include "mdv_peer.h"
+#include "mdv_conctx.h"
 
 
 /// @cond Doxygen_Suppress
@@ -39,13 +41,18 @@ static mdv_errno mdv_channel_select(mdv_descriptor fd, uint32_t *type)
 static void * mdv_channel_create(mdv_descriptor fd, mdv_string const *addr, void *userdata, uint32_t type, mdv_channel_dir dir)
 {
     mdv_server *server = (mdv_server *)userdata;
-
-    // TODO: seperate peer and client logic
+    (void)addr;
 
     switch(type)
     {
-        case MDV_CLI_USER:  return mdv_peer_accept(server->tablespace, server->nodes, fd, addr, &server->uuid);
-        case MDV_CLI_PEER:  return mdv_peer_accept(server->tablespace, server->nodes, fd, addr, &server->uuid);
+        case MDV_CLI_USER:
+            return mdv_user_accept(server->tablespace, fd, &server->uuid);
+
+        case MDV_CLI_PEER:
+            return dir == MDV_CHIN
+                        ? mdv_peer_accept(server->tablespace, server->nodes, fd, &server->uuid)
+                        : mdv_peer_connect(server->tablespace, server->nodes, fd, &server->uuid);
+
         default:
             MDV_LOGE("Undefined client type: %u", type);
     }
@@ -56,15 +63,39 @@ static void * mdv_channel_create(mdv_descriptor fd, mdv_string const *addr, void
 
 static mdv_errno mdv_channel_recv(void *channel)
 {
-    mdv_peer *peer = (mdv_peer *)channel;
-    return mdv_peer_recv(peer);
+    mdv_conctx *conctx = channel;
+
+    switch(conctx->type)
+    {
+        case MDV_CLI_USER:
+            return mdv_user_recv(channel);
+
+        case MDV_CLI_PEER:
+            return mdv_peer_recv(channel);
+
+        default:
+            MDV_LOGE("Undefined client type: %u", conctx->type);
+    }
+
+    return MDV_FAILED;
 }
 
 
 static void mdv_channel_close(void *channel)
 {
-    mdv_peer *peer = (mdv_peer *)channel;
-    mdv_peer_free(peer);
+    mdv_conctx *conctx = channel;
+
+    switch(conctx->type)
+    {
+        case MDV_CLI_USER:
+            return mdv_user_free(channel);
+
+        case MDV_CLI_PEER:
+            return mdv_peer_free(channel);
+
+        default:
+            MDV_LOGE("Undefined client type: %u", conctx->type);
+    }
 }
 
 

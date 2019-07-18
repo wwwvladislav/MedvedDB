@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 
                 mdv_alloc_initialize();
 
-                if (!(service_is_ok = mdv_service_init(&service, optarg)))
+                if (!(service_is_ok = mdv_service_create(&service, optarg)))
                 {
                     mdv_alloc_finalize();
                     return -1;

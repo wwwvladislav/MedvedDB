@@ -1,71 +1,48 @@
 #include "mdv_condvar.h"
 #include "mdv_alloc.h"
 #include "mdv_log.h"
-#include <pthread.h>
 #include <time.h>
 #include <errno.h>
 
 
-/// @cond Doxygen_Suppress
-
-struct mdv_condvar
+mdv_errno mdv_condvar_create(mdv_condvar *cv)
 {
-    pthread_mutex_t mutex;
-    pthread_cond_t  cv;
-};
-
-/// @endcond
-
-
-mdv_condvar * mdv_condvar_create()
-{
-    mdv_condvar *cv = (mdv_condvar *)mdv_alloc(sizeof(mdv_condvar));
-
-    if (cv)
+    if (pthread_mutex_init(&cv->mutex, 0) != 0)
     {
-        if (pthread_mutex_init(&cv->mutex, 0) != 0)
-        {
-            MDV_LOGE("condvar mutex initialization failed with error %d", mdv_error());
-            mdv_free(cv);
-            cv = 0;
-        }
-
-        pthread_condattr_t condattr;
-
-        if (pthread_condattr_init(&condattr) != 0)
-        {
-            MDV_LOGE("condvar attributes initialization failed with error %d", mdv_error());
-            pthread_condattr_destroy(&condattr);
-            pthread_mutex_destroy(&cv->mutex);
-            mdv_free(cv);
-            cv = 0;
-        }
-
-        if (pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC) != 0)
-        {
-            MDV_LOGE("condvar attributes initialization failed with error %d", mdv_error());
-            pthread_condattr_destroy(&condattr);
-            pthread_mutex_destroy(&cv->mutex);
-            mdv_free(cv);
-            cv = 0;
-        }
-
-
-        if (pthread_cond_init(&cv->cv, &condattr) != 0)
-        {
-            MDV_LOGE("condvar initialization failed with error %d", mdv_error());
-            pthread_condattr_destroy(&condattr);
-            pthread_mutex_destroy(&cv->mutex);
-            mdv_free(cv);
-            cv = 0;
-        }
-
-        pthread_condattr_destroy(&condattr);
+        MDV_LOGE("condvar mutex initialization failed with error %d", mdv_error());
+        return MDV_FAILED;
     }
-    else
-        MDV_LOGE("condvar_create failed");
 
-    return cv;
+    pthread_condattr_t condattr;
+
+    if (pthread_condattr_init(&condattr) != 0)
+    {
+        MDV_LOGE("condvar attributes initialization failed with error %d", mdv_error());
+        pthread_condattr_destroy(&condattr);
+        pthread_mutex_destroy(&cv->mutex);
+        return MDV_FAILED;
+    }
+
+    if (pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC) != 0)
+    {
+        MDV_LOGE("condvar attributes initialization failed with error %d", mdv_error());
+        pthread_condattr_destroy(&condattr);
+        pthread_mutex_destroy(&cv->mutex);
+        return MDV_FAILED;
+    }
+
+
+    if (pthread_cond_init(&cv->cv, &condattr) != 0)
+    {
+        MDV_LOGE("condvar initialization failed with error %d", mdv_error());
+        pthread_condattr_destroy(&condattr);
+        pthread_mutex_destroy(&cv->mutex);
+        return MDV_FAILED;
+    }
+
+    pthread_condattr_destroy(&condattr);
+
+    return MDV_OK;
 }
 
 
@@ -75,7 +52,6 @@ void mdv_condvar_free(mdv_condvar *cv)
     {
         pthread_mutex_destroy(&cv->mutex);
         pthread_cond_destroy(&cv->cv);
-        mdv_free(cv);
     }
 }
 

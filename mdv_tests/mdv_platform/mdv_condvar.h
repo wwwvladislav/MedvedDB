@@ -15,11 +15,11 @@ static void * mdv_cv_thread(void *data)
 
 MU_TEST(platform_condvar)
 {
-    mdv_condvar *cv = mdv_condvar_create();
+    mdv_condvar cv;
 
-    mu_check(cv);
+    mu_check(mdv_condvar_create(&cv) == MDV_OK);
 
-    mu_check(mdv_condvar_timedwait(cv, 5) == MDV_ETIMEDOUT);
+    mu_check(mdv_condvar_timedwait(&cv, 5) == MDV_ETIMEDOUT);
 
     mdv_thread_attrs thread_attrs =
     {
@@ -27,14 +27,14 @@ MU_TEST(platform_condvar)
     };
 
     mdv_thread thread;
-    mu_check(mdv_thread_create(&thread, &thread_attrs, &mdv_cv_thread, cv) == MDV_OK);
+    mu_check(mdv_thread_create(&thread, &thread_attrs, &mdv_cv_thread, &cv) == MDV_OK);
 
     mdv_sleep(100);
 
-    mu_check(mdv_condvar_signal(cv) == MDV_OK);
+    mu_check(mdv_condvar_signal(&cv) == MDV_OK);
 
     mu_check(mdv_thread_join(thread) == MDV_OK);
 
-    mdv_condvar_free(cv);
+    mdv_condvar_free(&cv);
 }
 

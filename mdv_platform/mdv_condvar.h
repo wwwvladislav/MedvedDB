@@ -3,21 +3,31 @@
  * @brief Condition variable
  */
 #pragma once
-#include "mdv_errno.h"
+#include "mdv_def.h"
 #include <stddef.h>
+
+#ifdef MDV_PLATFORM_LINUX
+    #include <pthread.h>
+#endif
 
 
 /// Condition variable descriptor
-typedef struct mdv_condvar mdv_condvar;
+typedef struct mdv_condvar
+{
+    pthread_mutex_t mutex;      ///< Mutex
+    pthread_cond_t  cv;         ///< Conditional variable
+} mdv_condvar;
 
 
 /**
  * @brief Create new condition variable
  *
- * @return On success, return new condition variable
- * @return On error, return NULL
+ * @param cv [out]   condition variable
+ *
+ * @return On success return MDV_OK
+ * @return On error non zero value is returned
  */
-mdv_condvar * mdv_condvar_create();
+mdv_errno mdv_condvar_create(mdv_condvar *cv);
 
 
 /**

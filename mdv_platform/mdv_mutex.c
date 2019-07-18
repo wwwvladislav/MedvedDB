@@ -1,58 +1,34 @@
 #include "mdv_mutex.h"
-#include "mdv_alloc.h"
 #include "mdv_log.h"
-#include <pthread.h>
 
 
-/// @cond Doxygen_Suppress
-
-struct mdv_mutex
+mdv_errno mdv_mutex_create(mdv_mutex *mutex)
 {
-    pthread_mutex_t mutex;
-};
+    int err = pthread_mutex_init(mutex, 0);
 
-/// @endcond
-
-
-mdv_mutex * mdv_mutex_create()
-{
-    mdv_mutex *m = (mdv_mutex *)mdv_alloc(sizeof(mdv_mutex));
-
-    if (m)
+    if (err)
     {
-        int err = pthread_mutex_init(&m->mutex, 0);
-
-        if (err)
-        {
-            MDV_LOGE("mutex initialization failed with error %d", err);
-            mdv_free(m);
-            m = 0;
-        }
+        MDV_LOGE("mutex initialization failed with error %d", err);
+        return MDV_FAILED;
     }
-    else
-        MDV_LOGE("mutex_create failed");
 
-    return m;
+    return MDV_OK;
 }
 
 
-void mdv_mutex_free(mdv_mutex *m)
+void mdv_mutex_free(mdv_mutex *mutex)
 {
-    if (m)
-    {
-        pthread_mutex_destroy(&m->mutex);
-        mdv_free(m);
-    }
+    pthread_mutex_destroy(mutex);
 }
 
 
-mdv_errno mdv_mutex_lock(mdv_mutex *m)
+mdv_errno mdv_mutex_lock(mdv_mutex *mutex)
 {
-    int err = pthread_mutex_lock(&m->mutex);
+    int err = pthread_mutex_lock(mutex);
 
     if(!err)
     {
-        MDV_LOGD("Mutex %p locked", m);
+        MDV_LOGD("Mutex %p locked", mutex);
         return MDV_OK;
     }
 
@@ -60,13 +36,13 @@ mdv_errno mdv_mutex_lock(mdv_mutex *m)
 }
 
 
-mdv_errno mdv_mutex_trylock(mdv_mutex *m)
+mdv_errno mdv_mutex_trylock(mdv_mutex *mutex)
 {
-    int err = pthread_mutex_trylock(&m->mutex);
+    int err = pthread_mutex_trylock(mutex);
 
     if(!err)
     {
-        MDV_LOGD("Mutex %p locked", m);
+        MDV_LOGD("Mutex %p locked", mutex);
         return MDV_OK;
     }
 
@@ -74,16 +50,15 @@ mdv_errno mdv_mutex_trylock(mdv_mutex *m)
 }
 
 
-mdv_errno mdv_mutex_unlock(mdv_mutex *m)
+mdv_errno mdv_mutex_unlock(mdv_mutex *mutex)
 {
-    int err = pthread_mutex_unlock(&m->mutex);
+    int err = pthread_mutex_unlock(mutex);
 
     if(!err)
     {
-        MDV_LOGD("Mutex %p unlocked", m);
+        MDV_LOGD("Mutex %p unlocked", mutex);
         return MDV_OK;
     }
 
     return mdv_error();
 }
-

@@ -6,7 +6,7 @@
 
 mdv_list_entry_base * _mdv_list_push_back(mdv_list *l, void const *val, size_t size)
 {
-    mdv_list_entry_base *entry = (mdv_list_entry_base *)mdv_alloc(offsetof(mdv_list_entry_base, data) + size);
+    mdv_list_entry_base *entry = (mdv_list_entry_base *)mdv_alloc(offsetof(mdv_list_entry_base, data) + size, "list_entry");
 
     if (!entry)
     {
@@ -27,7 +27,7 @@ void _mdv_list_clear(mdv_list *l)
     for(mdv_list_entry_base *entry = l->next; entry;)
     {
         mdv_list_entry_base *next = entry->next;
-        mdv_free(entry);
+        mdv_free(entry, "list_entry");
         entry = next;
     }
     l->next = 0;
@@ -49,7 +49,7 @@ void _mdv_list_remove(mdv_list *l, mdv_list_entry_base *entry)
     else
         l->last = entry->prev;
 
-    mdv_free(entry4remove);
+    mdv_free(entry4remove, "list_entry");
 }
 
 

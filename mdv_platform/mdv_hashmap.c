@@ -21,7 +21,7 @@ int _mdv_hashmap_init(mdv_hashmap *hm,
     hm->key_size = key_size;
     hm->hash_fn = hash_fn;
     hm->key_cmp_fn = key_cmp_fn;
-    hm->buckets = mdv_alloc(capacity * sizeof(mdv_hashmap_bucket));
+    hm->buckets = mdv_alloc(capacity * sizeof(mdv_hashmap_bucket), "hashmap.buckets");
 
     if (!hm->buckets)
     {
@@ -40,7 +40,7 @@ void _mdv_hashmap_free(mdv_hashmap *hm)
     if (hm->buckets)
     {
         _mdv_hashmap_clear(hm);
-        mdv_free(hm->buckets);
+        mdv_free(hm->buckets, "hashmap.buckets");
     }
 }
 
@@ -61,7 +61,7 @@ int _mdv_hashmap_resize(mdv_hashmap *hm, size_t capacity)
     {
         mdv_hashmap_bucket *buckets = hm->buckets;
 
-        hm->buckets = mdv_alloc(capacity * sizeof(mdv_hashmap_bucket));
+        hm->buckets = mdv_alloc(capacity * sizeof(mdv_hashmap_bucket), "hashmap.buckets");
 
         if (hm->buckets)
         {
@@ -81,7 +81,7 @@ int _mdv_hashmap_resize(mdv_hashmap *hm, size_t capacity)
                 }
             }
 
-            mdv_free(buckets);
+            mdv_free(buckets, "hashmap.buckets");
         }
         else
         {

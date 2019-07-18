@@ -89,7 +89,7 @@ mdv_msg_status * mdv_unbinn_status(binn const *obj)
 
     int const message_len = strlen(message);
 
-    mdv_msg_status *msg = (mdv_msg_status *)mdv_alloc(offsetof(mdv_msg_status, message) + message_len + 1);
+    mdv_msg_status *msg = (mdv_msg_status *)mdv_alloc(offsetof(mdv_msg_status, message) + message_len + 1, "msg_status");
     if (!msg)
     {
         MDV_LOGE("unbinn_status failed");

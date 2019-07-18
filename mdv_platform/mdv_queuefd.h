@@ -13,8 +13,8 @@
  */
 typedef struct
 {
-    mdv_mutex     *rmutex;      ///< mutex for consumer threads
-    mdv_mutex     *wmutex;      ///< mutex for producer threads
+    mdv_mutex      rmutex;      ///< mutex for consumer threads
+    mdv_mutex      wmutex;      ///< mutex for producer threads
     mdv_descriptor event;       ///< event for consumer threads notification
     mdv_queue_base queue;       ///< queue
 } mdv_queuefd_base;
@@ -31,8 +31,8 @@ typedef struct
 #define mdv_queuefd(type, sz)               \
     struct                                  \
     {                                       \
-        mdv_mutex          *rmutex;         \
-        mdv_mutex          *wmutex;         \
+        mdv_mutex           rmutex;         \
+        mdv_mutex           wmutex;         \
         mdv_descriptor      event;          \
         mdv_queue(type, sz) queue;          \
     }

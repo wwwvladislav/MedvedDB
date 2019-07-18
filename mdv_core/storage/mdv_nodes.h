@@ -27,10 +27,10 @@ typedef struct
     volatile uint32_t    max_id;        ///< Maximum node identifier
 
     mdv_hashmap          nodes;         ///< Nodes map (UUID -> mdv_node)
-    mdv_mutex           *nodes_mutex;   ///< nodes guard mutex
+    mdv_mutex            nodes_mutex;   ///< nodes guard mutex
 
     mdv_hashmap          ids;           ///< Node identifiers (id -> UUID)
-    mdv_mutex           *ids_mutex;     ///< node identifiers guard mutex
+    mdv_mutex            ids_mutex;     ///< node identifiers guard mutex
 
     mdv_storage         *storage;       ///< Key-value storage for nodes
 } mdv_nodes;

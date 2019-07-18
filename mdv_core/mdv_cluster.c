@@ -1,19 +1,7 @@
 #include "mdv_cluster.h"
 #include "mdv_config.h"
-#include <mdv_chaman.h>
-#include <mdv_alloc.h>
 #include <mdv_log.h>
 #include "mdv_conctx.h"
-
-
-/// Cluster manager
-struct mdv_cluster
-{
-    mdv_tablespace *tablespace; ///< Tables storage
-    mdv_nodes      *nodes;      ///< nodes storage
-    mdv_chaman     *chaman;     ///< channels manager
-    mdv_uuid        uuid;       ///< current server UUID
-};
 
 
 static void * mdv_cluster_conctx_create(mdv_descriptor fd, mdv_string const *addr, void *userdata, uint32_t type, mdv_channel_dir dir)
@@ -24,19 +12,12 @@ static void * mdv_cluster_conctx_create(mdv_descriptor fd, mdv_string const *add
 }
 
 
-mdv_cluster * mdv_cluster_create(mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_uuid const *uuid)
+mdv_errno mdv_cluster_create(mdv_cluster *cluster, mdv_tablespace *tablespace, mdv_nodes *nodes, mdv_uuid const *uuid)
 {
-    mdv_cluster *cluster = mdv_alloc(sizeof(mdv_cluster));
-
-    if (!cluster)
-    {
-        MDV_LOGE("No memory for cluster manager");
-        return 0;
-    }
-
-    cluster->tablespace = tablespace;
-    cluster->nodes      = nodes;
     cluster->uuid       = *uuid;
+    cluster->tablespace = tablespace;
+
+    mdv_tracker_create(&cluster->tracker, nodes);
 
     mdv_chaman_config const config =
     {
@@ -69,8 +50,7 @@ mdv_cluster * mdv_cluster_create(mdv_tablespace *tablespace, mdv_nodes *nodes, m
     if (!cluster->chaman)
     {
         MDV_LOGE("Chaman not created");
-        mdv_free(cluster);
-        return 0;
+        return MDV_FAILED;
     }
 
     mdv_errno err = mdv_chaman_listen(cluster->chaman, MDV_CONFIG.server.listen);
@@ -79,11 +59,10 @@ mdv_cluster * mdv_cluster_create(mdv_tablespace *tablespace, mdv_nodes *nodes, m
     {
         MDV_LOGE("Listener failed with error: %s (%d)", mdv_strerror(err), err);
         mdv_chaman_free(cluster->chaman);
-        mdv_free(cluster);
-        return 0;
+        return err;
     }
 
-    return cluster;
+    return err;
 }
 
 
@@ -92,7 +71,7 @@ void mdv_cluster_free(mdv_cluster *cluster)
     if(cluster)
     {
         mdv_chaman_free(cluster->chaman);
-        mdv_free(cluster);
+        mdv_tracker_free(&cluster->tracker);
     }
 }
 

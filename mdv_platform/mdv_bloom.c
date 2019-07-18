@@ -35,7 +35,7 @@ mdv_bloom * mdv_bloom_create(uint32_t entries, double err)
     size_t const bytes = MDV_BLOOM_BYTES(bits);
     size_t const size = offsetof(mdv_bloom, bf) + bytes;
 
-    mdv_bloom *bloom = (mdv_bloom *)mdv_alloc(size);
+    mdv_bloom *bloom = (mdv_bloom *)mdv_alloc(size, "bloom");
 
     if (!bloom)
     {
@@ -58,7 +58,7 @@ mdv_bloom * mdv_bloom_create(uint32_t entries, double err)
 
 void mdv_bloom_free(mdv_bloom *bloom)
 {
-    mdv_free(bloom);
+    mdv_free(bloom, "bloom");
 }
 
 

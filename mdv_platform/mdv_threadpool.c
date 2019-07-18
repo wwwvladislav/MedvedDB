@@ -27,7 +27,7 @@ struct mdv_threadpool
     mdv_descriptor          stopfd;         ///< eventfd for thread pool stop notification
     mdv_descriptor          epollfd;        ///< epoll file descriptor
     mdv_thread             *threads;        ///< threads array
-    mdv_mutex              *tasks_mtx;      ///< mutex for tasks protection
+    mdv_mutex               tasks_mtx;      ///< mutex for tasks protection
     mdv_hashmap             tasks;          ///< file descriptors and handlers
     uint8_t                 data_space[1];  ///< data space
 };
@@ -92,7 +92,7 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
 
     size_t const mem_size = offsetof(mdv_threadpool, data_space) + config->size * sizeof(mdv_thread);
 
-    mdv_threadpool *tp = (mdv_threadpool *)mdv_alloc(mem_size);
+    mdv_threadpool *tp = (mdv_threadpool *)mdv_alloc(mem_size, "threadpool");
 
     if(!tp)
     {
@@ -104,7 +104,7 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
 
     tp->config = *config;
 
-    mdv_rollbacker_push(rollbacker, mdv_free, tp);
+    mdv_rollbacker_push(rollbacker, mdv_free, tp, "threadpool");
 
 
     tp->epollfd = mdv_epoll_create();
@@ -131,16 +131,14 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
     mdv_rollbacker_push(rollbacker, mdv_eventfd_close, tp->stopfd);
 
 
-    tp->tasks_mtx = mdv_mutex_create();
-
-    if (!tp->tasks_mtx)
+    if (mdv_mutex_create(&tp->tasks_mtx) != MDV_OK)
     {
         MDV_LOGE("threadpool_create failed");
         mdv_rollback(rollbacker);
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_mutex_free, tp->tasks_mtx);
+    mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tp->tasks_mtx);
 
 
     if (!_mdv_hashmap_init(&tp->tasks,
@@ -211,8 +209,8 @@ void mdv_threadpool_free(mdv_threadpool *tp)
         mdv_epoll_close(tp->epollfd);
         mdv_eventfd_close(tp->stopfd);
         mdv_hashmap_free(tp->tasks);
-        mdv_mutex_free(tp->tasks_mtx);
-        mdv_free(tp);
+        mdv_mutex_free(&tp->tasks_mtx);
+        mdv_free(tp, "threadpool");
     }
 }
 
@@ -221,7 +219,7 @@ mdv_threadpool_task_base * mdv_threadpool_add(mdv_threadpool *threadpool, uint32
 {
     mdv_threadpool_task_base *ret = 0;
 
-    if(mdv_mutex_lock(threadpool->tasks_mtx) == MDV_OK)
+    if(mdv_mutex_lock(&threadpool->tasks_mtx) == MDV_OK)
     {
         size_t const size = offsetof(mdv_threadpool_task_base, context)
                             + task->context_size;
@@ -245,7 +243,7 @@ mdv_threadpool_task_base * mdv_threadpool_add(mdv_threadpool *threadpool, uint32
         else
             MDV_LOGE("Threadpool task registration failed");
 
-        mdv_mutex_unlock(threadpool->tasks_mtx);
+        mdv_mutex_unlock(&threadpool->tasks_mtx);
     }
     else
         MDV_LOGE("Threadpool task registration failed");
@@ -269,7 +267,7 @@ mdv_errno mdv_threadpool_rearm(mdv_threadpool *threadpool, uint32_t events, mdv_
 
 mdv_errno mdv_threadpool_remove(mdv_threadpool *threadpool, mdv_descriptor fd)
 {
-    mdv_errno err = mdv_mutex_lock(threadpool->tasks_mtx);
+    mdv_errno err = mdv_mutex_lock(&threadpool->tasks_mtx);
 
     if(err == MDV_OK)
     {
@@ -282,7 +280,7 @@ mdv_errno mdv_threadpool_remove(mdv_threadpool *threadpool, mdv_descriptor fd)
         else
             MDV_LOGE("Threadpool task removing failed with error '%s' (%d)", mdv_strerror(err), err);
 
-        mdv_mutex_unlock(threadpool->tasks_mtx);
+        mdv_mutex_unlock(&threadpool->tasks_mtx);
     }
     else
         MDV_LOGE("Threadpool task removing failed");
@@ -293,7 +291,7 @@ mdv_errno mdv_threadpool_remove(mdv_threadpool *threadpool, mdv_descriptor fd)
 
 mdv_errno mdv_threadpool_foreach(mdv_threadpool *threadpool, void (*fn)(mdv_descriptor fd, void *context))
 {
-    mdv_errno err = mdv_mutex_lock(threadpool->tasks_mtx);
+    mdv_errno err = mdv_mutex_lock(&threadpool->tasks_mtx);
 
     if(err == MDV_OK)
     {
@@ -303,7 +301,7 @@ mdv_errno mdv_threadpool_foreach(mdv_threadpool *threadpool, void (*fn)(mdv_desc
                 fn(entry->data.fd, entry->data.context_size ? entry->data.context : 0);
         }
 
-        mdv_mutex_unlock(threadpool->tasks_mtx);
+        mdv_mutex_unlock(&threadpool->tasks_mtx);
     }
 
     return err;

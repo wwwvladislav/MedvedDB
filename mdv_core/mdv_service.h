@@ -10,7 +10,7 @@
 
 typedef struct
 {
-    mdv_cluster    *cluster;
+    mdv_cluster     cluster;
     volatile bool   is_started;
     mdv_metainf     metainf;
 
@@ -23,7 +23,7 @@ typedef struct
 } mdv_service;
 
 
-bool mdv_service_init(mdv_service *svc, char const *cfg_file_path);
+bool mdv_service_create(mdv_service *svc, char const *cfg_file_path);
 void mdv_service_free(mdv_service *svc);
 bool mdv_service_start(mdv_service *svc);
 void mdv_service_stop(mdv_service *svc);

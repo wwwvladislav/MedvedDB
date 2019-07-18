@@ -190,7 +190,7 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
         err = mdv_user_status_reply(user, msg->hdr.number, &status);
     }
 
-    mdv_free(create_table);
+    mdv_free(create_table, "msg_create_table");
 
     return err;
 }
@@ -198,7 +198,7 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
 
 mdv_user * mdv_user_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *uuid)
 {
-    mdv_user *user = mdv_alloc(sizeof(mdv_user));
+    mdv_user *user = mdv_alloc(sizeof(mdv_user), "user");
 
     if (!user)
     {
@@ -226,7 +226,7 @@ mdv_user * mdv_user_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uu
     if (!user->dispatcher)
     {
         MDV_LOGE("Messages dispatcher not created");
-        mdv_free(user);
+        mdv_free(user, "user");
         mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
         return 0;
     }
@@ -280,6 +280,6 @@ void mdv_user_free(mdv_user *user)
 {
     MDV_LOGD("User context %p freed", user);
     mdv_dispatcher_free(user->dispatcher);
-    mdv_free(user);
+    mdv_free(user, "user");
 }
 

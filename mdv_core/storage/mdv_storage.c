@@ -97,7 +97,7 @@ mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_
 
     #undef MDV_DB_CALL
 
-    mdv_storage *pstorage = (mdv_storage *)mdv_alloc(sizeof(mdv_storage));
+    mdv_storage *pstorage = (mdv_storage *)mdv_alloc(sizeof(mdv_storage), "storage");
     if (!pstorage)
     {
         MDV_LOGE("Memory allocation failed");
@@ -126,7 +126,7 @@ void mdv_storage_release(mdv_storage *pstorage)
         if (atomic_fetch_sub_explicit(&pstorage->ref_counter, 1, memory_order_relaxed) == 1)
         {
             mdb_env_close(pstorage->env);
-            mdv_free(pstorage);
+            mdv_free(pstorage, "storage");
         }
     }
 }

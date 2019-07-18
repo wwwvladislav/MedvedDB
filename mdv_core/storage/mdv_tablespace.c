@@ -72,7 +72,7 @@ mdv_errno mdv_tablespace_log_create_table(mdv_tablespace *tablespace, uint32_t p
 
     int const obj_size = binn_size(&obj);
 
-    mdv_op *op = (mdv_op*)mdv_alloc_tmp(offsetof(mdv_op, payload) + obj_size);
+    mdv_op *op = (mdv_op*)mdv_alloc_tmp(offsetof(mdv_op, payload) + obj_size, "DB op");
 
     if (!op)
     {
@@ -104,7 +104,7 @@ mdv_errno mdv_tablespace_log_create_table(mdv_tablespace *tablespace, uint32_t p
                         ? MDV_OK
                         : MDV_FAILED;
 
-    mdv_free(op);
+    mdv_free(op, "DB op");
 
     return ret;
 }

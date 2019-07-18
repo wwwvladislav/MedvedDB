@@ -63,7 +63,7 @@ mdv_msg_p2p_hello * mdv_unbinn_p2p_hello(binn const *obj)
 
     size_t const listen_len = strlen(listen);
 
-    mdv_msg_p2p_hello *msg = (mdv_msg_p2p_hello *)mdv_alloc(offsetof(mdv_msg_p2p_hello, dataspace) + listen_len + 1);
+    mdv_msg_p2p_hello *msg = (mdv_msg_p2p_hello *)mdv_alloc(offsetof(mdv_msg_p2p_hello, dataspace) + listen_len + 1, "msg_p2p_hello");
 
     if (!msg)
     {

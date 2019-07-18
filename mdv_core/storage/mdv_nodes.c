@@ -116,16 +116,14 @@ mdv_errno mdv_nodes_load(mdv_nodes *nodes, mdv_storage *storage)
     mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &nodes->nodes);
 
 
-    nodes->nodes_mutex = mdv_mutex_create();
-
-    if (!nodes->nodes_mutex)
+    if (mdv_mutex_create(&nodes->nodes_mutex) != MDV_OK)
     {
         MDV_LOGE("Nodes storage mutex not created");
         mdv_rollback(rollbacker);
         return MDV_FAILED;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_mutex_free, nodes->nodes_mutex);
+    mdv_rollbacker_push(rollbacker, mdv_mutex_free, &nodes->nodes_mutex);
 
 
     if (!mdv_hashmap_init(nodes->ids,
@@ -143,16 +141,14 @@ mdv_errno mdv_nodes_load(mdv_nodes *nodes, mdv_storage *storage)
     mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &nodes->ids);
 
 
-    nodes->ids_mutex = mdv_mutex_create();
-
-    if (!nodes->ids_mutex)
+    if (mdv_mutex_create(&nodes->ids_mutex) != MDV_OK)
     {
         MDV_LOGE("Nodes storage mutex not created");
         mdv_rollback(rollbacker);
         return MDV_FAILED;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_mutex_free, nodes->ids_mutex);
+    mdv_rollbacker_push(rollbacker, mdv_mutex_free, &nodes->ids_mutex);
 
 
     // Start transaction
@@ -227,9 +223,9 @@ void mdv_nodes_free(mdv_nodes *nodes)
     if (nodes)
     {
         mdv_hashmap_free(nodes->nodes);
-        mdv_mutex_free(nodes->nodes_mutex);
+        mdv_mutex_free(&nodes->nodes_mutex);
         mdv_hashmap_free(nodes->ids);
-        mdv_mutex_free(nodes->ids_mutex);
+        mdv_mutex_free(&nodes->ids_mutex);
         mdv_storage_release(nodes->storage);
     }
 }
@@ -281,9 +277,9 @@ mdv_errno mdv_nodes_reg(mdv_nodes *nodes, mdv_node *node)
 {
     mdv_errno err = MDV_FAILED;
 
-    if (mdv_mutex_lock(nodes->nodes_mutex) == MDV_OK)
+    if (mdv_mutex_lock(&nodes->nodes_mutex) == MDV_OK)
     {
-        if (mdv_mutex_lock(nodes->ids_mutex) == MDV_OK)
+        if (mdv_mutex_lock(&nodes->ids_mutex) == MDV_OK)
         {
             if (!mdv_nodes_find(nodes, &node->uuid, &node->id))
                 node->id = mdv_nodes_new_id(nodes);
@@ -367,9 +363,9 @@ mdv_errno mdv_nodes_reg(mdv_nodes *nodes, mdv_node *node)
                 }
             } while(0);
 
-            mdv_mutex_unlock(nodes->ids_mutex);
+            mdv_mutex_unlock(&nodes->ids_mutex);
         }
-        mdv_mutex_unlock(nodes->nodes_mutex);
+        mdv_mutex_unlock(&nodes->nodes_mutex);
     }
 
     return err;

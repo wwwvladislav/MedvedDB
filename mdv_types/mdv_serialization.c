@@ -227,7 +227,7 @@ mdv_table_base * mdv_unbinn_table(binn const *obj)
         return 0;
     }
 
-    mdv_table_base *table = (mdv_table_base *)mdv_alloc(size);
+    mdv_table_base *table = (mdv_table_base *)mdv_alloc(size, "table");
     if (!table)
     {
         MDV_LOGE("unbinn_table failed");
@@ -242,7 +242,7 @@ mdv_table_base * mdv_unbinn_table(binn const *obj)
         || !binn_object_get_uint32((void*)obj, "S", &table->size))
     {
         MDV_LOGE("unbinn_table failed");
-        mdv_free(table);
+        mdv_free(table, "table");
         return 0;
     }
 
@@ -259,7 +259,7 @@ mdv_table_base * mdv_unbinn_table(binn const *obj)
     if (!binn_object_get_list((void*)obj, "F", (void**)&fields))
     {
         MDV_LOGE("unbinn_table failed");
-        mdv_free(table);
+        mdv_free(table, "table");
         return 0;
     }
 
@@ -272,7 +272,7 @@ mdv_table_base * mdv_unbinn_table(binn const *obj)
         if (i > table->size)
         {
             MDV_LOGE("unbinn_table failed");
-            mdv_free(table);
+            mdv_free(table, "table");
             return 0;
         }
 
@@ -284,7 +284,7 @@ mdv_table_base * mdv_unbinn_table(binn const *obj)
             || !binn_object_get_str(&value, "N", &field_name))
         {
             MDV_LOGE("unbinn_table failed");
-            mdv_free(table);
+            mdv_free(table, "table");
             return 0;
         }
 
@@ -417,7 +417,7 @@ mdv_row_base * mdv_unbinn_row(binn const *obj, mdv_field const *fields)
         ++fields_count;
     }
 
-    mdv_row_base *row = (mdv_row_base *)mdv_alloc(size);
+    mdv_row_base *row = (mdv_row_base *)mdv_alloc(size, "row");
     if (!row)
     {
         MDV_LOGE("unbinn_table failed");
@@ -440,7 +440,7 @@ mdv_row_base * mdv_unbinn_row(binn const *obj, mdv_field const *fields)
             if (!binn_get(&value, fields[fields_count].type, buff))
             {
                 MDV_LOGE("unbinn_table failed");
-                mdv_free(row);
+                mdv_free(row, "row");
                 return 0;
             }
             row->fields[fields_count].size = field_type_size;
@@ -469,7 +469,7 @@ mdv_row_base * mdv_unbinn_row(binn const *obj, mdv_field const *fields)
                 if (!binn_get(&arr_value, fields[fields_count].type, buff))
                 {
                     MDV_LOGE("unbinn_table failed");
-                    mdv_free(row);
+                    mdv_free(row, "row");
                     return 0;
                 }
 

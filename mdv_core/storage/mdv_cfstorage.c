@@ -38,7 +38,7 @@ static void mdv_cfstorage_log_last(mdv_cfstorage *cfstorage, uint32_t first_node
 
 mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num)
 {
-    mdv_cfstorage *cfstorage = (mdv_cfstorage *)mdv_alloc(offsetof(mdv_cfstorage, applied) + sizeof(mdv_cfstorage_applied_pos) * nodes_num);
+    mdv_cfstorage *cfstorage = (mdv_cfstorage *)mdv_alloc(offsetof(mdv_cfstorage, applied) + sizeof(mdv_cfstorage_applied_pos) * nodes_num, "cfstorage");
 
     if (!cfstorage)
     {
@@ -114,7 +114,7 @@ mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num)
 
 mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num)
 {
-    mdv_cfstorage *cfstorage = (mdv_cfstorage *)mdv_alloc(offsetof(mdv_cfstorage, applied) + sizeof(mdv_cfstorage_applied_pos) * nodes_num);
+    mdv_cfstorage *cfstorage = (mdv_cfstorage *)mdv_alloc(offsetof(mdv_cfstorage, applied) + sizeof(mdv_cfstorage_applied_pos) * nodes_num, "cfstorage");
 
     if (!cfstorage)
     {
@@ -177,7 +177,7 @@ void mdv_cfstorage_close(mdv_cfstorage *cfstorage)
         mdv_storage_release(cfstorage->tr_log);
         cfstorage->data = 0;
         cfstorage->tr_log = 0;
-        mdv_free(cfstorage);
+        mdv_free(cfstorage, "cfstorage");
     }
 }
 

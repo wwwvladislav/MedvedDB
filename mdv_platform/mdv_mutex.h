@@ -4,19 +4,26 @@
  */
 #pragma once
 #include "mdv_errno.h"
+#include "mdv_def.h"
+
+#ifdef MDV_PLATFORM_LINUX
+    #include <pthread.h>
+#endif
 
 
 /// Mutex descriptor
-typedef struct mdv_mutex mdv_mutex;
+typedef pthread_mutex_t mdv_mutex;
 
 
 /**
  * @brief Create new mutex
  *
- * @return On success, return new mutex
- * @return On error, return NULL
+ * @param m [in]   mutex
+ *
+ * @return MDV_OK if mutex is suzeccesfully created
+ * @return non zero error code if error occurred
  */
-mdv_mutex * mdv_mutex_create();
+mdv_errno mdv_mutex_create(mdv_mutex *m);
 
 
 /**

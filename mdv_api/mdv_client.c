@@ -68,7 +68,7 @@ static void mdv_client_finalize()
 struct mdv_client
 {
     mdv_uuid            uuid;               ///< server uuid
-    mdv_condvar        *connected;          ///< connection status
+    mdv_condvar         connected;          ///< connection status
     mdv_dispatcher     *dispatcher;         ///< Messages dispatcher
     mdv_chaman         *chaman;             ///< channels manager
     uint32_t            response_timeout;   ///< Temeout for responses (in milliseconds)
@@ -231,7 +231,7 @@ static void * mdv_channel_create(mdv_descriptor fd, mdv_string const *addr, void
 
     mdv_dispatcher_set_fd(client->dispatcher, fd);
 
-    mdv_errno err = mdv_condvar_signal(client->connected);
+    mdv_errno err = mdv_condvar_signal(&client->connected);
 
     if (err != MDV_OK)
     {
@@ -279,7 +279,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
 
     // Allocate memory for client
 
-    mdv_client *client = mdv_alloc(sizeof(mdv_client));
+    mdv_client *client = mdv_alloc(sizeof(mdv_client), "client");
 
     if (!client)
     {
@@ -290,7 +290,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
 
     memset(client, 0, sizeof *client);
 
-    mdv_rollbacker_push(rollbacker, mdv_free, client);
+    mdv_rollbacker_push(rollbacker, mdv_free, client, "client");
 
     client->response_timeout = config->connection.response_timeout * 1000;
     client->sock             = MDV_INVALID_DESCRIPTOR;
@@ -298,9 +298,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
 
     // Create conditional variable for connection status waiting
 
-    client->connected = mdv_condvar_create();
-
-    if (!client->connected)
+    if (mdv_condvar_create(&client->connected) != MDV_OK)
     {
         MDV_LOGE("Conditional variable not created");
         mdv_rollback(rollbacker);
@@ -308,7 +306,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_condvar_free, client->connected);
+    mdv_rollbacker_push(rollbacker, mdv_condvar_free, &client->connected);
 
 
     // Create messages dispatcher
@@ -385,7 +383,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
 
     // Wait connection
 
-    err = mdv_condvar_timedwait(client->connected, config->connection.timeout * 1000);
+    err = mdv_condvar_timedwait(&client->connected, config->connection.timeout * 1000);
 
     if (err != MDV_OK)
     {
@@ -425,8 +423,8 @@ void mdv_client_close(mdv_client *client)
     {
         mdv_chaman_free(client->chaman);
         mdv_dispatcher_free(client->dispatcher);
-        mdv_condvar_free(client->connected);
-        mdv_free(client);
+        mdv_condvar_free(&client->connected);
+        mdv_free(client, "client");
         mdv_client_finalize();
     }
 }

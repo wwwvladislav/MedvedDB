@@ -25,7 +25,7 @@ static void mdv_service_configure_logging()
 }
 
 
-bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
+bool mdv_service_create(mdv_service *svc, char const *cfg_file_path)
 {
     // Configuration
     if (!mdv_load_config(cfg_file_path))
@@ -72,9 +72,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
     }
 
     // Cluster
-    svc->cluster = mdv_cluster_create(&svc->storage.tablespace, &svc->storage.nodes, &svc->metainf.uuid.value);
-
-    if (!svc->cluster)
+    if (mdv_cluster_create(&svc->cluster, &svc->storage.tablespace, &svc->storage.nodes, &svc->metainf.uuid.value) != MDV_OK)
     {
         MDV_LOGE("Cluster creation failed");
         return false;
@@ -93,7 +91,7 @@ bool mdv_service_init(mdv_service *svc, char const *cfg_file_path)
 
 void mdv_service_free(mdv_service *svc)
 {
-    mdv_cluster_free(svc->cluster);
+    mdv_cluster_free(&svc->cluster);
     mdv_nodes_free(&svc->storage.nodes);
     mdv_storage_release(svc->storage.metainf);
     mdv_tablespace_close(&svc->storage.tablespace);
@@ -104,7 +102,7 @@ bool mdv_service_start(mdv_service *svc)
 {
     svc->is_started = true;
 
-    mdv_cluster_update(svc->cluster);
+    mdv_cluster_update(&svc->cluster);
 
     while(svc->is_started)
     {

@@ -90,7 +90,7 @@ mdv_chaman * mdv_chaman_create(mdv_chaman_config const *config)
     mdv_rollbacker_clear(rollbacker);
 
     // Allocate memory
-    mdv_chaman *chaman = mdv_alloc(sizeof(mdv_chaman));
+    mdv_chaman *chaman = mdv_alloc(sizeof(mdv_chaman), "chaman");
 
     if(!chaman)
     {
@@ -102,7 +102,7 @@ mdv_chaman * mdv_chaman_create(mdv_chaman_config const *config)
 
     chaman->config = *config;
 
-    mdv_rollbacker_push(rollbacker, mdv_free, chaman);
+    mdv_rollbacker_push(rollbacker, mdv_free, chaman, "chaman");
 
 
     // Create and start thread pool
@@ -160,7 +160,7 @@ void mdv_chaman_free(mdv_chaman *chaman)
         mdv_threadpool_free(chaman->threadpool);
 
         // Free chaman
-        mdv_free(chaman);
+        mdv_free(chaman, "chaman");
     }
 }
 

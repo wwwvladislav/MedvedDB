@@ -37,7 +37,7 @@ static void test_table_serialization()
     }
 
     binn_free(&obj);
-    mdv_free(deserialized_tbl);
+    mdv_free(deserialized_tbl, "table");
 }
 
 
@@ -78,7 +78,7 @@ static void test_row_serialization()
     }
 
     binn_free(&obj);
-    mdv_free(deserialized_row);
+    mdv_free(deserialized_row, "row");
 }
 
 

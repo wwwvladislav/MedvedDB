@@ -84,7 +84,7 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
     if(peer_hello->version != MDV_VERSION)
     {
         MDV_LOGE("Invalid peer version");
-        mdv_free(peer_hello);
+        mdv_free(peer_hello, "msg_p2p_hello");
         return MDV_FAILED;
     }
 
@@ -93,7 +93,7 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
     strncpy(peer->listen, peer_hello->listen, sizeof peer->listen);
     peer->listen[sizeof peer->listen - 1] = 0;
 
-    mdv_free(peer_hello);
+    mdv_free(peer_hello, "msg_p2p_hello");
 
     if(peer->chin)
     {
@@ -158,7 +158,7 @@ static mdv_errno mdv_peer_hello(mdv_peer *peer)
 
 mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *current_uuid)
 {
-    mdv_peer *peer = mdv_alloc(sizeof(mdv_peer));
+    mdv_peer *peer = mdv_alloc(sizeof(mdv_peer), "peer");
 
     if (!peer)
     {
@@ -186,7 +186,7 @@ mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uu
     if (!peer->dispatcher)
     {
         MDV_LOGE("Messages dispatcher not created");
-        mdv_free(peer);
+        mdv_free(peer, "peer");
         mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
         return 0;
     }
@@ -199,7 +199,7 @@ mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uu
 
 mdv_peer * mdv_peer_connect(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *current_uuid)
 {
-    mdv_peer *peer = mdv_alloc(sizeof(mdv_peer));
+    mdv_peer *peer = mdv_alloc(sizeof(mdv_peer), "peer");
 
     if (!peer)
     {
@@ -227,7 +227,7 @@ mdv_peer * mdv_peer_connect(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_u
     if (!peer->dispatcher)
     {
         MDV_LOGE("Messages dispatcher not created");
-        mdv_free(peer);
+        mdv_free(peer, "peer");
         mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
         return 0;
     }
@@ -235,7 +235,7 @@ mdv_peer * mdv_peer_connect(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_u
     if (mdv_peer_hello(peer) != MDV_OK)
     {
         MDV_LOGD("Peer handshake messahe failed");
-        mdv_free(peer);
+        mdv_free(peer, "peer");
         mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
         return 0;
     }
@@ -289,6 +289,6 @@ void mdv_peer_free(mdv_peer *peer)
 {
     MDV_LOGD("Peer %p freed", peer);
     mdv_dispatcher_free(peer->dispatcher);
-    mdv_free(peer);
+    mdv_free(peer, "peer");
 }
 

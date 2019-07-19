@@ -20,17 +20,17 @@ mdv_errno mdv_conctx_select(mdv_descriptor fd, uint32_t *type)
 }
 
 
-void * mdv_conctx_create(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *uuid, uint32_t type, uint32_t dir)
+mdv_conctx * mdv_conctx_create(mdv_conctx_config const *config, uint32_t type, uint32_t dir)
 {
     switch(type)
     {
         case MDV_CLI_USER:
-            return mdv_user_accept(tablespace, fd, uuid);
+            return (mdv_conctx*)mdv_user_accept(config);
 
         case MDV_CLI_PEER:
             return dir == MDV_CHIN
-                        ? mdv_peer_accept(tablespace, fd, uuid)
-                        : mdv_peer_connect(tablespace, fd, uuid);
+                        ? (mdv_conctx*)mdv_peer_accept(config)
+                        : (mdv_conctx*)mdv_peer_connect(config);
 
         default:
             MDV_LOGE("Undefined client type: %u", type);
@@ -40,17 +40,15 @@ void * mdv_conctx_create(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid
 }
 
 
-mdv_errno mdv_conctx_recv(void *arg)
+mdv_errno mdv_conctx_recv(mdv_conctx *conctx)
 {
-    mdv_conctx *conctx = arg;
-
     switch(conctx->type)
     {
         case MDV_CLI_USER:
-            return mdv_user_recv(arg);
+            return mdv_user_recv((mdv_user *)conctx);
 
         case MDV_CLI_PEER:
-            return mdv_peer_recv(arg);
+            return mdv_peer_recv((mdv_peer *)conctx);
 
         default:
             MDV_LOGE("Undefined client type: %u", conctx->type);
@@ -60,17 +58,15 @@ mdv_errno mdv_conctx_recv(void *arg)
 }
 
 
-void mdv_conctx_close(void *arg)
+void mdv_conctx_free(mdv_conctx *conctx)
 {
-    mdv_conctx *conctx = arg;
-
     switch(conctx->type)
     {
         case MDV_CLI_USER:
-            return mdv_user_free(arg);
+            return mdv_user_free((mdv_user *)conctx);
 
         case MDV_CLI_PEER:
-            return mdv_peer_free(arg);
+            return mdv_peer_free((mdv_peer *)conctx);
 
         default:
             MDV_LOGE("Undefined client type: %u", conctx->type);

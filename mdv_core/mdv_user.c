@@ -196,23 +196,23 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
 }
 
 
-mdv_user * mdv_user_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *uuid)
+mdv_user * mdv_user_accept(mdv_conctx_config const *config)
 {
     mdv_user *user = mdv_alloc(sizeof(mdv_user), "user");
 
     if (!user)
     {
         MDV_LOGE("No memory to accept user context");
-        mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
         return 0;
     }
 
     MDV_LOGD("User context %p initialize", user);
 
     user->type          = MDV_CLI_USER;
-    user->tablespace    = tablespace;
-    user->sock          = fd;
-    user->current_uuid  = *uuid;
+    user->tablespace    = config->tablespace;
+    user->sock          = config->fd;
+    user->current_uuid  = config->uuid;
     user->created_time  = mdv_gettime();
 
     mdv_dispatcher_handler const handlers[] =
@@ -221,13 +221,13 @@ mdv_user * mdv_user_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uu
         { mdv_msg_create_table_id,  &mdv_user_create_table_handler, user }
     };
 
-    user->dispatcher = mdv_dispatcher_create(fd, sizeof handlers / sizeof *handlers, handlers);
+    user->dispatcher = mdv_dispatcher_create(config->fd, sizeof handlers / sizeof *handlers, handlers);
 
     if (!user->dispatcher)
     {
         MDV_LOGE("Messages dispatcher not created");
         mdv_free(user, "user");
-        mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
         return 0;
     }
 

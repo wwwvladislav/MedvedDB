@@ -13,9 +13,36 @@
 typedef struct mdv_conctx
 {
     mdv_cli_type type;                          ///< Client type
-    mdv_errno (*recv)(struct mdv_conctx *);     ///< function for data receiving
-    void (*close)(struct mdv_conctx *);         ///< function for connection context closing
 } mdv_conctx;
+
+
+
+typedef struct mdv_conctx_handlers
+{
+    /**
+     * @brief Peer registration
+     *
+     * @param userdata [in] user data
+     * @param addr [in]     peer node listen address
+     * @param uuid [in]     peer global UUID
+     * @param id [out]      peer local numeric identifier
+     *
+     * @return On success, return MDV_OK
+     * @return On error, return non zero value
+     */
+    mdv_errno (*reg_peer)(void *userdata, char const *addr, mdv_uuid const *uuid, uint32_t *id);
+} mdv_conctx_handlers;
+
+
+/// Connection context configuration
+typedef struct mdv_conctx_config
+{
+    mdv_tablespace     *tablespace;     ///< DB tables space
+    mdv_descriptor      fd;             ///< file descriptor associated with connection
+    mdv_uuid            uuid;           ///< current server UUID
+    void               *userdata;       ///< User defined data which is provided as event handlers first argument
+    mdv_conctx_handlers handlers;       ///< Event handlers and callbacks
+} mdv_conctx_config;
 
 
 /**
@@ -33,16 +60,14 @@ mdv_errno mdv_conctx_select(mdv_descriptor fd, uint32_t *type);
 /**
  * @brief Create connection context
  *
- * @param tablespace [in]   tables storage
- * @param fd [in]           file descriptor associated with connection
- * @param uuid [in]         current server UUID
- * @param type [in]         client type (MDV_CLI_USER or MDV_CLI_PEER)
- * @param dir [in]          Channel direction (MDV_CHIN or MDV_CHOUT)
+ * @param config [in]   Connection context configuration
+ * @param type [in]     Client type (MDV_CLI_USER or MDV_CLI_PEER)
+ * @param dir [in]      Channel direction (MDV_CHIN or MDV_CHOUT)
  *
  * @return On success, return new connection context
  * @return On error, return NULL pointer
  */
-void * mdv_conctx_create(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *uuid, uint32_t type, uint32_t dir);
+mdv_conctx * mdv_conctx_create(mdv_conctx_config const *config, uint32_t type, uint32_t dir);
 
 
 /**
@@ -53,13 +78,13 @@ void * mdv_conctx_create(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid
  * @return On success, return MDV_OK
  * @return On error, return non zero value
  */
-mdv_errno mdv_conctx_recv(void *conctx);
+mdv_errno mdv_conctx_recv(mdv_conctx *conctx);
 
 
 /**
- * @brief Close connection context
+ * @brief Free allocated by connection context resources
  *
  * @param conctx [in] connection context
  */
-void mdv_conctx_close(void *conctx);
+void mdv_conctx_free(mdv_conctx *conctx);
 

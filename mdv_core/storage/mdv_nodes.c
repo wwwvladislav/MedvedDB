@@ -75,13 +75,14 @@ static mdv_node * mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid)
         return 0;
     }
 
-    static _Thread_local char buff[offsetof(mdv_node, addr) + MDV_ADDR_LEN_MAX];
+    static _Thread_local char buff[offsetof(mdv_node, addr) + MDV_ADDR_LEN_MAX + 1];
 
     mdv_node *node = (mdv_node *)buff;
 
-    node->size = offsetof(mdv_node, addr) + addr_len + 1;
-    node->uuid = *uuid;
-    node->id = id;
+    node->size   = offsetof(mdv_node, addr) + addr_len + 1;
+    node->uuid   = *uuid;
+    node->id     = id;
+    node->active = 0;
     memcpy(node->addr, addr, addr_len + 1);
 
     return node;

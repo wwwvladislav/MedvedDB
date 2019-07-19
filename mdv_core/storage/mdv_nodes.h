@@ -14,10 +14,11 @@
 /// Cluster node information
 typedef struct
 {
-    size_t     size;    ///< Current data structure size
-    mdv_uuid   uuid;    ///< Global unique identifier
-    uint32_t   id;      ///< Unique identifier inside current server
-    char       addr[1]; ///< Node address in following format: protocol://host:port
+    size_t      size;       ///< Current data structure size
+    mdv_uuid    uuid;       ///< Global unique identifier
+    uint32_t    id;         ///< Unique identifier inside current server
+    uint8_t     active:1;   ///< Node is active. Connection establisched.
+    char        addr[1];    ///< Node address in following format: protocol://host:port
 } mdv_node;
 
 
@@ -65,4 +66,4 @@ void mdv_nodes_free(mdv_nodes *nodes);
  * @return On success, return MDV_OK and node->id is initialized by local unique numeric identifier
  * @return On error, return nonzero value
  */
-mdv_errno mdv_nodes_reg (mdv_nodes *nodes, mdv_node *node);
+mdv_errno mdv_nodes_reg(mdv_nodes *nodes, mdv_node *node);

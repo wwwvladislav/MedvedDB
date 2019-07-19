@@ -9,8 +9,7 @@
 #include <mdv_string.h>
 #include <mdv_limits.h>
 #include <mdv_dispatcher.h>
-#include "storage/mdv_tablespace.h"
-#include "storage/mdv_nodes.h"
+#include "mdv_conctx.h"
 
 
 /// User context used for storing different type of information about connection (it should be cast to mdv_conctx)
@@ -20,14 +19,12 @@ typedef struct mdv_user mdv_user;
 /**
  * @brief Initialize user
  *
- * @param tablespace [in] tables space
- * @param fd [in]         user socket descriptor
- * @param uuid [in]       current process uuid
+ * @param config [in] Connection context configuration
  *
  * @return On success, return pointer to new user connection context
  * @return On error, return NULL pointer
  */
-mdv_user * mdv_user_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *uuid);
+mdv_user * mdv_user_accept(mdv_conctx_config const *config);
 
 
 /**

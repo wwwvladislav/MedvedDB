@@ -11,7 +11,7 @@
 #include <mdv_limits.h>
 #include <mdv_dispatcher.h>
 #include "storage/mdv_tablespace.h"
-#include "storage/mdv_nodes.h"
+#include "mdv_conctx.h"
 
 
 /// Peer context used for storing different type of information about active peer (it should be cast to mdv_conctx)
@@ -21,27 +21,23 @@ typedef struct mdv_peer mdv_peer;
 /**
  * @brief Initialize incoming peer
  *
- * @param tablespace [in]   tables space
- * @param fd [in]           peer socket descriptor
- * @param current_uuid[in]  current process uuid
+ * @param config [in] Connection context configuration
  *
  * @return On success, return pointer to new peer context
  * @return On error, return NULL pointer
  */
-mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *current_uuid);
+mdv_peer * mdv_peer_accept(mdv_conctx_config const *config);
 
 
 /**
  * @brief Initialize outgoing peer
  *
- * @param tablespace [in]   tables space
- * @param fd [in]           peer socket descriptor
- * @param current_uuid [in] current process uuid
+ * @param config [in] Connection context configuration
  *
  * @return On success, return pointer to new peer context
  * @return On error, return NULL pointer
  */
-mdv_peer * mdv_peer_connect(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *current_uuid);
+mdv_peer * mdv_peer_connect(mdv_conctx_config const *config);
 
 
 /**

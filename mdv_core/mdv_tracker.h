@@ -29,3 +29,7 @@ void mdv_tracker_create(mdv_tracker *tracker, mdv_nodes *nodes);
  * @param tracker [in] Topology tracker
  */
 void mdv_tracker_free(mdv_tracker *tracker);
+
+
+mdv_errno mdv_tracker_register(mdv_tracker *tracker, mdv_node *node);
+

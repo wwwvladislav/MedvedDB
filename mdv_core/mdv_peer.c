@@ -19,11 +19,14 @@ typedef struct mdv_peer
     mdv_tablespace     *tablespace;                 ///< tablespace
     mdv_dispatcher     *dispatcher;                 ///< Messages dispatcher
     mdv_descriptor      sock;                       ///< Socket associated with peer
-    mdv_uuid            peer_uuid;                  ///< peer uuid
+    uint32_t            peer_id;                    ///< peer local numeric id
+    mdv_uuid            peer_uuid;                  ///< peer global uuid
     mdv_uuid            current_uuid;               ///< current node uuid
     size_t              created_time;               ///< time, when peer registered
     uint8_t             chin:1;                     ///< channel direction (1 - in, 0 - out)
     char                listen[MDV_ADDR_LEN_MAX];   ///< Peer listen address
+    void               *userdata;                   ///< User defined data which is provided as event handlers first argument
+    mdv_conctx_handlers handlers;                   ///< Event handlers and callbacks
 } mdv_peer;
 
 
@@ -95,6 +98,15 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 
     mdv_free(peer_hello, "msg_p2p_hello");
 
+    mdv_errno err = peer->handlers.reg_peer(peer->userdata, peer->listen, &peer->peer_uuid, &peer->peer_id);
+
+    if (err != MDV_OK)
+    {
+        MDV_LOGE("Peer registration failed with error '%s' (%d)", mdv_strerror(err), err);
+        return err;
+    }
+
+
     if(peer->chin)
     {
         mdv_msg_p2p_hello hello =
@@ -156,38 +168,41 @@ static mdv_errno mdv_peer_hello(mdv_peer *peer)
 }
 
 
-mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *current_uuid)
+mdv_peer * mdv_peer_accept(mdv_conctx_config const *config)
 {
     mdv_peer *peer = mdv_alloc(sizeof(mdv_peer), "peer");
 
     if (!peer)
     {
         MDV_LOGE("No memory to accept peer");
-        mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
         return 0;
     }
 
     MDV_LOGD("Peer %p initialize", peer);
 
     peer->type          = MDV_CLI_PEER;
-    peer->tablespace    = tablespace;
-    peer->sock          = fd;
-    peer->current_uuid  = *current_uuid;
+    peer->tablespace    = config->tablespace;
+    peer->sock          = config->fd;
+    peer->peer_id       = 0;
+    peer->current_uuid  = config->uuid;
     peer->created_time  = mdv_gettime();
     peer->chin          = 1;
+    peer->userdata      = config->userdata;
+    peer->handlers      = config->handlers;
 
     mdv_dispatcher_handler const handlers[] =
     {
         { mdv_msg_p2p_hello_id,     &mdv_peer_hello_handler,    peer }
     };
 
-    peer->dispatcher = mdv_dispatcher_create(fd, sizeof handlers / sizeof *handlers, handlers);
+    peer->dispatcher = mdv_dispatcher_create(config->fd, sizeof handlers / sizeof *handlers, handlers);
 
     if (!peer->dispatcher)
     {
         MDV_LOGE("Messages dispatcher not created");
         mdv_free(peer, "peer");
-        mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
         return 0;
     }
 
@@ -197,38 +212,41 @@ mdv_peer * mdv_peer_accept(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uu
 }
 
 
-mdv_peer * mdv_peer_connect(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_uuid const *current_uuid)
+mdv_peer * mdv_peer_connect(mdv_conctx_config const *config)
 {
     mdv_peer *peer = mdv_alloc(sizeof(mdv_peer), "peer");
 
     if (!peer)
     {
         MDV_LOGE("No memory to accept peer");
-        mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
         return 0;
     }
 
     MDV_LOGD("Peer %p initialize", peer);
 
     peer->type          = MDV_CLI_PEER;
-    peer->tablespace    = tablespace;
-    peer->sock          = fd;
-    peer->current_uuid  = *current_uuid;
+    peer->tablespace    = config->tablespace;
+    peer->sock          = config->fd;
+    peer->peer_id       = 0;
+    peer->current_uuid  = config->uuid;
     peer->created_time  = mdv_gettime();
     peer->chin          = 0;
+    peer->userdata      = config->userdata;
+    peer->handlers      = config->handlers;
 
     mdv_dispatcher_handler const handlers[] =
     {
         { mdv_msg_p2p_hello_id,     &mdv_peer_hello_handler,    peer }
     };
 
-    peer->dispatcher = mdv_dispatcher_create(fd, sizeof handlers / sizeof *handlers, handlers);
+    peer->dispatcher = mdv_dispatcher_create(config->fd, sizeof handlers / sizeof *handlers, handlers);
 
     if (!peer->dispatcher)
     {
         MDV_LOGE("Messages dispatcher not created");
         mdv_free(peer, "peer");
-        mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
         return 0;
     }
 
@@ -236,7 +254,7 @@ mdv_peer * mdv_peer_connect(mdv_tablespace *tablespace, mdv_descriptor fd, mdv_u
     {
         MDV_LOGD("Peer handshake messahe failed");
         mdv_free(peer, "peer");
-        mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
         return 0;
     }
 

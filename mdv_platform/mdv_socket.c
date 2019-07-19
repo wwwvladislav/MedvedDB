@@ -1,7 +1,6 @@
 #include "mdv_socket.h"
 #include "mdv_log.h"
 #include "mdv_limits.h"
-#include "mdv_errno.h"
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>

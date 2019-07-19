@@ -4,7 +4,6 @@
  */
 #pragma once
 #include "mdv_msg.h"
-#include "mdv_errno.h"
 
 
 /// Messages dispatcher

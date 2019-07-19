@@ -5,7 +5,6 @@
  */
 #pragma once
 #include <mdv_uuid.h>
-#include <mdv_errno.h>
 #include <mdv_def.h>
 #include <mdv_msg.h>
 #include <mdv_string.h>

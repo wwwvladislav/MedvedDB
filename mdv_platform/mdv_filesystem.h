@@ -1,6 +1,6 @@
 #pragma once
-#include <stdbool.h>
 #include "mdv_limits.h"
+#include "mdv_def.h"
 
 
 bool mdv_mkdir(char const *path);

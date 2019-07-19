@@ -1,6 +1,5 @@
 #pragma once
-#include <stddef.h>
-#include <stdbool.h>
+#include "mdv_def.h"
 
 
 typedef struct mdv_deque mdv_deque;

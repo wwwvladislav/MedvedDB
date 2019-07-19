@@ -1,6 +1,5 @@
 #pragma once
-#include <stddef.h>
-#include <stdint.h>
+#include "mdv_def.h"
 
 
 int   mdv_alloc_initialize();

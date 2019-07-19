@@ -1,6 +1,5 @@
 #include "mdv_deque.h"
 #include "mdv_alloc.h"
-#include <stdint.h>
 #include <string.h>
 
 

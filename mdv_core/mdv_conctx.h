@@ -7,7 +7,6 @@
 #include "storage/mdv_tablespace.h"
 #include <mdv_messages.h>
 #include <mdv_def.h>
-#include <stdint.h>
 
 
 /// Base type for connection contexts mdv_peer and mdv_user

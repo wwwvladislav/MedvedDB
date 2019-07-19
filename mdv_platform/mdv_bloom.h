@@ -4,8 +4,7 @@
  */
 #pragma once
 #include <math.h>
-#include <stdint.h>
-#include <stdbool.h>
+#include "mdv_def.h"
 
 
 /// Bloom filter

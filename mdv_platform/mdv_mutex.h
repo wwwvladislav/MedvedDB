@@ -3,7 +3,6 @@
  * @brief Mutex
  */
 #pragma once
-#include "mdv_errno.h"
 #include "mdv_def.h"
 
 #ifdef MDV_PLATFORM_LINUX

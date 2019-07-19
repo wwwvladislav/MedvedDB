@@ -4,7 +4,6 @@
  * @details Channels manager (chaman) is used for incoming and outgoing peers connections handling.
  */
 #pragma once
-#include "mdv_errno.h"
 #include "mdv_string.h"
 #include "mdv_threadpool.h"
 #include "mdv_def.h"

@@ -4,7 +4,6 @@
  */
 #pragma once
 #include "mdv_def.h"
-#include <stdint.h>
 
 
 /// Message header description

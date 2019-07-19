@@ -8,6 +8,8 @@
 #include "mdv_platform.h"
 #include "mdv_errno.h"
 #include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 
 /**

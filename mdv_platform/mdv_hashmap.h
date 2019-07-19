@@ -160,6 +160,14 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @param hm [in]           hash map allocated by mdv_hashmap()
  * @param type [in]         hash map type
  * @param entry [out]       hash map entry
+ *
+ * Usage example:
+ * @code
+ *   mdv_hashmap_foreach(hm, type, entry)
+ *   {
+ *       type *item = &entry->data;
+ *   }
+ * @endcode
  */
 #define mdv_hashmap_foreach(hm, type, entry)                    \
     for(size_t i = 0; i < hm.capacity; ++i)                     \

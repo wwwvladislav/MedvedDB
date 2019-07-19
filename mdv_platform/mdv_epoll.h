@@ -7,7 +7,6 @@
 
 #pragma once
 #include "mdv_def.h"
-#include <stdint.h>
 
 
 /// Epoll event types. Events might be combined with bitwise OR operator.

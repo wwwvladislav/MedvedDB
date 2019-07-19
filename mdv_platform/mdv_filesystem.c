@@ -2,14 +2,12 @@
 #include "mdv_log.h"
 #include "mdv_string.h"
 #include "mdv_stack.h"
-#include "mdv_errno.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <string.h>
 #include <stdio.h>
-#include <stdint.h>
 
 
 static bool mdv_mkdir_impl(char const *path)

@@ -1,7 +1,6 @@
 #pragma once
 #include "mdv_stack.h"
-#include <stddef.h>
-#include <stdint.h>
+#include "mdv_def.h"
 #include <string.h>
 
 

@@ -1,9 +1,8 @@
 #pragma once
-#include <stdint.h>
-#include <stddef.h>
 #include <mdv_string.h>
 #include <mdv_uuid.h>
 #include <mdv_bigint.h>
+#include <mdv_def.h>
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

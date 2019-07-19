@@ -3,8 +3,7 @@
  * @brief API for multithreaded application development.
  */
 #pragma once
-#include "mdv_errno.h"
-#include <stddef.h>
+#include "mdv_def.h"
 
 
 /// Thread descriptor

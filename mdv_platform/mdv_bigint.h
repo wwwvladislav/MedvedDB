@@ -1,5 +1,5 @@
-#include <stdint.h>
-#include <stddef.h>
+#pragma once
+#include "mdv_def.h"
 
 
 #define mdv_bigint(S)                   \

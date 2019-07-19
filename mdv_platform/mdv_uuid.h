@@ -1,8 +1,6 @@
 #pragma once
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
 #include "mdv_string.h"
+#include "mdv_def.h"
 
 
 typedef struct

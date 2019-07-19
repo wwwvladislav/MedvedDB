@@ -1,7 +1,7 @@
 #include "mdv_queuefd.h"
 #include "mdv_rollbacker.h"
 #include "mdv_log.h"
-#include <stdint.h>
+#include "mdv_def.h"
 
 
 int _mdv_queuefd_init(mdv_queuefd_base *queue)

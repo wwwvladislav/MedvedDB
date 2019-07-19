@@ -1,7 +1,6 @@
 #include "mdv_epoll.h"
 #include "mdv_platform.h"
 #include "mdv_log.h"
-#include "mdv_errno.h"
 #include <unistd.h>
 
 #ifdef MDV_PLATFORM_LINUX

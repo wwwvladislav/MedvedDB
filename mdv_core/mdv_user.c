@@ -17,7 +17,6 @@ typedef struct mdv_user
     mdv_tablespace     *tablespace;             ///< tablespace
     mdv_dispatcher     *dispatcher;             ///< Messages dispatcher
     mdv_descriptor      sock;                   ///< Socket associated with connection
-    mdv_uuid            current_uuid;           ///< current node uuid
     size_t              created_time;           ///< time, when user connected
 } mdv_user;
 
@@ -137,7 +136,7 @@ static mdv_errno mdv_user_wave_handler(mdv_msg const *msg, void *arg)
     mdv_msg_hello hello =
     {
         .version = MDV_VERSION,
-        .uuid = user->current_uuid
+        .uuid = {}
     };
 
     return mdv_user_wave_reply(user, msg->hdr.number, &hello);
@@ -212,7 +211,6 @@ mdv_user * mdv_user_accept(mdv_conctx_config const *config)
     user->type          = MDV_CLI_USER;
     user->tablespace    = config->tablespace;
     user->sock          = config->fd;
-    user->current_uuid  = config->uuid;
     user->created_time  = mdv_gettime();
 
     mdv_dispatcher_handler const handlers[] =

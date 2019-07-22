@@ -1,7 +1,9 @@
 #include "mdv_cluster.h"
 #include "mdv_config.h"
-#include <mdv_log.h>
 #include "mdv_conctx.h"
+#include "mdv_user.h"
+#include "mdv_peer.h"
+#include <mdv_log.h>
 #include <string.h>
 
 
@@ -39,6 +41,39 @@ static void mdv_cluster_unreg_peer(void *userdata, mdv_uuid const *uuid)
 }
 
 
+/**
+ * @brief Select connection context
+ *
+ * @param fd [in]       file descriptor
+ * @param type [out]    connection context type
+ *
+ * @return On success, return MDV_OK
+ * @return On error, return non zero value
+ */
+static mdv_errno mdv_cluster_conctx_select(mdv_descriptor fd, uint32_t *type)
+{
+    mdv_msg_tag tag;
+    size_t len = sizeof tag;
+
+    mdv_errno err = mdv_read(fd, &tag, &len);
+
+    if (err == MDV_OK)
+        *type = tag.tag;
+
+    return err;
+}
+
+
+/**
+ * @brief Create connection context
+ *
+ * @param config [in]   Connection context configuration
+ * @param type [in]     Client type (MDV_CLI_USER or MDV_CLI_PEER)
+ * @param dir [in]      Channel direction (MDV_CHIN or MDV_CHOUT)
+ *
+ * @return On success, return new connection context
+ * @return On error, return NULL pointer
+ */
 static void * mdv_cluster_conctx_create(mdv_descriptor fd, mdv_string const *addr, void *userdata, uint32_t type, mdv_channel_dir dir)
 {
     mdv_cluster *cluster = userdata;
@@ -57,19 +92,73 @@ static void * mdv_cluster_conctx_create(mdv_descriptor fd, mdv_string const *add
         }
     };
 
-    return mdv_conctx_create(&config, type, dir);
+    switch(type)
+    {
+        case MDV_CLI_USER:
+            return (mdv_conctx*)mdv_user_accept(&config);
+
+        case MDV_CLI_PEER:
+            return dir == MDV_CHIN
+                        ? (mdv_conctx*)mdv_peer_accept(&config)
+                        : (mdv_conctx*)mdv_peer_connect(&config);
+
+        default:
+            MDV_LOGE("Undefined client type: %u", type);
+    }
+
+    return 0;
 }
 
 
-static mdv_errno mdv_cluster_conctx_recv(void *conctx)
+/**
+ * @brief Read incoming data
+ *
+ * @param conctx [in] connection context
+ *
+ * @return On success, return MDV_OK
+ * @return On error, return non zero value
+ */
+static mdv_errno mdv_cluster_conctx_recv(void *ctx)
 {
-    return mdv_conctx_recv((mdv_conctx *)conctx);
+    mdv_conctx *conctx = ctx;
+
+    switch(conctx->type)
+    {
+        case MDV_CLI_USER:
+            return mdv_user_recv((mdv_user *)conctx);
+
+        case MDV_CLI_PEER:
+            return mdv_peer_recv((mdv_peer *)conctx);
+
+        default:
+            MDV_LOGE("Undefined client type: %u", conctx->type);
+    }
+
+    return MDV_FAILED;
 }
 
 
-static void mdv_cluster_conctx_closed(void *conctx)
+/**
+ * @brief Free allocated by connection context resources
+ *
+ * @param conctx [in] connection context
+ */
+static void mdv_cluster_conctx_closed(void *ctx)
 {
-    mdv_conctx_free((mdv_conctx *)conctx);
+    mdv_conctx *conctx = ctx;
+
+    switch(conctx->type)
+    {
+        case MDV_CLI_USER:
+            return mdv_user_free((mdv_user *)conctx);
+
+        case MDV_CLI_PEER:
+            return mdv_peer_free((mdv_peer *)conctx);
+
+        default:
+            MDV_LOGE("Undefined client type: %u", conctx->type);
+    }
+
 }
 
 
@@ -99,7 +188,7 @@ mdv_errno mdv_cluster_create(mdv_cluster *cluster, mdv_tablespace *tablespace, m
         .userdata = cluster,
         .channel =
         {
-            .select = mdv_conctx_select,
+            .select = mdv_cluster_conctx_select,
             .create = mdv_cluster_conctx_create,
             .recv   = mdv_cluster_conctx_recv,
             .close  = mdv_cluster_conctx_closed

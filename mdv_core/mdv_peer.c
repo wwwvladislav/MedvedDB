@@ -306,6 +306,7 @@ static mdv_errno mdv_peer_reply(mdv_peer *peer, mdv_msg const *msg)
 void mdv_peer_free(mdv_peer *peer)
 {
     MDV_LOGD("Peer %p freed", peer);
+    peer->handlers.unreg_peer(peer->userdata, &peer->peer_uuid);
     mdv_dispatcher_free(peer->dispatcher);
     mdv_free(peer, "peer");
 }

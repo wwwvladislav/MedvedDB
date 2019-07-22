@@ -16,7 +16,7 @@ typedef struct mdv_conctx
 } mdv_conctx;
 
 
-
+/// Connection context event handlers
 typedef struct mdv_conctx_handlers
 {
     /**
@@ -31,6 +31,15 @@ typedef struct mdv_conctx_handlers
      * @return On error, return non zero value
      */
     mdv_errno (*reg_peer)(void *userdata, char const *addr, mdv_uuid const *uuid, uint32_t *id);
+
+
+    /**
+     * @brief Peer unregistration
+     *
+     * @param userdata [in] user data
+     * @param uuid [in]     peer global UUID
+     */
+    void (*unreg_peer)(void *userdata, mdv_uuid const *uuid);
 } mdv_conctx_handlers;
 
 

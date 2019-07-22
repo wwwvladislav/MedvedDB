@@ -60,10 +60,20 @@ void mdv_nodes_free(mdv_nodes *nodes);
 /**
  * @brief Register new node in storage
  *
- * @param nodes [in] nodes in-memory storage
- * @param node [in] [out] node information
+ * @param nodes [in]            nodes in-memory storage
+ * @param new_node [in] [out]   node information
  *
  * @return On success, return MDV_OK and node->id is initialized by local unique numeric identifier
  * @return On error, return nonzero value
  */
-mdv_errno mdv_nodes_reg(mdv_nodes *nodes, mdv_node *node);
+mdv_errno mdv_nodes_reg(mdv_nodes *nodes, mdv_node *new_node);
+
+
+/**
+ * @brief Unregister node in storage.
+ * @details Node is not deleted but only is marked as inactive.
+ *
+ * @param nodes [in]    nodes in-memory storage
+ * @param uuid [in]     node UUID
+ */
+void mdv_nodes_unreg(mdv_nodes *nodes, mdv_uuid const *uuid);

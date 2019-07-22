@@ -2,7 +2,6 @@
 #include "mdv_platform/mdv_filesystem.h"
 #include "mdv_platform/mdv_stack.h"
 #include "mdv_platform/mdv_rollbacker.h"
-#include "mdv_platform/mdv_deque.h"
 #include "mdv_platform/mdv_queue.h"
 #include "mdv_platform/mdv_hashmap.h"
 #include "mdv_platform/mdv_list.h"
@@ -22,7 +21,6 @@ MU_TEST_SUITE(platform)
     MU_RUN_TEST(platform_mkdir);
     MU_RUN_TEST(platform_stack);
     MU_RUN_TEST(platform_rollbacker);
-    MU_RUN_TEST(platform_deque);
     MU_RUN_TEST(platform_queue);
     MU_RUN_TEST(platform_hashmap);
     MU_RUN_TEST(platform_list);

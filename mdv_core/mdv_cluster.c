@@ -16,18 +16,26 @@ static mdv_errno mdv_cluster_reg_peer(void *userdata, char const *addr, mdv_uuid
 
     mdv_node * node = (mdv_node *)buf;
 
-    node->size = node_size;
-    node->uuid = *uuid;
-    node->id = 0;
+    node->size   = node_size;
+    node->uuid   = *uuid;
+    node->id     = 0;
+    node->active = 1;
 
     memcpy(node->addr, addr, addr_len + 1);
 
-    mdv_errno err = mdv_tracker_register(&cluster->tracker, node);
+    mdv_errno err = mdv_tracker_reg(&cluster->tracker, node);
 
     if (err == MDV_OK)
         *id = node->id;
 
     return err;
+}
+
+
+static void mdv_cluster_unreg_peer(void *userdata, mdv_uuid const *uuid)
+{
+    mdv_cluster *cluster = userdata;
+    mdv_tracker_unreg(&cluster->tracker, uuid);
 }
 
 
@@ -44,7 +52,8 @@ static void * mdv_cluster_conctx_create(mdv_descriptor fd, mdv_string const *add
         .userdata   = cluster,
         .handlers   =
         {
-            .reg_peer = mdv_cluster_reg_peer
+            .reg_peer   = mdv_cluster_reg_peer,
+            .unreg_peer = mdv_cluster_unreg_peer
         }
     };
 

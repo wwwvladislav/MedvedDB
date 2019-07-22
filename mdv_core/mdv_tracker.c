@@ -14,7 +14,13 @@ void mdv_tracker_free(mdv_tracker *tracker)
 }
 
 
-mdv_errno mdv_tracker_register(mdv_tracker *tracker, mdv_node *node)
+mdv_errno mdv_tracker_reg(mdv_tracker *tracker, mdv_node *node)
 {
-    return MDV_OK;
+    return mdv_nodes_reg(tracker->nodes, node);
+}
+
+
+void mdv_tracker_unreg(mdv_tracker *tracker, mdv_uuid const *uuid)
+{
+    mdv_nodes_unreg(tracker->nodes, uuid);
 }

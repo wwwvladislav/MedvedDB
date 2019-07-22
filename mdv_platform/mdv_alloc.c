@@ -115,6 +115,7 @@ void *mdv_alloc_tmp(size_t size, char const *name)
         if (!_thread_local_tmp_buff.is_used)
         {
             _thread_local_tmp_buff.is_used = 1;
+            MDV_LOGD("alloc_tmp(%zu) '%s'", size, name);
             return _thread_local_tmp_buff.buffer;
         }
         MDV_LOGW("Thread local buffer is busy. Dynamic allocation is performed.");
@@ -133,6 +134,9 @@ void mdv_free(void *ptr, char const *name)
             MDV_DEALLOCATION(free, ptr, name);
         }
         else
+        {
             _thread_local_tmp_buff.is_used = 0;
+            MDV_LOGD("free_tmp '%s'", name);
+        }
     }
 }

@@ -13,7 +13,7 @@
 
 enum
 {
-    MDV_DISP_REQS = 4      ///< Number of simultaneously sent requests
+    MDV_DISP_REQS = 4      ///< Number of simultaneously sent requests via single connection
 };
 
 
@@ -51,7 +51,7 @@ static size_t mdv_id_hash(void const *id)               { return *(uint16_t*)id;
 static int mdv_id_cmp(void const *id1, void const *id2) { return (int)*(uint16_t*)id1 - *(uint16_t*)id2; }
 
 
-mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd, size_t size, mdv_dispatcher_handler const *handlers)
+mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd)
 {
     mdv_rollbacker(5) rollbacker;
     mdv_rollbacker_clear(rollbacker);
@@ -93,7 +93,7 @@ mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd, size_t size, mdv_dispa
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &pd->requests_mutex);
 
 
-    if (!mdv_hashmap_init(pd->handlers, mdv_dispatcher_handler, id, size, &mdv_id_hash, &mdv_id_cmp))
+    if (!mdv_hashmap_init(pd->handlers, mdv_dispatcher_handler, id, 4, &mdv_id_hash, &mdv_id_cmp))
     {
         MDV_LOGE("Handlers map for messages dispatcher not created");
         mdv_rollback(rollbacker);
@@ -101,16 +101,6 @@ mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd, size_t size, mdv_dispa
     }
 
     mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &pd->handlers);
-
-    for(size_t i = 0; i < size; ++i)
-    {
-        if (!mdv_hashmap_insert(pd->handlers, handlers[i]))
-        {
-            MDV_LOGE("No memoyr for message handler");
-            mdv_rollback(rollbacker);
-            return 0;
-        }
-    }
 
 
     if (!mdv_hashmap_init(pd->requests, mdv_request, request_id, MDV_DISP_REQS, &mdv_id_hash, &mdv_id_cmp))
@@ -161,6 +151,17 @@ void mdv_dispatcher_free(mdv_dispatcher *pd)
 }
 
 
+mdv_errno mdv_dispatcher_reg(mdv_dispatcher *pd, mdv_dispatcher_handler const *handler)
+{
+    if (!mdv_hashmap_insert(pd->handlers, *handler))
+    {
+        MDV_LOGE("No memoyry for message handler");
+        return MDV_NO_MEM;
+    }
+    return MDV_OK;
+}
+
+
 void mdv_dispatcher_set_fd(mdv_dispatcher *pd, mdv_descriptor fd)
 {
     pd->fd = fd;
@@ -177,6 +178,12 @@ void mdv_dispatcher_close_fd(mdv_dispatcher *pd)
             mdv_condvar_signal(entry->data.cv);
         mdv_mutex_unlock(&pd->requests_mutex);
     }
+}
+
+
+mdv_descriptor mdv_dispatcher_fd(mdv_dispatcher *pd)
+{
+    return pd->fd;
 }
 
 

@@ -14,7 +14,7 @@ typedef struct mdv_chaman mdv_chaman;
 
 
 /// Connection type select handler
-typedef mdv_errno (*mdv_channel_select_fn)(mdv_descriptor fd, uint32_t *type);
+typedef mdv_errno (*mdv_channel_select_fn)(mdv_descriptor fd, uint8_t *type);
 
 
 /// Channel direction
@@ -29,7 +29,7 @@ typedef enum
 typedef void * (*mdv_channel_create_fn)(mdv_descriptor fd,
                                         mdv_string const *addr,
                                         void *userdata,
-                                        uint32_t type,
+                                        uint8_t type,
                                         mdv_channel_dir dir);
 
 
@@ -46,22 +46,16 @@ typedef struct
 {
     struct
     {
-        uint32_t    keepidle;           ///< Start keeplives after this period (in seconds)
-        uint32_t    keepcnt;            ///< Number of keepalives before death
-        uint32_t    keepintvl;          ///< Interval between keepalives (in seconds)
-    } peer;                             ///< peer configuration
-
-    mdv_threadpool_config   threadpool; ///< thread pool options
-
-    void                   *userdata;   ///< userdata passed to channel hadlers
-
-    struct
-    {
-        mdv_channel_select_fn   select; ///< channel selecting function (return channel type)
-        mdv_channel_create_fn   create; ///< channel creation function
-        mdv_channel_recv_fn     recv;   ///< data receiving handler
-        mdv_channel_close_fn    close;  ///< channel closing function
-    } channel;                          ///< channel configuration
+        uint32_t                keepidle;   ///< Start keeplives after this period (in seconds)
+        uint32_t                keepcnt;    ///< Number of keepalives before death
+        uint32_t                keepintvl;  ///< Interval between keepalives (in seconds)
+        mdv_channel_select_fn   select;     ///< channel selecting function (return channel type)
+        mdv_channel_create_fn   create;     ///< channel creation function
+        mdv_channel_recv_fn     recv;       ///< data receiving handler
+        mdv_channel_close_fn    close;      ///< channel closing function
+    } channel;                              ///< channel configuration
+    mdv_threadpool_config   threadpool;     ///< thread pool options
+    void                   *userdata;       ///< userdata passed to channel hadlers
 } mdv_chaman_config;
 
 
@@ -108,5 +102,5 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr);
  * @return On success, return MDV_OK
  * @return On error, return non zero value
  */
-mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr, uint32_t type);
+mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr, uint8_t type);
 

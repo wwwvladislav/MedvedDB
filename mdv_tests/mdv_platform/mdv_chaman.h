@@ -11,7 +11,7 @@ static volatile int mdv_recv_size = 0;
 static volatile mdv_descriptor fds[2];
 
 
-static mdv_errno mdv_channel_select(mdv_descriptor fd, uint32_t *type)
+static mdv_errno mdv_channel_select(mdv_descriptor fd, uint8_t *type)
 {
     size_t len = 1;
     char ch;
@@ -21,7 +21,7 @@ static mdv_errno mdv_channel_select(mdv_descriptor fd, uint32_t *type)
 }
 
 
-static void * mdv_channel_create(mdv_descriptor fd, mdv_string const *addr, void *userdata, uint32_t type, mdv_channel_dir dir)
+static void * mdv_channel_create(mdv_descriptor fd, mdv_string const *addr, void *userdata, uint8_t type, mdv_channel_dir dir)
 {
     (void)fd;
     (void)userdata;
@@ -67,11 +67,15 @@ MU_TEST(platform_chaman)
 {
     mdv_chaman_config server_config =
     {
-        .peer =
+        .channel =
         {
-            .keepidle          = 5,
-            .keepcnt           = 10,
-            .keepintvl         = 5
+            .keepidle   = 5,
+            .keepcnt    = 10,
+            .keepintvl  = 5,
+            .select     = mdv_channel_select,
+            .create     = mdv_channel_create,
+            .recv       = mdv_channel_recv,
+            .close      = mdv_channel_close
         },
         .threadpool =
         {
@@ -81,23 +85,20 @@ MU_TEST(platform_chaman)
                 .stack_size = MDV_THREAD_STACK_SIZE
             }
         },
-        .userdata = 0,
-        .channel =
-        {
-            .select = mdv_channel_select,
-            .create = mdv_channel_create,
-            .recv = mdv_channel_recv,
-            .close = mdv_channel_close
-        }
+        .userdata = 0
     };
 
     mdv_chaman_config client_config =
     {
-        .peer =
+        .channel =
         {
-            .keepidle          = 5,
-            .keepcnt           = 10,
-            .keepintvl         = 5
+            .keepidle   = 5,
+            .keepcnt    = 10,
+            .keepintvl  = 5,
+            .select     = mdv_channel_select,
+            .create     = mdv_channel_create,
+            .recv       = mdv_channel_recv,
+            .close      = mdv_channel_close
         },
         .threadpool =
         {
@@ -107,14 +108,7 @@ MU_TEST(platform_chaman)
                 .stack_size = MDV_THREAD_STACK_SIZE
             }
         },
-        .userdata = 0,
-        .channel =
-        {
-            .select = mdv_channel_select,
-            .create = mdv_channel_create,
-            .recv = mdv_channel_recv,
-            .close = mdv_channel_close
-        }
+        .userdata = 0
     };
 
     mdv_chaman *server = mdv_chaman_create(&server_config);

@@ -213,13 +213,7 @@ mdv_user * mdv_user_accept(mdv_conctx_config const *config)
     user->sock          = config->fd;
     user->created_time  = mdv_gettime();
 
-    mdv_dispatcher_handler const handlers[] =
-    {
-        { mdv_msg_hello_id,         &mdv_user_wave_handler,         user },
-        { mdv_msg_create_table_id,  &mdv_user_create_table_handler, user }
-    };
-
-    user->dispatcher = mdv_dispatcher_create(config->fd, sizeof handlers / sizeof *handlers, handlers);
+    user->dispatcher = mdv_dispatcher_create(config->fd);
 
     if (!user->dispatcher)
     {
@@ -227,6 +221,23 @@ mdv_user * mdv_user_accept(mdv_conctx_config const *config)
         mdv_free(user, "user");
         mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
         return 0;
+    }
+
+    mdv_dispatcher_handler const handlers[] =
+    {
+        { mdv_msg_hello_id,         &mdv_user_wave_handler,         user },
+        { mdv_msg_create_table_id,  &mdv_user_create_table_handler, user }
+    };
+
+    for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)
+    {
+        if (mdv_dispatcher_reg(user->dispatcher, handlers + i) != MDV_OK)
+        {
+            MDV_LOGE("Messages dispatcher handler not registered");
+            mdv_free(user, "user");
+            mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+            return 0;
+        }
     }
 
     MDV_LOGD("User context %p accepted", user);

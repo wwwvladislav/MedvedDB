@@ -55,7 +55,7 @@ typedef struct mdv_dialer_context
     mdv_chaman      *chaman;
     mdv_sockaddr     addr;
     mdv_socket_type  protocol;
-    uint32_t         channel_type;
+    uint8_t          channel_type;
 } mdv_dialer_context;
 
 
@@ -73,7 +73,7 @@ typedef mdv_threadpool_task(mdv_dialer_context)     mdv_dialer_task;
 typedef mdv_threadpool_task(mdv_peer_context)       mdv_peer_task;
 
 
-static void mdv_chaman_new_connection(mdv_chaman *chaman, mdv_descriptor sock, mdv_sockaddr const *addr, uint32_t type, mdv_channel_dir dir);
+static void mdv_chaman_new_connection(mdv_chaman *chaman, mdv_descriptor sock, mdv_sockaddr const *addr, uint8_t type, mdv_channel_dir dir);
 
 static void mdv_chaman_dialer_handler(uint32_t events, mdv_threadpool_task_base *task_base);
 static void mdv_chaman_recv_handler(uint32_t events, mdv_threadpool_task_base *task_base);
@@ -216,12 +216,12 @@ static void mdv_chaman_recv_handler(uint32_t events, mdv_threadpool_task_base *t
 }
 
 
-static void mdv_chaman_new_connection(mdv_chaman *chaman, mdv_descriptor sock, mdv_sockaddr const *addr, uint32_t type, mdv_channel_dir dir)
+static void mdv_chaman_new_connection(mdv_chaman *chaman, mdv_descriptor sock, mdv_sockaddr const *addr, uint8_t type, mdv_channel_dir dir)
 {
     mdv_socket_nonblock(sock);
-    mdv_socket_tcp_keepalive(sock, chaman->config.peer.keepidle,
-                                   chaman->config.peer.keepcnt,
-                                   chaman->config.peer.keepintvl);
+    mdv_socket_tcp_keepalive(sock, chaman->config.channel.keepidle,
+                                   chaman->config.channel.keepcnt,
+                                   chaman->config.channel.keepintvl);
 
     mdv_string str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, addr);
 
@@ -265,7 +265,7 @@ static void mdv_chaman_select_handler(uint32_t events, mdv_threadpool_task_base 
     mdv_selector_task *selector_task = (mdv_selector_task*)task_base;
     mdv_chaman *chaman = selector_task->context.chaman;
 
-    uint32_t type = 0;
+    uint8_t type = 0;
 
     mdv_errno err = chaman->config.channel.select(selector_task->fd, &type);
 
@@ -311,9 +311,9 @@ static void mdv_chaman_accept_handler(uint32_t events, mdv_threadpool_task_base 
     if (sock != MDV_INVALID_DESCRIPTOR)
     {
         mdv_socket_nonblock(sock);
-        mdv_socket_tcp_keepalive(sock, chaman->config.peer.keepidle,
-                                       chaman->config.peer.keepcnt,
-                                       chaman->config.peer.keepintvl);
+        mdv_socket_tcp_keepalive(sock, chaman->config.channel.keepidle,
+                                       chaman->config.channel.keepcnt,
+                                       chaman->config.channel.keepintvl);
 
         mdv_selector_task selector_task =
         {
@@ -365,9 +365,9 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr)
 
     mdv_socket_reuse_addr(sd);
     mdv_socket_nonblock(sd);
-    mdv_socket_tcp_keepalive(sd, chaman->config.peer.keepidle,
-                                 chaman->config.peer.keepcnt,
-                                 chaman->config.peer.keepintvl);
+    mdv_socket_tcp_keepalive(sd, chaman->config.channel.keepidle,
+                                 chaman->config.channel.keepcnt,
+                                 chaman->config.channel.keepintvl);
     mdv_socket_tcp_defer_accept(sd);
 
 
@@ -416,7 +416,7 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr)
 }
 
 
-mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr, uint32_t type)
+mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr, uint8_t type)
 {
     mdv_rollbacker(2) rollbacker;
     mdv_rollbacker_clear(rollbacker);

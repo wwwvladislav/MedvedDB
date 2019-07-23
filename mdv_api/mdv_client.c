@@ -220,7 +220,7 @@ static mdv_errno mdv_client_post(mdv_client *client, mdv_msg *msg)
 }
 
 
-static void * mdv_channel_create(mdv_descriptor fd, mdv_string const *addr, void *userdata, uint32_t type, mdv_channel_dir dir)
+static void * mdv_channel_create(mdv_descriptor fd, mdv_string const *addr, void *userdata, uint8_t type, mdv_channel_dir dir)
 {
     mdv_client *client = userdata;
     (void)addr;
@@ -311,12 +311,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
 
     // Create messages dispatcher
 
-    mdv_dispatcher_handler const handlers[] =
-    {
-        { mdv_msg_hello_id,  &mdv_client_wave_handler, client }
-    };
-
-    client->dispatcher = mdv_dispatcher_create(0, sizeof handlers / sizeof *handlers, handlers);
+    client->dispatcher = mdv_dispatcher_create(0);
 
     if (!client->dispatcher)
     {
@@ -328,12 +323,28 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
 
     mdv_rollbacker_push(rollbacker, mdv_dispatcher_free, client->dispatcher);
 
+    mdv_dispatcher_handler const handlers[] =
+    {
+        { mdv_msg_hello_id,  &mdv_client_wave_handler, client }
+    };
+
+    for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)
+    {
+        if (mdv_dispatcher_reg(client->dispatcher, handlers + i) != MDV_OK)
+        {
+            MDV_LOGE("Messages dispatcher handler not registered");
+            mdv_rollback(rollbacker);
+            mdv_client_finalize();
+            return 0;
+        }
+    }
+
 
     // Create channels manager
 
     mdv_chaman_config const chaman_config =
     {
-        .peer =
+        .channel =
         {
             .keepidle          = config->connection.keepidle,
             .keepcnt           = config->connection.keepcnt,

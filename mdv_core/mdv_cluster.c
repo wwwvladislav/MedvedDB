@@ -50,7 +50,7 @@ static void mdv_cluster_unreg_peer(void *userdata, mdv_uuid const *uuid)
  * @return On success, return MDV_OK
  * @return On error, return non zero value
  */
-static mdv_errno mdv_cluster_conctx_select(mdv_descriptor fd, uint32_t *type)
+static mdv_errno mdv_cluster_conctx_select(mdv_descriptor fd, uint8_t *type)
 {
     mdv_msg_tag tag;
     size_t len = sizeof tag;
@@ -74,7 +74,7 @@ static mdv_errno mdv_cluster_conctx_select(mdv_descriptor fd, uint32_t *type)
  * @return On success, return new connection context
  * @return On error, return NULL pointer
  */
-static void * mdv_cluster_conctx_create(mdv_descriptor fd, mdv_string const *addr, void *userdata, uint32_t type, mdv_channel_dir dir)
+static void * mdv_cluster_conctx_create(mdv_descriptor fd, mdv_string const *addr, void *userdata, uint8_t type, mdv_channel_dir dir)
 {
     mdv_cluster *cluster = userdata;
     (void)addr;
@@ -158,7 +158,6 @@ static void mdv_cluster_conctx_closed(void *ctx)
         default:
             MDV_LOGE("Undefined client type: %u", conctx->type);
     }
-
 }
 
 
@@ -171,11 +170,16 @@ mdv_errno mdv_cluster_create(mdv_cluster *cluster, mdv_tablespace *tablespace, m
 
     mdv_chaman_config const config =
     {
-        .peer =
+        .channel =
         {
-            .keepidle          = MDV_CONFIG.connection.keep_idle,
-            .keepcnt           = MDV_CONFIG.connection.keep_count,
-            .keepintvl         = MDV_CONFIG.connection.keep_interval
+            .keepidle   = MDV_CONFIG.connection.keep_idle,
+            .keepcnt    = MDV_CONFIG.connection.keep_count,
+            .keepintvl  = MDV_CONFIG.connection.keep_interval,
+            .select     = mdv_cluster_conctx_select,
+            .create     = mdv_cluster_conctx_create,
+            .recv       = mdv_cluster_conctx_recv,
+            .close      = mdv_cluster_conctx_closed
+
         },
         .threadpool =
         {
@@ -185,14 +189,7 @@ mdv_errno mdv_cluster_create(mdv_cluster *cluster, mdv_tablespace *tablespace, m
                 .stack_size = MDV_THREAD_STACK_SIZE
             }
         },
-        .userdata = cluster,
-        .channel =
-        {
-            .select = mdv_cluster_conctx_select,
-            .create = mdv_cluster_conctx_create,
-            .recv   = mdv_cluster_conctx_recv,
-            .close  = mdv_cluster_conctx_closed
-        }
+        .userdata = cluster
     };
 
     cluster->chaman = mdv_chaman_create(&config);

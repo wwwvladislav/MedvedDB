@@ -67,8 +67,11 @@ MU_TEST(platform_dispatcher)
         .payload = 0
     };
 
-    mdv_dispatcher *pd = mdv_dispatcher_create(fd, 3, handlers);
+    mdv_dispatcher *pd = mdv_dispatcher_create(fd);
     mu_check(pd);
+
+    for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)
+        mu_check(mdv_dispatcher_reg(pd, handlers + i) == MDV_OK);
 
     msg.hdr.id = 1;
     mu_check(mdv_dispatcher_post(pd, &msg) == MDV_OK);

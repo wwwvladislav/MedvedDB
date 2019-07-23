@@ -27,13 +27,11 @@ typedef struct mdv_dispatcher_handler
  * @brief Create new messages dispatcher
  *
  * @param fd [in]       file descriptor for messages dispatching
- * @param size [in]     message handlers count
- * @param handlers [in] message handlers
  *
  * @return On success return new messages dispatcher.
  * @return On error return NULL pointer
  */
-mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd, size_t size, mdv_dispatcher_handler const *handlers);
+mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd);
 
 
 /**
@@ -42,6 +40,18 @@ mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd, size_t size, mdv_dispa
  * @param pd [in] messages dispatcher
  */
 void mdv_dispatcher_free(mdv_dispatcher *pd);
+
+
+/**
+ * @brief Register message handler
+ *
+ * @param pd [in] messages dispatcher
+ * @param handler [in] message handler
+ *
+ * @return On success return new messages dispatcher.
+ * @return On error return NULL pointer
+ */
+mdv_errno mdv_dispatcher_reg(mdv_dispatcher *pd, mdv_dispatcher_handler const *handler);
 
 
 /**
@@ -59,6 +69,15 @@ void mdv_dispatcher_set_fd(mdv_dispatcher *pd, mdv_descriptor fd);
  * @param pd [in] messages dispatcher
  */
 void mdv_dispatcher_close_fd(mdv_dispatcher *pd);
+
+
+/**
+ * @brief Return file descriptor
+ * @param pd [in] messages dispatcher
+ *
+ * @return assigned file descriptor
+ */
+mdv_descriptor mdv_dispatcher_fd(mdv_dispatcher *pd);
 
 
 /**

@@ -9,30 +9,6 @@
 #include <string.h>
 
 
-/// Node identifier
-typedef struct
-{
-    uint32_t   id;      ///< Unique identifier inside current server
-    mdv_uuid   uuid;    ///< Global unique identifier
-} mdv_node_id;
-
-
-static bool       mdv_nodes_insert(mdv_nodes *nodes, mdv_node *node);
-static mdv_node * mdv_nodes_find(mdv_nodes *nodes, mdv_uuid const *uuid);
-static void       mdv_nodes_erase(mdv_nodes *nodes, mdv_node *node);
-
-
-static size_t mdv_node_id_hash(int const *id)
-{
-    return *id;
-}
-
-static int mdv_node_id_cmp(int const *id1, int const *id2)
-{
-    return *id1 - *id2;
-}
-
-
 static bool mdv_binn_node(mdv_node const *node, binn *obj)
 {
     if (!binn_create_object(obj))
@@ -89,71 +65,14 @@ static mdv_node * mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid)
 }
 
 
-static uint32_t mdv_nodes_new_id(mdv_nodes *nodes)
+mdv_errno mdv_nodes_load(mdv_storage *storage, mdv_tracker *tracker)
 {
-    return ++nodes->max_id;
-}
-
-
-mdv_errno mdv_nodes_load(mdv_nodes *nodes, mdv_storage *storage)
-{
-    mdv_rollbacker(6) rollbacker;
+    mdv_rollbacker(2) rollbacker;
     mdv_rollbacker_clear(rollbacker);
-
-    nodes->max_id = 0;
-
-
-    if (!mdv_hashmap_init(nodes->nodes,
-                          mdv_node,
-                          uuid,
-                          256,
-                          &mdv_uuid_hash,
-                          &mdv_uuid_cmp))
-    {
-        MDV_LOGE("There is no memory for nodes");
-        return MDV_NO_MEM;
-    }
-
-    mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &nodes->nodes);
-
-
-    if (mdv_mutex_create(&nodes->nodes_mutex) != MDV_OK)
-    {
-        MDV_LOGE("Nodes storage mutex not created");
-        mdv_rollback(rollbacker);
-        return MDV_FAILED;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_mutex_free, &nodes->nodes_mutex);
-
-
-    if (!mdv_hashmap_init(nodes->ids,
-                          mdv_node_id,
-                          id,
-                          256,
-                          &mdv_node_id_hash,
-                          &mdv_node_id_cmp))
-    {
-        MDV_LOGE("There is no memory for nodes");
-        mdv_rollback(rollbacker);
-        return MDV_NO_MEM;
-    }
-
-    mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &nodes->ids);
-
-
-    if (mdv_mutex_create(&nodes->ids_mutex) != MDV_OK)
-    {
-        MDV_LOGE("Nodes storage mutex not created");
-        mdv_rollback(rollbacker);
-        return MDV_FAILED;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_mutex_free, &nodes->ids_mutex);
-
 
     // Start transaction
     mdv_transaction transaction = mdv_transaction_start(storage);
+
     if (!mdv_transaction_ok(transaction))
     {
         MDV_LOGE("Nodes storage transaction not started");
@@ -191,12 +110,8 @@ mdv_errno mdv_nodes_load(mdv_nodes *nodes, mdv_storage *storage)
 
         if (node)
         {
-            if (node->id > nodes->max_id)
-                nodes->max_id = node->id;
-
             MDV_LOGI("Node: [%u] %s, %s", node->id, mdv_uuid_to_str(&node->uuid).ptr, node->addr);
-
-            mdv_nodes_insert(nodes, node);
+            mdv_tracker_append(tracker, node);
         }
         else
             MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(uuid).ptr);
@@ -213,185 +128,80 @@ mdv_errno mdv_nodes_load(mdv_nodes *nodes, mdv_storage *storage)
 
     mdv_map_close(&nodes_map);
 
-    nodes->storage = mdv_storage_retain(storage);
-
     return MDV_OK;
 }
 
 
-void mdv_nodes_free(mdv_nodes *nodes)
+mdv_errno mdv_nodes_store(mdv_storage *storage, mdv_node const *node)
 {
-    if (nodes)
+    mdv_rollbacker(2) rollbacker;
+    mdv_rollbacker_clear(rollbacker);
+
+    // Start transaction
+    mdv_transaction transaction = mdv_transaction_start(storage);
+
+    if (!mdv_transaction_ok(transaction))
     {
-        mdv_hashmap_free(nodes->nodes);
-        mdv_mutex_free(&nodes->nodes_mutex);
-        mdv_hashmap_free(nodes->ids);
-        mdv_mutex_free(&nodes->ids_mutex);
-        mdv_storage_release(nodes->storage);
-    }
-}
-
-
-static bool mdv_nodes_insert(mdv_nodes *nodes, mdv_node *node)
-{
-    if (_mdv_hashmap_insert(&nodes->nodes, node, node->size))
-    {
-        mdv_node_id const nid =
-        {
-            .id = node->id,
-            .uuid = node->uuid
-        };
-
-        if (mdv_hashmap_insert(nodes->ids, nid))
-            return true;
-
-        mdv_hashmap_erase(nodes->nodes, node->uuid);
-        MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(&node->uuid).ptr);
-    }
-    else
-        MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(&node->uuid).ptr);
-
-    return false;
-}
-
-
-static void mdv_nodes_erase(mdv_nodes *nodes, mdv_node *node)
-{
-    mdv_hashmap_erase(nodes->nodes, node->uuid);
-    mdv_hashmap_erase(nodes->ids, node->id);
-}
-
-
-static mdv_node * mdv_nodes_find(mdv_nodes *nodes, mdv_uuid const *uuid)
-{
-    return mdv_hashmap_find(nodes->nodes, *uuid);
-}
-
-
-mdv_errno mdv_nodes_reg(mdv_nodes *nodes, mdv_node *new_node)
-{
-    mdv_errno err = MDV_FAILED;
-
-    if (mdv_mutex_lock(&nodes->nodes_mutex) == MDV_OK)
-    {
-        if (mdv_mutex_lock(&nodes->ids_mutex) == MDV_OK)
-        {
-            mdv_node *node = mdv_nodes_find(nodes, &new_node->uuid);
-
-            if (node)
-            {
-                new_node->id = node->id;
-                node->active = 1;
-                err = MDV_OK;
-            }
-            else
-            {
-                new_node->id = mdv_nodes_new_id(nodes);
-                new_node->active = 1;
-            }
-
-            do
-            {
-                if (!node       // New node
-                    && mdv_nodes_insert(nodes, new_node))
-                {
-                    // Insert into DB
-                    mdv_rollbacker(2) rollbacker;
-                    mdv_rollbacker_clear(rollbacker);
-
-                    // Start transaction
-                    mdv_transaction transaction = mdv_transaction_start(nodes->storage);
-                    if (!mdv_transaction_ok(transaction))
-                    {
-                        MDV_LOGE("Nodes storage transaction not started");
-                        mdv_rollback(rollbacker);
-                        mdv_nodes_erase(nodes, new_node);
-                        break;
-                    }
-
-                    mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
-
-                    // Open nodes map
-                    mdv_map nodes_map = mdv_map_open(&transaction, MDV_MAP_NODES, MDV_MAP_CREATE);
-
-                    if (!mdv_map_ok(nodes_map))
-                    {
-                        MDV_LOGE("Table '%s' not opened", MDV_MAP_NODES);
-                        mdv_rollback(rollbacker);
-                        mdv_nodes_erase(nodes, new_node);
-                        break;
-                    }
-
-                    mdv_rollbacker_push(rollbacker, mdv_map_close, &nodes_map);
-
-                    binn obj;
-
-                    if (!mdv_binn_node(new_node, &obj))
-                    {
-                        MDV_LOGE("Nodes storage transaction registration failed.");
-                        mdv_rollback(rollbacker);
-                        mdv_nodes_erase(nodes, new_node);
-                        break;
-                    }
-
-                    mdv_data const key =
-                    {
-                        .size = sizeof(new_node->uuid),
-                        .ptr = &new_node->uuid
-                    };
-
-                    mdv_data const value =
-                    {
-                        .size = binn_size(&obj),
-                        .ptr = binn_ptr(&obj)
-                    };
-
-                    if (!mdv_map_put(&nodes_map, &transaction, &key, &value))
-                    {
-                        MDV_LOGE("Nodes storage transaction registration failed.");
-                        mdv_rollback(rollbacker);
-                        mdv_nodes_erase(nodes, new_node);
-                        binn_free(&obj);
-                        break;
-                    }
-
-                    binn_free(&obj);
-
-                    if (mdv_transaction_commit(&transaction))
-                        err = MDV_OK;
-                    else
-                    {
-                        MDV_LOGE("Nodes storage transaction failed.");
-                        mdv_rollback(rollbacker);
-                        mdv_nodes_erase(nodes, new_node);
-                    }
-
-                    mdv_map_close(&nodes_map);
-                }
-            } while(0);
-
-            mdv_mutex_unlock(&nodes->ids_mutex);
-        }
-        mdv_mutex_unlock(&nodes->nodes_mutex);
+        MDV_LOGE("Nodes storage transaction not started");
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
     }
 
-    return err;
-}
+    mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
 
 
-void mdv_nodes_unreg(mdv_nodes *nodes, mdv_uuid const *uuid)
-{
-    if (mdv_mutex_lock(&nodes->nodes_mutex) == MDV_OK)
+    // Open nodes map
+    mdv_map nodes_map = mdv_map_open(&transaction, MDV_MAP_NODES, MDV_MAP_CREATE);
+
+    if (!mdv_map_ok(nodes_map))
     {
-        if (mdv_mutex_lock(&nodes->ids_mutex) == MDV_OK)
-        {
-            mdv_node *node = mdv_nodes_find(nodes, uuid);
-
-            if (node)
-                node->active = 0;
-            mdv_mutex_unlock(&nodes->ids_mutex);
-        }
-        mdv_mutex_unlock(&nodes->nodes_mutex);
+        MDV_LOGE("Table '%s' not opened", MDV_MAP_NODES);
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
     }
-}
 
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &nodes_map);
+
+
+    binn obj;
+
+    if (!mdv_binn_node(node, &obj))
+    {
+        MDV_LOGE("Nodes storage transaction registration failed.");
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_data const key =
+    {
+        .size = sizeof(node->uuid),
+        .ptr = (void*)&node->uuid
+    };
+
+    mdv_data const value =
+    {
+        .size = binn_size(&obj),
+        .ptr = binn_ptr(&obj)
+    };
+
+    if (!mdv_map_put(&nodes_map, &transaction, &key, &value))
+    {
+        MDV_LOGE("Nodes storage transaction registration failed.");
+        mdv_rollback(rollbacker);
+        binn_free(&obj);
+        return MDV_FAILED;
+    }
+
+    binn_free(&obj);
+
+    if (!mdv_transaction_commit(&transaction))
+    {
+        MDV_LOGE("Nodes storage transaction failed.");
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_map_close(&nodes_map);
+
+    return MDV_OK;
+}

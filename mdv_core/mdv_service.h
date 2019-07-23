@@ -1,11 +1,10 @@
 #pragma once
 #include "mdv_config.h"
-#include "mdv_cluster.h"
+
 #include "storage/mdv_metainf.h"
-#include "storage/mdv_nodes.h"
 #include "storage/mdv_tablespace.h"
 #include <stdbool.h>
-#include <mdv_uuid.h>
+#include <mdv_cluster.h>
 
 
 typedef struct
@@ -17,7 +16,6 @@ typedef struct
     struct
     {
         mdv_storage    *metainf;
-        mdv_nodes       nodes;
         mdv_tablespace  tablespace;
     } storage;
 } mdv_service;

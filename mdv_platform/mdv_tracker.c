@@ -176,6 +176,25 @@ mdv_errno mdv_tracker_reg(mdv_tracker *tracker, mdv_node *new_node)
 }
 
 
+void mdv_tracker_append(mdv_tracker *tracker, mdv_node const *node)
+{
+    if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
+    {
+        if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
+        {
+            if (!mdv_tracker_find(tracker, &node->uuid))
+            {
+                if (tracker->max_id < node->id)
+                    tracker->max_id = node->id;
+            }
+
+            mdv_mutex_unlock(&tracker->ids_mutex);
+        }
+        mdv_mutex_unlock(&tracker->nodes_mutex);
+    }
+}
+
+
 void mdv_tracker_unreg(mdv_tracker *tracker, mdv_uuid const *uuid)
 {
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)

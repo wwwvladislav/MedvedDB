@@ -12,23 +12,6 @@
 #include <string.h>
 
 
-/// Peer context used for storing different type of information about active peer (it should be cast to mdv_conctx)
-typedef struct mdv_peer
-{
-    mdv_cli_type        type;                       ///< Client type
-    mdv_tablespace     *tablespace;                 ///< tablespace
-    mdv_dispatcher     *dispatcher;                 ///< Messages dispatcher
-    mdv_descriptor      sock;                       ///< Socket associated with peer
-    uint32_t            peer_id;                    ///< peer local numeric id
-    mdv_uuid            peer_uuid;                  ///< peer global uuid
-    mdv_uuid            current_uuid;               ///< current node uuid
-    size_t              created_time;               ///< time, when peer registered
-    uint8_t             chin:1;                     ///< channel direction (1 - in, 0 - out)
-    void               *userdata;                   ///< User defined data which is provided as event handlers first argument
-    mdv_conctx_handlers handlers;                   ///< Event handlers and callbacks
-} mdv_peer;
-
-
 static mdv_errno mdv_peer_reply(mdv_peer *peer, mdv_msg const *msg);
 
 
@@ -92,7 +75,7 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 
     peer->peer_uuid = peer_hello->uuid;
 
-    mdv_errno err = peer->handlers.reg_peer(peer->userdata, peer_hello->listen, &peer->peer_uuid, &peer->peer_id);
+    mdv_errno err = peer->conctx->reg_peer(peer->conctx->cluster, peer_hello->listen, &peer->peer_uuid, &peer->peer_id);
 
     mdv_free(peer_hello, "msg_p2p_hello");
 
@@ -103,13 +86,13 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
     }
 
 
-    if(peer->chin)
+    if(peer->conctx->dir == MDV_CHIN)
     {
         mdv_msg_p2p_hello hello =
         {
             .version = MDV_VERSION,
-            .uuid = peer->current_uuid,
-            .listen = MDV_CONFIG.server.listen.ptr
+            .uuid    = peer->conctx->cluster->uuid,
+            .listen  = MDV_CONFIG.server.listen.ptr
         };
 
         return mdv_peer_hello_reply(peer, msg->hdr.number, &hello);
@@ -127,7 +110,7 @@ static mdv_errno mdv_peer_hello(mdv_peer *peer)
         .tag = MDV_CLI_PEER
     };
 
-    mdv_errno err = mdv_dispatcher_write_raw(peer->dispatcher, &tag, sizeof tag);
+    mdv_errno err = mdv_dispatcher_write_raw(peer->conctx->dispatcher, &tag, sizeof tag);
 
     if (err != MDV_OK)
         return err;
@@ -137,8 +120,8 @@ static mdv_errno mdv_peer_hello(mdv_peer *peer)
     mdv_msg_p2p_hello hello =
     {
         .version = MDV_VERSION,
-        .uuid = peer->current_uuid,
-        .listen = MDV_CONFIG.server.listen.ptr
+        .uuid    = peer->conctx->cluster->uuid,
+        .listen  = MDV_CONFIG.server.listen.ptr
     };
 
     binn hey;
@@ -164,38 +147,15 @@ static mdv_errno mdv_peer_hello(mdv_peer *peer)
 }
 
 
-mdv_peer * mdv_peer_accept(mdv_conctx_config const *config)
+mdv_errno mdv_peer_init(void *ctx, mdv_conctx *conctx, void *userdata)
 {
-    mdv_peer *peer = mdv_alloc(sizeof(mdv_peer), "peer");
-
-    if (!peer)
-    {
-        MDV_LOGE("No memory to accept peer");
-        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-        return 0;
-    }
+    mdv_peer *peer = ctx;
 
     MDV_LOGD("Peer %p initialize", peer);
 
-    peer->type          = MDV_CLI_PEER;
-    peer->tablespace    = config->tablespace;
-    peer->sock          = config->fd;
+    peer->tablespace    = userdata;
+    peer->conctx        = conctx;
     peer->peer_id       = 0;
-    peer->current_uuid  = config->uuid;
-    peer->created_time  = mdv_gettime();
-    peer->chin          = 1;
-    peer->userdata      = config->userdata;
-    peer->handlers      = config->handlers;
-
-    peer->dispatcher = mdv_dispatcher_create(config->fd);
-
-    if (!peer->dispatcher)
-    {
-        MDV_LOGE("Messages dispatcher not created");
-        mdv_free(peer, "peer");
-        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-        return 0;
-    }
 
     mdv_dispatcher_handler const handlers[] =
     {
@@ -204,128 +164,52 @@ mdv_peer * mdv_peer_accept(mdv_conctx_config const *config)
 
     for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)
     {
-        if (mdv_dispatcher_reg(peer->dispatcher, handlers + i) != MDV_OK)
+        if (mdv_dispatcher_reg(conctx->dispatcher, handlers + i) != MDV_OK)
         {
             MDV_LOGE("Messages dispatcher handler not registered");
-            mdv_free(peer, "peer");
-            mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-            return 0;
+            return MDV_FAILED;
         }
     }
 
-    MDV_LOGD("Peer %p accepted", peer);
-
-    return peer;
-}
-
-
-mdv_peer * mdv_peer_connect(mdv_conctx_config const *config)
-{
-    mdv_peer *peer = mdv_alloc(sizeof(mdv_peer), "peer");
-
-    if (!peer)
+    if (conctx->dir == MDV_CHOUT)
     {
-        MDV_LOGE("No memory to accept peer");
-        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-        return 0;
-    }
-
-    MDV_LOGD("Peer %p initialize", peer);
-
-    peer->type          = MDV_CLI_PEER;
-    peer->tablespace    = config->tablespace;
-    peer->sock          = config->fd;
-    peer->peer_id       = 0;
-    peer->current_uuid  = config->uuid;
-    peer->created_time  = mdv_gettime();
-    peer->chin          = 0;
-    peer->userdata      = config->userdata;
-    peer->handlers      = config->handlers;
-
-    peer->dispatcher = mdv_dispatcher_create(config->fd);
-
-    if (!peer->dispatcher)
-    {
-        MDV_LOGE("Messages dispatcher not created");
-        mdv_free(peer, "peer");
-        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-        return 0;
-    }
-
-    mdv_dispatcher_handler const handlers[] =
-    {
-        { mdv_msg_p2p_hello_id,     &mdv_peer_hello_handler,    peer }
-    };
-
-    for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)
-    {
-        if (mdv_dispatcher_reg(peer->dispatcher, handlers + i) != MDV_OK)
+        if (mdv_peer_hello(peer) != MDV_OK)
         {
-            MDV_LOGE("Messages dispatcher handler not registered");
-            mdv_free(peer, "peer");
-            mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-            return 0;
+            MDV_LOGD("Peer handshake message failed");
+            return MDV_FAILED;
         }
     }
 
-    if (mdv_peer_hello(peer) != MDV_OK)
-    {
-        MDV_LOGD("Peer handshake messahe failed");
-        mdv_free(peer, "peer");
-        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-        return 0;
-    }
+    MDV_LOGD("Peer %p initialized", peer);
 
-    MDV_LOGD("Peer %p connected", peer);
-
-    return peer;
-}
-
-
-mdv_errno mdv_peer_recv(mdv_peer *peer)
-{
-    mdv_errno err = mdv_dispatcher_read(peer->dispatcher);
-
-    switch(err)
-    {
-        case MDV_OK:
-        case MDV_EAGAIN:
-            break;
-
-        default:
-            mdv_socket_shutdown(peer->sock, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-    }
-
-    return err;
+    return MDV_OK;
 }
 
 
 mdv_errno mdv_peer_send(mdv_peer *peer, mdv_msg *req, mdv_msg *resp, size_t timeout)
 {
     MDV_LOGI(">>>>> %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(req->hdr.id));
-    return mdv_dispatcher_send(peer->dispatcher, req, resp, timeout);
+    return mdv_dispatcher_send(peer->conctx->dispatcher, req, resp, timeout);
 }
 
 
 mdv_errno mdv_peer_post(mdv_peer *peer, mdv_msg *msg)
 {
     MDV_LOGI(">>>>> %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
-    return mdv_dispatcher_post(peer->dispatcher, msg);
+    return mdv_dispatcher_post(peer->conctx->dispatcher, msg);
 }
 
 
 static mdv_errno mdv_peer_reply(mdv_peer *peer, mdv_msg const *msg)
 {
     MDV_LOGI(">>>>> %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
-    return mdv_dispatcher_reply(peer->dispatcher, msg);
+    return mdv_dispatcher_reply(peer->conctx->dispatcher, msg);
 }
 
 
-void mdv_peer_free(mdv_peer *peer)
+void mdv_peer_free(void *ctx, mdv_conctx *conctx)
 {
+    mdv_peer *peer = ctx;
     MDV_LOGD("Peer %p freed", peer);
-    peer->handlers.unreg_peer(peer->userdata, &peer->peer_uuid);
-    mdv_dispatcher_free(peer->dispatcher);
-    mdv_free(peer, "peer");
+    conctx->unreg_peer(conctx->cluster, &peer->peer_uuid);
 }
-

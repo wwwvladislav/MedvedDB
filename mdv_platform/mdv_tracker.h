@@ -67,6 +67,15 @@ mdv_errno mdv_tracker_reg(mdv_tracker *tracker, mdv_node *new_node);
 
 
 /**
+ * @brief node into the tracker
+ *
+ * @param tracker [in]          Topology tracker
+ * @param node [in] [out]       node information
+ */
+void mdv_tracker_append(mdv_tracker *tracker, mdv_node const *node);
+
+
+/**
  * @brief Unregister node in storage.
  * @details Node is not deleted but only is marked as inactive.
  *

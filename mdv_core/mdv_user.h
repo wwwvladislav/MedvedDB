@@ -8,34 +8,28 @@
 #include <mdv_msg.h>
 #include <mdv_string.h>
 #include <mdv_limits.h>
-#include <mdv_dispatcher.h>
-#include "mdv_conctx.h"
+#include <mdv_cluster.h>
+#include "storage/mdv_tablespace.h"
 
 
 /// User context used for storing different type of information about connection (it should be cast to mdv_conctx)
-typedef struct mdv_user mdv_user;
-
+typedef struct mdv_user
+{
+    mdv_tablespace  *tablespace;            ///< tablespace
+    mdv_conctx      *conctx;                ///< connection context
+} mdv_user;
 
 /**
  * @brief Initialize user
  *
- * @param config [in] Connection context configuration
+ * @param ctx [in]      user context
+ * @param conctx [in]   connection context
+ * @param userdata [in] pointer to mdv_tablespace
  *
  * @return On success, return pointer to new user connection context
  * @return On error, return NULL pointer
  */
-mdv_user * mdv_user_accept(mdv_conctx_config const *config);
-
-
-/**
- * @brief   Read incoming messages
- *
- * @param user [in] user context
- *
- * @return On success, return MDV_OK
- * @return On error, return non zero value
- */
-mdv_errno mdv_user_recv(mdv_user *user);
+mdv_errno mdv_user_init(void *ctx, mdv_conctx *conctx, void *userdata);
 
 
 /**
@@ -68,6 +62,7 @@ mdv_errno mdv_user_post(mdv_user *user, mdv_msg *msg);
 /**
  * @brief Free message
  *
- * @param user [in]     user context
+ * @param ctx [in]     user context
+ * @param conctx [in]  connection context
  */
-void mdv_user_free(mdv_user *user);
+void mdv_user_free(void *ctx, mdv_conctx *conctx);

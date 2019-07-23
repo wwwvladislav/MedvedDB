@@ -18,7 +18,7 @@ typedef struct mdv_cluster mdv_cluster;
 typedef struct
 {
     uint8_t             type;                       ///< Connection context type
-    uint8_t             reserved[7];                ///< Reserved
+    mdv_channel_dir     dir;                        ///< Channel direction
     mdv_dispatcher     *dispatcher;                 ///< Messages dispatcher
     size_t              created_time;               ///< Time, when peer registered
     mdv_cluster        *cluster;                    ///< Cluster manager
@@ -84,11 +84,11 @@ typedef struct
 /// Cluster manager
 typedef struct mdv_cluster
 {
-    mdv_uuid        uuid;       ///< Current cluster node UUID
-    mdv_tracker     tracker;    ///< Topology tracker
-    mdv_hashmap     conctx_cfgs;///< Connection contexts configurations
-    mdv_chaman     *chaman;     ///< Channels manager
-    void           *userdata;   ///< Userdata which is provided as argument to connection context initialization function
+    mdv_uuid        uuid;                   ///< Current cluster node UUID
+    mdv_tracker     tracker;                ///< Topology tracker
+    mdv_hashmap     conctx_cfgs;            ///< Connection contexts configurations
+    mdv_chaman     *chaman;                 ///< Channels manager
+    void           *userdata;               ///< Userdata which is provided as argument to connection context initialization function
 } mdv_cluster;
 
 

@@ -10,17 +10,6 @@
 #include <string.h>
 
 
-/// User context used for storing different type of information about connection (it should be cast to mdv_conctx)
-typedef struct mdv_user
-{
-    mdv_cli_type        type;                   ///< Client type
-    mdv_tablespace     *tablespace;             ///< tablespace
-    mdv_dispatcher     *dispatcher;             ///< Messages dispatcher
-    mdv_descriptor      sock;                   ///< Socket associated with connection
-    size_t              created_time;           ///< time, when user connected
-} mdv_user;
-
-
 static mdv_errno mdv_user_reply(mdv_user *user, mdv_msg const *msg);
 
 
@@ -195,33 +184,13 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
 }
 
 
-mdv_user * mdv_user_accept(mdv_conctx_config const *config)
+mdv_errno mdv_user_init(void *ctx, mdv_conctx *conctx, void *userdata)
 {
-    mdv_user *user = mdv_alloc(sizeof(mdv_user), "user");
-
-    if (!user)
-    {
-        MDV_LOGE("No memory to accept user context");
-        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-        return 0;
-    }
+    mdv_user *user = ctx;
+    user->tablespace = userdata;
+    user->conctx = conctx;
 
     MDV_LOGD("User context %p initialize", user);
-
-    user->type          = MDV_CLI_USER;
-    user->tablespace    = config->tablespace;
-    user->sock          = config->fd;
-    user->created_time  = mdv_gettime();
-
-    user->dispatcher = mdv_dispatcher_create(config->fd);
-
-    if (!user->dispatcher)
-    {
-        MDV_LOGE("Messages dispatcher not created");
-        mdv_free(user, "user");
-        mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-        return 0;
-    }
 
     mdv_dispatcher_handler const handlers[] =
     {
@@ -231,64 +200,44 @@ mdv_user * mdv_user_accept(mdv_conctx_config const *config)
 
     for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)
     {
-        if (mdv_dispatcher_reg(user->dispatcher, handlers + i) != MDV_OK)
+        if (mdv_dispatcher_reg(conctx->dispatcher, handlers + i) != MDV_OK)
         {
             MDV_LOGE("Messages dispatcher handler not registered");
-            mdv_free(user, "user");
-            mdv_socket_shutdown(config->fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-            return 0;
+            return MDV_FAILED;
         }
     }
 
-    MDV_LOGD("User context %p accepted", user);
+    MDV_LOGD("User context %p initialized", user);
 
-    return user;
-}
-
-
-mdv_errno mdv_user_recv(mdv_user *user)
-{
-    mdv_errno err = mdv_dispatcher_read(user->dispatcher);
-
-    switch(err)
-    {
-        case MDV_OK:
-        case MDV_EAGAIN:
-            break;
-
-        default:
-            mdv_socket_shutdown(user->sock, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-    }
-
-    return err;
+    return MDV_OK;
 }
 
 
 mdv_errno mdv_user_send(mdv_user *user, mdv_msg *req, mdv_msg *resp, size_t timeout)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(req->hdr.id));
-    return mdv_dispatcher_send(user->dispatcher, req, resp, timeout);
+    return mdv_dispatcher_send(user->conctx->dispatcher, req, resp, timeout);
 }
 
 
 mdv_errno mdv_user_post(mdv_user *user, mdv_msg *msg)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(msg->hdr.id));
-    return mdv_dispatcher_post(user->dispatcher, msg);
+    return mdv_dispatcher_post(user->conctx->dispatcher, msg);
 }
 
 
 static mdv_errno mdv_user_reply(mdv_user *user, mdv_msg const *msg)
 {
     MDV_LOGI(">>>>> %s'", mdv_msg_name(msg->hdr.id));
-    return mdv_dispatcher_reply(user->dispatcher, msg);
+    return mdv_dispatcher_reply(user->conctx->dispatcher, msg);
 }
 
 
-void mdv_user_free(mdv_user *user)
+void mdv_user_free(void *ctx, mdv_conctx *conctx)
 {
+    (void)conctx;
+    mdv_user *user = ctx;
     MDV_LOGD("User context %p freed", user);
-    mdv_dispatcher_free(user->dispatcher);
-    mdv_free(user, "user");
 }
 

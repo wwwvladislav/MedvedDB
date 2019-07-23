@@ -9,46 +9,31 @@
 #include <mdv_msg.h>
 #include <mdv_string.h>
 #include <mdv_limits.h>
-#include <mdv_dispatcher.h>
+#include <mdv_cluster.h>
 #include "storage/mdv_tablespace.h"
-#include "mdv_conctx.h"
 
 
 /// Peer context used for storing different type of information about active peer (it should be cast to mdv_conctx)
-typedef struct mdv_peer mdv_peer;
+typedef struct mdv_peer
+{
+    mdv_tablespace     *tablespace;                 ///< tablespace
+    mdv_conctx         *conctx;                     ///< connection context
+    uint32_t            peer_id;                    ///< peer local numeric id
+    mdv_uuid            peer_uuid;                  ///< peer global uuid
+} mdv_peer;
 
 
 /**
- * @brief Initialize incoming peer
+ * @brief Initialize peer
  *
- * @param config [in] Connection context configuration
+ * @param ctx [in]      peer context
+ * @param conctx [in]   connection context
+ * @param userdata [in] pointer to mdv_tablespace
  *
  * @return On success, return pointer to new peer context
  * @return On error, return NULL pointer
  */
-mdv_peer * mdv_peer_accept(mdv_conctx_config const *config);
-
-
-/**
- * @brief Initialize outgoing peer
- *
- * @param config [in] Connection context configuration
- *
- * @return On success, return pointer to new peer context
- * @return On error, return NULL pointer
- */
-mdv_peer * mdv_peer_connect(mdv_conctx_config const *config);
-
-
-/**
- * @brief   Read incoming messages
- *
- * @param peer [in] peer node
- *
- * @return On success, return MDV_OK
- * @return On error, return non zero value
- */
-mdv_errno mdv_peer_recv(mdv_peer *peer);
+mdv_errno mdv_peer_init(void *ctx, mdv_conctx *conctx, void *userdata);
 
 
 /**
@@ -79,8 +64,9 @@ mdv_errno mdv_peer_post(mdv_peer *peer, mdv_msg *msg);
 
 
 /**
- * @brief Free message
+ * @brief Peer context freeing function
  *
- * @param peer [in] peer node
+ * @param ctx [in]     user context
+ * @param conctx [in]  connection context
  */
-void mdv_peer_free(mdv_peer *peer);
+void mdv_peer_free(void *ctx, mdv_conctx *conctx);

@@ -113,6 +113,7 @@ static void * mdv_cluster_conctx_create(mdv_descriptor fd, mdv_string const *add
     }
 
     conctx->type         = type;
+    conctx->dir          = dir;
     conctx->dispatcher   = mdv_dispatcher_create(fd);
     conctx->created_time = mdv_gettime();
     conctx->cluster      = cluster;
@@ -228,13 +229,17 @@ mdv_errno mdv_cluster_create(mdv_cluster *cluster, mdv_cluster_config const *clu
         .userdata = cluster
     };
 
-    if (!mdv_hashmap_init(cluster->conctx_cfgs, mdv_conctx_config, type, 2, &mdv_hash_u8, &mdv_cmp_u8))
+    if (!mdv_hashmap_init(cluster->conctx_cfgs, mdv_conctx_config, type, cluster_config->conctx.size, &mdv_hash_u8, &mdv_cmp_u8))
     {
         MDV_LOGE("Cluster manager creation failed.");
         mdv_tracker_free(&cluster->tracker);
         return MDV_FAILED;
     }
 
+    for(size_t i = 0; i < cluster_config->conctx.size; ++i)
+    {
+        mdv_hashmap_insert(cluster->conctx_cfgs, cluster_config->conctx.configs[i]);
+    }
 
     cluster->chaman = mdv_chaman_create(&config);
 

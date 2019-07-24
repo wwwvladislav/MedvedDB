@@ -70,7 +70,7 @@ bool mdv_service_create(mdv_service *svc, char const *cfg_file_path)
         return false;
     }
 
-    // Cluster
+    // Cluster manager
     mdv_conctx_config const conctx_configs[] =
     {
         { MDV_CLI_USER, sizeof(mdv_user), &mdv_user_init, &mdv_user_free },
@@ -82,8 +82,8 @@ bool mdv_service_create(mdv_service *svc, char const *cfg_file_path)
         .uuid = svc->metainf.uuid.value,
         .channel =
         {
-            .keepidle = MDV_CONFIG.connection.keep_idle,
-            .keepcnt = MDV_CONFIG.connection.keep_count,
+            .keepidle  = MDV_CONFIG.connection.keep_idle,
+            .keepcnt   = MDV_CONFIG.connection.keep_count,
             .keepintvl = MDV_CONFIG.connection.keep_interval
         },
         .threadpool =
@@ -104,7 +104,7 @@ bool mdv_service_create(mdv_service *svc, char const *cfg_file_path)
 
     if (mdv_cluster_create(&svc->cluster, &cluster_config) != MDV_OK)
     {
-        MDV_LOGE("Cluster creation failed");
+        MDV_LOGE("Cluster manager creation failed");
         return false;
     }
 

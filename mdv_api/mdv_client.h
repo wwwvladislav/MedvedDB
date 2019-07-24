@@ -44,7 +44,7 @@ typedef struct mdv_client mdv_client;
  * @return On success, return nonzero client pointer
  * @return On error, return NULL pointer
  */
-mdv_client *mdv_client_connect(mdv_client_config const *config);
+mdv_client * mdv_client_connect(mdv_client_config const *config);
 
 
 /**

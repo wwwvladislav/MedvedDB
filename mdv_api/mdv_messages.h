@@ -28,24 +28,19 @@ typedef enum mdv_cli_type
     } mdv_msg_##name;
 
 
-mdv_message_def(tag, 1,
-    uint8_t tag;
-);
-
-
-mdv_message_def(status, 2,
+mdv_message_def(status, 1,
     int         err;
     char        message[1];
 );
 
 
-mdv_message_def(hello, 3,
+mdv_message_def(hello, 2,
     uint32_t    version;
     mdv_uuid    uuid;
 );
 
 
-mdv_message_id_def(create_table, 4);
+mdv_message_id_def(create_table, 3);
 #define mdv_msg_create_table(N)                         \
     struct mdv_msg_create_table_##N                     \
     {                                                   \
@@ -54,7 +49,7 @@ mdv_message_id_def(create_table, 4);
 typedef mdv_msg_create_table(1) mdv_msg_create_table_base;
 
 
-mdv_message_def(table_info, 5,
+mdv_message_def(table_info, 4,
     mdv_uuid    uuid;
 );
 

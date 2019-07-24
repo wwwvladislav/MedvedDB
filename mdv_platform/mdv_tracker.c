@@ -156,9 +156,17 @@ mdv_errno mdv_tracker_reg(mdv_tracker *tracker, mdv_node *new_node)
 
             if (node)
             {
-                new_node->id = node->id;
-                node->active = 1;
-                err = MDV_OK;
+                if (!node->active)
+                {
+                    new_node->id = node->id;
+                    node->active = 1;
+                    err = MDV_OK;
+                }
+                else
+                {
+                    err = MDV_EEXIST;
+                    MDV_LOGD("Connection with '%s' is already exist", mdv_uuid_to_str(&node->uuid).ptr);
+                }
             }
             else
             {

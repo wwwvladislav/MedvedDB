@@ -45,8 +45,6 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 {
     mdv_peer *peer = arg;
 
-    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
-
     binn binn_msg;
 
     if(!binn_load(msg->payload, &binn_msg))
@@ -55,7 +53,7 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
         return MDV_FAILED;
     }
 
-    mdv_msg_p2p_hello * peer_hello = mdv_unbinn_p2p_hello(&binn_msg);
+    mdv_msg_p2p_hello *peer_hello = mdv_unbinn_p2p_hello(&binn_msg);
 
     if (!peer_hello)
     {
@@ -65,6 +63,8 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
     }
 
     binn_free(&binn_msg);
+
+    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer_hello->uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
     if(peer_hello->version != MDV_VERSION)
     {
@@ -104,17 +104,6 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 
 static mdv_errno mdv_peer_hello(mdv_peer *peer)
 {
-    // Send Tag
-    mdv_msg_tag tag =
-    {
-        .tag = MDV_CLI_PEER
-    };
-
-    mdv_errno err = mdv_dispatcher_write_raw(peer->conctx->dispatcher, &tag, sizeof tag);
-
-    if (err != MDV_OK)
-        return err;
-
     // Post hello message
 
     mdv_msg_p2p_hello hello =
@@ -139,7 +128,7 @@ static mdv_errno mdv_peer_hello(mdv_peer *peer)
         .payload = binn_ptr(&hey)
     };
 
-    err = mdv_peer_post(peer, &message);
+    mdv_errno err = mdv_peer_post(peer, &message);
 
     binn_free(&hey);
 

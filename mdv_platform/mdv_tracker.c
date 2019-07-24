@@ -144,7 +144,7 @@ void mdv_tracker_free(mdv_tracker *tracker)
 }
 
 
-mdv_errno mdv_tracker_reg(mdv_tracker *tracker, mdv_node *new_node)
+mdv_errno mdv_tracker_peer_connected(mdv_tracker *tracker, mdv_node *new_node)
 {
     mdv_errno err = MDV_FAILED;
 
@@ -156,10 +156,14 @@ mdv_errno mdv_tracker_reg(mdv_tracker *tracker, mdv_node *new_node)
 
             if (node)
             {
-                if (!node->active)
+                if (!node->connected)
                 {
-                    new_node->id = node->id;
-                    node->active = 1;
+                    new_node->id    = node->id;
+
+                    node->connected = 1;
+                    node->active    = 1;
+                    node->userdata  = new_node->userdata;
+
                     err = MDV_OK;
                 }
                 else
@@ -171,6 +175,7 @@ mdv_errno mdv_tracker_reg(mdv_tracker *tracker, mdv_node *new_node)
             else
             {
                 new_node->id = mdv_tracker_new_id(tracker);
+                new_node->connected = 1;
                 new_node->active = 1;
                 err = mdv_tracker_insert(tracker, new_node);
             }
@@ -181,6 +186,28 @@ mdv_errno mdv_tracker_reg(mdv_tracker *tracker, mdv_node *new_node)
     }
 
     return err;
+}
+
+
+void mdv_tracker_peer_disconnected(mdv_tracker *tracker, mdv_uuid const *uuid)
+{
+    if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
+    {
+        if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
+        {
+            mdv_node *node = mdv_tracker_find(tracker, uuid);
+
+            if (node)
+            {
+                node->connected = 0;
+                node->active    = 0;
+                node->userdata  = 0;
+            }
+
+            mdv_mutex_unlock(&tracker->ids_mutex);
+        }
+        mdv_mutex_unlock(&tracker->nodes_mutex);
+    }
 }
 
 
@@ -202,20 +229,3 @@ void mdv_tracker_append(mdv_tracker *tracker, mdv_node const *node)
     }
 }
 
-
-void mdv_tracker_unreg(mdv_tracker *tracker, mdv_uuid const *uuid)
-{
-    if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
-    {
-        if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
-        {
-            mdv_node *node = mdv_tracker_find(tracker, uuid);
-
-            if (node)
-                node->active = 0;
-
-            mdv_mutex_unlock(&tracker->ids_mutex);
-        }
-        mdv_mutex_unlock(&tracker->nodes_mutex);
-    }
-}

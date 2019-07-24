@@ -13,11 +13,13 @@
 /// Cluster node information
 typedef struct
 {
-    size_t      size;       ///< Current data structure size
-    mdv_uuid    uuid;       ///< Global unique identifier
-    uint32_t    id;         ///< Unique identifier inside current server
-    uint8_t     active:1;   ///< Node is active. Connection establisched.
-    char        addr[1];    ///< Node address in following format: protocol://host:port
+    size_t      size;           ///< Current data structure size
+    mdv_uuid    uuid;           ///< Global unique identifier
+    void       *userdata;       ///< Userdata associated with node (for instance, connection context)
+    uint32_t    id;             ///< Unique identifier inside current server
+    uint8_t     connected:1;    ///< Connection with current node establisched.
+    uint8_t     active:1;       ///< Node is active (i.e. runned).
+    char        addr[1];        ///< Node address in following format: protocol://host:port
 } mdv_node;
 
 
@@ -38,7 +40,6 @@ typedef struct mdv_tracker
  * @brief Create new topology tracker
  *
  * @param tracker [in] [out]    Topology tracker to be initialized
- * @param nodes [in]            Nodes storage
  *
  * @return On success, return MDV_OK
  * @return On error, return nonzero error code
@@ -55,7 +56,7 @@ void mdv_tracker_free(mdv_tracker *tracker);
 
 
 /**
- * @brief Register new node in storage
+ * @brief Register peer connection
  *
  * @param tracker [in]          Topology tracker
  * @param new_node [in] [out]   node information
@@ -63,7 +64,17 @@ void mdv_tracker_free(mdv_tracker *tracker);
  * @return On success, return MDV_OK and node->id is initialized by local unique numeric identifier
  * @return On error, return nonzero error code
  */
-mdv_errno mdv_tracker_reg(mdv_tracker *tracker, mdv_node *new_node);
+mdv_errno mdv_tracker_peer_connected(mdv_tracker *tracker, mdv_node *new_node);
+
+
+/**
+ * @brief Mark peer node as disconnected
+ * @details Node is not deleted but only is marked as disconnected.
+ *
+ * @param tracker [in]  Topology tracker
+ * @param uuid [in]     node UUID
+ */
+void mdv_tracker_peer_disconnected(mdv_tracker *tracker, mdv_uuid const *uuid);
 
 
 /**
@@ -74,12 +85,3 @@ mdv_errno mdv_tracker_reg(mdv_tracker *tracker, mdv_node *new_node);
  */
 void mdv_tracker_append(mdv_tracker *tracker, mdv_node const *node);
 
-
-/**
- * @brief Unregister node in storage.
- * @details Node is not deleted but only is marked as inactive.
- *
- * @param tracker [in]  Topology tracker
- * @param uuid [in]     node UUID
- */
-void mdv_tracker_unreg(mdv_tracker *tracker, mdv_uuid const *uuid);

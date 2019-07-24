@@ -9,7 +9,7 @@ static size_t mdv_hash_u8(void const *p)            { return *(uint8_t*)p; }
 static int mdv_cmp_u8(void const *a, void const *b) { return (int)*(uint8_t*)a - *(uint8_t*)b; }
 
 
-static mdv_errno mdv_cluster_reg_peer(mdv_cluster *cluster, char const *addr, mdv_uuid const *uuid, uint32_t *id)
+static mdv_errno mdv_cluster_reg_peer(mdv_conctx *conctx, char const *addr, mdv_uuid const *uuid, uint32_t *id)
 {
     size_t const addr_len = strlen(addr);
     size_t const node_size = offsetof(mdv_node, addr) + addr_len + 1;
@@ -18,14 +18,15 @@ static mdv_errno mdv_cluster_reg_peer(mdv_cluster *cluster, char const *addr, md
 
     mdv_node * node = (mdv_node *)buf;
 
-    node->size   = node_size;
-    node->uuid   = *uuid;
-    node->id     = 0;
-    node->active = 1;
+    node->size      = node_size;
+    node->uuid      = *uuid;
+    node->userdata  = conctx;
+    node->id        = 0;
+    node->connected = 1;
 
     memcpy(node->addr, addr, addr_len + 1);
 
-    mdv_errno err = mdv_tracker_reg(&cluster->tracker, node);
+    mdv_errno err = mdv_tracker_peer_connected(&conctx->cluster->tracker, node);
 
     if (err == MDV_OK)
         *id = node->id;
@@ -34,9 +35,9 @@ static mdv_errno mdv_cluster_reg_peer(mdv_cluster *cluster, char const *addr, md
 }
 
 
-static void mdv_cluster_unreg_peer(mdv_cluster *cluster, mdv_uuid const *uuid)
+static void mdv_cluster_unreg_peer(mdv_conctx *conctx, mdv_uuid const *uuid)
 {
-    mdv_tracker_unreg(&cluster->tracker, uuid);
+    mdv_tracker_peer_disconnected(&conctx->cluster->tracker, uuid);
 }
 
 

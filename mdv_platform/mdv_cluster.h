@@ -15,7 +15,7 @@ typedef struct mdv_cluster mdv_cluster;
 
 
 /// Connection context
-typedef struct
+typedef struct mdv_conctx
 {
     uint8_t             type;                       ///< Connection context type
     mdv_channel_dir     dir;                        ///< Channel direction
@@ -26,7 +26,7 @@ typedef struct
     /**
      * @brief Peer registration
      *
-     * @param cluster [in]  Cluster manager
+     * @param conctx [in]   connection context
      * @param addr [in]     peer node listen address
      * @param uuid [in]     peer global UUID
      * @param id [out]      peer local numeric identifier
@@ -34,7 +34,7 @@ typedef struct
      * @return On success, return MDV_OK
      * @return On error, return non zero value
      */
-    mdv_errno (*reg_peer)(mdv_cluster *cluster, char const *addr, mdv_uuid const *uuid, uint32_t *id);
+    mdv_errno (*reg_peer)(struct mdv_conctx *conctx, char const *addr, mdv_uuid const *uuid, uint32_t *id);
 
     /**
      * @brief Peer unregistration
@@ -42,7 +42,7 @@ typedef struct
      * @param cluster [in]  Cluster manager
      * @param uuid [in]     peer global UUID
      */
-    void (*unreg_peer)(mdv_cluster *cluster, mdv_uuid const *uuid);
+    void (*unreg_peer)(struct mdv_conctx *conctx, mdv_uuid const *uuid);
 
     uint8_t dataspace[1];                           ///< Data space is used to place data associated with connection
 } mdv_conctx;

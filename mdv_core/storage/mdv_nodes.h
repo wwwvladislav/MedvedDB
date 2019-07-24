@@ -1,7 +1,7 @@
 /**
  * @file
- * @brief Storage for cluster nodes and topology.
- * @details Nodes storage contains information about nodes (identifiers, addresses) and connectivity state between nodes.
+ * @brief Storage for cluster nodes.
+ * @details Nodes storage contains information about nodes (identifiers, UUIDs and addresses).
 */
 #pragma once
 #include "mdv_storage.h"

@@ -29,6 +29,61 @@ static void mdv_service_configure_logging()
 }
 
 
+static bool mdv_service_cluster_create(mdv_service *svc)
+{
+    mdv_conctx_config const conctx_configs[] =
+    {
+        { MDV_CLI_USER, sizeof(mdv_user), &mdv_user_init, &mdv_user_free },
+        { MDV_CLI_PEER, sizeof(mdv_peer), &mdv_peer_init, &mdv_peer_free }
+    };
+
+    mdv_cluster_config const cluster_config =
+    {
+        .uuid = svc->metainf.uuid.value,
+        .channel =
+        {
+            .keepidle  = MDV_CONFIG.connection.keep_idle,
+            .keepcnt   = MDV_CONFIG.connection.keep_count,
+            .keepintvl = MDV_CONFIG.connection.keep_interval
+        },
+        .threadpool =
+        {
+            .size = MDV_CONFIG.server.workers,
+            .thread_attrs =
+            {
+                .stack_size = MDV_THREAD_STACK_SIZE
+            }
+        },
+        .conctx =
+        {
+            .userdata = &svc->storage.tablespace,
+            .size     = sizeof conctx_configs / sizeof *conctx_configs,
+            .configs  = conctx_configs
+        },
+        .handlers =
+        {
+            .userdata = svc->storage.metainf,
+            .reg_node = (mdv_cluster_reg_node_handler)&mdv_nodes_store
+        }
+    };
+
+    if (mdv_cluster_create(&svc->cluster, &cluster_config) != MDV_OK)
+    {
+        MDV_LOGE("Cluster manager creation failed");
+        return false;
+    }
+
+    // Load cluster nodes
+    if (mdv_nodes_load(svc->storage.metainf, &svc->cluster.tracker) != MDV_OK)
+    {
+        MDV_LOGE("Nodes loading failed");
+        return false;
+    }
+
+    return true;
+}
+
+
 bool mdv_service_create(mdv_service *svc, char const *cfg_file_path)
 {
     // Configuration
@@ -71,49 +126,8 @@ bool mdv_service_create(mdv_service *svc, char const *cfg_file_path)
     }
 
     // Cluster manager
-    mdv_conctx_config const conctx_configs[] =
-    {
-        { MDV_CLI_USER, sizeof(mdv_user), &mdv_user_init, &mdv_user_free },
-        { MDV_CLI_PEER, sizeof(mdv_peer), &mdv_peer_init, &mdv_peer_free }
-    };
-
-    mdv_cluster_config const cluster_config =
-    {
-        .uuid = svc->metainf.uuid.value,
-        .channel =
-        {
-            .keepidle  = MDV_CONFIG.connection.keep_idle,
-            .keepcnt   = MDV_CONFIG.connection.keep_count,
-            .keepintvl = MDV_CONFIG.connection.keep_interval
-        },
-        .threadpool =
-        {
-            .size = MDV_CONFIG.server.workers,
-            .thread_attrs =
-            {
-                .stack_size = MDV_THREAD_STACK_SIZE
-            }
-        },
-        .conctx =
-        {
-            .userdata = &svc->storage.tablespace,
-            .size     = sizeof conctx_configs / sizeof *conctx_configs,
-            .configs  = conctx_configs
-        }
-    };
-
-    if (mdv_cluster_create(&svc->cluster, &cluster_config) != MDV_OK)
-    {
-        MDV_LOGE("Cluster manager creation failed");
+    if (!mdv_service_cluster_create(svc))
         return false;
-    }
-
-    // Load cluster nodes
-    if (mdv_nodes_load(svc->storage.metainf, &svc->cluster.tracker) != MDV_OK)
-    {
-        MDV_LOGE("Nodes loading failed");
-        return false;
-    }
 
     MDV_LOGI("Storage version: %u", svc->metainf.version.value);
 

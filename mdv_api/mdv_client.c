@@ -160,7 +160,8 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
             .userdata = &client->userdata,
             .size     = sizeof conctx_configs / sizeof *conctx_configs,
             .configs  = conctx_configs
-        }
+        },
+        .handlers = {}
     };
 
     if (mdv_cluster_create(&client->cluster, &cluster_config) != MDV_OK)

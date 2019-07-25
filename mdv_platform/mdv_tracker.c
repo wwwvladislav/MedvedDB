@@ -9,13 +9,13 @@
 typedef struct
 {
     uint32_t   id;      ///< Unique identifier inside current server
-    mdv_uuid   uuid;    ///< Global unique identifier
+    mdv_node  *node;    ///< Cluster node information
 } mdv_node_id;
 
 
-static mdv_errno  mdv_tracker_insert(mdv_tracker *tracker, mdv_node *node);
+static mdv_errno  mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node);
 static mdv_node * mdv_tracker_find(mdv_tracker *tracker, mdv_uuid const *uuid);
-static void       mdv_tracker_erase(mdv_tracker *tracker, mdv_node *node);
+static void       mdv_tracker_erase(mdv_tracker *tracker, mdv_node const *node);
 
 
 static size_t mdv_node_id_hash(int const *id)
@@ -29,14 +29,16 @@ static int mdv_node_id_cmp(int const *id1, int const *id2)
 }
 
 
-static mdv_errno mdv_tracker_insert(mdv_tracker *tracker, mdv_node *node)
+static mdv_errno mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node)
 {
-    if (_mdv_hashmap_insert(&tracker->nodes, node, node->size))
+    mdv_list_entry(mdv_node) *entry = (void*)_mdv_hashmap_insert(&tracker->nodes, node, node->size);
+
+    if (entry)
     {
         mdv_node_id const nid =
         {
             .id = node->id,
-            .uuid = node->uuid
+            .node = &entry->data
         };
 
         if (mdv_hashmap_insert(tracker->ids, nid))
@@ -52,7 +54,7 @@ static mdv_errno mdv_tracker_insert(mdv_tracker *tracker, mdv_node *node)
 }
 
 
-static void mdv_tracker_erase(mdv_tracker *tracker, mdv_node *node)
+static void mdv_tracker_erase(mdv_tracker *tracker, mdv_node const *node)
 {
     mdv_hashmap_erase(tracker->nodes, node->uuid);
     mdv_hashmap_erase(tracker->ids, node->id);
@@ -221,6 +223,8 @@ void mdv_tracker_append(mdv_tracker *tracker, mdv_node const *node)
             {
                 if (tracker->max_id < node->id)
                     tracker->max_id = node->id;
+
+                mdv_tracker_insert(tracker, node);
             }
 
             mdv_mutex_unlock(&tracker->ids_mutex);

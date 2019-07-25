@@ -14,6 +14,18 @@
 typedef struct mdv_cluster mdv_cluster;
 
 
+/// Node registration callback type
+typedef mdv_errno (*mdv_cluster_reg_node_handler)(void *userdata, mdv_node const *node);
+
+
+/// Cluster events handlers
+typedef struct mdv_cluster_handlers
+{
+    void                           *userdata;       ///< Userdata which is provided as argument to cluster node registration function
+    mdv_cluster_reg_node_handler    reg_node;       ///< Node registration callback
+} mdv_cluster_handlers;
+
+
 /// Connection context
 typedef struct mdv_conctx
 {
@@ -78,17 +90,20 @@ typedef struct
         size_t                   size;      ///< Connection contexts types count
         mdv_conctx_config const *configs;   ///< Connection contexts configurations
     } conctx;                               ///< Connection contexts settings
+
+    mdv_cluster_handlers        handlers;   ///< Cluster events handlers
 } mdv_cluster_config;
 
 
 /// Cluster manager
 typedef struct mdv_cluster
 {
-    mdv_uuid        uuid;                   ///< Current cluster node UUID
-    mdv_tracker     tracker;                ///< Topology tracker
-    mdv_hashmap     conctx_cfgs;            ///< Connection contexts configurations
-    mdv_chaman     *chaman;                 ///< Channels manager
-    void           *userdata;               ///< Userdata which is provided as argument to connection context initialization function
+    mdv_uuid                uuid;           ///< Current cluster node UUID
+    mdv_tracker             tracker;        ///< Topology tracker
+    mdv_hashmap             conctx_cfgs;    ///< Connection contexts configurations
+    mdv_chaman             *chaman;         ///< Channels manager
+    void                   *userdata;       ///< Userdata which is provided as argument to connection context initialization function
+    mdv_cluster_handlers    handlers;       ///< Cluster events handlers
 } mdv_cluster;
 
 

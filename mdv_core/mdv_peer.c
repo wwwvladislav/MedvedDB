@@ -75,7 +75,7 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 
     peer->peer_uuid = peer_hello->uuid;
 
-    mdv_errno err = peer->conctx->reg_peer(peer->conctx, peer_hello->listen, &peer->peer_uuid, &peer->peer_id);
+    mdv_errno err = peer->conctx->peer_connected(peer->conctx, peer_hello->listen, &peer->peer_uuid, &peer->peer_id);
 
     mdv_free(peer_hello, "msg_p2p_hello");
 
@@ -200,5 +200,5 @@ void mdv_peer_free(void *ctx, mdv_conctx *conctx)
 {
     mdv_peer *peer = ctx;
     MDV_LOGD("Peer %p freed", peer);
-    conctx->unreg_peer(conctx, &peer->peer_uuid);
+    conctx->peer_disconnected(conctx, &peer->peer_uuid);
 }

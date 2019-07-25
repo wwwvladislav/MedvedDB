@@ -14,15 +14,20 @@
 typedef struct mdv_cluster mdv_cluster;
 
 
-/// Node registration callback type
-typedef mdv_errno (*mdv_cluster_reg_node_handler)(void *userdata, mdv_node const *node);
+/// Peer connection handler type
+typedef void (*mdv_cluster_peer_connection_handler)(void *userdata, mdv_node const *node);
+
+
+/// Peer disconnection handler type
+typedef void (*mdv_cluster_peer_disconnection_handler)(void *userdata, mdv_uuid const *uuid);
 
 
 /// Cluster events handlers
 typedef struct mdv_cluster_handlers
 {
-    void                           *userdata;       ///< Userdata which is provided as argument to cluster node registration function
-    mdv_cluster_reg_node_handler    reg_node;       ///< Node registration callback
+    void                                   *userdata;           ///< Userdata which is provided as argument to cluster node registration function
+    mdv_cluster_peer_connection_handler     peer_connected;     ///< Peer connection handler
+    mdv_cluster_peer_disconnection_handler  peer_disconnected;  ///< Peer connection handler
 } mdv_cluster_handlers;
 
 
@@ -36,7 +41,7 @@ typedef struct mdv_conctx
     mdv_cluster        *cluster;                    ///< Cluster manager
 
     /**
-     * @brief Peer registration
+     * @brief Peer connection handler
      *
      * @param conctx [in]   connection context
      * @param addr [in]     peer node listen address
@@ -46,15 +51,15 @@ typedef struct mdv_conctx
      * @return On success, return MDV_OK
      * @return On error, return non zero value
      */
-    mdv_errno (*reg_peer)(struct mdv_conctx *conctx, char const *addr, mdv_uuid const *uuid, uint32_t *id);
+    mdv_errno (*peer_connected)(struct mdv_conctx *conctx, char const *addr, mdv_uuid const *uuid, uint32_t *id);
 
     /**
-     * @brief Peer unregistration
+     * @brief Peer disconnection handler
      *
      * @param cluster [in]  Cluster manager
      * @param uuid [in]     peer global UUID
      */
-    void (*unreg_peer)(struct mdv_conctx *conctx, mdv_uuid const *uuid);
+    void (*peer_disconnected)(struct mdv_conctx *conctx, mdv_uuid const *uuid);
 
     uint8_t dataspace[1];                           ///< Data space is used to place data associated with connection
 } mdv_conctx;

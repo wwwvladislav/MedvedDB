@@ -29,6 +29,21 @@ static void mdv_service_configure_logging()
 }
 
 
+static void mdv_cluster_peer_connected(void *userdata, mdv_node const *node)
+{
+    mdv_storage *storage = userdata;
+    (void)mdv_nodes_store(storage, node);
+}
+
+
+static void mdv_cluster_peer_disconnected(void *userdata, mdv_uuid const *uuid)
+{
+    mdv_storage *storage = userdata;
+    (void)storage;
+    (void)uuid;
+}
+
+
 static bool mdv_service_cluster_create(mdv_service *svc)
 {
     mdv_conctx_config const conctx_configs[] =
@@ -62,8 +77,9 @@ static bool mdv_service_cluster_create(mdv_service *svc)
         },
         .handlers =
         {
-            .userdata = svc->storage.metainf,
-            .reg_node = (mdv_cluster_reg_node_handler)&mdv_nodes_store
+            .userdata           = svc->storage.metainf,
+            .peer_connected     = &mdv_cluster_peer_connected,
+            .peer_disconnected  = &mdv_cluster_peer_disconnected
         }
     };
 

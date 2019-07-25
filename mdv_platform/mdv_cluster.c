@@ -9,7 +9,7 @@ static size_t mdv_hash_u8(void const *p)            { return *(uint8_t*)p; }
 static int mdv_cmp_u8(void const *a, void const *b) { return (int)*(uint8_t*)a - *(uint8_t*)b; }
 
 
-static mdv_errno mdv_cluster_reg_peer(mdv_conctx *conctx, char const *addr, mdv_uuid const *uuid, uint32_t *id)
+static mdv_errno mdv_cluster_peer_connected(mdv_conctx *conctx, char const *addr, mdv_uuid const *uuid, uint32_t *id)
 {
     mdv_cluster *cluster = conctx->cluster;
 
@@ -33,16 +33,21 @@ static mdv_errno mdv_cluster_reg_peer(mdv_conctx *conctx, char const *addr, mdv_
     if (err == MDV_OK)
         *id = node->id;
 
-    if (cluster->handlers.reg_node)
-        cluster->handlers.reg_node(cluster->handlers.userdata, node);
+    if (cluster->handlers.peer_connected)
+        cluster->handlers.peer_connected(cluster->handlers.userdata, node);
 
     return err;
 }
 
 
-static void mdv_cluster_unreg_peer(mdv_conctx *conctx, mdv_uuid const *uuid)
+static void mdv_cluster_peer_disconnected(mdv_conctx *conctx, mdv_uuid const *uuid)
 {
+    mdv_cluster *cluster = conctx->cluster;
+
     mdv_tracker_peer_disconnected(&conctx->cluster->tracker, uuid);
+
+    if (cluster->handlers.peer_disconnected)
+        cluster->handlers.peer_disconnected(cluster->handlers.userdata, uuid);
 }
 
 
@@ -118,13 +123,13 @@ static void * mdv_cluster_conctx_create(mdv_descriptor fd, mdv_string const *add
         return 0;
     }
 
-    conctx->type         = type;
-    conctx->dir          = dir;
-    conctx->dispatcher   = mdv_dispatcher_create(fd);
-    conctx->created_time = mdv_gettime();
-    conctx->cluster      = cluster;
-    conctx->reg_peer     = &mdv_cluster_reg_peer;
-    conctx->unreg_peer   = &mdv_cluster_unreg_peer;
+    conctx->type                = type;
+    conctx->dir                 = dir;
+    conctx->dispatcher          = mdv_dispatcher_create(fd);
+    conctx->created_time        = mdv_gettime();
+    conctx->cluster             = cluster;
+    conctx->peer_connected      = &mdv_cluster_peer_connected;
+    conctx->peer_disconnected   = &mdv_cluster_peer_disconnected;
 
     if (!conctx->dispatcher)
     {

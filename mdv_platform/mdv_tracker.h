@@ -17,8 +17,8 @@ typedef struct
     mdv_uuid    uuid;           ///< Global unique identifier
     void       *userdata;       ///< Userdata associated with node (for instance, connection context)
     uint32_t    id;             ///< Unique identifier inside current server
-    uint8_t     connected:1;    ///< Connection with current node establisched.
-    uint8_t     active:1;       ///< Node is active (i.e. runned).
+    uint8_t     connected:1;    ///< Connection establisched
+    uint8_t     active:1;       ///< Node is active (i.e. runned)
     char        addr[1];        ///< Node address in following format: protocol://host:port
 } mdv_node;
 

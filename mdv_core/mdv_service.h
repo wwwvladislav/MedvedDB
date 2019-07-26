@@ -1,23 +1,22 @@
 #pragma once
-#include "mdv_config.h"
-
 #include "storage/mdv_metainf.h"
 #include "storage/mdv_tablespace.h"
 #include <stdbool.h>
 #include <mdv_cluster.h>
 
 
+/// Service
 typedef struct
 {
-    mdv_cluster     cluster;
-    volatile bool   is_started;
-    mdv_metainf     metainf;
+    mdv_cluster     cluster;            ///< Cluster manager
+    volatile bool   is_started;         ///< Flag indicates that the service is working
+    mdv_metainf     metainf;            ///< Metainformation (DB version, node UUID etc.)
 
     struct
     {
-        mdv_storage    *metainf;
-        mdv_tablespace  tablespace;
-    } storage;
+        mdv_storage    *metainf;        ///< Metainformation storage
+        mdv_tablespace  tablespace;     ///< Tables strorage
+    } storage;                          ///< Storages
 } mdv_service;
 
 

@@ -9,48 +9,6 @@ static size_t mdv_hash_u8(void const *p)            { return *(uint8_t*)p; }
 static int mdv_cmp_u8(void const *a, void const *b) { return (int)*(uint8_t*)a - *(uint8_t*)b; }
 
 
-static mdv_errno mdv_cluster_peer_connected(mdv_conctx *conctx, char const *addr, mdv_uuid const *uuid, uint32_t *id)
-{
-    mdv_cluster *cluster = conctx->cluster;
-
-    size_t const addr_len = strlen(addr);
-    size_t const node_size = offsetof(mdv_node, addr) + addr_len + 1;
-
-    char buf[node_size];
-
-    mdv_node * node = (mdv_node *)buf;
-
-    node->size      = node_size;
-    node->uuid      = *uuid;
-    node->userdata  = conctx;
-    node->id        = 0;
-    node->connected = 1;
-
-    memcpy(node->addr, addr, addr_len + 1);
-
-    mdv_errno err = mdv_tracker_peer_connected(&cluster->tracker, node);
-
-    if (err == MDV_OK)
-        *id = node->id;
-
-    if (cluster->handlers.peer_connected)
-        cluster->handlers.peer_connected(cluster->handlers.userdata, node);
-
-    return err;
-}
-
-
-static void mdv_cluster_peer_disconnected(mdv_conctx *conctx, mdv_uuid const *uuid)
-{
-    mdv_cluster *cluster = conctx->cluster;
-
-    mdv_tracker_peer_disconnected(&conctx->cluster->tracker, uuid);
-
-    if (cluster->handlers.peer_disconnected)
-        cluster->handlers.peer_disconnected(cluster->handlers.userdata, uuid);
-}
-
-
 /**
  * @brief Select connection context
  *
@@ -128,8 +86,6 @@ static void * mdv_cluster_conctx_create(mdv_descriptor fd, mdv_string const *add
     conctx->dispatcher          = mdv_dispatcher_create(fd);
     conctx->created_time        = mdv_gettime();
     conctx->cluster             = cluster;
-    conctx->peer_connected      = &mdv_cluster_peer_connected;
-    conctx->peer_disconnected   = &mdv_cluster_peer_disconnected;
 
     if (!conctx->dispatcher)
     {
@@ -208,7 +164,6 @@ mdv_errno mdv_cluster_create(mdv_cluster *cluster, mdv_cluster_config const *clu
 {
     cluster->uuid     = cluster_config->uuid;
     cluster->userdata = cluster_config->conctx.userdata;
-    cluster->handlers = cluster_config->handlers;
 
     mdv_errno err = mdv_tracker_create(&cluster->tracker);
 

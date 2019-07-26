@@ -9,13 +9,13 @@
 #include <mdv_string.h>
 #include <mdv_limits.h>
 #include <mdv_cluster.h>
-#include "storage/mdv_tablespace.h"
+#include "mdv_service.h"
 
 
 /// User context used for storing different type of information about connection (it should be cast to mdv_conctx)
 typedef struct mdv_user
 {
-    mdv_tablespace  *tablespace;            ///< tablespace
+    mdv_service     *service;               ///< service
     mdv_conctx      *conctx;                ///< connection context
 } mdv_user;
 

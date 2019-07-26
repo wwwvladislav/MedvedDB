@@ -32,23 +32,32 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         config->server.workers = atoi(value);
         MDV_LOGI("Server workers: %u", config->server.workers);
     }
+
     else if (MDV_CFG_MATCH("storage", "path"))
     {
         config->storage.path = mdv_str_pdup(config->mempool, value);
         MDV_CFG_CHECK(config->storage.path);
         MDV_LOGI("Storage path: %s", config->storage.path.ptr);
     }
+    else if (MDV_CFG_MATCH("storage", "workers"))
+    {
+        config->storage.workers = atoi(value);
+        MDV_LOGI("Storage workers: %u", config->storage.workers);
+    }
+
     else if (MDV_CFG_MATCH("log", "level"))
     {
         config->log.level = mdv_str_pdup(config->mempool, value);
         MDV_CFG_CHECK(config->log.level);
         MDV_LOGI("Log level: %s", config->log.level.ptr);
     }
+
     else if (MDV_CFG_MATCH("transaction", "batch_size"))
     {
         config->transaction.batch_size = atoi(value);
         MDV_LOGI("Transaction batch size: %u", config->transaction.batch_size);
     }
+
     else if (MDV_CFG_MATCH("cluster", "node"))
     {
         mdv_string node = mdv_str_pdup(config->mempool, value);
@@ -61,6 +70,7 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         config->cluster.nodes[config->cluster.size++] = node.ptr;
         MDV_LOGI("Cluster node: %s", node.ptr);
     }
+
     else if (MDV_CFG_MATCH("connection", "retry_interval"))
     {
         MDV_CONFIG.connection.retry_interval = atoi(value);
@@ -81,6 +91,7 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         MDV_CONFIG.connection.keep_interval = atoi(value);
         MDV_LOGI("Interval between keepalives: %u seconds", MDV_CONFIG.connection.keep_interval);
     }
+
     else
     {
         MDV_LOGE("Unknown section/name: [%s] %s", section, name);
@@ -99,7 +110,7 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.log.level                    = mdv_str_static("error");
 
     MDV_CONFIG.server.listen                = mdv_str_static("tcp://localhost:54222");
-    MDV_CONFIG.server.workers               = 16;
+    MDV_CONFIG.server.workers               = 8;
 
     MDV_CONFIG.connection.retry_interval    = 5;
     MDV_CONFIG.connection.keep_idle         = 5;
@@ -107,6 +118,7 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.connection.keep_interval     = 5;
 
     MDV_CONFIG.storage.path                 = mdv_str_static("./data");
+    MDV_CONFIG.storage.workers              = 4;
 
     MDV_CONFIG.transaction.batch_size       = 1000;
 

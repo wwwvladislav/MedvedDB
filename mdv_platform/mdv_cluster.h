@@ -22,15 +22,6 @@ typedef void (*mdv_cluster_peer_connection_handler)(void *userdata, mdv_node con
 typedef void (*mdv_cluster_peer_disconnection_handler)(void *userdata, mdv_uuid const *uuid);
 
 
-/// Cluster events handlers
-typedef struct mdv_cluster_handlers
-{
-    void                                   *userdata;           ///< Userdata which is provided as argument to cluster node registration function
-    mdv_cluster_peer_connection_handler     peer_connected;     ///< Peer connection handler
-    mdv_cluster_peer_disconnection_handler  peer_disconnected;  ///< Peer connection handler
-} mdv_cluster_handlers;
-
-
 /// Connection context
 typedef struct mdv_conctx
 {
@@ -39,29 +30,7 @@ typedef struct mdv_conctx
     mdv_dispatcher     *dispatcher;                 ///< Messages dispatcher
     size_t              created_time;               ///< Time, when peer registered
     mdv_cluster        *cluster;                    ///< Cluster manager
-
-    /**
-     * @brief Peer connection handler
-     *
-     * @param conctx [in]   connection context
-     * @param addr [in]     peer node listen address
-     * @param uuid [in]     peer global UUID
-     * @param id [out]      peer local numeric identifier
-     *
-     * @return On success, return MDV_OK
-     * @return On error, return non zero value
-     */
-    mdv_errno (*peer_connected)(struct mdv_conctx *conctx, char const *addr, mdv_uuid const *uuid, uint32_t *id);
-
-    /**
-     * @brief Peer disconnection handler
-     *
-     * @param cluster [in]  Cluster manager
-     * @param uuid [in]     peer global UUID
-     */
-    void (*peer_disconnected)(struct mdv_conctx *conctx, mdv_uuid const *uuid);
-
-    uint8_t dataspace[1];                           ///< Data space is used to place data associated with connection
+    uint8_t             dataspace[1];               ///< Data space is used to place data associated with connection
 } mdv_conctx;
 
 
@@ -95,8 +64,6 @@ typedef struct
         size_t                   size;      ///< Connection contexts types count
         mdv_conctx_config const *configs;   ///< Connection contexts configurations
     } conctx;                               ///< Connection contexts settings
-
-    mdv_cluster_handlers        handlers;   ///< Cluster events handlers
 } mdv_cluster_config;
 
 
@@ -108,7 +75,6 @@ typedef struct mdv_cluster
     mdv_hashmap             conctx_cfgs;    ///< Connection contexts configurations
     mdv_chaman             *chaman;         ///< Channels manager
     void                   *userdata;       ///< Userdata which is provided as argument to connection context initialization function
-    mdv_cluster_handlers    handlers;       ///< Cluster events handlers
 } mdv_cluster;
 
 

@@ -156,7 +156,7 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
         return MDV_FAILED;
     }
 
-    mdv_errno err = mdv_tablespace_log_create_table(user->tablespace, 0, (mdv_table_base*)&create_table->table);
+    mdv_errno err = mdv_tablespace_log_create_table(&user->service->storage.tablespace, 0, (mdv_table_base*)&create_table->table);
 
     if (err == MDV_OK)
     {
@@ -187,8 +187,9 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
 mdv_errno mdv_user_init(void *ctx, mdv_conctx *conctx, void *userdata)
 {
     mdv_user *user = ctx;
-    user->tablespace = userdata;
-    user->conctx = conctx;
+
+    user->service   = userdata;
+    user->conctx    = conctx;
 
     MDV_LOGD("User context %p initialize", user);
 

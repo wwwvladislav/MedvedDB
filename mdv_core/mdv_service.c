@@ -6,6 +6,7 @@
 #include "storage/mdv_nodes.h"
 #include "mdv_user.h"
 #include "mdv_peer.h"
+#include "mdv_config.h"
 
 
 enum { MDV_NODES_NUM = 256 };
@@ -26,21 +27,6 @@ static void mdv_service_configure_logging()
             case 'n':   mdv_logf_set_level(ZF_LOG_NONE);    break;
         }
     }
-}
-
-
-static void mdv_cluster_peer_connected(void *userdata, mdv_node const *node)
-{
-    mdv_storage *storage = userdata;
-    (void)mdv_nodes_store(storage, node);
-}
-
-
-static void mdv_cluster_peer_disconnected(void *userdata, mdv_uuid const *uuid)
-{
-    mdv_storage *storage = userdata;
-    (void)storage;
-    (void)uuid;
 }
 
 
@@ -71,15 +57,9 @@ static bool mdv_service_cluster_create(mdv_service *svc)
         },
         .conctx =
         {
-            .userdata = &svc->storage.tablespace,
+            .userdata = svc,
             .size     = sizeof conctx_configs / sizeof *conctx_configs,
             .configs  = conctx_configs
-        },
-        .handlers =
-        {
-            .userdata           = svc->storage.metainf,
-            .peer_connected     = &mdv_cluster_peer_connected,
-            .peer_disconnected  = &mdv_cluster_peer_disconnected
         }
     };
 

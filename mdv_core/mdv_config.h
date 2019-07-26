@@ -27,7 +27,7 @@ typedef struct
     struct
     {
         mdv_string listen;      ///< Server IP and port for listening
-        uint32_t   workers;     ///< Number of threadpool workers
+        uint32_t   workers;     ///< Number of thread pool workers for incoming requests processing
     } server;                   ///< Server settings
 
     struct
@@ -41,6 +41,7 @@ typedef struct
     struct
     {
         mdv_string path;        ///< Directory where the database is placed
+        uint32_t   workers;     ///< Number of thread pool workers for DB update
     } storage;                  ///< Storage settings
 
     struct

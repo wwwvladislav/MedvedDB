@@ -10,6 +10,11 @@
 #include <mdv_limits.h>
 #include <stddef.h>
 #include <string.h>
+#include "storage/mdv_nodes.h"
+
+
+static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid const *uuid, uint32_t *id);
+static void      mdv_peer_disconnected(mdv_peer *peer, mdv_uuid const *uuid);
 
 
 static mdv_errno mdv_peer_reply(mdv_peer *peer, mdv_msg const *msg);
@@ -75,7 +80,7 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 
     peer->peer_uuid = peer_hello->uuid;
 
-    mdv_errno err = peer->conctx->peer_connected(peer->conctx, peer_hello->listen, &peer->peer_uuid, &peer->peer_id);
+    mdv_errno err = mdv_peer_connected(peer, peer_hello->listen, &peer->peer_uuid, &peer->peer_id);
 
     mdv_free(peer_hello, "msg_p2p_hello");
 
@@ -142,7 +147,7 @@ mdv_errno mdv_peer_init(void *ctx, mdv_conctx *conctx, void *userdata)
 
     MDV_LOGD("Peer %p initialize", peer);
 
-    peer->tablespace    = userdata;
+    peer->service       = userdata;
     peer->conctx        = conctx;
     peer->peer_id       = 0;
 
@@ -200,5 +205,43 @@ void mdv_peer_free(void *ctx, mdv_conctx *conctx)
 {
     mdv_peer *peer = ctx;
     MDV_LOGD("Peer %p freed", peer);
-    conctx->peer_disconnected(conctx, &peer->peer_uuid);
+    mdv_peer_disconnected(peer, &peer->peer_uuid);
 }
+
+
+static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid const *uuid, uint32_t *id)
+{
+    mdv_cluster *cluster = peer->conctx->cluster;
+
+    size_t const addr_len = strlen(addr);
+    size_t const node_size = offsetof(mdv_node, addr) + addr_len + 1;
+
+    char buf[node_size];
+
+    mdv_node * node = (mdv_node *)buf;
+
+    node->size      = node_size;
+    node->uuid      = *uuid;
+    node->userdata  = peer;
+    node->id        = 0;
+    node->connected = 1;
+
+    memcpy(node->addr, addr, addr_len + 1);
+
+    mdv_errno err = mdv_tracker_peer_connected(&cluster->tracker, node);
+
+    if (err == MDV_OK)
+        *id = node->id;
+
+    mdv_nodes_store(peer->service->storage.metainf, node);
+
+    return err;
+}
+
+
+static void mdv_peer_disconnected(mdv_peer *peer, mdv_uuid const *uuid)
+{
+    mdv_cluster *cluster = peer->conctx->cluster;
+    mdv_tracker_peer_disconnected(&cluster->tracker, uuid);
+}
+

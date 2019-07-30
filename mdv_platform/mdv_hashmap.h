@@ -1,5 +1,4 @@
 /**
- * @file
  * @brief Hash map.
  */
 #pragma once

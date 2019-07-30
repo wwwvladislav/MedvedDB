@@ -55,7 +55,7 @@ typedef struct
 /// Remember rollback function with 2 arguments
 #define mdv_rollbacker_push_2(rbr, fn, arg1, arg2)                                  \
     {                                                                               \
-        mdv_rollback_op op_##fn = { (mdv_rollback_fn_1)&fn, 2, { arg1, arg2 } };    \
+        mdv_rollback_op op_##fn = { (mdv_rollback_fn_2)&fn, 2, { arg1, arg2 } };    \
         if (!mdv_stack_push(rbr, op_##fn))                                          \
             MDV_LOGE("Rollback stack is full");                                     \
     }
@@ -64,7 +64,7 @@ typedef struct
 /// Remember rollback function with 3 arguments
 #define mdv_rollbacker_push_3(rbr, fn, arg1, arg2, arg3)                                \
     {                                                                                   \
-        mdv_rollback_op op_##fn = { (mdv_rollback_fn_1)&fn, 3, { arg1, arg2, arg3 } };  \
+        mdv_rollback_op op_##fn = { (mdv_rollback_fn_3)&fn, 3, { arg1, arg2, arg3 } };  \
         if (!mdv_stack_push(rbr, op_##fn))                                              \
             MDV_LOGE("Rollback stack is full");                                         \
     }

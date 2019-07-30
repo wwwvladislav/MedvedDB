@@ -1,6 +1,7 @@
 #include "mdv_gossip.h"
 #include "mdv_log.h"
 #include "mdv_alloc.h"
+#include "mdv_algorithm.h"
 
 
 mdv_errno mdv_gossip_broadcast(mdv_msg const *msg,
@@ -16,32 +17,19 @@ mdv_errno mdv_gossip_broadcast(mdv_msg const *msg,
         return MDV_NO_MEM;
     }
 
-    uint32_t union_size = 0, dst_size = 0;
+    uint32_t union_size = 0, diff_size = 0;
     uint32_t *union_ids = tmp;
-    uint32_t *dst_ids = tmp + src->size + dst->size;
+    uint32_t *diff_ids = tmp + src->size + dst->size;
 
-/*
-    uint32_t i = 0, j = 0;
+    mdv_union_and_diff_u32(dst->ids, dst->size,
+                           src->ids, src->size,
+                           union_ids, &union_size,
+                           diff_ids, &diff_size);
 
-    while(i < src->size)
+    if (diff_size)
     {
-        if (src->ids[i] == dst->ids[j])
-        {
-            ++i;
-            ++j;
-            continue;
-        }
-
-        if(src->ids[i] < dst->ids[j])
-        {
-            ++i;
-            MDV_LOGW("Unknown peer id: %u", src->ids[i]);
-            continue;
-        }
-
-        // mdv_errno err = post();
+        // mdv_msg
     }
-*/
 
     mdv_free(tmp, "gossip ids");
 

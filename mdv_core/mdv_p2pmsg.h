@@ -22,5 +22,10 @@ char const *            mdv_p2p_msg_name        (uint32_t id);
 
 bool                    mdv_binn_p2p_hello      (mdv_msg_p2p_hello const *msg, binn *obj);
 mdv_msg_p2p_hello *     mdv_unbinn_p2p_hello    (binn const *obj);
-bool                    mdv_binn_p2p_linkstate  (mdv_msg_p2p_linkstate const *msg, binn *obj);
-mdv_msg_p2p_linkstate * mdv_unbinn_p2p_linkstate(binn const *obj);
+
+
+bool                    mdv_binn_p2p_linkstate              (mdv_msg_p2p_linkstate const *msg, binn *obj);
+mdv_uuid *              mdv_unbinn_p2p_linkstate_peer_1     (binn const *obj);
+mdv_uuid *              mdv_unbinn_p2p_linkstate_peer_2     (binn const *obj);
+bool *                  mdv_unbinn_p2p_linkstate_connected  (binn const *obj);
+uint32_t *              mdv_unbinn_p2p_linkstate_peers_count(binn const *obj);

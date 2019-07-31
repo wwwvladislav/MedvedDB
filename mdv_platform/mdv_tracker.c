@@ -13,9 +13,19 @@ typedef struct
 } mdv_node_id;
 
 
+/// Peer identifier
+typedef struct
+{
+    mdv_uuid   uuid;    ///< Global unique identifier
+    mdv_node  *node;    ///< Cluster node information
+} mdv_peer_id;
+
+
 static mdv_errno  mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node);
 static mdv_node * mdv_tracker_find(mdv_tracker *tracker, mdv_uuid const *uuid);
 static void       mdv_tracker_erase(mdv_tracker *tracker, mdv_node const *node);
+static mdv_errno  mdv_tracker_insert_peer(mdv_tracker *tracker, mdv_node *node);
+static void       mdv_tracker_erase_peer(mdv_tracker *tracker, mdv_uuid const *uuid);
 
 
 static size_t mdv_node_id_hash(int const *id)
@@ -42,7 +52,12 @@ static mdv_errno mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node)
         };
 
         if (mdv_hashmap_insert(tracker->ids, nid))
-            return MDV_OK;
+        {
+            if (mdv_tracker_insert_peer(tracker, &entry->data) == MDV_OK)
+                return MDV_OK;
+
+            mdv_hashmap_erase(tracker->ids, node->id);
+        }
 
         mdv_hashmap_erase(tracker->nodes, node->uuid);
         MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(&node->uuid).ptr);
@@ -54,10 +69,35 @@ static mdv_errno mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node)
 }
 
 
+static mdv_errno mdv_tracker_insert_peer(mdv_tracker *tracker, mdv_node *node)
+{
+    if (node->connected)
+    {
+        mdv_peer_id const peer_id =
+        {
+            .uuid = node->uuid,
+            .node = node
+        };
+
+        if (mdv_hashmap_insert(tracker->peers, peer_id))
+            return MDV_OK;
+    }
+
+    return MDV_OK;
+}
+
+
 static void mdv_tracker_erase(mdv_tracker *tracker, mdv_node const *node)
 {
-    mdv_hashmap_erase(tracker->nodes, node->uuid);
+    mdv_hashmap_erase(tracker->peers, node->uuid);
     mdv_hashmap_erase(tracker->ids, node->id);
+    mdv_hashmap_erase(tracker->nodes, node->uuid);
+}
+
+
+static void mdv_tracker_erase_peer(mdv_tracker *tracker, mdv_uuid const *uuid)
+{
+    mdv_hashmap_erase(tracker->peers, uuid);
 }
 
 
@@ -129,6 +169,32 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker)
 
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tracker->ids_mutex);
 
+
+    if (!mdv_hashmap_init(tracker->peers,
+                          mdv_peer_id,
+                          uuid,
+                          256,
+                          &mdv_uuid_hash,
+                          &mdv_uuid_cmp))
+    {
+        MDV_LOGE("There is no memory for peers");
+        mdv_rollback(rollbacker);
+        return MDV_NO_MEM;
+    }
+
+    mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tracker->peers);
+
+
+    if (mdv_mutex_create(&tracker->peers_mutex) != MDV_OK)
+    {
+        MDV_LOGE("Peers storage mutex not created");
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tracker->peers_mutex);
+
+
     return MDV_OK;
 }
 
@@ -137,10 +203,12 @@ void mdv_tracker_free(mdv_tracker *tracker)
 {
     if (tracker)
     {
-        mdv_hashmap_free(tracker->nodes);
-        mdv_mutex_free(&tracker->nodes_mutex);
         mdv_hashmap_free(tracker->ids);
         mdv_mutex_free(&tracker->ids_mutex);
+        mdv_hashmap_free(tracker->peers);
+        mdv_mutex_free(&tracker->peers_mutex);
+        mdv_hashmap_free(tracker->nodes);
+        mdv_mutex_free(&tracker->nodes_mutex);
         memset(tracker, 0, sizeof *tracker);
     }
 }
@@ -154,34 +222,38 @@ mdv_errno mdv_tracker_peer_connected(mdv_tracker *tracker, mdv_node *new_node)
     {
         if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
         {
-            mdv_node *node = mdv_tracker_find(tracker, &new_node->uuid);
-
-            if (node)
+            if (mdv_mutex_lock(&tracker->peers_mutex) == MDV_OK)
             {
-                if (!node->connected)
+                mdv_node *node = mdv_tracker_find(tracker, &new_node->uuid);
+
+                if (node)
                 {
-                    new_node->id    = node->id;
+                    if (!node->connected)
+                    {
+                        new_node->id    = node->id;
 
-                    node->connected = 1;
-                    node->active    = 1;
-                    node->userdata  = new_node->userdata;
+                        node->connected = 1;
+                        node->active    = 1;
+                        node->userdata  = new_node->userdata;
 
-                    err = MDV_OK;
+                        err = mdv_tracker_insert_peer(tracker, node);
+                    }
+                    else
+                    {
+                        err = MDV_EEXIST;
+                        MDV_LOGD("Connection with '%s' is already exist", mdv_uuid_to_str(&node->uuid).ptr);
+                    }
                 }
                 else
                 {
-                    err = MDV_EEXIST;
-                    MDV_LOGD("Connection with '%s' is already exist", mdv_uuid_to_str(&node->uuid).ptr);
+                    new_node->id = mdv_tracker_new_id(tracker);
+                    new_node->connected = 1;
+                    new_node->active = 1;
+                    err = mdv_tracker_insert(tracker, new_node);
                 }
-            }
-            else
-            {
-                new_node->id = mdv_tracker_new_id(tracker);
-                new_node->connected = 1;
-                new_node->active = 1;
-                err = mdv_tracker_insert(tracker, new_node);
-            }
 
+                mdv_mutex_unlock(&tracker->peers_mutex);
+            }
             mdv_mutex_unlock(&tracker->ids_mutex);
         }
         mdv_mutex_unlock(&tracker->nodes_mutex);
@@ -195,7 +267,7 @@ void mdv_tracker_peer_disconnected(mdv_tracker *tracker, mdv_uuid const *uuid)
 {
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
-        if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
+        if (mdv_mutex_lock(&tracker->peers_mutex) == MDV_OK)
         {
             mdv_node *node = mdv_tracker_find(tracker, uuid);
 
@@ -204,9 +276,10 @@ void mdv_tracker_peer_disconnected(mdv_tracker *tracker, mdv_uuid const *uuid)
                 node->connected = 0;
                 node->active    = 0;
                 node->userdata  = 0;
+                mdv_tracker_erase_peer(tracker, uuid);
             }
 
-            mdv_mutex_unlock(&tracker->ids_mutex);
+            mdv_mutex_unlock(&tracker->peers_mutex);
         }
         mdv_mutex_unlock(&tracker->nodes_mutex);
     }
@@ -233,3 +306,16 @@ void mdv_tracker_append(mdv_tracker *tracker, mdv_node const *node)
     }
 }
 
+
+void mdv_tracker_peers_foreach(mdv_tracker *tracker, void *userdata, void (*fn)(mdv_node *, void *))
+{
+    if (mdv_mutex_lock(&tracker->peers_mutex) == MDV_OK)
+    {
+        mdv_hashmap_foreach(tracker->peers, mdv_peer_id, entry)
+        {
+            mdv_peer_id const *peer_id = &entry->data;
+            fn(peer_id->node, userdata);
+        }
+        mdv_mutex_unlock(&tracker->peers_mutex);
+    }
+}

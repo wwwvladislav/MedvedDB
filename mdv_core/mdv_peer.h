@@ -10,13 +10,13 @@
 #include <mdv_string.h>
 #include <mdv_limits.h>
 #include <mdv_cluster.h>
-#include "mdv_service.h"
+#include "mdv_core.h"
 
 
 /// Peer context used for storing different type of information about active peer (it should be cast to mdv_conctx)
 typedef struct mdv_peer
 {
-    mdv_service        *service;                    ///< service
+    mdv_core           *core;                       ///< core
     mdv_conctx         *conctx;                     ///< connection context
     uint32_t            peer_id;                    ///< peer local numeric id
     mdv_uuid            peer_uuid;                  ///< peer global uuid

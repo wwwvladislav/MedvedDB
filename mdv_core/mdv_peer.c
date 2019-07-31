@@ -147,7 +147,7 @@ mdv_errno mdv_peer_init(void *ctx, mdv_conctx *conctx, void *userdata)
 
     MDV_LOGD("Peer %p initialize", peer);
 
-    peer->service       = userdata;
+    peer->core          = userdata;
     peer->conctx        = conctx;
     peer->peer_id       = 0;
 
@@ -228,12 +228,10 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid c
 
     memcpy(node->addr, addr, addr_len + 1);
 
-    mdv_errno err = mdv_tracker_peer_connected(&cluster->tracker, node);
+    mdv_errno err = mdv_core_peer_connected(peer->core, node);
 
     if (err == MDV_OK)
         *id = node->id;
-
-    mdv_nodes_store(peer->service->storage.metainf, node);
 
     return err;
 }
@@ -241,7 +239,6 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid c
 
 static void mdv_peer_disconnected(mdv_peer *peer, mdv_uuid const *uuid)
 {
-    mdv_cluster *cluster = peer->conctx->cluster;
-    mdv_tracker_peer_disconnected(&cluster->tracker, uuid);
+    mdv_core_peer_disconnected(peer->core, uuid);
 }
 

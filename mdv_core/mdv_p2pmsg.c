@@ -131,6 +131,7 @@ bool mdv_binn_p2p_linkstate(mdv_msg_p2p_linkstate const *msg, binn *obj)
 }
 
 
+/*
 mdv_msg_p2p_linkstate * mdv_unbinn_p2p_linkstate(binn const *obj)
 {
     uint32_t peers_count = 0;
@@ -204,4 +205,63 @@ mdv_msg_p2p_linkstate * mdv_unbinn_p2p_linkstate(binn const *obj)
     }
 
     return msg;
+}
+*/
+
+
+mdv_uuid * mdv_unbinn_p2p_linkstate_peer_1(binn const *obj)
+{
+    static _Thread_local mdv_uuid uuid;
+
+    if (0
+        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&uuid.u64[0])
+        || !binn_object_get_uint64((void*)obj, "U2", (uint64 *)&uuid.u64[1]))
+        return 0;
+
+    return &uuid;
+}
+
+
+mdv_uuid * mdv_unbinn_p2p_linkstate_peer_2(binn const *obj)
+{
+    static _Thread_local mdv_uuid uuid;
+
+    if (0
+        || !binn_object_get_uint64((void*)obj, "U3", (uint64 *)&uuid.u64[0])
+        || !binn_object_get_uint64((void*)obj, "U4", (uint64 *)&uuid.u64[1]))
+        return 0;
+
+    return &uuid;
+}
+
+
+bool * mdv_unbinn_p2p_linkstate_connected(binn const *obj)
+{
+    uint8_t flags = 0;
+
+    if (!binn_object_get_uint8((void*)obj, "F", (unsigned char*)&flags))
+    {
+        MDV_LOGE("p2p_linkstate_connected failed");
+        return 0;
+    }
+
+    static _Thread_local bool connected;
+
+    connected = flags & 1;
+
+    return &connected;
+}
+
+
+uint32_t * mdv_unbinn_p2p_linkstate_peers_count(binn const *obj)
+{
+    static _Thread_local uint32_t peers_count;
+
+    if (!binn_object_get_uint32((void*)obj, "S", &peers_count))
+    {
+        MDV_LOGE("p2p_linkstate_peers_count failed");
+        return 0;
+    }
+
+    return &peers_count;
 }

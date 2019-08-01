@@ -1,5 +1,4 @@
 #include "mdv_threadpool.h"
-#include "mdv_queuefd.h"
 #include "mdv_eventfd.h"
 #include "mdv_threads.h"
 #include "mdv_mutex.h"
@@ -119,7 +118,7 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
     mdv_rollbacker_push(rollbacker, mdv_epoll_close, tp->epollfd);
 
 
-    tp->stopfd = mdv_eventfd();
+    tp->stopfd = mdv_eventfd(true);
 
     if (tp->stopfd == MDV_INVALID_DESCRIPTOR)
     {

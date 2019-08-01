@@ -6,7 +6,7 @@
 
 MU_TEST(platform_eventfd)
 {
-    mdv_descriptor fd = mdv_eventfd();
+    mdv_descriptor fd = mdv_eventfd(true);
 
     mu_check(fd != MDV_INVALID_DESCRIPTOR);
 
@@ -22,12 +22,14 @@ MU_TEST(platform_eventfd)
         written += len;
     }
 
-    uint64_t counter = 0;
+    uint64_t counter = 0, sum = 0;
 
     len = sizeof counter;
-    err = mdv_read(fd, &counter, &len);
-    mu_check(err == MDV_OK);
-    mu_check(counter == data[0] + data[1] + data[2]);
+
+    while(mdv_read(fd, &counter, &len) == MDV_OK)
+        sum += counter;
+
+    mu_check(sum == data[0] + data[1] + data[2]);
 
     len = sizeof counter;
     err = mdv_read(fd, &counter, &len);

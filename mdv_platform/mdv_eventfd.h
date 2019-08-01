@@ -11,10 +11,12 @@
 /**
  * @brief   Create a file descriptor for event notification.
  *
+ * @param semaphore [in] Provide semaphore-like semantics for reads.
+ *
  * @return On success, return a new eventfd file descriptor
  * @return On error, return MDV_INVALID_DESCRIPTOR
  */
-mdv_descriptor mdv_eventfd();
+mdv_descriptor mdv_eventfd(bool semaphore);
 
 /**
  * @brief Closes file descriptor for event notification.

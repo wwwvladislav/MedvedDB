@@ -7,9 +7,14 @@
 #endif
 
 
-mdv_descriptor mdv_eventfd()
+mdv_descriptor mdv_eventfd(bool semaphore)
 {
-    int ret = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    int flags = EFD_CLOEXEC | EFD_NONBLOCK;
+
+    if (semaphore)
+        flags |= EFD_SEMAPHORE;
+
+    int ret = eventfd(0, flags);
 
     if (ret == -1)
     {

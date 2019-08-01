@@ -26,34 +26,35 @@ typedef struct
 
     struct
     {
-        mdv_string listen;      ///< Server IP and port for listening
-        uint32_t   workers;     ///< Number of thread pool workers for incoming requests processing
-    } server;                   ///< Server settings
+        mdv_string listen;          ///< Server IP and port for listening
+        uint32_t   workers;         ///< Number of thread pool workers for incoming requests processing
+    } server;                       ///< Server settings
 
     struct
     {
-        uint32_t retry_interval;///< Interval between reconnections (in seconds)
-        uint32_t keep_idle;     ///< Start keeplives after this period (in seconds)
-        uint32_t keep_count;    ///< Number of keepalives before death
-        uint32_t keep_interval; ///< Interval between keepalives (in seconds)
-    } connection;               ///< Connection settings
+        uint32_t retry_interval;    ///< Interval between reconnections (in seconds)
+        uint32_t keep_idle;         ///< Start keeplives after this period (in seconds)
+        uint32_t keep_count;        ///< Number of keepalives before death
+        uint32_t keep_interval;     ///< Interval between keepalives (in seconds)
+    } connection;                   ///< Connection settings
 
     struct
     {
-        mdv_string path;        ///< Directory where the database is placed
-        uint32_t   workers;     ///< Number of thread pool workers for DB update
-    } storage;                  ///< Storage settings
+        mdv_string path;            ///< Directory where the database is placed
+        uint32_t   workers;         ///< Number of thread pool workers for DB update
+        uint32_t   worker_queues;   ///< Number of queues for worker threads
+    } storage;                      ///< Storage settings
 
     struct
     {
-        uint32_t   batch_size;  ///< Batch size for commit to transaction log
-    } transaction;              ///< Transaction settings
+        uint32_t   batch_size;      ///< Batch size for commit to transaction log
+    } transaction;                  ///< Transaction settings
 
     struct
     {
-        uint32_t    size;       ///< Nimber of defined cluster nodes
+        uint32_t    size;           ///< Nimber of defined cluster nodes
         char const *nodes[MDV_MAX_CONFIGURED_CLUSTER_NODES];    ///< Defined cluster nodes
-    } cluster;                  ///< Cluster settings
+    } cluster;                      ///< Cluster settings
 
     mdv_stack(char, 4 * 1024) mempool;   ///< Memory pool for strings allocation
 } mdv_config;

@@ -16,7 +16,7 @@ MU_TEST(platform_queuefd)
     mu_check(mdv_queuefd_push(queue, n));
     mu_check(mdv_queuefd_push(queue, arr, 3));
 
-    size_t event_count = mdv_queuefd_events_count(queue);
+    size_t event_count = mdv_queuefd_size(queue);
     mu_check(event_count == 4);
 
     int marr[4] = {};

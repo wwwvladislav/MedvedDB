@@ -46,7 +46,6 @@ int    _mdv_queuefd_push_one(mdv_queuefd_base *queue, void const *data, size_t s
 int    _mdv_queuefd_pop_one(mdv_queuefd_base *queue, void *data, size_t size);
 int    _mdv_queuefd_push_multiple(mdv_queuefd_base *queue, void const *data, size_t size);
 int    _mdv_queuefd_pop_multiple(mdv_queuefd_base *queue, void *data, size_t size);
-size_t _mdv_queuefd_events_count(mdv_queuefd_base *queue);
 
 /// @endcond
 
@@ -151,13 +150,3 @@ size_t _mdv_queuefd_events_count(mdv_queuefd_base *queue);
                       mdv_queuefd_pop_one(__VA_ARGS__))
 /// @endcond
 
-
-/**
- * @brief Read number of events written into the queue.
- *
- * @param q [in]      queue
- *
- * @return number of events written into the queue.
- */
-#define mdv_queuefd_events_count(q)                             \
-    _mdv_queuefd_events_count((mdv_queuefd_base *)&(q))

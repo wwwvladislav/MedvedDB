@@ -42,7 +42,7 @@ MU_TEST(platform_threadpool)
     mdv_threadpool *tp = mdv_threadpool_create(&config);
     mu_check(tp);
 
-    mdv_descriptor fd[] = { mdv_eventfd(), mdv_eventfd(), mdv_eventfd() };
+    mdv_descriptor fd[] = { mdv_eventfd(false), mdv_eventfd(false), mdv_eventfd(false) };
 
     mu_check(fd[0] != MDV_INVALID_DESCRIPTOR);
     mu_check(fd[1] != MDV_INVALID_DESCRIPTOR);

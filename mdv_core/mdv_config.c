@@ -44,6 +44,11 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         config->storage.workers = atoi(value);
         MDV_LOGI("Storage workers: %u", config->storage.workers);
     }
+    else if (MDV_CFG_MATCH("storage", "worker_queues"))
+    {
+        config->storage.worker_queues = atoi(value);
+        MDV_LOGI("Storage worker queues: %u", config->storage.worker_queues);
+    }
 
     else if (MDV_CFG_MATCH("log", "level"))
     {
@@ -119,6 +124,7 @@ static void mdv_set_config_defaults()
 
     MDV_CONFIG.storage.path                 = mdv_str_static("./data");
     MDV_CONFIG.storage.workers              = 4;
+    MDV_CONFIG.storage.worker_queues        = 4;
 
     MDV_CONFIG.transaction.batch_size       = 1000;
 

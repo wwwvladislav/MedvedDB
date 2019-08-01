@@ -209,14 +209,13 @@ typedef struct mdv_map_foreach_entry
 
 
 #define mdv_map_foreach_explicit(transaction, map, entry, op_first, op_next)    \
-    for(mdv_map_foreach_entry entry = {                                         \
-        .cursor = mdv_cursor_open_explicit(&map,                                \
+    mdv_map_foreach_entry entry;                                                \
+    entry.cursor = mdv_cursor_open_explicit(&map,                               \
                                     &transaction,                               \
                                     &entry.key,                                 \
                                     &entry.value,                               \
-                                    op_first)                                   \
-        }                                                                       \
-        ; mdv_cursor_ok(entry.cursor);                                          \
+                                    op_first);                                  \
+    for(; mdv_cursor_ok(entry.cursor);                                          \
         !mdv_cursor_get(&entry.cursor,                                          \
                         &entry.key,                                             \
                         &entry.value,                                           \

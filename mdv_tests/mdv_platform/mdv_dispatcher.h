@@ -53,7 +53,7 @@ MU_TEST(platform_dispatcher)
         { 3, &mdv_dispatcher_handler_3, 0 }
     };
 
-    mdv_descriptor fd = mdv_eventfd();
+    mdv_descriptor fd = mdv_eventfd(false);
     mu_check(fd != MDV_INVALID_DESCRIPTOR);
 
     mdv_msg msg =

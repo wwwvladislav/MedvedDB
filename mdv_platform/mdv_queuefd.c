@@ -24,7 +24,8 @@ int _mdv_queuefd_init(mdv_queuefd_base *queue)
     }
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &queue->wmutex);
 
-    queue->event = mdv_eventfd();
+    queue->event = mdv_eventfd(true);
+
     if (queue->event == MDV_INVALID_DESCRIPTOR)
     {
         MDV_LOGE("queuefd_init failed");
@@ -111,15 +112,5 @@ int _mdv_queuefd_pop_multiple(mdv_queuefd_base *queue, void *data, size_t size)
     }
 
     return ret;
-}
-
-
-size_t _mdv_queuefd_events_count(mdv_queuefd_base *queue)
-{
-    uint64_t n = 0;
-    size_t len = sizeof n;
-    return mdv_read(queue->event, &n, &len) == MDV_OK && len == sizeof n
-            ? n
-            : 0;
 }
 

@@ -28,6 +28,15 @@ typedef struct mdv_jobber_config
 typedef struct mdv_jobber mdv_jobber;
 
 
+/// Job
+typedef struct
+{
+    void (*fn)();           ///< Job function
+    size_t  args_count;     ///< Number of function arguments
+    void *  arg[1];         ///< Function arguments
+} mdv_job;
+
+
 /**
  * @brief Create and start new job scheduler
  *

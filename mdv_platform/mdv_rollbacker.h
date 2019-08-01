@@ -24,8 +24,8 @@ typedef void(*mdv_rollback_fn_3)(void *, void *, void *);
 typedef struct
 {
     void (*rollback)();     ///< Rollback function
-    size_t  args_count;     ///< Number of rollback function argumants
-    void *  arg[3];         ///< Rollback function argumants
+    size_t  args_count;     ///< Number of rollback function arguments
+    void *  arg[3];         ///< Rollback function arguments
 } mdv_rollback_op;
 
 

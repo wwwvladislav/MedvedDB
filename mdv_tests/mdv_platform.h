@@ -14,6 +14,7 @@
 #include "mdv_platform/mdv_threadpool.h"
 #include "mdv_platform/mdv_chaman.h"
 #include "mdv_platform/mdv_dispatcher.h"
+#include "mdv_platform/mdv_jobber.h"
 #include "mdv_platform/mdv_algorithm.h"
 
 
@@ -34,5 +35,6 @@ MU_TEST_SUITE(platform)
     MU_RUN_TEST(platform_threadpool);
     MU_RUN_TEST(platform_chaman);
     MU_RUN_TEST(platform_dispatcher);
+    MU_RUN_TEST(platform_jobber);
     MU_RUN_TEST(platform_algorithm);
 }

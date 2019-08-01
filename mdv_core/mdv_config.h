@@ -55,7 +55,7 @@ typedef struct
         char const *nodes[MDV_MAX_CONFIGURED_CLUSTER_NODES];    ///< Defined cluster nodes
     } cluster;                  ///< Cluster settings
 
-    mdv_stack(uint8_t, 4 * 1024) mempool;   ///< Memory pool for strings allocation
+    mdv_stack(char, 4 * 1024) mempool;   ///< Memory pool for strings allocation
 } mdv_config;
 
 

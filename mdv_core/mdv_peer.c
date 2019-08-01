@@ -58,31 +58,41 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
         return MDV_FAILED;
     }
 
-    mdv_msg_p2p_hello *peer_hello = mdv_unbinn_p2p_hello(&binn_msg);
-
+/*
     if (!peer_hello)
     {
         MDV_LOGE("Invalid '%s' message", mdv_p2p_msg_name(msg->hdr.id));
         binn_free(&binn_msg);
         return MDV_FAILED;
     }
+*/
 
-    binn_free(&binn_msg);
+    mdv_uuid *uuid = mdv_unbinn_p2p_hello_uuid(&binn_msg);
+    uint32_t *version = mdv_unbinn_p2p_hello_version(&binn_msg);
+    char const *listen = mdv_unbinn_p2p_hello_listen(&binn_msg);
 
-    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer_hello->uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
-
-    if(peer_hello->version != MDV_VERSION)
+    if (!uuid
+        || !version
+        || !listen)
     {
-        MDV_LOGE("Invalid peer version");
-        mdv_free(peer_hello, "msg_p2p_hello");
+        binn_free(&binn_msg);
         return MDV_FAILED;
     }
 
-    peer->peer_uuid = peer_hello->uuid;
+    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
-    mdv_errno err = mdv_peer_connected(peer, peer_hello->listen, &peer->peer_uuid, &peer->peer_id);
+    if(*version != MDV_VERSION)
+    {
+        MDV_LOGE("Invalid peer version");
+        binn_free(&binn_msg);
+        return MDV_FAILED;
+    }
 
-    mdv_free(peer_hello, "msg_p2p_hello");
+    peer->peer_uuid = *uuid;
+
+    mdv_errno err = mdv_peer_connected(peer, listen, uuid, &peer->peer_id);
+
+    binn_free(&binn_msg);
 
     if (err != MDV_OK)
     {

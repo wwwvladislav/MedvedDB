@@ -170,12 +170,12 @@ void mdv_dispatcher_set_fd(mdv_dispatcher *pd, mdv_descriptor fd)
 
 void mdv_dispatcher_close_fd(mdv_dispatcher *pd)
 {
-    pd->fd = MDV_INVALID_DESCRIPTOR;
+    pd->fd = (void*)MDV_INVALID_DESCRIPTOR;
 
     if (mdv_mutex_lock(&pd->requests_mutex) == MDV_OK)
     {
         mdv_hashmap_foreach(pd->requests, mdv_request, entry)
-            mdv_condvar_signal(entry->data.cv);
+            mdv_condvar_signal(entry->cv);
         mdv_mutex_unlock(&pd->requests_mutex);
     }
 }
@@ -216,7 +216,7 @@ mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg *req, mdv_msg *resp, s
             {
                 MDV_LOGE("No memory for new request");
                 err = MDV_NO_MEM;
-                mdv_stack_push(pd->cvs, mreq.cv);
+                (void)mdv_stack_push(pd->cvs, mreq.cv);
                 mdv_hashmap_erase(pd->requests, mreq.request_id);
             }
         }
@@ -245,7 +245,7 @@ mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg *req, mdv_msg *resp, s
 
             if (mdv_mutex_lock(&pd->requests_mutex) == MDV_OK)
             {
-                mdv_stack_push(pd->cvs, entry->data.cv);
+                (void)mdv_stack_push(pd->cvs, entry->data.cv);
                 mdv_hashmap_erase(pd->requests, entry->data.request_id);
                 mdv_mutex_unlock(&pd->requests_mutex);
             }
@@ -288,7 +288,7 @@ mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg *req, mdv_msg *resp, s
                     MDV_LOGE("Response waiting failed");
             }
 
-            mdv_stack_push(pd->cvs, entry->data.cv);
+            (void)mdv_stack_push(pd->cvs, entry->data.cv);
             mdv_hashmap_erase(pd->requests, entry->data.request_id);
 
             mdv_mutex_unlock(&pd->requests_mutex);
@@ -366,7 +366,7 @@ mdv_errno mdv_dispatcher_read(mdv_dispatcher *pd)
             {
                 MDV_LOGW("Response is discarded due to conditional signalization fail");
                 mdv_free_msg(req->resp);
-                mdv_stack_push(pd->cvs, req->cv);
+                (void)mdv_stack_push(pd->cvs, req->cv);
                 mdv_hashmap_erase(pd->requests, req->request_id);
             }
         }

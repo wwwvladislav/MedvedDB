@@ -297,8 +297,8 @@ mdv_errno mdv_threadpool_foreach(mdv_threadpool *threadpool, void (*fn)(mdv_desc
     {
         mdv_hashmap_foreach(threadpool->tasks, mdv_threadpool_task_base, entry)
         {
-            if (entry->data.fd != threadpool->stopfd)
-                fn(entry->data.fd, entry->data.context_size ? entry->data.context : 0);
+            if (entry->fd != threadpool->stopfd)
+                fn(entry->fd, entry->context_size ? entry->context : 0);
         }
 
         mdv_mutex_unlock(&threadpool->tasks_mtx);

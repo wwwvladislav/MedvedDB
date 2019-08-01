@@ -39,7 +39,7 @@ MU_TEST(platform_queue)
 
     mu_check(mdv_queue_empty(queue));
 
-    int arr_0[] = { n++, n++ };
+    int arr_0[] = { n, n + 1 }; n += 2;
     mu_check(mdv_queue_push(queue, arr_0, 2));
 
     mu_check(mdv_queue_pop(queue, m) && m == 5);
@@ -47,7 +47,7 @@ MU_TEST(platform_queue)
 
     mu_check(mdv_queue_empty(queue));
 
-    int arr_1[] = { n++, n++ };
+    int arr_1[] = { n, n + 1 }; n += 2;
     mu_check(mdv_queue_push(queue, arr_1, 2));
 
     int arr_2[2];

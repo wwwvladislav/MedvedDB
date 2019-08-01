@@ -120,8 +120,14 @@ void                  _mdv_list_pop_back(mdv_list *l);
  * @param type [in]     list item type
  * @param entry [out]   list entry
  */
-#define mdv_list_foreach(l, type, entry)    \
-    for(mdv_list_entry(type) *entry = (void*)(l).next; entry; entry = (void*)entry->next)
+#define mdv_list_foreach(l, type, entry)                                                                            \
+    for(type *entry = (void*)(l).next                                                                               \
+            ? (type *)((mdv_list_entry_base*)(void*)(l).next)->data: 0;                                             \
+            entry;                                                                                                  \
+            entry = ((mdv_list_entry_base*)((void*)entry - offsetof(mdv_list_entry_base, data)))->next              \
+                ? (type *)((mdv_list_entry_base*)((void*)entry - offsetof(mdv_list_entry_base, data)))->next->data  \
+                : 0                                                                                                 \
+        )
 
 
 /**

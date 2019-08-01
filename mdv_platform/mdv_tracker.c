@@ -313,9 +313,22 @@ void mdv_tracker_peers_foreach(mdv_tracker *tracker, void *userdata, void (*fn)(
     {
         mdv_hashmap_foreach(tracker->peers, mdv_peer_id, entry)
         {
-            mdv_peer_id const *peer_id = &entry->data;
-            fn(peer_id->node, userdata);
+            fn(entry->node, userdata);
         }
         mdv_mutex_unlock(&tracker->peers_mutex);
     }
+}
+
+
+size_t mdv_tracker_peers_count(mdv_tracker *tracker)
+{
+    size_t peers_count = 0;
+
+    if (mdv_mutex_lock(&tracker->peers_mutex) == MDV_OK)
+    {
+        peers_count = mdv_hashmap_size(tracker->peers);
+        mdv_mutex_unlock(&tracker->peers_mutex);
+    }
+
+    return peers_count;
 }

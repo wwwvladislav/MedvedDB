@@ -17,7 +17,7 @@ MU_TEST(platform_list)
 
     mdv_list_foreach(list, int, entry)
     {
-        mu_check(entry->data == n++);
+        mu_check(*entry == n++);
     }
 
     mdv_list_remove(list, list.next->next);
@@ -26,7 +26,7 @@ MU_TEST(platform_list)
 
     mdv_list_foreach(list, int, entry)
     {
-        mu_check(entry->data == n);
+        mu_check(*entry == n);
         n += 2;
     }
 
@@ -36,7 +36,7 @@ MU_TEST(platform_list)
 
     mdv_list_foreach(list, int, entry)
     {
-        mu_check(entry->data == n);
+        mu_check(*entry == n);
         n++;
     }
 

@@ -142,8 +142,8 @@ int _mdv_queue_pop_multiple(mdv_queue_base *queue, void *data, size_t size)
 
 size_t _mdv_queue_size(mdv_queue_base const *queue)
 {
-    size_t const head = atomic_load_explicit(&queue->head, memory_order_relaxed);
-    size_t const tail = atomic_load_explicit(&queue->tail, memory_order_relaxed);
+    size_t const head = atomic_load_explicit((atomic_int_fast32_t*)&queue->head, memory_order_relaxed);
+    size_t const tail = atomic_load_explicit((atomic_int_fast32_t*)&queue->tail, memory_order_relaxed);
     size_t const capacity = queue->capacity + 1;
 
     return head <= tail
@@ -160,7 +160,7 @@ size_t _mdv_queue_free_space(mdv_queue_base const *queue)
 
 int _mdv_queue_empty(mdv_queue_base const *queue)
 {
-    size_t const head = atomic_load_explicit(&queue->head, memory_order_relaxed);
-    size_t const tail = atomic_load_explicit(&queue->tail, memory_order_relaxed);
+    size_t const head = atomic_load_explicit((atomic_int_fast32_t*)&queue->head, memory_order_relaxed);
+    size_t const tail = atomic_load_explicit((atomic_int_fast32_t*)&queue->tail, memory_order_relaxed);
     return head == tail;
 }

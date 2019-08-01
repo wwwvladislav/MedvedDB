@@ -18,11 +18,8 @@
 typedef void* mdv_descriptor;
 
 
-/// Predefined descriptors.
-enum mdv_descriptors
-{
-    MDV_INVALID_DESCRIPTOR = 0      ///< Invalid file descriptor.
-};
+/// Predefined descriptors. Invalid file descriptor.
+#define MDV_INVALID_DESCRIPTOR 0
 
 
 /**

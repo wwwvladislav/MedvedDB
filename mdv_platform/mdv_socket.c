@@ -53,6 +53,8 @@ static char const * mdv_socket_type2str(mdv_socket_type t)
     {
         case MDV_SOCK_STREAM:   return "tcp";
         case MDV_SOCK_DGRAM:    return "udp";
+        default:
+            break;
     }
     return "";
 }
@@ -142,7 +144,8 @@ mdv_string mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr)
     }
 
     static _Thread_local char buf[MDV_ADDR_LEN_MAX];
-    buf[0];
+
+    buf[0] = 0;
 
     mdv_string str = mdv_str_static(buf);
 

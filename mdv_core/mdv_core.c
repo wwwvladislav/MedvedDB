@@ -128,23 +128,21 @@ void mdv_core_connect(mdv_core *core)
 mdv_errno mdv_core_peer_connected(mdv_core *core, mdv_node *new_node)
 {
     mdv_errno err = mdv_tracker_peer_connected(&core->cluster.tracker, new_node);
+
     mdv_nodes_store(core->storage.metainf, new_node);
 
     // Link state notification broadcast
 
-    static _Thread_local mdv_gossip_peer tmp_arr[MDV_NODES_NUM];
+    mdv_gossip_peers *peers = mdv_gossip_peers_get(&core->cluster.tracker);
 
-    mdv_gossip_peers peers =
+    if (peers)
     {
-        .size = sizeof tmp_arr / sizeof *tmp_arr,
-        .peers = tmp_arr
-    };
+        for (uint32_t i = 0; i < peers->size; ++i)
+        {
+            MDV_LOGI("Peer broadcast: uid=%u, lid=%u", peers->peers[i].uid, peers->peers[i].lid);
+        }
 
-    mdv_gossip_peers_get(&core->cluster.tracker, &peers);
-
-    for (uint32_t i = 0; i < peers.size; ++i)
-    {
-        MDV_LOGI("Peer broadcast: uid=%u, lid=%u", peers.peers[i].uid, peers.peers[i].lid);
+        mdv_gossip_peers_free(peers);
     }
 
 /*

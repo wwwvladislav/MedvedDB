@@ -200,19 +200,23 @@ bool        mdv_cursor_get              (mdv_cursor *pcursor, mdv_data *key, mdv
 #define     mdv_cursor_ok(c)            ((c).pstorage != 0 && (c).pcursor != 0)
 
 
+typedef struct mdv_map_foreach_entry
+{
+    mdv_cursor      cursor;
+    mdv_data        key;
+    mdv_data        value;
+} mdv_map_foreach_entry;
+
+
 #define mdv_map_foreach_explicit(transaction, map, entry, op_first, op_next)    \
-    for(struct {                                                                \
-            mdv_cursor      cursor;                                             \
-            mdv_data        key;                                                \
-            mdv_data        value;                                              \
-        } entry = {                                                             \
-            mdv_cursor_open_explicit(&map,                                      \
-                                     &transaction,                              \
-                                     &entry.key,                                \
-                                     &entry.value,                              \
-                                     op_first)                                  \
-        };                                                                      \
-        mdv_cursor_ok(entry.cursor);                                            \
+    for(mdv_map_foreach_entry entry = {                                         \
+        .cursor = mdv_cursor_open_explicit(&map,                                \
+                                    &transaction,                               \
+                                    &entry.key,                                 \
+                                    &entry.value,                               \
+                                    op_first)                                   \
+        }                                                                       \
+        ; mdv_cursor_ok(entry.cursor);                                          \
         !mdv_cursor_get(&entry.cursor,                                          \
                         &entry.key,                                             \
                         &entry.value,                                           \

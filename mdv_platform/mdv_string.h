@@ -55,7 +55,7 @@ typedef struct
     mdv_stack_free_space(stack) < mdv_str_len(__VA_ARGS__)                  \
     || mdv_stack_top(stack) + 1 != dst.ptr + dst.size                       \
         ? (mdv_string)mdv_str_null                                          \
-        : (mdv_stack_pop(stack),                                            \
-           mdv_stack_push_all(stack, mdv_str_expand(__VA_ARGS__)),          \
-           mdv_stack_push(stack, (char)0),                                  \
+        : ((void)mdv_stack_pop(stack),                                      \
+           (void)mdv_stack_push_all(stack, mdv_str_expand(__VA_ARGS__)),    \
+           (void)mdv_stack_push(stack, (char)0),                            \
            (mdv_string) { dst.size + mdv_str_len(__VA_ARGS__), dst.ptr })

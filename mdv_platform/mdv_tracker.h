@@ -98,3 +98,13 @@ void mdv_tracker_append(mdv_tracker *tracker, mdv_node const *node);
  */
 void mdv_tracker_peers_foreach(mdv_tracker *tracker, void *userdata, void (*fn)(mdv_node *, void *));
 
+
+/**
+ * @brief Return active connected peers count.
+ *
+ * @param tracker [in]          Topology tracker
+ *
+ * @return peers count
+ */
+size_t mdv_tracker_peers_count(mdv_tracker *tracker);
+

@@ -54,7 +54,7 @@ bool mdv_mkdir(char const *str)
 
     bool const is_cur_dir = *str != '/' && *str != '.';
 
-    mdv_stack(char, len + 1 + is_cur_dir) mpool;
+    mdv_stack(char, MDV_PATH_MAX + 2) mpool;
     mdv_stack_clear(mpool);
 
     mdv_string path = mdv_str_pdup(mpool, is_cur_dir ? "." : "");
@@ -155,7 +155,7 @@ bool mdv_rmdir(char const *path)
 
     static mdv_string const dir_delimeter = mdv_str_static("/");
 
-    mdv_stack_push(dirs, root_dir);
+    (void)mdv_stack_push(dirs, root_dir);
 
     do
     {
@@ -175,8 +175,8 @@ bool mdv_rmdir(char const *path)
             }
 
             closedir(dir->pdir);
-            mdv_stack_pop(dirs);
-            mdv_stack_pop(mpool, dir->dir_name_len);
+            (void)mdv_stack_pop(dirs);
+            (void)mdv_stack_pop(mpool, dir->dir_name_len);
 
             continue;
         }
@@ -204,7 +204,7 @@ bool mdv_rmdir(char const *path)
             }
 
             dir_entry subdir = { pdir, subdir_path, dlen + 1 };
-            mdv_stack_push(dirs, subdir);
+            (void)mdv_stack_push(dirs, subdir);
 
             continue;
         }
@@ -222,7 +222,7 @@ bool mdv_rmdir(char const *path)
                 return false;
             }
 
-            mdv_stack_pop(mpool, dlen + 1);
+            (void)mdv_stack_pop(mpool, dlen + 1);
         }
     }
     while(!mdv_stack_empty(dirs));

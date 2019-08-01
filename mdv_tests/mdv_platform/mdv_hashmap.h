@@ -38,7 +38,7 @@ MU_TEST(platform_hashmap)
 
     mdv_hashmap_foreach(map, map_entry, entry)
     {
-        mu_check(entry->data.key == s && entry->data.val == s);
+        mu_check(entry->key == s && entry->val == s);
         ++s;
     }
 

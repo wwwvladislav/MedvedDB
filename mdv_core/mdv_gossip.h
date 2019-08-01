@@ -27,9 +27,24 @@ typedef struct mdv_gossip_peer
 /// Peers list
 typedef struct mdv_gossip_peers
 {
-    uint32_t         size;          ///< Peers list size
-    mdv_gossip_peer *peers;         ///< Peers in ascending order of identifiers
+    uint32_t        size;       ///< Peers list size
+    mdv_gossip_peer peers[1];   ///< Peers in ascending order of identifiers
 } mdv_gossip_peers;
 
 
-void mdv_gossip_peers_get(mdv_tracker *tracker, mdv_gossip_peers *peers);
+/**
+ * @brief Return active connected peers list
+ *
+ * @param tracker [in]          Topology tracker
+ *
+ * @return active connected peers list or NULL if error occurred
+ */
+mdv_gossip_peers * mdv_gossip_peers_get(mdv_tracker *tracker);
+
+
+/**
+ * @brief Free peers list allocated by mdv_gossip_peers_get()
+ *
+ * @param peers [in] peers list
+ */
+void mdv_gossip_peers_free(mdv_gossip_peers *peers);

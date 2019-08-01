@@ -39,45 +39,47 @@ bool mdv_binn_p2p_hello(mdv_msg_p2p_hello const *msg, binn *obj)
 }
 
 
-mdv_msg_p2p_hello * mdv_unbinn_p2p_hello(binn const *obj)
+uint32_t * mdv_unbinn_p2p_hello_version(binn const *obj)
 {
-    uint32_t    version;
-    mdv_uuid    uuid;
-    char       *listen;
+    static _Thread_local uint32_t version;
+
+    if (!binn_object_get_uint32((void*)obj, "V", &version))
+    {
+        MDV_LOGE("unbinn_p2p_hello failed");
+        return 0;
+    }
+
+    return &version;
+}
+
+
+mdv_uuid * mdv_unbinn_p2p_hello_uuid(binn const *obj)
+{
+    static _Thread_local mdv_uuid uuid;
 
     if (0
-        || !binn_object_get_uint32((void*)obj, "V", &version)
         || !binn_object_get_uint64((void*)obj, "U0", (uint64 *)&uuid.u64[0])
-        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&uuid.u64[1])
-        || !binn_object_get_str((void*)obj, "L", &listen))
+        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&uuid.u64[1]))
     {
         MDV_LOGE("unbinn_p2p_hello failed");
         return 0;
     }
 
-    if (!listen)
+    return &uuid;
+}
+
+
+char const * mdv_unbinn_p2p_hello_listen(binn const *obj)
+{
+    static _Thread_local char *listen = 0;
+
+    if (!binn_object_get_str((void*)obj, "L", &listen))
     {
         MDV_LOGE("unbinn_p2p_hello failed");
         return 0;
     }
 
-    size_t const listen_len = strlen(listen);
-
-    mdv_msg_p2p_hello *msg = (mdv_msg_p2p_hello *)mdv_alloc(sizeof(mdv_msg_p2p_hello) + listen_len + 1, "msg_p2p_hello");
-
-    if (!msg)
-    {
-        MDV_LOGE("unbinn_p2p_hello failed");
-        return 0;
-    }
-
-    msg->version = version;
-    msg->uuid = uuid;
-    msg->listen = (char*)(msg + 1);
-
-    memcpy(msg->listen, listen, listen_len + 1);
-
-    return msg;
+    return listen;
 }
 
 
@@ -216,7 +218,10 @@ mdv_uuid * mdv_unbinn_p2p_linkstate_peer_1(binn const *obj)
     if (0
         || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&uuid.u64[0])
         || !binn_object_get_uint64((void*)obj, "U2", (uint64 *)&uuid.u64[1]))
+    {
+        MDV_LOGE("p2p_linkstate_peer_1 failed");
         return 0;
+    }
 
     return &uuid;
 }
@@ -229,7 +234,10 @@ mdv_uuid * mdv_unbinn_p2p_linkstate_peer_2(binn const *obj)
     if (0
         || !binn_object_get_uint64((void*)obj, "U3", (uint64 *)&uuid.u64[0])
         || !binn_object_get_uint64((void*)obj, "U4", (uint64 *)&uuid.u64[1]))
+    {
+        MDV_LOGE("p2p_linkstate_peer_2 failed");
         return 0;
+    }
 
     return &uuid;
 }

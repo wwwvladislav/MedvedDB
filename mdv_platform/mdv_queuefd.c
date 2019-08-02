@@ -49,7 +49,7 @@ void _mdv_queuefd_free(mdv_queuefd_base *queue)
 }
 
 
-int _mdv_queuefd_push_one(mdv_queuefd_base *queue, void const *data, size_t size)
+int _mdv_queuefd_push(mdv_queuefd_base *queue, void const *data, size_t size)
 {
     int ret = 0;
 
@@ -68,47 +68,21 @@ int _mdv_queuefd_push_one(mdv_queuefd_base *queue, void const *data, size_t size
 }
 
 
-int _mdv_queuefd_pop_one(mdv_queuefd_base *queue, void *data, size_t size)
+int _mdv_queuefd_pop(mdv_queuefd_base *queue, void *data, size_t size)
 {
     int ret = 0;
 
     if (mdv_mutex_lock(&queue->rmutex) == MDV_OK)
     {
-        ret = _mdv_queue_pop_one(&queue->queue, data, size);
-        mdv_mutex_unlock(&queue->rmutex);
-    }
+        uint64_t n;
+        size_t len = sizeof n;
 
-    return ret;
-}
-
-
-int _mdv_queuefd_push_multiple(mdv_queuefd_base *queue, void const *data, size_t size)
-{
-    int ret = 0;
-
-    if (mdv_mutex_lock(&queue->wmutex) == MDV_OK)
-    {
-        if (_mdv_queue_push_multiple(&queue->queue, data, size))
+        if (mdv_read(queue->event, &n, &len) == MDV_OK && len == sizeof n)
         {
-            uint64_t n = size / queue->queue.item_size;
-            size_t len = sizeof n;
-            ret = mdv_write(queue->event, &n, &len) == MDV_OK && len == sizeof n;
+            ret = _mdv_queue_pop_one(&queue->queue, data, size);
         }
-        mdv_mutex_unlock(&queue->wmutex);
-    }
 
-    return ret;
-}
-
-
-int _mdv_queuefd_pop_multiple(mdv_queuefd_base *queue, void *data, size_t size)
-{
-    int ret = 0;
-
-    if (mdv_mutex_lock(&queue->wmutex) == MDV_OK)
-    {
-        ret = _mdv_queue_pop_multiple(&queue->queue, data, size);
-        mdv_mutex_unlock(&queue->wmutex);
+        mdv_mutex_unlock(&queue->rmutex);
     }
 
     return ret;

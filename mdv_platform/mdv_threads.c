@@ -136,3 +136,8 @@ mdv_errno mdv_thread_join(mdv_thread thread)
     return MDV_OK;
 }
 
+
+void mdv_thread_yield()
+{
+    pthread_yield();
+}

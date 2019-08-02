@@ -14,14 +14,19 @@ MU_TEST(platform_queuefd)
     int arr[] = { 1, 2, 3 };
 
     mu_check(mdv_queuefd_push(queue, n));
-    mu_check(mdv_queuefd_push(queue, arr, 3));
+    mu_check(mdv_queuefd_push(queue, arr[0]));
+    mu_check(mdv_queuefd_push(queue, arr[1]));
+    mu_check(mdv_queuefd_push(queue, arr[2]));
 
     size_t event_count = mdv_queuefd_size(queue);
     mu_check(event_count == 4);
 
     int marr[4] = {};
 
-    mu_check(mdv_queuefd_pop(queue, marr, event_count));
+    mu_check(mdv_queuefd_pop(queue, marr[0]));
+    mu_check(mdv_queuefd_pop(queue, marr[1]));
+    mu_check(mdv_queuefd_pop(queue, marr[2]));
+    mu_check(mdv_queuefd_pop(queue, marr[3]));
 
     mu_check(marr[0] == 0 &&
              marr[1] == 1 &&

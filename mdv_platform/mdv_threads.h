@@ -79,3 +79,8 @@ int mdv_thread_equal(mdv_thread t1, mdv_thread t2);
  */
 mdv_errno mdv_thread_join(mdv_thread thread);
 
+
+/**
+ * @brief The thread is placed at the end of the run queue for its static priority and another thread is scheduled to run.
+ */
+void mdv_thread_yield();

@@ -42,10 +42,8 @@ typedef struct
 
 int    _mdv_queuefd_init(mdv_queuefd_base *queue);
 void   _mdv_queuefd_free(mdv_queuefd_base *queue);
-int    _mdv_queuefd_push_one(mdv_queuefd_base *queue, void const *data, size_t size);
-int    _mdv_queuefd_pop_one(mdv_queuefd_base *queue, void *data, size_t size);
-int    _mdv_queuefd_push_multiple(mdv_queuefd_base *queue, void const *data, size_t size);
-int    _mdv_queuefd_pop_multiple(mdv_queuefd_base *queue, void *data, size_t size);
+int    _mdv_queuefd_push(mdv_queuefd_base *queue, void const *data, size_t size);
+int    _mdv_queuefd_pop(mdv_queuefd_base *queue, void *data, size_t size);
 
 /// @endcond
 
@@ -96,26 +94,13 @@ int    _mdv_queuefd_pop_multiple(mdv_queuefd_base *queue, void *data, size_t siz
 
 
 /// @cond Doxygen_Suppress
-#define mdv_queuefd_push_multiple(q, items, count)      \
-    _mdv_queuefd_push_multiple((mdv_queuefd_base *)&(q), items, count * sizeof(*items))
-
-
-#define mdv_queuefd_pop_multiple(q, items, count)       \
-    _mdv_queuefd_pop_multiple((mdv_queuefd_base *)&(q), items, count * sizeof(*items))
-
 
 #define mdv_queuefd_push_one(q, item)                   \
-    _mdv_queuefd_push_one((mdv_queuefd_base *)&(q), &(item), sizeof(item))
+    _mdv_queuefd_push((mdv_queuefd_base *)&(q), &(item), sizeof(item))
 
 
 #define mdv_queuefd_pop_one(q, item)                    \
-    _mdv_queuefd_pop_one((mdv_queuefd_base *)&(q), &(item), sizeof(item))
-
-
-#define mdv_queuefd_push_any(q, items, count, M, ...) M
-
-
-#define mdv_queuefd_pop_any(q, items, count, M, ...) M
+    _mdv_queuefd_pop((mdv_queuefd_base *)&(q), &(item), sizeof(item))
 
 
 /**
@@ -129,9 +114,7 @@ int    _mdv_queuefd_pop_multiple(mdv_queuefd_base *queue, void *data, size_t siz
  * @return On error, return zero
  */
 #define mdv_queuefd_push(...)                                       \
-    mdv_queuefd_push_any(__VA_ARGS__,                               \
-                       mdv_queuefd_push_multiple(__VA_ARGS__),      \
-                       mdv_queuefd_push_one(__VA_ARGS__))
+    mdv_queuefd_push_one(__VA_ARGS__)
 
 
 /**
@@ -145,8 +128,7 @@ int    _mdv_queuefd_pop_multiple(mdv_queuefd_base *queue, void *data, size_t siz
  * @return On error, return zero
  */
 #define mdv_queuefd_pop(...)                                    \
-    mdv_queuefd_pop_any(__VA_ARGS__,                            \
-                      mdv_queuefd_pop_multiple(__VA_ARGS__),    \
-                      mdv_queuefd_pop_one(__VA_ARGS__))
+    mdv_queuefd_pop_one(__VA_ARGS__)
+
 /// @endcond
 

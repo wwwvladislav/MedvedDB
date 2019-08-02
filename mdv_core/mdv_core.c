@@ -4,7 +4,7 @@
 #include "mdv_config.h"
 #include "mdv_p2pmsg.h"
 #include "mdv_gossip.h"
-#include "storage/mdv_nodes.h"
+#include "storage/async/mdv_nodes.h"
 #include <mdv_log.h>
 #include <mdv_messages.h>
 #include <mdv_rollbacker.h>
@@ -179,10 +179,11 @@ mdv_errno mdv_core_peer_connected(mdv_core *core, mdv_node *new_node)
 {
     mdv_errno err = mdv_tracker_peer_connected(&core->cluster.tracker, new_node);
 
-    mdv_nodes_store(core->storage.metainf, new_node);
+    mdv_nodes_store_async(core->jobber, core->storage.metainf, new_node);
 
     // Link state notification broadcast
 
+/*
     mdv_gossip_peers *peers = mdv_gossip_peers_get(&core->cluster.tracker);
 
     if (peers)
@@ -194,7 +195,7 @@ mdv_errno mdv_core_peer_connected(mdv_core *core, mdv_node *new_node)
 
         mdv_gossip_peers_free(peers);
     }
-
+*/
 /*
     mdv_msg_p2p_linkstate linkstate =
     {

@@ -10,6 +10,7 @@
  */
 #pragma once
 #include <mdv_cluster.h>
+#include <mdv_jobber.h>
 #include "storage/mdv_metainf.h"
 #include "storage/mdv_tablespace.h"
 
@@ -17,6 +18,7 @@
 /// Core component for cluster nodes management and storage accessing.
 typedef struct mdv_core
 {
+    mdv_jobber     *jobber;             ///< Jobs scheduler
     mdv_cluster     cluster;            ///< Cluster manager
     mdv_metainf     metainf;            ///< Metainformation (DB version, node UUID etc.)
 

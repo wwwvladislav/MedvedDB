@@ -11,19 +11,8 @@
 enum
 {
     MDV_JOBBER_QUEUE_SIZE           = 256,  ///< Job queues size
-    MDV_JOBBER_QUEUE_PUSH_ATTEMPTS  = 64,   ///< Number of job push attempts
-    MDV_JOBBER_FN_ARGS_MAX     = 3          ///< Maximum number of job function arguments
+    MDV_JOBBER_QUEUE_PUSH_ATTEMPTS  = 64    ///< Number of job push attempts
 };
-
-
-/// Job function type with 1 argument
-typedef void(*mdv_job_fn_1)(mdv_job_base *, void *);
-
-/// Job function type with 2 arguments
-typedef void(*mdv_job_fn_2)(mdv_job_base *, void *, void *);
-
-/// Job function type with 3 arguments
-typedef void(*mdv_job_fn_3)(mdv_job_base *, void *, void *, void *);
 
 
 typedef mdv_queuefd(mdv_job_base*, MDV_JOBBER_QUEUE_SIZE) mdv_jobber_queue;
@@ -61,40 +50,10 @@ static void mdv_job_handler(uint32_t events, mdv_threadpool_task_base *task_base
 
         if (mdv_queuefd_pop(*jobber_context->jobs, job))
         {
-            switch (job->args_count)
-            {
-                case 0:
-                {
-                    mdv_job_fn fn = (mdv_job_fn)job->fn;
-                    fn(job);
-                    break;
-                }
+            job->fn(job);
 
-                case 1:
-                {
-                    mdv_job_fn_1 fn = (mdv_job_fn_1)job->fn;
-                    fn(job, job->arg[0]);
-                    break;
-                }
-
-                case 2:
-                {
-                    mdv_job_fn_2 fn = (mdv_job_fn_2)job->fn;
-                    fn(job, job->arg[0], job->arg[1]);
-                    break;
-                }
-
-                case 3:
-                {
-                    mdv_job_fn_3 fn = (mdv_job_fn_3)job->fn;
-                    fn(job, job->arg[0], job->arg[1], job->arg[2]);
-                    break;
-                }
-
-                default:
-                    MDV_LOGE("Unsupported job handler arguments count");
-                    break;
-            }
+            if (job->finalize)
+                job->finalize(job);
         }
     }
 }
@@ -184,7 +143,19 @@ void mdv_jobber_free(mdv_jobber *jobber)
         mdv_threadpool_free(jobber->threads);
 
         for(size_t i = 0; i < jobber->queue_count; ++i)
+        {
+            if (mdv_queuefd_size(jobber->jobs[i]))
+            {
+                mdv_job_base *job = 0;
+
+                while(mdv_queuefd_pop(jobber->jobs[i], job))
+                {
+                    if (job->finalize)
+                        job->finalize(job);
+                }
+            }
             mdv_queuefd_free(jobber->jobs[i]);
+        }
 
         mdv_free(jobber, "jobber");
     }
@@ -193,12 +164,6 @@ void mdv_jobber_free(mdv_jobber *jobber)
 
 mdv_errno mdv_jobber_push(mdv_jobber *jobber, mdv_job_base *job)
 {
-    if (job->args_count > MDV_JOBBER_FN_ARGS_MAX)
-    {
-        MDV_LOGE("Unsupported job handler arguments count");
-        return MDV_INVALID_ARG;
-    }
-
     size_t idx = atomic_load_explicit(&jobber->idx, memory_order_relaxed);
 
     while (!atomic_compare_exchange_weak(&jobber->idx, &idx, (idx + 1) % jobber->queue_count));

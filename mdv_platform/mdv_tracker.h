@@ -18,6 +18,7 @@ typedef struct
     void       *userdata;       ///< Userdata associated with node (for instance, connection context)
     uint32_t    id;             ///< Unique identifier inside current server
     uint8_t     connected:1;    ///< Connection establisched
+    uint8_t     accepted:1;     ///< Incoming connection (i.e connection accepted)
     uint8_t     active:1;       ///< Node is active (i.e. runned)
     char        addr[1];        ///< Node address in following format: protocol://host:port
 } mdv_node;

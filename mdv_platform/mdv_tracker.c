@@ -274,6 +274,7 @@ void mdv_tracker_peer_disconnected(mdv_tracker *tracker, mdv_uuid const *uuid)
             if (node)
             {
                 node->connected = 0;
+                node->accepted  = 0;
                 node->active    = 0;
                 node->userdata  = 0;
                 mdv_tracker_erase_peer(tracker, uuid);

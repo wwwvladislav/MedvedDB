@@ -7,6 +7,7 @@
 #include "storage/mdv_nodes.h"
 #include <mdv_log.h>
 #include <mdv_messages.h>
+#include <mdv_rollbacker.h>
 
 
 enum { MDV_NODES_NUM = 256 };
@@ -55,6 +56,7 @@ static bool mdv_core_cluster_create(mdv_core *core)
     if (mdv_nodes_load(core->storage.metainf, &core->cluster.tracker) != MDV_OK)
     {
         MDV_LOGE("Nodes loading failed");
+        mdv_cluster_free(&core->cluster);
         return false;
     }
 
@@ -64,6 +66,9 @@ static bool mdv_core_cluster_create(mdv_core *core)
 
 bool mdv_core_create(mdv_core *core)
 {
+    mdv_rollbacker(4) rollbacker;
+    mdv_rollbacker_clear(rollbacker);
+
     // DB meta information storage
     core->storage.metainf = mdv_metainf_storage_open(MDV_CONFIG.storage.path.ptr);
 
@@ -73,26 +78,70 @@ bool mdv_core_create(mdv_core *core)
         return false;
     }
 
+    mdv_rollbacker_push(rollbacker, mdv_storage_release, core->storage.metainf);
+
+
     if (!mdv_metainf_load(&core->metainf, core->storage.metainf))
     {
         MDV_LOGE("DB meta information loading failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
+        mdv_rollback(rollbacker);
         return false;
     }
 
     mdv_metainf_validate(&core->metainf);
     mdv_metainf_flush(&core->metainf, core->storage.metainf);
 
+
     // Tablespace
     if (mdv_tablespace_open(&core->storage.tablespace, MDV_NODES_NUM) != MDV_OK
         && mdv_tablespace_create(&core->storage.tablespace, MDV_NODES_NUM) != MDV_OK)
     {
         MDV_LOGE("DB tables space creation failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
+        mdv_rollback(rollbacker);
         return false;
     }
 
+    mdv_rollbacker_push(rollbacker, mdv_tablespace_close, &core->storage.tablespace);
+
+
+    // Jobs scheduler
+    mdv_jobber_config const config =
+    {
+        .threadpool =
+        {
+            .size = MDV_CONFIG.storage.workers,
+            .thread_attrs =
+            {
+                .stack_size = MDV_THREAD_STACK_SIZE
+            }
+        },
+        .queue =
+        {
+            .count = MDV_CONFIG.storage.worker_queues
+        }
+    };
+
+    core->jobber = mdv_jobber_create(&config);
+
+    if (!core->jobber)
+    {
+        MDV_LOGE("Jobs scheduler creation failed");
+        mdv_rollback(rollbacker);
+        return false;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_jobber_free, &core->jobber);
+
+
     // Cluster manager
     if (!mdv_core_cluster_create(core))
+    {
+        mdv_rollback(rollbacker);
         return false;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_cluster_free, &core->cluster);
+
 
     MDV_LOGI("Storage version: %u", core->metainf.version.value);
 
@@ -105,6 +154,7 @@ bool mdv_core_create(mdv_core *core)
 void mdv_core_free(mdv_core *core)
 {
     mdv_cluster_free(&core->cluster);
+    mdv_jobber_free(core->jobber);
     mdv_storage_release(core->storage.metainf);
     mdv_tablespace_close(&core->storage.tablespace);
 }

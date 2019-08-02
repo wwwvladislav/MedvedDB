@@ -36,22 +36,26 @@ typedef struct mdv_job_base mdv_job_base;
 typedef void(*mdv_job_fn)(mdv_job_base *);
 
 
+/// Job finalization function type
+typedef void(*mdv_job_finalize_fn)(mdv_job_base *);
+
+
 /// Basic type for job
 struct mdv_job_base
 {
-    mdv_job_fn fn;                      ///< Job function
-    size_t     args_count;              ///< Number of function arguments
-    void *     arg[1];                  ///< Function arguments
+    mdv_job_fn          fn;                     ///< Job function
+    mdv_job_finalize_fn finalize;               ///< Job finalization function
+    char *              data[1];                ///< Job data
 };
 
 
 /// Job definition macro
-#define mdv_job(args_num)           \
-    struct                          \
-    {                               \
-        mdv_job_fn fn;              \
-        size_t     args_count;      \
-        void *     arg[args_num];   \
+#define mdv_job(type)                       \
+    struct                                  \
+    {                                       \
+        mdv_job_fn          fn;             \
+        mdv_job_finalize_fn finalize;       \
+        type                data;           \
     }
 
 

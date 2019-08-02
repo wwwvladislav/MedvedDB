@@ -4,16 +4,19 @@
 #include <mdv_condvar.h>
 
 
-static void mdv_test_job(mdv_job_base *job, void *arg1, void *arg2)
+typedef struct mdv_test_job_data
 {
-    (void)job;
+    int         counter;
+    mdv_condvar cv;
+} mdv_test_job_data;
 
-    int *res = (int *)arg1;
 
-    mdv_condvar *cv = (mdv_condvar *)arg2;
+static void mdv_test_job(mdv_job_base *job)
+{
+    mdv_test_job_data *data = (mdv_test_job_data *)job->data;
 
-    if (++*res >= 42)
-        mdv_condvar_signal(cv);
+    if (++data->counter >= 42)
+        mdv_condvar_signal(&data->cv);
 }
 
 
@@ -38,30 +41,27 @@ MU_TEST(platform_jobber)
     mdv_jobber *jobber = mdv_jobber_create(&config);
     mu_check(jobber);
 
-    mdv_condvar cv;
-    mu_check(mdv_condvar_create(&cv) == MDV_OK);
 
-    int res = 0;
-
-    mdv_job(2) job =
+    mdv_job(mdv_test_job_data) job =
     {
         .fn         = (mdv_job_fn)&mdv_test_job,
-        .args_count = 2,
-        .arg =
+        .finalize   = 0,
+        .data =
         {
-            &res,
-            &cv
+            .counter = 0
         }
     };
+
+    mu_check(mdv_condvar_create(&job.data.cv) == MDV_OK);
 
     for(int i = 0; i < 42; ++i)
         mu_check(mdv_jobber_push(jobber, (mdv_job_base*)&job) == MDV_OK);
 
-    mu_check(mdv_condvar_timedwait(&cv, 100) == MDV_OK);
+    mu_check(mdv_condvar_timedwait(&job.data.cv, 100) == MDV_OK);
 
-    mu_check(res == 42);
+    mu_check(job.data.counter == 42);
 
-    mdv_condvar_free(&cv);
+    mdv_condvar_free(&job.data.cv);
 
     mdv_jobber_free(jobber);
 }

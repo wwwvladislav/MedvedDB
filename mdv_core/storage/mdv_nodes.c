@@ -55,12 +55,12 @@ static mdv_node * mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid)
 
     mdv_node *node = (mdv_node *)buff;
 
+    memset(node, 0, sizeof *node);
+
     node->size      = offsetof(mdv_node, addr) + addr_len + 1;
     node->uuid      = *uuid;
-    node->userdata  = 0;
     node->id        = id;
-    node->connected = 0;
-    node->active    = 0;
+
     memcpy(node->addr, addr, addr_len + 1);
 
     return node;

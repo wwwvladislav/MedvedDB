@@ -228,13 +228,16 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid c
 
     char buf[node_size];
 
-    mdv_node * node = (mdv_node *)buf;
+    mdv_node *node = (mdv_node *)buf;
+
+    memset(node, 0, sizeof *node);
 
     node->size      = node_size;
     node->uuid      = *uuid;
     node->userdata  = peer;
     node->id        = 0;
     node->connected = 1;
+    node->accepted  = peer->conctx->dir == MDV_CHIN;
 
     memcpy(node->addr, addr, addr_len + 1);
 

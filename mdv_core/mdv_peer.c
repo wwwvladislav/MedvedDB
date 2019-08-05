@@ -58,15 +58,6 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
         return MDV_FAILED;
     }
 
-/*
-    if (!peer_hello)
-    {
-        MDV_LOGE("Invalid '%s' message", mdv_p2p_msg_name(msg->hdr.id));
-        binn_free(&binn_msg);
-        return MDV_FAILED;
-    }
-*/
-
     mdv_uuid *uuid = mdv_unbinn_p2p_hello_uuid(&binn_msg);
     uint32_t *version = mdv_unbinn_p2p_hello_version(&binn_msg);
     char const *listen = mdv_unbinn_p2p_hello_listen(&binn_msg);
@@ -99,7 +90,6 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
         MDV_LOGE("Peer registration failed with error '%s' (%d)", mdv_strerror(err), err);
         return err;
     }
-
 
     if(peer->conctx->dir == MDV_CHIN)
     {
@@ -201,6 +191,12 @@ mdv_errno mdv_peer_post(mdv_peer *peer, mdv_msg *msg)
 {
     MDV_LOGI(">>>>> %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
     return mdv_dispatcher_post(peer->conctx->dispatcher, msg);
+}
+
+
+mdv_errno mdv_peer_node_post(mdv_node *peer, void *msg)
+{
+    return mdv_peer_post((mdv_peer *)peer->userdata, (mdv_msg *)msg);
 }
 
 

@@ -33,18 +33,14 @@ typedef struct mdv_gossip_peers
 
 
 /**
- * @brief Return active connected peers list
+ * @brief s
  *
  * @param tracker [in]          Topology tracker
+ * @param peer_1 [in]           First peer unique identifier
+ * @param peer_2 [in]           Second peer unique identifier
+ * @param connected [in]        1, if first peer connected to second peer
  *
- * @return active connected peers list or NULL if error occurred
+ * @return On success, return MDV_OK
+ * @return On error, return nonzero error code
  */
-mdv_gossip_peers * mdv_gossip_peers_get(mdv_tracker *tracker);
-
-
-/**
- * @brief Free peers list allocated by mdv_gossip_peers_get()
- *
- * @param peers [in] peers list
- */
-void mdv_gossip_peers_free(mdv_gossip_peers *peers);
+mdv_errno mdv_gossip_linkstate(mdv_tracker *tracker, mdv_uuid const *peer_1, mdv_uuid const *peer_2, bool connected);

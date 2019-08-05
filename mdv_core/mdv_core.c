@@ -183,29 +183,13 @@ mdv_errno mdv_core_peer_connected(mdv_core *core, mdv_node *new_node)
 
     // Link state notification broadcast
 
-/*
-    mdv_gossip_peers *peers = mdv_gossip_peers_get(&core->cluster.tracker);
-
-    if (peers)
+    if (new_node->accepted)
     {
-        for (uint32_t i = 0; i < peers->size; ++i)
-        {
-            MDV_LOGI("Peer broadcast: uid=%u, lid=%u", peers->peers[i].uid, peers->peers[i].lid);
-        }
+        // Node joined from the same segment
+        mdv_gossip_linkstate(&core->cluster.tracker, &core->metainf.uuid.value, &new_node->uuid, true);
 
-        mdv_gossip_peers_free(peers);
+        // TODO: Two isolated segments joined
     }
-*/
-/*
-    mdv_msg_p2p_linkstate linkstate =
-    {
-        .peer_1 = core->metainf.uuid.value,
-        .peer_2 = new_node->uuid,
-        .connected = 0,
-        .peers_count = 0,
-        .peers = 0
-    };
-*/
 
     return err;
 }

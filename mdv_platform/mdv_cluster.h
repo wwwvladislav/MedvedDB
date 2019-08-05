@@ -8,6 +8,7 @@
 #include "mdv_chaman.h"
 #include "mdv_dispatcher.h"
 #include "mdv_hashmap.h"
+#include "mdv_msg.h"
 
 
 /// Cluster manager

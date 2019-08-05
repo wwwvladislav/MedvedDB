@@ -88,3 +88,4 @@ mdv_errno mdv_core_peer_connected(mdv_core *core, mdv_node *new_node);
  * @param uuid [in]     node UUID
  */
 void mdv_core_peer_disconnected(mdv_core *core, mdv_uuid const *uuid);
+

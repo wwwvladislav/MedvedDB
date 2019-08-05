@@ -2,8 +2,9 @@
 #include "mdv_log.h"
 #include "mdv_alloc.h"
 #include <time.h>
-#include <pthread.h>
 #include <stdatomic.h>
+#include <pthread.h>
+#include <sched.h>
 
 
 /// @cond Doxygen_Suppress
@@ -116,7 +117,7 @@ mdv_thread mdv_thread_self()
 
 int mdv_thread_equal(mdv_thread t1, mdv_thread t2)
 {
-    return pthread_equal(*(pthread_t*)&t1, *(pthread_t*)&t2);
+        return pthread_equal(*(pthread_t*)&t1, *(pthread_t*)&t2);
 }
 
 
@@ -139,5 +140,5 @@ mdv_errno mdv_thread_join(mdv_thread thread)
 
 void mdv_thread_yield()
 {
-    pthread_yield();
+    sched_yield();
 }

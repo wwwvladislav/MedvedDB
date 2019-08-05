@@ -64,6 +64,18 @@ mdv_errno mdv_peer_post(mdv_peer *peer, mdv_msg *msg);
 
 
 /**
+ * @brief Send message but response isn't required.
+ *
+ * @param peer [in]     peer node
+ * @param msg [in]      message to be sent
+ *
+ * @return On success returns MDV_OK
+ * @return On error return nonzero error code.
+ */
+mdv_errno mdv_peer_node_post(mdv_node *peer, void *msg);
+
+
+/**
  * @brief Peer context freeing function
  *
  * @param ctx [in]     user context

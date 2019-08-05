@@ -267,21 +267,22 @@ void mdv_tracker_peer_disconnected(mdv_tracker *tracker, mdv_uuid const *uuid)
 {
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
-        if (mdv_mutex_lock(&tracker->peers_mutex) == MDV_OK)
-        {
-            mdv_node *node = mdv_tracker_find(tracker, uuid);
+        mdv_node *node = mdv_tracker_find(tracker, uuid);
 
-            if (node)
+        if (node)
+        {
+            if (mdv_mutex_lock(&tracker->peers_mutex) == MDV_OK)
             {
                 node->connected = 0;
                 node->accepted  = 0;
                 node->active    = 0;
                 node->userdata  = 0;
                 mdv_tracker_erase_peer(tracker, uuid);
-            }
 
-            mdv_mutex_unlock(&tracker->peers_mutex);
+                mdv_mutex_unlock(&tracker->peers_mutex);
+            }
         }
+
         mdv_mutex_unlock(&tracker->nodes_mutex);
     }
 }
@@ -291,30 +292,30 @@ void mdv_tracker_append(mdv_tracker *tracker, mdv_node const *node)
 {
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
-        if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
+        if (!mdv_tracker_find(tracker, &node->uuid))
         {
-            if (!mdv_tracker_find(tracker, &node->uuid))
+            if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
             {
                 if (tracker->max_id < node->id)
                     tracker->max_id = node->id;
 
                 mdv_tracker_insert(tracker, node);
+                mdv_mutex_unlock(&tracker->ids_mutex);
             }
-
-            mdv_mutex_unlock(&tracker->ids_mutex);
         }
+
         mdv_mutex_unlock(&tracker->nodes_mutex);
     }
 }
 
 
-void mdv_tracker_peers_foreach(mdv_tracker *tracker, void *userdata, void (*fn)(mdv_node *, void *))
+void mdv_tracker_peers_foreach(mdv_tracker *tracker, void *arg, void (*fn)(mdv_node *, void *))
 {
     if (mdv_mutex_lock(&tracker->peers_mutex) == MDV_OK)
     {
         mdv_hashmap_foreach(tracker->peers, mdv_peer_id, entry)
         {
-            fn(entry->node, userdata);
+            fn(entry->node, arg);
         }
         mdv_mutex_unlock(&tracker->peers_mutex);
     }
@@ -332,4 +333,33 @@ size_t mdv_tracker_peers_count(mdv_tracker *tracker)
     }
 
     return peers_count;
+}
+
+
+mdv_errno mdv_tracker_peers_call(mdv_tracker *tracker, uint32_t id, void *arg, mdv_errno (*fn)(mdv_node *, void *))
+{
+    mdv_errno err = MDV_FAILED;
+
+    if (mdv_mutex_lock(&tracker->peers_mutex) == MDV_OK)
+    {
+        mdv_node_id *node_id = 0;
+
+        if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
+        {
+            node_id = mdv_hashmap_find(tracker->ids, id);
+            mdv_mutex_unlock(&tracker->ids_mutex);
+        }
+
+        if (node_id)
+        {
+            mdv_node *node = node_id->node;
+
+            if (node->connected)
+                err = fn(node, arg);
+        }
+
+        mdv_mutex_unlock(&tracker->peers_mutex);
+    }
+
+    return err;
 }

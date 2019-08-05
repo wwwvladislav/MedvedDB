@@ -37,6 +37,11 @@ static mdv_gossip_peers * mdv_gossip_peers_realloc(mdv_gossip_peers *ptr, uint32
 }
 
 
+/**
+ * @brief Free peers list allocated by mdv_gossip_peers_get()
+ *
+ * @param peers [in] peers list
+ */
 void mdv_gossip_peers_free(mdv_gossip_peers *peers)
 {
     if (peers)
@@ -77,6 +82,13 @@ static int mdv_gossip_peer_cmp(const void *p1, const void *p2)
 }
 
 
+/**
+ * @brief Return active connected peers list
+ *
+ * @param tracker [in]          Topology tracker
+ *
+ * @return active connected peers list or NULL if error occurred
+ */
 mdv_gossip_peers * mdv_gossip_peers_get(mdv_tracker *tracker)
 {
     size_t const peers_count = mdv_tracker_peers_count(tracker) + 16;
@@ -97,3 +109,32 @@ mdv_gossip_peers * mdv_gossip_peers_get(mdv_tracker *tracker)
     return peers_set.data;
 }
 
+
+mdv_errno mdv_gossip_linkstate(mdv_tracker *tracker, mdv_uuid const *peer_1, mdv_uuid const *peer_2, bool connected)
+{
+    mdv_gossip_peers *peers = mdv_gossip_peers_get(tracker);
+
+    if (peers)
+    {
+        for (uint32_t i = 0; i < peers->size; ++i)
+        {
+            // TODO
+            MDV_LOGI("Peer broadcast: uid=%u, lid=%u", peers->peers[i].uid, peers->peers[i].lid);
+        }
+
+        mdv_gossip_peers_free(peers);
+    }
+
+/*
+    mdv_msg_p2p_linkstate linkstate =
+    {
+        .peer_1 = core->metainf.uuid.value,
+        .peer_2 = new_node->uuid,
+        .connected = 0,
+        .peers_count = 0,
+        .peers = 0
+    };
+*/
+
+    return MDV_OK;
+}

@@ -35,7 +35,7 @@ typedef struct mdv_tracker
     mdv_hashmap          ids;           ///< Node identifiers (id -> mdv_node *)
     mdv_mutex            ids_mutex;     ///< node identifiers guard mutex
 
-    mdv_hashmap          peers;         ///< Peers (UUID -> mdv_node *)
+    mdv_hashmap          peers;         ///< Peers (i.e. connected neighbours. UUID -> mdv_node *)
     mdv_mutex            peers_mutex;   ///< node identifiers guard mutex
 } mdv_tracker;
 
@@ -94,10 +94,10 @@ void mdv_tracker_append(mdv_tracker *tracker, mdv_node const *node);
  * @brief Iterate over all connected peers and call function fn.
  *
  * @param tracker [in]          Topology tracker
- * @param userdata [in]         User defined data which is provided as second argument to the function fn
+ * @param arg [in]              User defined data which is provided as second argument to the function fn
  * @param fn [in]               function pointer
  */
-void mdv_tracker_peers_foreach(mdv_tracker *tracker, void *userdata, void (*fn)(mdv_node *, void *));
+void mdv_tracker_peers_foreach(mdv_tracker *tracker, void *arg, void (*fn)(mdv_node *, void *));
 
 
 /**
@@ -109,3 +109,16 @@ void mdv_tracker_peers_foreach(mdv_tracker *tracker, void *userdata, void (*fn)(
  */
 size_t mdv_tracker_peers_count(mdv_tracker *tracker);
 
+
+/**
+ * @brief Call function for node processing (e.g. post some message).
+ *
+ * @param tracker [in]          Topology tracker
+ * @param id [in]               Unique peer identifier inside current server
+ * @param arg [in]              User defined data which is provided as second argument to the function fn
+ * @param fn [in]               function
+ *
+ * @return On success, return MDV_OK
+ * @return On error, return nonzero error code
+ */
+mdv_errno mdv_tracker_peers_call(mdv_tracker *tracker, uint32_t id, void *arg, mdv_errno (*fn)(mdv_node *, void *));

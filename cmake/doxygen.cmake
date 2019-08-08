@@ -42,7 +42,7 @@ macro(add_documentation TARGET DOXYGEN_CONFIG_FILE)
 
     if(DOXYGEN_FOUND)
         configure_doxyfile(${DOXYGEN_CONFIG_FILE} ${TARGET})
-        add_custom_target(${TARGET} ALL COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/doxy-${TARGET}.conf)
+        add_custom_target(${TARGET} COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/doxy-${TARGET}.conf)
     else()
         message(STATUS "Doxygen not found. Documentation will not be generated")
     endif()

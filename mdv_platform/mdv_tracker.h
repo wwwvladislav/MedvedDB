@@ -10,6 +10,12 @@
 #include "mdv_mutex.h"
 
 
+enum
+{
+    MDV_LOCAL_ID = 0            ///< Local identifier for current node
+};
+
+
 /// Cluster node information
 typedef struct
 {
@@ -27,6 +33,7 @@ typedef struct
 /// Nodes and topology tracker
 typedef struct mdv_tracker
 {
+    mdv_uuid             uuid;          ///< Global unique identifier for current node (i.e. self UUID)
     volatile uint32_t    max_id;        ///< Maximum node identifier
 
     mdv_hashmap          nodes;         ///< Nodes map (UUID -> mdv_node)
@@ -44,11 +51,12 @@ typedef struct mdv_tracker
  * @brief Create new topology tracker
  *
  * @param tracker [in] [out]    Topology tracker to be initialized
+ * @param uid [in]              Global unique identifier for current node
  *
  * @return On success, return MDV_OK
  * @return On error, return nonzero error code
  */
-mdv_errno mdv_tracker_create(mdv_tracker *tracker);
+mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid);
 
 
 /**
@@ -122,3 +130,20 @@ size_t mdv_tracker_peers_count(mdv_tracker *tracker);
  * @return On error, return nonzero error code
  */
 mdv_errno mdv_tracker_peers_call(mdv_tracker *tracker, uint32_t id, void *arg, mdv_errno (*fn)(mdv_node *, void *));
+
+
+/**
+ * @brief Link state tracking between two peers.
+ *
+ * @param tracker [in]          Topology tracker
+ * @param peer_1 [in]           First peer UUID
+ * @param peer_2 [in]           Second peer UUID
+ * @param connected [in]        Connection status
+ *
+ * @return On success, return MDV_OK
+ * @return On error, return nonzero error code
+ */
+mdv_errno mdv_tracker_linkstate(mdv_tracker         *tracker,
+                                mdv_uuid const      *peer_1,
+                                mdv_uuid const      *peer_2,
+                                bool                 connected);

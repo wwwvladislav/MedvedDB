@@ -9,7 +9,8 @@
  *
  */
 #pragma once
-#include <mdv_tracker.h>
+#include <mdv_msg.h>
+#include "mdv_core.h"
 
 
 /// Gossip peer identifier type
@@ -19,7 +20,7 @@ typedef uint32_t mdv_gossip_id;
 /// Peer
 typedef struct mdv_gossip_peer
 {
-    uint32_t         uid;       ///< Peers unique identifier
+    mdv_gossip_id    uid;       ///< Peers unique identifier
     uint32_t         lid;       ///< Peers local identifier
 } mdv_gossip_peer;
 
@@ -33,14 +34,31 @@ typedef struct mdv_gossip_peers
 
 
 /**
- * @brief s
+ * @brief Broadcast the link state message to all cluster.
  *
- * @param tracker [in]          Topology tracker
- * @param peer_1 [in]           First peer unique identifier
- * @param peer_2 [in]           Second peer unique identifier
+ * @param core [in]             Core
+ * @param src_peer [in]         First peer unique identifier
+ * @param src_listen [in]       First peer listening address
+ * @param dst_peer [in]         Second peer unique identifier
  * @param connected [in]        1, if first peer connected to second peer
  *
  * @return On success, return MDV_OK
  * @return On error, return nonzero error code
  */
-mdv_errno mdv_gossip_linkstate(mdv_tracker *tracker, mdv_uuid const *peer_1, mdv_uuid const *peer_2, bool connected);
+mdv_errno mdv_gossip_linkstate(mdv_core            *core,
+                               mdv_uuid const      *src_peer,
+                               char const          *src_listen,
+                               mdv_uuid const      *dst_peer,
+                               bool                 connected);
+
+
+/**
+ * @brief Handle link state message.
+ *
+ * @param core [in]             Core
+ * @param msg [in]              Incoming link state message
+ *
+ * @return On success, return MDV_OK
+ * @return On error, return nonzero error code
+ */
+mdv_errno mdv_gossip_linkstate_handler(mdv_core *core, mdv_msg const *msg);

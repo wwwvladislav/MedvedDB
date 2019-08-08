@@ -1,4 +1,5 @@
 #include "mdv_alloc.h"
+#include "mdv_stack.h"
 #include "mdv_log.h"
 #include <rpmalloc.h>
 #include <stdatomic.h>
@@ -36,18 +37,14 @@
 
 enum
 {
-    MDV_THREAD_LOCAL_STORAGE_SIZE = 128 * 1024
+    MDV_THREAD_LOCAL_STORAGE_SIZE = 256 * 1024
 };
 
 
-static _Thread_local struct
+static _Thread_local mdv_stack(uint8_t, MDV_THREAD_LOCAL_STORAGE_SIZE) _thread_local_buff =
 {
-    char buffer[MDV_THREAD_LOCAL_STORAGE_SIZE];
-    int  is_used;
-}
-_thread_local_tmp_buff =
-{
-    .is_used = 0
+    .capacity = MDV_THREAD_LOCAL_STORAGE_SIZE,
+    .size = 0
 };
 
 
@@ -108,35 +105,54 @@ void * mdv_realloc(void *ptr, size_t size, char const *name)
 }
 
 
-void *mdv_alloc_tmp(size_t size, char const *name)
-{
-    if (size < sizeof _thread_local_tmp_buff.buffer)
-    {
-        if (!_thread_local_tmp_buff.is_used)
-        {
-            _thread_local_tmp_buff.is_used = 1;
-            MDV_LOGD("alloc_tmp(%zu) '%s'", size, name);
-            return _thread_local_tmp_buff.buffer;
-        }
-        MDV_LOGW("Thread local buffer is busy. Dynamic allocation is performed.");
-    }
-    return mdv_alloc(size, name);
-}
-
-
 void mdv_free(void *ptr, char const *name)
 {
     if (ptr)
     {
-        if (ptr != _thread_local_tmp_buff.buffer)
+        rpfree(ptr);
+        MDV_DEALLOCATION(free, ptr, name);
+    }
+}
+
+
+void *mdv_stalloc(size_t alignment, size_t size, char const *name)
+{
+    if (size + alignment < mdv_stack_free_space(_thread_local_buff))
+    {
+        void *ptr = _thread_local_buff.data + _thread_local_buff.size;
+
+        size_t align = (size_t)ptr % alignment;
+
+        if (align)
+            align = alignment - align;
+
+        ptr += align;
+
+        MDV_LOGD("stalloc(%p:%zu) '%s'", ptr, size, name);
+
+        _thread_local_buff.size += size + align;
+
+        return ptr;
+    }
+
+    MDV_LOGW("Thread local buffer is busy. Dynamic allocation is performed.");
+
+    return mdv_aligned_alloc(alignment, size, name);
+}
+
+
+void mdv_stfree(void *ptr, char const *name)
+{
+    if (ptr)
+    {
+        MDV_LOGD("stfree(%p) '%s'", ptr, name);
+
+        if ((uint8_t*)ptr >= _thread_local_buff.data
+            && (uint8_t*)ptr < _thread_local_buff.data + _thread_local_buff.size)
         {
-            rpfree(ptr);
-            MDV_DEALLOCATION(free, ptr, name);
+            _thread_local_buff.size = (uint8_t*)ptr - _thread_local_buff.data;
         }
         else
-        {
-            _thread_local_tmp_buff.is_used = 0;
-            MDV_LOGD("free_tmp '%s'", name);
-        }
+            mdv_free(ptr, name);
     }
 }

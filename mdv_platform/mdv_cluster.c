@@ -165,7 +165,7 @@ mdv_errno mdv_cluster_create(mdv_cluster *cluster, mdv_cluster_config const *clu
     cluster->uuid     = cluster_config->uuid;
     cluster->userdata = cluster_config->conctx.userdata;
 
-    mdv_errno err = mdv_tracker_create(&cluster->tracker);
+    mdv_errno err = mdv_tracker_create(&cluster->tracker, &cluster->uuid);
 
     if (err != MDV_OK)
     {

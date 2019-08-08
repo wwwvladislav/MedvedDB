@@ -12,7 +12,7 @@
 
 enum
 {
-    MDV_MAX_CONFIGURED_CLUSTER_NODES = 256      ///< Limit for configured nodes in cluster
+    MDV_MAX_CLUSTER_SIZE = 256      ///< Limit for cluster size
 };
 
 
@@ -53,7 +53,7 @@ typedef struct
     struct
     {
         uint32_t    size;           ///< Nimber of defined cluster nodes
-        char const *nodes[MDV_MAX_CONFIGURED_CLUSTER_NODES];    ///< Defined cluster nodes
+        char const *nodes[MDV_MAX_CLUSTER_SIZE];    ///< Defined cluster nodes
     } cluster;                      ///< Cluster settings
 
     mdv_stack(char, 4 * 1024) mempool;   ///< Memory pool for strings allocation

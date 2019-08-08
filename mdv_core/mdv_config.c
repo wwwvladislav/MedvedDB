@@ -67,7 +67,7 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
     {
         mdv_string node = mdv_str_pdup(config->mempool, value);
         MDV_CFG_CHECK(node);
-        if (config->cluster.size >= MDV_MAX_CONFIGURED_CLUSTER_NODES)
+        if (config->cluster.size >= MDV_MAX_CLUSTER_SIZE)
         {
             MDV_LOGI("No space for node '%s'", value);
             return 0;

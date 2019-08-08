@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <string.h>
 #include "storage/mdv_nodes.h"
+#include "mdv_gossip.h"
 
 
 static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid const *uuid, uint32_t *id);
@@ -81,15 +82,7 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 
     peer->peer_uuid = *uuid;
 
-    mdv_errno err = mdv_peer_connected(peer, listen, uuid, &peer->peer_id);
-
-    binn_free(&binn_msg);
-
-    if (err != MDV_OK)
-    {
-        MDV_LOGE("Peer registration failed with error '%s' (%d)", mdv_strerror(err), err);
-        return err;
-    }
+    mdv_errno err = MDV_OK;
 
     if(peer->conctx->dir == MDV_CHIN)
     {
@@ -100,10 +93,30 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
             .listen  = MDV_CONFIG.server.listen.ptr
         };
 
-        return mdv_peer_hello_reply(peer, msg->hdr.number, &hello);
+        err = mdv_peer_hello_reply(peer, msg->hdr.number, &hello);
     }
 
-    return MDV_OK;
+    if (err == MDV_OK)
+        err = mdv_peer_connected(peer, listen, uuid, &peer->peer_id);
+    else
+        MDV_LOGE("Peer reply failed with error '%s' (%d)", mdv_strerror(err), err);
+
+    binn_free(&binn_msg);
+
+    if (err != MDV_OK)
+        MDV_LOGE("Peer registration failed with error '%s' (%d)", mdv_strerror(err), err);
+
+    return err;
+}
+
+
+static mdv_errno mdv_peer_linkstate_handler(mdv_msg const *msg, void *arg)
+{
+    mdv_peer *peer = arg;
+
+    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
+
+    return mdv_gossip_linkstate_handler(peer->core, msg);
 }
 
 
@@ -153,7 +166,8 @@ mdv_errno mdv_peer_init(void *ctx, mdv_conctx *conctx, void *userdata)
 
     mdv_dispatcher_handler const handlers[] =
     {
-        { mdv_msg_p2p_hello_id,     &mdv_peer_hello_handler,    peer }
+        { mdv_message_id(p2p_hello),        &mdv_peer_hello_handler,        peer },
+        { mdv_message_id(p2p_linkstate),    &mdv_peer_linkstate_handler,    peer }
     };
 
     for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)
@@ -234,6 +248,7 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid c
     node->id        = 0;
     node->connected = 1;
     node->accepted  = peer->conctx->dir == MDV_CHIN;
+    node->active    = 1;
 
     memcpy(node->addr, addr, addr_len + 1);
 

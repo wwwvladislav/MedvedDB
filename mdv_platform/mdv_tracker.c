@@ -21,7 +21,7 @@ typedef struct
 } mdv_peer_id;
 
 
-static mdv_errno  mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node);
+static mdv_node * mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node);
 static mdv_node * mdv_tracker_find(mdv_tracker *tracker, mdv_uuid const *uuid);
 static void       mdv_tracker_erase(mdv_tracker *tracker, mdv_node const *node);
 static mdv_errno  mdv_tracker_insert_peer(mdv_tracker *tracker, mdv_node *node);
@@ -39,7 +39,7 @@ static int mdv_node_id_cmp(int const *id1, int const *id2)
 }
 
 
-static mdv_errno mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node)
+static mdv_node * mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node)
 {
     mdv_list_entry(mdv_node) *entry = (void*)_mdv_hashmap_insert(&tracker->nodes, node, node->size);
 
@@ -54,7 +54,7 @@ static mdv_errno mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node)
         if (mdv_hashmap_insert(tracker->ids, nid))
         {
             if (mdv_tracker_insert_peer(tracker, &entry->data) == MDV_OK)
-                return MDV_OK;
+                return &entry->data;
 
             mdv_hashmap_erase(tracker->ids, node->id);
         }
@@ -65,7 +65,7 @@ static mdv_errno mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node)
     else
         MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(&node->uuid).ptr);
 
-    return MDV_FAILED;
+    return 0;
 }
 
 
@@ -81,6 +81,8 @@ static mdv_errno mdv_tracker_insert_peer(mdv_tracker *tracker, mdv_node *node)
 
         if (mdv_hashmap_insert(tracker->peers, peer_id))
             return MDV_OK;
+
+        return MDV_FAILED;
     }
 
     return MDV_OK;
@@ -113,13 +115,13 @@ static uint32_t mdv_tracker_new_id(mdv_tracker *tracker)
 }
 
 
-mdv_errno mdv_tracker_create(mdv_tracker *tracker)
+mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
 {
     mdv_rollbacker(6) rollbacker;
     mdv_rollbacker_clear(rollbacker);
 
+    tracker->uuid   = *uuid;
     tracker->max_id = 0;
-
 
     if (!mdv_hashmap_init(tracker->nodes,
                           mdv_node,
@@ -226,17 +228,29 @@ mdv_errno mdv_tracker_peer_connected(mdv_tracker *tracker, mdv_node *new_node)
             {
                 mdv_node *node = mdv_tracker_find(tracker, &new_node->uuid);
 
+                err = MDV_OK;
+
                 if (node)
                 {
+                    new_node->id    = node->id;
+
+                    node->accepted  = new_node->accepted;
+                    node->active    = 1;
+                    node->userdata  = new_node->userdata;
+
                     if (!node->connected)
                     {
-                        new_node->id    = node->id;
-
-                        node->connected = 1;
-                        node->active    = 1;
-                        node->userdata  = new_node->userdata;
-
-                        err = mdv_tracker_insert_peer(tracker, node);
+                        if (strcmp(new_node->addr, node->addr) != 0)
+                        {
+                            // Node address changed
+                            err = mdv_tracker_insert(tracker, new_node) ? MDV_OK : MDV_FAILED;
+                        }
+                        else if (new_node->connected)
+                        {
+                            // Connection status changed
+                            node->connected = 1;
+                            err = mdv_tracker_insert_peer(tracker, node);
+                        }
                     }
                     else
                     {
@@ -247,9 +261,8 @@ mdv_errno mdv_tracker_peer_connected(mdv_tracker *tracker, mdv_node *new_node)
                 else
                 {
                     new_node->id = mdv_tracker_new_id(tracker);
-                    new_node->connected = 1;
                     new_node->active = 1;
-                    err = mdv_tracker_insert(tracker, new_node);
+                    err = mdv_tracker_insert(tracker, new_node) ? MDV_OK : MDV_FAILED;
                 }
 
                 mdv_mutex_unlock(&tracker->peers_mutex);
@@ -362,4 +375,14 @@ mdv_errno mdv_tracker_peers_call(mdv_tracker *tracker, uint32_t id, void *arg, m
     }
 
     return err;
+}
+
+
+mdv_errno mdv_tracker_linkstate(mdv_tracker         *tracker,
+                                mdv_uuid const      *peer_1,
+                                mdv_uuid const      *peer_2,
+                                bool                 connected)
+{
+    // TODO
+    return MDV_OK;
 }

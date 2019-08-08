@@ -10,9 +10,6 @@
 #include <mdv_rollbacker.h>
 
 
-enum { MDV_NODES_NUM = 256 };
-
-
 static bool mdv_core_cluster_create(mdv_core *core)
 {
     mdv_conctx_config const conctx_configs[] =
@@ -93,8 +90,8 @@ bool mdv_core_create(mdv_core *core)
 
 
     // Tablespace
-    if (mdv_tablespace_open(&core->storage.tablespace, MDV_NODES_NUM) != MDV_OK
-        && mdv_tablespace_create(&core->storage.tablespace, MDV_NODES_NUM) != MDV_OK)
+    if (mdv_tablespace_open(&core->storage.tablespace, MDV_MAX_CLUSTER_SIZE) != MDV_OK
+        && mdv_tablespace_create(&core->storage.tablespace, MDV_MAX_CLUSTER_SIZE) != MDV_OK)
     {
         MDV_LOGE("DB tables space creation failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
         mdv_rollback(rollbacker);
@@ -179,14 +176,14 @@ mdv_errno mdv_core_peer_connected(mdv_core *core, mdv_node *new_node)
 {
     mdv_errno err = mdv_tracker_peer_connected(&core->cluster.tracker, new_node);
 
-    mdv_nodes_store_async(core->jobber, core->storage.metainf, new_node);
+    if (err == MDV_OK)
+        mdv_nodes_store_async(core->jobber, core->storage.metainf, new_node);
 
     // Link state notification broadcast
-
-    if (new_node->accepted)
+    if (new_node->connected && !new_node->accepted)
     {
         // Node joined from the same segment
-        mdv_gossip_linkstate(&core->cluster.tracker, &core->metainf.uuid.value, &new_node->uuid, true);
+        mdv_gossip_linkstate(core, &core->metainf.uuid.value, MDV_CONFIG.server.listen.ptr, &new_node->uuid, true);
 
         // TODO: Two isolated segments joined
     }

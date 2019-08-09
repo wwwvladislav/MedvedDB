@@ -234,12 +234,12 @@ mdv_errno mdv_tracker_peer_connected(mdv_tracker *tracker, mdv_node *new_node)
                 {
                     new_node->id    = node->id;
 
-                    node->accepted  = new_node->accepted;
-                    node->active    = 1;
-                    node->userdata  = new_node->userdata;
-
                     if (!node->connected)
                     {
+                        node->accepted  = new_node->accepted;
+                        node->active    = 1;
+                        node->userdata  = new_node->userdata;
+
                         if (strcmp(new_node->addr, node->addr) != 0)
                         {
                             // Node address changed

@@ -2,6 +2,7 @@
 #include "mdv_limits.h"
 #include "mdv_log.h"
 #include "mdv_rollbacker.h"
+#include "mdv_vector.h"
 #include <string.h>
 
 
@@ -21,6 +22,18 @@ typedef struct
 } mdv_peer_id;
 
 
+/// Unique identifiers collection
+typedef mdv_vector(uint32_t) mdv_tracker_node_ids;
+
+
+/// Link between nodes
+typedef struct
+{
+    uint32_t                id;     ///< Unique identifier inside current server
+    mdv_tracker_node_ids    peers;  ///< Peer node identifiers
+} mdv_tracker_link;
+
+
 static mdv_node * mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node);
 static mdv_node * mdv_tracker_find(mdv_tracker *tracker, mdv_uuid const *uuid);
 static void       mdv_tracker_erase(mdv_tracker *tracker, mdv_node const *node);
@@ -28,14 +41,14 @@ static mdv_errno  mdv_tracker_insert_peer(mdv_tracker *tracker, mdv_node *node);
 static void       mdv_tracker_erase_peer(mdv_tracker *tracker, mdv_uuid const *uuid);
 
 
-static size_t mdv_node_id_hash(int const *id)
+static size_t mdv_node_id_hash(uint32_t const *id)
 {
     return *id;
 }
 
-static int mdv_node_id_cmp(int const *id1, int const *id2)
+static int mdv_node_id_cmp(uint32_t const *id1, uint32_t const *id2)
 {
-    return *id1 - *id2;
+    return (int)*id1 - *id2;
 }
 
 
@@ -117,7 +130,7 @@ static uint32_t mdv_tracker_new_id(mdv_tracker *tracker)
 
 mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
 {
-    mdv_rollbacker(6) rollbacker;
+    mdv_rollbacker(8) rollbacker;
     mdv_rollbacker_clear(rollbacker);
 
     tracker->uuid   = *uuid;
@@ -197,6 +210,30 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tracker->peers_mutex);
 
 
+    if (!mdv_hashmap_init(tracker->links,
+                          mdv_tracker_link,
+                          id,
+                          256,
+                          &mdv_node_id_hash,
+                          &mdv_node_id_cmp))
+    {
+        MDV_LOGE("There is no memory for links");
+        mdv_rollback(rollbacker);
+        return MDV_NO_MEM;
+    }
+
+    mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tracker->links);
+
+
+    if (mdv_mutex_create(&tracker->links_mutex) != MDV_OK)
+    {
+        MDV_LOGE("links storage mutex not created");
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tracker->links_mutex);
+
     return MDV_OK;
 }
 
@@ -205,12 +242,23 @@ void mdv_tracker_free(mdv_tracker *tracker)
 {
     if (tracker)
     {
+        mdv_hashmap_foreach(tracker->links, mdv_tracker_link, entry)
+        {
+            mdv_vector_free(entry->peers);
+        }
+
         mdv_hashmap_free(tracker->ids);
         mdv_mutex_free(&tracker->ids_mutex);
+
         mdv_hashmap_free(tracker->peers);
         mdv_mutex_free(&tracker->peers_mutex);
+
+        mdv_hashmap_free(tracker->links);
+        mdv_mutex_free(&tracker->links_mutex);
+
         mdv_hashmap_free(tracker->nodes);
         mdv_mutex_free(&tracker->nodes_mutex);
+
         memset(tracker, 0, sizeof *tracker);
     }
 }
@@ -383,6 +431,57 @@ mdv_errno mdv_tracker_linkstate(mdv_tracker         *tracker,
                                 mdv_uuid const      *peer_2,
                                 bool                 connected)
 {
-    // TODO
-    return MDV_OK;
+    mdv_errno err = MDV_FAILED;
+
+    uint32_t ids[2] = {};
+
+    if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
+    {
+        do
+        {
+            if (mdv_uuid_cmp(peer_1, &tracker->uuid) != 0)
+            {
+                mdv_node *node = mdv_tracker_find(tracker, peer_1);
+
+                if (!node)
+                {
+                    MDV_LOGE("Link registartion failed. Node '%s' not found.", mdv_uuid_to_str(peer_1).ptr);
+                    break;
+                }
+
+                ids[0] = node->id;
+            }
+
+            if (mdv_uuid_cmp(peer_2, &tracker->uuid) != 0)
+            {
+                mdv_node *node = mdv_tracker_find(tracker, peer_2);
+
+                if (!node)
+                {
+                    MDV_LOGE("Link registartion failed. Node '%s' not found.", mdv_uuid_to_str(peer_2).ptr);
+                    break;
+                }
+
+                ids[1] = node->id;
+            }
+
+            err = MDV_OK;
+
+        } while (0);
+
+        mdv_mutex_unlock(&tracker->nodes_mutex);
+    }
+
+    if (err != MDV_OK)
+        return err;
+
+    err = MDV_FAILED;
+
+    if (mdv_mutex_lock(&tracker->links_mutex) == MDV_OK)
+    {
+        // TODO
+        mdv_mutex_unlock(&tracker->links_mutex);
+    }
+
+    return err;
 }

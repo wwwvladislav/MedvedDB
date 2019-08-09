@@ -164,7 +164,7 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @code
  *   mdv_hashmap_foreach(hm, type, entry)
  *   {
- *       type *item = &entry->data;
+ *       type *item = entry;
  *   }
  * @endcode
  */

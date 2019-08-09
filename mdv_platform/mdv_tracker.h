@@ -44,6 +44,9 @@ typedef struct mdv_tracker
 
     mdv_hashmap          peers;         ///< Peers (i.e. connected neighbours. UUID -> mdv_node *)
     mdv_mutex            peers_mutex;   ///< node identifiers guard mutex
+
+    mdv_hashmap          links;         ///< Links (id -> id's vector)
+    mdv_mutex            links_mutex;   ///< Links guard mutex
 } mdv_tracker;
 
 

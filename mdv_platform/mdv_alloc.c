@@ -18,6 +18,12 @@
             MDV_LOGD("%s(%p:%zu) '%s' (allocations: %d)", #fn, ptr, size, name, allocs_counter + 1);    \
         }
 
+    #define MDV_REALLOCATION(fn, ptr, size, name)                                                       \
+        {                                                                                               \
+            int allocs_counter = atomic_load_explicit(&MDV_ALLOCS, memory_order_relaxed);               \
+            MDV_LOGD("%s(%p:%zu) '%s' (allocations: %d)", #fn, ptr, size, name, allocs_counter);        \
+        }
+
     #define MDV_DEALLOCATION(fn, ptr, name)                                                             \
         {                                                                                               \
             int allocs_counter = atomic_fetch_sub_explicit(&MDV_ALLOCS, 1, memory_order_relaxed);       \
@@ -26,10 +32,13 @@
 
 #else
 
-    #define MDV_ALLOCATION(fn, ptr, size, name)           \
+    #define MDV_ALLOCATION(fn, ptr, size, name)             \
         MDV_LOGD("%s(%p:%zu) '%s'", #fn, ptr, size, name);
 
-    #define MDV_DEALLOCATION(fn, ptr, name)               \
+    #define MDV_REALLOCATION(fn, ptr, size, name)           \
+        MDV_LOGD("%s(%p:%zu) '%s'", #fn, ptr, size, name);
+
+    #define MDV_DEALLOCATION(fn, ptr, name)                 \
             MDV_LOGD("%s(%p) '%s'", #fn, ptr, name);
 
 #endif
@@ -100,7 +109,16 @@ void * mdv_realloc(void *ptr, size_t size, char const *name)
     if (!new_ptr)
         MDV_LOGE("realloc(%p, %zu) failed", ptr, size);
     else
-        MDV_ALLOCATION(realloc, new_ptr, size, name);
+        MDV_REALLOCATION(realloc, new_ptr, size, name);
+    return new_ptr;
+}
+
+
+void *mdv_realloc2(void **ptr, size_t size, char const *name)
+{
+    void *new_ptr = mdv_realloc(*ptr, size, name);
+    if (new_ptr)
+        *ptr = new_ptr;
     return new_ptr;
 }
 

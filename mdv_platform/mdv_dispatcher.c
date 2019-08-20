@@ -139,6 +139,14 @@ void mdv_dispatcher_free(mdv_dispatcher *pd)
     if (pd)
     {
         MDV_LOGD("Messages dispatcher %p deleted", pd);
+
+        if (mdv_mutex_lock(&pd->requests_mutex) == MDV_OK)
+        {
+            mdv_hashmap_foreach(pd->requests, mdv_request, entry)
+                mdv_condvar_signal(entry->cv);
+            mdv_mutex_unlock(&pd->requests_mutex);
+        }
+
         for (size_t i = 0; i < sizeof pd->condvars / sizeof *pd->condvars; ++i)
             mdv_condvar_free(pd->condvars + i);
         mdv_hashmap_free(pd->handlers);
@@ -259,7 +267,7 @@ mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg *req, mdv_msg *resp, s
         {
             err = mdv_condvar_timedwait(entry->data.cv, timeout);
 
-            if (pd->fd == MDV_INVALID_DESCRIPTOR)   // Connection is closed
+            if (pd->fd == MDV_INVALID_DESCRIPTOR)   // Connection closed
             {
                 err = MDV_CLOSED;
                 break;
@@ -268,6 +276,9 @@ mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg *req, mdv_msg *resp, s
             if (!entry->data.is_ready
                 && err == MDV_OK)
                 continue;
+
+            if (err == MDV_ETIMEDOUT)
+                break;
         }
 
         if (mdv_mutex_lock(&pd->requests_mutex) == MDV_OK)

@@ -22,5 +22,7 @@ include_directories(
 use_c11()
 
 add_executable(medved ${HEADERS} ${SOURCES})
+
 add_dependencies(medved mdv_platform mdv_core mdv_types)
+
 target_link_libraries(medved mdv_platform mdv_core mdv_types)

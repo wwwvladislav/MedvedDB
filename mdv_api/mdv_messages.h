@@ -5,14 +5,6 @@
 #include <mdv_types.h>
 
 
-/// Client types
-typedef enum mdv_cli_type
-{
-    MDV_CLI_USER = 0,       ///< User
-    MDV_CLI_PEER = 1        ///< Peer
-} mdv_cli_type;
-
-
 #define mdv_message_id_def(name, id)                    \
     enum { mdv_msg_##name##_id = id };
 
@@ -30,7 +22,7 @@ typedef enum mdv_cli_type
 
 mdv_message_def(status, 1,
     int         err;
-    char        message[1];
+    char const *message;
 );
 
 
@@ -54,6 +46,10 @@ mdv_message_def(table_info, 4,
 );
 
 
+mdv_message_def(get_topology, 5,
+);
+
+
 char const *                mdv_msg_name            (uint32_t id);
 
 
@@ -62,7 +58,7 @@ bool                        mdv_unbinn_hello        (binn const *obj, mdv_msg_he
 
 
 bool                        mdv_binn_status         (mdv_msg_status const *msg, binn *obj);
-mdv_msg_status *            mdv_unbinn_status       (binn const *obj);
+bool                        mdv_unbinn_status       (binn const *obj, mdv_msg_status *msg);
 
 
 bool                        mdv_binn_create_table   (mdv_msg_create_table_base const *msg, binn *obj);
@@ -72,3 +68,6 @@ mdv_msg_create_table_base * mdv_unbinn_create_table (binn const *obj);
 bool                        mdv_binn_table_info     (mdv_msg_table_info const *msg, binn *obj);
 bool                        mdv_unbinn_table_info   (binn const *obj, mdv_msg_table_info *msg);
 
+
+bool                        mdv_binn_get_topology   (mdv_msg_get_topology const *msg, binn *obj);
+bool                        mdv_unbinn_get_topology (binn const *obj, mdv_msg_get_topology *msg);

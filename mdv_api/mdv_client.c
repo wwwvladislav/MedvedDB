@@ -8,6 +8,7 @@
 #include <mdv_msg.h>
 #include <mdv_condvar.h>
 #include <mdv_rollbacker.h>
+#include <mdv_ctypes.h>
 #include <signal.h>
 
 
@@ -55,6 +56,7 @@ static void mdv_client_finalize()
         mdv_alloc_thread_finalize();
     }
 }
+
 
 /// @cond Doxygen_Suppress
 
@@ -266,3 +268,60 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_base *table)
 
     return err;
 }
+
+
+mdv_errno mdv_get_topology(mdv_client *client, size_t *nodes_count, mdv_node_link **links)
+{
+    mdv_msg_get_topology get_topology = {};
+
+    binn binn_msg;
+
+    if (!mdv_binn_get_topology(&get_topology, &binn_msg))
+        return MDV_FAILED;
+
+    mdv_msg req =
+    {
+        .hdr =
+        {
+            .id   = mdv_msg_get_topology_id,
+            .size = binn_size(&binn_msg)
+        },
+        .payload = binn_ptr(&binn_msg)
+    };
+
+    mdv_msg resp;
+
+    mdv_errno err = mdv_user_send(client->userdata.user, &req, &resp, client->response_timeout);
+
+    binn_free(&binn_msg);
+
+    if (err == MDV_OK)
+    {
+        switch(resp.hdr.id)
+        {
+//            case mdv_message_id(table_info):
+//            {
+//                mdv_msg_table_info info;
+//                err = mdv_client_table_info_handler(&resp, &info);
+//                if (err == MDV_OK)
+//                    table->uuid = info.uuid;
+//                break;
+//            }
+
+            case mdv_message_id(status):
+                // Not implemented
+
+            default:
+                err = MDV_FAILED;
+                MDV_LOGE("Unexpected response");
+                break;
+        }
+
+        mdv_free_msg(&resp);
+    }
+
+    return err;
+
+    return MDV_NO_IMPL;
+}
+

@@ -13,6 +13,7 @@ char const * mdv_msg_name(uint32_t id)
         case mdv_message_id(status):        return "STATUS";
         case mdv_message_id(create_table):  return "CREATE TABLE";
         case mdv_message_id(table_info):    return "TABLE INFO";
+        case mdv_message_id(get_topology):  return "GET TOPOLOGY";
     }
     return "UNKOWN";
 }
@@ -75,32 +76,20 @@ bool mdv_binn_status(mdv_msg_status const *msg, binn *obj)
 }
 
 
-mdv_msg_status * mdv_unbinn_status(binn const *obj)
+bool mdv_unbinn_status(binn const *obj, mdv_msg_status *msg)
 {
-    int   err;
-    char *message;
+    char *message = 0;
 
-    if (!binn_object_get_int32((void*)obj, "E", &err)
+    if (!binn_object_get_int32((void*)obj, "E", &msg->err)
         || !binn_object_get_str((void*)obj, "M", &message))
     {
         MDV_LOGE("unbinn_status failed");
-        return 0;
+        return false;
     }
 
-    int const message_len = strlen(message);
+    msg->message = message;
 
-    mdv_msg_status *msg = (mdv_msg_status *)mdv_alloc(offsetof(mdv_msg_status, message) + message_len + 1, "msg_status");
-    if (!msg)
-    {
-        MDV_LOGE("unbinn_status failed");
-        return 0;
-    }
-
-    msg->err = err;
-    memcpy(msg->message, message, message_len);
-    msg->message[message_len] = 0;
-
-    return msg;
+    return true;
 }
 
 
@@ -150,3 +139,23 @@ bool mdv_unbinn_table_info(binn const *obj, mdv_msg_table_info *msg)
     return true;
 }
 
+
+bool mdv_binn_get_topology(mdv_msg_get_topology const *msg, binn *obj)
+{
+    (void)msg;
+
+    if (!binn_create_object(obj))
+    {
+        MDV_LOGE("binn_get_topology failed");
+        return false;
+    }
+
+    return true;
+}
+
+
+bool mdv_unbinn_get_topology(binn const *obj, mdv_msg_get_topology *msg)
+{
+    (void)msg;
+    return true;
+}

@@ -36,6 +36,13 @@ typedef struct
 typedef struct mdv_client mdv_client;
 
 
+/// Link description between two nodes
+typedef struct
+{
+    mdv_uuid node[2];                   ///< Unique identifiers of linked nodes
+} mdv_node_link;
+
+
 /**
  * @brief Connect to DB
  *
@@ -58,11 +65,25 @@ void mdv_client_close(mdv_client *client);
 /**
  * @brief Create new table
  *
- * @param client [in]
- * @param table [in]
+ * @param client [in]   DB client
+ * @param table [in]    Table description
  *
  * @return On success, return MDV_OK. The table->uuid contains new table UUID.
  * @return On error, return non zero value
  */
 mdv_errno mdv_create_table(mdv_client *client, mdv_table_base *table);
+
+
+/**
+ * @brief Request network topology.
+ * @details This function should be used only for diagnostic purposes. Use mdv_free() to free the allocated links array.
+ *
+ * @param client [in]       DB client
+ * @param links_count [out] Links count
+ * @param links [out]       Links array
+ *
+ * @return On success, return MDV_OK.
+ * @return On error, return non zero value
+ */
+mdv_errno mdv_get_topology(mdv_client *client, size_t *links_count, mdv_node_link **links);
 

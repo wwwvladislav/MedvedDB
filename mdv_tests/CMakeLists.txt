@@ -16,5 +16,7 @@ include_directories(
 use_c11()
 
 add_executable(mdv_tests ${SOURCES})
+
 add_dependencies(mdv_tests mdv_platform mdv_core mdv_types)
+
 target_link_libraries(mdv_tests mdv_platform mdv_core mdv_types)

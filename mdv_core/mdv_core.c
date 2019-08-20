@@ -7,6 +7,7 @@
 #include "storage/async/mdv_nodes.h"
 #include <mdv_log.h>
 #include <mdv_messages.h>
+#include <mdv_ctypes.h>
 #include <mdv_rollbacker.h>
 
 

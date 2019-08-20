@@ -172,7 +172,7 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
         mdv_msg_status const status =
         {
             .err = err,
-            .message = { 0 }
+            .message = ""
         };
 
         err = mdv_user_status_reply(user, msg->hdr.number, &status);

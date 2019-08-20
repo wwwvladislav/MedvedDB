@@ -27,7 +27,7 @@ typedef struct
     mdv_condvar    *cv;                 ///< Condition variable is used by client for response waiting
     mdv_msg        *resp;               ///< Response
     uint16_t        request_id;         ///< Request identifier
-    uint16_t        is_ready:1;         ///< Response is ready
+    uint16_t        ready:1;            ///< Response is ready
 } mdv_request;
 
 
@@ -139,14 +139,6 @@ void mdv_dispatcher_free(mdv_dispatcher *pd)
     if (pd)
     {
         MDV_LOGD("Messages dispatcher %p deleted", pd);
-
-        if (mdv_mutex_lock(&pd->requests_mutex) == MDV_OK)
-        {
-            mdv_hashmap_foreach(pd->requests, mdv_request, entry)
-                mdv_condvar_signal(entry->cv);
-            mdv_mutex_unlock(&pd->requests_mutex);
-        }
-
         for (size_t i = 0; i < sizeof pd->condvars / sizeof *pd->condvars; ++i)
             mdv_condvar_free(pd->condvars + i);
         mdv_hashmap_free(pd->handlers);
@@ -176,19 +168,6 @@ void mdv_dispatcher_set_fd(mdv_dispatcher *pd, mdv_descriptor fd)
 }
 
 
-void mdv_dispatcher_close_fd(mdv_dispatcher *pd)
-{
-    pd->fd = (void*)MDV_INVALID_DESCRIPTOR;
-
-    if (mdv_mutex_lock(&pd->requests_mutex) == MDV_OK)
-    {
-        mdv_hashmap_foreach(pd->requests, mdv_request, entry)
-            mdv_condvar_signal(entry->cv);
-        mdv_mutex_unlock(&pd->requests_mutex);
-    }
-}
-
-
 mdv_descriptor mdv_dispatcher_fd(mdv_dispatcher *pd)
 {
     return pd->fd;
@@ -215,7 +194,7 @@ mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg *req, mdv_msg *resp, s
                 .cv         = *pcv,
                 .resp       = resp,
                 .request_id = req->hdr.number,
-                .is_ready   = 0
+                .ready      = 0
             };
 
             entry = (void*)mdv_hashmap_insert(pd->requests, mreq);
@@ -263,7 +242,7 @@ mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg *req, mdv_msg *resp, s
     // Wait response
     if (err == MDV_OK)
     {
-        while(!entry->data.is_ready)
+        while(!entry->data.ready)
         {
             err = mdv_condvar_timedwait(entry->data.cv, timeout);
 
@@ -273,17 +252,17 @@ mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg *req, mdv_msg *resp, s
                 break;
             }
 
-            if (!entry->data.is_ready
-                && err == MDV_OK)
-                continue;
-
             if (err == MDV_ETIMEDOUT)
                 break;
+
+            if (!entry->data.ready
+                && err == MDV_OK)
+                continue;
         }
 
         if (mdv_mutex_lock(&pd->requests_mutex) == MDV_OK)
         {
-            if (entry->data.is_ready
+            if (entry->data.ready
                     && err == MDV_OK)
             {
                 *resp = *entry->data.resp;
@@ -370,7 +349,7 @@ mdv_errno mdv_dispatcher_read(mdv_dispatcher *pd)
         {
             msg_is_handled = 1;
             *req->resp = pd->message;
-            req->is_ready = 1;
+            req->ready = 1;
             memset(&pd->message, 0, sizeof pd->message);
 
             if (mdv_condvar_signal(req->cv) != MDV_OK)

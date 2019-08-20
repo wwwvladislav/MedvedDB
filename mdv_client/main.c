@@ -100,7 +100,7 @@ static int show_topology(char const *addr)
             .keepidle           = 5,
             .keepcnt            = 10,
             .keepintvl          = 5,
-            .response_timeout   = 15
+            .response_timeout   = 5
         },
         .threadpool =
         {

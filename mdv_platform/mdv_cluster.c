@@ -81,6 +81,7 @@ static void * mdv_cluster_conctx_create(mdv_descriptor fd, mdv_string const *add
         return 0;
     }
 
+    atomic_init(&conctx->rc, 1);
     conctx->type                = type;
     conctx->dir                 = dir;
     conctx->dispatcher          = mdv_dispatcher_create(fd);
@@ -145,18 +146,49 @@ static mdv_errno mdv_cluster_conctx_recv(void *ctx)
  */
 static void mdv_cluster_conctx_closed(void *ctx)
 {
-    mdv_conctx *conctx = ctx;
+    mdv_cluster_conctx_release((mdv_conctx *)ctx);
+}
 
-    mdv_conctx_config const *conctx_config = mdv_hashmap_find(conctx->cluster->conctx_cfgs, conctx->type);
 
-    if (conctx_config)
+
+mdv_conctx * mdv_cluster_conctx_retain(mdv_conctx *ctx)
+{
+    if (ctx)
     {
-        conctx_config->free(conctx->dataspace, conctx);
-        mdv_dispatcher_free(conctx->dispatcher);
-        mdv_free(conctx, "conctx");
+        unsigned int rc;
+
+        while((rc = atomic_load_explicit(&ctx->rc, memory_order_relaxed)) > 0)
+        {
+            if (atomic_compare_exchange_weak(&ctx->rc, &rc, rc + 1))
+                return ctx;
+        }
     }
-    else
-        MDV_LOGE("Unknown connection type %u", conctx->type);
+
+    return 0;
+}
+
+
+void mdv_cluster_conctx_release(mdv_conctx *ctx)
+{
+    if (ctx)
+    {
+        unsigned int rc = atomic_fetch_sub_explicit(&ctx->rc, 1, memory_order_relaxed);
+
+        if (rc == 1)
+        {
+            mdv_conctx_config const *conctx_config = mdv_hashmap_find(ctx->cluster->conctx_cfgs, ctx->type);
+
+            if (conctx_config)
+            {
+                conctx_config->free(ctx->dataspace, ctx);
+                mdv_dispatcher_free(ctx->dispatcher);
+                mdv_free(ctx, "conctx");
+            }
+            else
+                MDV_LOGE("Unknown connection type %u", ctx->type);
+
+        }
+    }
 }
 
 

@@ -9,6 +9,7 @@
 #include "mdv_dispatcher.h"
 #include "mdv_hashmap.h"
 #include "mdv_msg.h"
+#include <stdatomic.h>
 
 
 /// Cluster manager
@@ -26,6 +27,7 @@ typedef void (*mdv_cluster_peer_disconnection_handler)(void *userdata, mdv_uuid 
 /// Connection context
 typedef struct mdv_conctx
 {
+    atomic_uint         rc;                         ///< Reference counter
     uint8_t             type;                       ///< Connection context type
     mdv_channel_dir     dir;                        ///< Channel direction
     mdv_dispatcher     *dispatcher;                 ///< Messages dispatcher
@@ -33,6 +35,24 @@ typedef struct mdv_conctx
     mdv_cluster        *cluster;                    ///< Cluster manager
     uint8_t             dataspace[1];               ///< Data space is used to place data associated with connection
 } mdv_conctx;
+
+
+/**
+ * @brief Retain connection context (i.e. increment reference counter)
+ *
+ * @param ctx [in]  Connection context
+ *
+ * @return retained connection context or NULL.
+ */
+mdv_conctx * mdv_cluster_conctx_retain(mdv_conctx *ctx);
+
+
+/**
+ * @brief Relese connection context (i.e. decrement reference counter)
+ *
+ * @param ctx [in]  Connection context
+ */
+void mdv_cluster_conctx_release(mdv_conctx *ctx);
 
 
 /// Connection context configuration

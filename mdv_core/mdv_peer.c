@@ -197,14 +197,36 @@ mdv_errno mdv_peer_init(void *ctx, mdv_conctx *conctx, void *userdata)
 mdv_errno mdv_peer_send(mdv_peer *peer, mdv_msg *req, mdv_msg *resp, size_t timeout)
 {
     MDV_LOGI(">>>>> %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(req->hdr.id));
-    return mdv_dispatcher_send(peer->conctx->dispatcher, req, resp, timeout);
+
+    mdv_errno err = MDV_CLOSED;
+
+    mdv_conctx *conctx = mdv_cluster_conctx_retain(peer->conctx);
+
+    if (conctx)
+    {
+        err = mdv_dispatcher_send(peer->conctx->dispatcher, req, resp, timeout);
+        mdv_cluster_conctx_release(conctx);
+    }
+
+    return err;
 }
 
 
 mdv_errno mdv_peer_post(mdv_peer *peer, mdv_msg *msg)
 {
     MDV_LOGI(">>>>> %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
-    return mdv_dispatcher_post(peer->conctx->dispatcher, msg);
+
+    mdv_errno err = MDV_CLOSED;
+
+    mdv_conctx *conctx = mdv_cluster_conctx_retain(peer->conctx);
+
+    if (conctx)
+    {
+        err = mdv_dispatcher_post(peer->conctx->dispatcher, msg);
+        mdv_cluster_conctx_release(conctx);
+    }
+
+    return err;
 }
 
 

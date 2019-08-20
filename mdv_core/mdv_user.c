@@ -217,14 +217,36 @@ mdv_errno mdv_user_init(void *ctx, mdv_conctx *conctx, void *userdata)
 mdv_errno mdv_user_send(mdv_user *user, mdv_msg *req, mdv_msg *resp, size_t timeout)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(req->hdr.id));
-    return mdv_dispatcher_send(user->conctx->dispatcher, req, resp, timeout);
+
+    mdv_errno err = MDV_CLOSED;
+
+    mdv_conctx *conctx = mdv_cluster_conctx_retain(user->conctx);
+
+    if (conctx)
+    {
+        err = mdv_dispatcher_send(user->conctx->dispatcher, req, resp, timeout);
+        mdv_cluster_conctx_release(conctx);
+    }
+
+    return err;
 }
 
 
 mdv_errno mdv_user_post(mdv_user *user, mdv_msg *msg)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(msg->hdr.id));
-    return mdv_dispatcher_post(user->conctx->dispatcher, msg);
+
+    mdv_errno err = MDV_CLOSED;
+
+    mdv_conctx *conctx = mdv_cluster_conctx_retain(user->conctx);
+
+    if (conctx)
+    {
+        err = mdv_dispatcher_post(user->conctx->dispatcher, msg);
+        mdv_cluster_conctx_release(conctx);
+    }
+
+    return err;
 }
 
 

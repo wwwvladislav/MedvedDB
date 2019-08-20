@@ -64,14 +64,6 @@ void mdv_dispatcher_set_fd(mdv_dispatcher *pd, mdv_descriptor fd);
 
 
 /**
- * @brief Close file descriptor
- *
- * @param pd [in] messages dispatcher
- */
-void mdv_dispatcher_close_fd(mdv_dispatcher *pd);
-
-
-/**
  * @brief Return file descriptor
  * @param pd [in] messages dispatcher
  *

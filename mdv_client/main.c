@@ -4,89 +4,194 @@
 #include <string.h>
 #include <mdv_client.h>
 #include <mdv_log.h>
+#include <mdv_limits.h>
 #include <mdv_alloc.h>
+#include <stdlib.h>
 #include <linenoise.h>
+#include <ctype.h>
 
 
-static int help()
+static char const *MDV_HISTORY      = "history.txt";
+static int const   MDV_HISTORY_LEN  = 64;
+
+
+static mdv_client *client = 0;
+static char result_file_path[MDV_PATH_MAX] = { 0 };
+
+
+#define MDV_OUT(...)                                    \
+    {                                                   \
+        printf(__VA_ARGS__);                            \
+        if (*result_file_path)                          \
+        {                                               \
+            FILE *f = fopen(result_file_path, "a");     \
+            if (f)                                      \
+            {                                           \
+                fprintf(f, __VA_ARGS__);                \
+                fclose(f);                              \
+            }                                           \
+        }                                               \
+    }
+
+#define MDV_INF(...) printf(__VA_ARGS__)
+
+
+typedef void (*mdv_command_handler)(char const *);
+
+
+typedef struct
 {
-    printf("NAME\n");
-    printf("    mdv - client for distributed, column store, NoSQL database\n\n");
-    printf("SYNOPSIS\n");
-    printf("    mdv [option...] [protocol://address:port]\n\n");
-    printf("OPTIONS\n");
-    printf("    -h, --help  Display this help and exit\n");
-    printf("    -t, --topo  Show network topology\n");
-    printf("    -T, --test  Create test table\n");
-    return 0;
-}
+    char const          *cmd;
+    char const          *descriprion;
+    mdv_command_handler  handler;
+} mdv_command;
 
 
-static int usage()
+static void mdv_commands_list(char const *);
+static void mdv_redirect_output(char const *);
+static void mdv_show_topology(char const *);
+static void mdv_test_scenario(char const *);
+
+
+static mdv_command const commands[] =
 {
-    printf("Usage: mdv protocol://address:port\n");
-    printf("Try 'mdv --help' for more information.\n");
-    return 0;
-}
+    { "\\?",    "Show all available mdv commands",          &mdv_commands_list },
+    { "\\o",    "Save an output of query to a text file",   &mdv_redirect_output },
+    { "\\t",    "Show network topology",                    &mdv_show_topology },
+    { "\\q",    "Quit mdv",                                 0 },
+    { "\\test", "Run test scenario",                        &mdv_test_scenario },
+};
 
 
-static int run_test_scenario(char const *addr)
+static mdv_command const * mdv_command_find(char const *cmd, size_t cmd_len)
 {
-    mdv_client_config config =
+    for (unsigned int i = 0; i < sizeof commands / sizeof *commands; ++i)
     {
-        .db =
-        {
-            .addr = addr
-        },
-        .connection =
-        {
-            .timeout            = 15,
-            .keepidle           = 5,
-            .keepcnt            = 10,
-            .keepintvl          = 5,
-            .response_timeout   = 15
-        },
-        .threadpool =
-        {
-            .size = 4
-        }
-    };
-
-    mdv_client *client = mdv_client_connect(&config);
-
-    if (client)
-    {
-        mdv_table(3) table =
-        {
-            .name = mdv_str_static("MyTable"),
-            .size = 3,
-            .fields =
-            {
-                { MDV_FLD_TYPE_CHAR,  0, mdv_str_static("Col1") },  // char *
-                { MDV_FLD_TYPE_INT32, 2, mdv_str_static("Col2") },  // pair { int, int }
-                { MDV_FLD_TYPE_BOOL,  1, mdv_str_static("Col3") }   // bool
-            }
-        };
-
-        mdv_errno err = mdv_create_table(client, (mdv_table_base *)&table);
-
-        if (err == MDV_OK)
-        {
-            printf("New table '%s' with UUID '%s' was successfully created\n", table.name.ptr, mdv_uuid_to_str(&table.uuid).ptr);
-        }
-        else
-        {
-            printf("Table '%s' creation failed with error '%s' (%d)\n", table.name.ptr, mdv_strerror(err), err);
-        }
-
-        mdv_client_close(client);
+        if (strncmp(commands[i].cmd, cmd, cmd_len) == 0)
+            return &commands[i];
     }
 
     return 0;
 }
 
 
-static int show_topology(char const *addr)
+static void mdv_command_completion(const char *buf, linenoiseCompletions *lc)
+{
+    size_t const buf_len = strlen(buf);
+
+    for (unsigned int i = 0; i < sizeof commands / sizeof *commands; ++i)
+    {
+        if (strncmp(buf, commands[i].cmd, buf_len) == 0)
+            linenoiseAddCompletion(lc, commands[i].cmd);
+    }
+}
+
+
+static int mdv_help()
+{
+    MDV_INF("NAME\n");
+    MDV_INF("    mdv - client for distributed, column store, NoSQL database\n\n");
+    MDV_INF("SYNOPSIS\n");
+    MDV_INF("    mdv [option...] [protocol://address:port]\n\n");
+    MDV_INF("OPTIONS\n");
+    MDV_INF("    -h, --help  Display this help and exit\n");
+    return 0;
+}
+
+
+static int mdv_usage()
+{
+    MDV_INF("Usage: mdv protocol://address:port\n");
+    MDV_INF("Try 'mdv --help' for more information.\n");
+    return 0;
+}
+
+
+static void mdv_commands_list(char const *args)
+{
+    (void)args;
+    for (unsigned int i = 0; i < sizeof commands / sizeof *commands; ++i)
+        MDV_OUT("%s \t %s\n", commands[i].cmd, commands[i].descriprion);
+}
+
+
+static void mdv_redirect_output(char const *args)
+{
+    if (!args)
+        result_file_path[0] = 0;
+    else
+    {
+        strncpy(result_file_path, args, sizeof result_file_path);
+        result_file_path[sizeof result_file_path - 1] = 0;
+
+        FILE *f = fopen(result_file_path, "w");
+        if (f) fclose(f);
+    }
+}
+
+
+static void mdv_show_topology(char const *args)
+{
+    (void)args;
+
+    size_t links_count = 0;
+    mdv_node_link *links = 0;
+
+    mdv_errno err = mdv_get_topology(client, &links_count, &links);
+
+    if (err == MDV_OK)
+    {
+        // Display topology
+        MDV_INF("Usage: neato topology.dot -O -Tpng\n\n");
+
+        MDV_OUT("graph topology {\n");
+
+        for (size_t i = 0; i < links_count; ++i)
+        {
+            MDV_OUT("  \"%s\" -- \"%s\"\n",
+                mdv_uuid_to_str(&links[i].node[0]).ptr,
+                mdv_uuid_to_str(&links[i].node[1]).ptr);
+        }
+
+        MDV_OUT("}\n");
+
+        mdv_free(links, "topology");
+    }
+    else
+        MDV_INF("Topology request failed with error '%s' (%d)\n", mdv_strerror(err), err);
+}
+
+
+static void mdv_test_scenario(char const *args)
+{
+    (void)args;
+
+    mdv_table(3) table =
+    {
+        .name = mdv_str_static("MyTable"),
+        .size = 3,
+        .fields =
+        {
+            { MDV_FLD_TYPE_CHAR,  0, mdv_str_static("Col1") },  // char *
+            { MDV_FLD_TYPE_INT32, 2, mdv_str_static("Col2") },  // pair { int, int }
+            { MDV_FLD_TYPE_BOOL,  1, mdv_str_static("Col3") }   // bool
+        }
+    };
+
+    mdv_errno err = mdv_create_table(client, (mdv_table_base *)&table);
+
+    if (err == MDV_OK)
+    {
+        MDV_INF("New table '%s' with UUID '%s' was successfully created\n", table.name.ptr, mdv_uuid_to_str(&table.uuid).ptr);
+    }
+    else
+    {
+        MDV_INF("Table '%s' creation failed with error '%s' (%d)\n", table.name.ptr, mdv_strerror(err), err);
+    }
+}
+
+
+static mdv_client * mdv_connect(char const *addr)
 {
     mdv_client_config config =
     {
@@ -108,40 +213,7 @@ static int show_topology(char const *addr)
         }
     };
 
-    mdv_client *client = mdv_client_connect(&config);
-
-    if (client)
-    {
-        size_t links_count = 0;
-        mdv_node_link *links = 0;
-
-        mdv_errno err = mdv_get_topology(client, &links_count, &links);
-
-        if (err == MDV_OK)
-        {
-            // Display topology
-            fprintf(stderr, "Usage: neato topology.dot -O -Tpng\n\n");
-
-            printf("graph topology {\n");
-
-            for (size_t i = 0; i < links_count; ++i)
-            {
-                printf("  \"%s\" -- \"%s\"\n",
-                    mdv_uuid_to_str(&links[i].node[0]).ptr,
-                    mdv_uuid_to_str(&links[i].node[1]).ptr);
-            }
-
-            printf("}\n");
-
-            mdv_free(links, "topology");
-        }
-        else
-            printf("Topology request failed with error '%s' (%d)\n", mdv_strerror(err), err);
-
-        mdv_client_close(client);
-    }
-
-    return 0;
+    return mdv_client_connect(&config);
 }
 
 
@@ -149,16 +221,14 @@ int main(int argc, char *argv[])
 {
     if (argc < 2)
     {
-        printf("mdv: missing operand\n");
-        usage();
+        MDV_INF("mdv: missing operand\n");
+        mdv_usage();
         return 0;
     }
 
     struct option long_options[] =
     {
         { "help",   no_argument,    0, 0 },
-        { "topo",   no_argument,    0, 0 },
-        { "test",   no_argument,    0, 0 },
         { 0,        0,              0, 0 }
     };
 
@@ -167,21 +237,54 @@ int main(int argc, char *argv[])
     int option_index = 0;
     int op = 0;
 
-    while((op = getopt_long(argc - 1, argv, "htT", long_options, &option_index)) != -1)
+    while((op = getopt_long(argc - 1, argv, "h", long_options, &option_index)) != -1)
     {
         switch(op)
         {
             case '?':
             case 'h':
-                return help();
-
-            case 't':
-                return show_topology(argv[argc - 1]);
-
-            case 'T':
-                return run_test_scenario(argv[argc - 1]);
+                return mdv_help();
         }
     }
 
-    return help();
+    linenoiseSetMultiLine(1);
+    linenoiseHistoryLoad(MDV_HISTORY);
+    linenoiseHistorySetMaxLen(MDV_HISTORY_LEN);
+    linenoiseSetCompletionCallback(mdv_command_completion);
+
+    client = mdv_connect(argv[argc - 1]);
+
+    if (client)
+    {
+        char *line;
+
+        while((line = linenoise("mdv> ")))
+        {
+            if (*line)
+            {
+                char const *args = strchr(line, ' ');
+                size_t const cmd_len = args ? (size_t)(args - line) : strlen(line);
+                while(args && *args && isspace(*args))
+                    ++args;
+
+                mdv_command const *cmd = mdv_command_find(line, cmd_len);
+
+                if (cmd)
+                {
+                    if (!cmd->handler)
+                        break;
+
+                    cmd->handler(args);
+                    linenoiseHistoryAdd(line);
+                    linenoiseHistorySave(MDV_HISTORY);
+                }
+            }
+
+            free(line);
+        }
+
+        mdv_client_close(client);
+    }
+
+    return 0;
 }

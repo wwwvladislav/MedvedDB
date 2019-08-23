@@ -2,7 +2,7 @@
 #include "mdv_limits.h"
 #include "mdv_log.h"
 #include "mdv_rollbacker.h"
-#include "mdv_vector.h"
+#include "mdv_algorithm.h"
 #include <string.h>
 
 
@@ -22,18 +22,6 @@ typedef struct
 } mdv_peer_id;
 
 
-/// Unique identifiers collection
-typedef mdv_vector(uint32_t) mdv_tracker_node_ids;
-
-
-/// Link between nodes
-typedef struct
-{
-    uint32_t                id;     ///< Unique identifier inside current server
-    mdv_tracker_node_ids    peers;  ///< Peer node identifiers
-} mdv_tracker_link;
-
-
 static mdv_node * mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node);
 static mdv_node * mdv_tracker_find(mdv_tracker *tracker, mdv_uuid const *uuid);
 static void       mdv_tracker_erase(mdv_tracker *tracker, mdv_node const *node);
@@ -49,6 +37,68 @@ static size_t mdv_node_id_hash(uint32_t const *id)
 static int mdv_node_id_cmp(uint32_t const *id1, uint32_t const *id2)
 {
     return (int)*id1 - *id2;
+}
+
+
+static size_t mdv_link_hash(uint32_t const **ids)
+{
+    uint32_t a, b;
+
+    if ((*ids)[0] < (*ids)[1])
+    {
+        a = (*ids)[0];
+        b = (*ids)[1];
+    }
+    else
+    {
+        a = (*ids)[1];
+        b = (*ids)[0];
+    }
+
+    static size_t const FNV_offset_basis = 0xcbf29ce484222325;
+    static size_t const FNV_prime = 0x100000001b3;
+
+    size_t hash = FNV_offset_basis;
+
+    hash = (hash * FNV_prime) ^ a;
+    hash = (hash * FNV_prime) ^ b;
+
+    return hash;
+}
+
+
+static int mdv_link_cmp(uint32_t const **ids1, uint32_t const **ids2)
+{
+    uint32_t a1, b1, a2, b2;
+
+    if ((*ids1)[0] < (*ids1)[1])
+    {
+        a1 = (*ids1)[0];
+        b1 = (*ids1)[1];
+    }
+    else
+    {
+        a1 = (*ids1)[1];
+        b1 = (*ids1)[0];
+    }
+
+    if ((*ids2)[0] < (*ids2)[1])
+    {
+        a2 = (*ids2)[0];
+        b2 = (*ids2)[1];
+    }
+    else
+    {
+        a2 = (*ids2)[1];
+        b2 = (*ids2)[0];
+    }
+
+    if (a1 < a2)        return -1;
+    else if (a1 > a2)   return  1;
+    else if (b1 < b2)   return -1;
+    else if (b1 > b2)   return  1;
+
+    return 0;
 }
 
 
@@ -214,8 +264,8 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
                           mdv_tracker_link,
                           id,
                           256,
-                          &mdv_node_id_hash,
-                          &mdv_node_id_cmp))
+                          &mdv_link_hash,
+                          &mdv_link_cmp))
     {
         MDV_LOGE("There is no memory for links");
         mdv_rollback(rollbacker);
@@ -242,11 +292,6 @@ void mdv_tracker_free(mdv_tracker *tracker)
 {
     if (tracker)
     {
-        mdv_hashmap_foreach(tracker->links, mdv_tracker_link, entry)
-        {
-            mdv_vector_free(entry->peers);
-        }
-
         mdv_hashmap_free(tracker->ids);
         mdv_mutex_free(&tracker->ids_mutex);
 
@@ -433,7 +478,11 @@ mdv_errno mdv_tracker_linkstate(mdv_tracker         *tracker,
 {
     mdv_errno err = MDV_FAILED;
 
-    uint32_t ids[2] = {};
+    mdv_tracker_link link =
+    {
+        .id = { MDV_LOCAL_ID, MDV_LOCAL_ID },
+        .weight = 1
+    };
 
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
@@ -449,7 +498,7 @@ mdv_errno mdv_tracker_linkstate(mdv_tracker         *tracker,
                     break;
                 }
 
-                ids[0] = node->id;
+                link.id[0] = node->id;
             }
 
             if (mdv_uuid_cmp(peer_2, &tracker->uuid) != 0)
@@ -462,7 +511,7 @@ mdv_errno mdv_tracker_linkstate(mdv_tracker         *tracker,
                     break;
                 }
 
-                ids[1] = node->id;
+                link.id[1] = node->id;
             }
 
             err = MDV_OK;
@@ -479,9 +528,47 @@ mdv_errno mdv_tracker_linkstate(mdv_tracker         *tracker,
 
     if (mdv_mutex_lock(&tracker->links_mutex) == MDV_OK)
     {
-        // TODO
+        if (connected)
+        {
+            err = mdv_hashmap_insert(tracker->links, link)
+                    ? MDV_OK
+                    : MDV_NO_MEM;
+        }
+        else
+        {
+            mdv_hashmap_erase(tracker->links, link.id);
+            err = MDV_OK;
+        }
+
         mdv_mutex_unlock(&tracker->links_mutex);
     }
 
     return err;
+}
+
+
+size_t mdv_tracker_links_count(mdv_tracker *tracker)
+{
+    size_t links_count = 0;
+
+    if (mdv_mutex_lock(&tracker->links_mutex) == MDV_OK)
+    {
+        links_count = mdv_hashmap_size(tracker->links);
+        mdv_mutex_unlock(&tracker->links_mutex);
+    }
+
+    return links_count;
+}
+
+
+void mdv_tracker_links_foreach(mdv_tracker *tracker, void *arg, void (*fn)(mdv_tracker_link const *, void *))
+{
+    if (mdv_mutex_lock(&tracker->links_mutex) == MDV_OK)
+    {
+        mdv_hashmap_foreach(tracker->links, mdv_tracker_link, entry)
+        {
+            fn(entry, arg);
+        }
+        mdv_mutex_unlock(&tracker->links_mutex);
+    }
 }

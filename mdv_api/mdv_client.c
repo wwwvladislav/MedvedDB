@@ -94,6 +94,52 @@ static mdv_errno mdv_client_table_info_handler(mdv_msg const *msg, mdv_msg_table
 }
 
 
+static mdv_errno mdv_client_status_handler(mdv_msg const *msg, mdv_errno *err)
+{
+    mdv_msg_status status;
+
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+        return MDV_FAILED;
+
+    if (!mdv_unbinn_status(&binn_msg, &status))
+    {
+        MDV_LOGE("Invalid status");
+        binn_free(&binn_msg);
+        return MDV_FAILED;
+    }
+
+    *err = (mdv_errno)status.err;
+
+    binn_free(&binn_msg);
+
+    return MDV_OK;
+}
+
+
+static mdv_errno mdv_client_topology_handler(mdv_msg const *msg, mdv_msg_topology **topology)
+{
+    // TODO
+/*
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+        return MDV_FAILED;
+
+    if (!mdv_unbinn_table_info(&binn_msg, table_info))
+    {
+        MDV_LOGE("Invalid table information");
+        binn_free(&binn_msg);
+        return MDV_FAILED;
+    }
+
+    binn_free(&binn_msg);
+*/
+    return MDV_OK;
+}
+
+
 mdv_client * mdv_client_connect(mdv_client_config const *config)
 {
     mdv_rollbacker(4) rollbacker;
@@ -255,7 +301,11 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_base *table)
             }
 
             case mdv_message_id(status):
-                // Not implemented
+            {
+                if (mdv_client_status_handler(&resp, &err) == MDV_OK)
+                    break;
+                // fallthrough
+            }
 
             default:
                 err = MDV_FAILED;
@@ -270,8 +320,10 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_base *table)
 }
 
 
-mdv_errno mdv_get_topology(mdv_client *client, size_t *nodes_count, mdv_node_link **links)
+mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
 {
+    *topology = 0;
+
     mdv_msg_get_topology get_topology = {};
 
     binn binn_msg;
@@ -299,17 +351,22 @@ mdv_errno mdv_get_topology(mdv_client *client, size_t *nodes_count, mdv_node_lin
     {
         switch(resp.hdr.id)
         {
-//            case mdv_message_id(table_info):
-//            {
+            case mdv_message_id(topology):
+            {
 //                mdv_msg_table_info info;
 //                err = mdv_client_table_info_handler(&resp, &info);
 //                if (err == MDV_OK)
 //                    table->uuid = info.uuid;
-//                break;
-//            }
+                MDV_LOGI("TODO: Read topology!!!");
+                break;
+            }
 
             case mdv_message_id(status):
-                // Not implemented
+            {
+                if (mdv_client_status_handler(&resp, &err) == MDV_OK)
+                    break;
+                // fallthrough
+            }
 
             default:
                 err = MDV_FAILED;
@@ -321,7 +378,5 @@ mdv_errno mdv_get_topology(mdv_client *client, size_t *nodes_count, mdv_node_lin
     }
 
     return err;
-
-    return MDV_NO_IMPL;
 }
 

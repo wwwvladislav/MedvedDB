@@ -30,6 +30,14 @@ typedef struct
 } mdv_node;
 
 
+/// Link between nodes
+typedef struct
+{
+    uint32_t    id[2];          ///< Unique identifiers inside current server
+    uint32_t    weight;         ///< Link weight. Bigger is better.
+} mdv_tracker_link;
+
+
 /// Nodes and topology tracker
 typedef struct mdv_tracker
 {
@@ -150,3 +158,23 @@ mdv_errno mdv_tracker_linkstate(mdv_tracker         *tracker,
                                 mdv_uuid const      *peer_1,
                                 mdv_uuid const      *peer_2,
                                 bool                 connected);
+
+
+/**
+ * @brief Return links count in network topology.
+ *
+ * @param tracker [in]          Topology tracker
+ *
+ * @return links count
+ */
+size_t mdv_tracker_links_count(mdv_tracker *tracker);
+
+
+/**
+ * @brief Iterate over all topology links and call function fn.
+ *
+ * @param tracker [in]          Topology tracker
+ * @param arg [in]              User defined data which is provided as second argument to the function fn
+ * @param fn [in]               function pointer
+ */
+void mdv_tracker_links_foreach(mdv_tracker *tracker, void *arg, void (*fn)(mdv_tracker_link const *, void *));

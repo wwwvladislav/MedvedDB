@@ -184,6 +184,25 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
 }
 
 
+static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
+{
+    MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
+
+    mdv_user    *user    = arg;
+    mdv_tracker *tracker = &user->core->cluster.tracker;
+
+    // TODO
+
+    mdv_msg_status const status =
+    {
+        .err = MDV_NO_IMPL,
+        .message = ""
+    };
+
+    return mdv_user_status_reply(user, msg->hdr.number, &status);
+}
+
+
 mdv_errno mdv_user_init(void *ctx, mdv_conctx *conctx, void *userdata)
 {
     mdv_user *user = ctx;
@@ -195,8 +214,9 @@ mdv_errno mdv_user_init(void *ctx, mdv_conctx *conctx, void *userdata)
 
     mdv_dispatcher_handler const handlers[] =
     {
-        { mdv_msg_hello_id,         &mdv_user_wave_handler,         user },
-        { mdv_msg_create_table_id,  &mdv_user_create_table_handler, user }
+        { mdv_message_id(hello),         &mdv_user_wave_handler,         user },
+        { mdv_message_id(create_table),  &mdv_user_create_table_handler, user },
+        { mdv_message_id(get_topology),  &mdv_user_get_topology_handler, user },
     };
 
     for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)

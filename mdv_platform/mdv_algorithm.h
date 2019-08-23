@@ -58,3 +58,13 @@ void mdv_union_u32(uint32_t const *set_a, uint32_t a_size,
 uint32_t mdv_exclude(void       *set_a, size_t itmsize_a, size_t size_a,
                      void const *set_b, size_t itmsize_b, size_t size_b,
                      int (*cmp)(const void *a, const void *b));
+
+
+/**
+ * @brief Swaps the values a and b.
+ *
+ * @param type [in] Value type
+ * @param a [in]    First value
+ * @param b [in]    Second value
+ */
+#define mdv_swap(type, a, b) { type mdvtmp_85628935 = a; a = b; b = mdvtmp_85628935; }

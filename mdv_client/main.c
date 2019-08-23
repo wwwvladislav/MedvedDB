@@ -134,28 +134,28 @@ static void mdv_show_topology(char const *args)
 {
     (void)args;
 
-    size_t links_count = 0;
-    mdv_node_link *links = 0;
+    mdv_topology *topology = 0;
 
-    mdv_errno err = mdv_get_topology(client, &links_count, &links);
+    mdv_errno err = mdv_get_topology(client, &topology);
 
-    if (err == MDV_OK)
+    if (err == MDV_OK
+        || !topology)
     {
         // Display topology
         MDV_INF("Usage: neato topology.dot -O -Tpng\n\n");
 
         MDV_OUT("graph topology {\n");
 
-        for (size_t i = 0; i < links_count; ++i)
+        for (size_t i = 0; i < topology->links_count; ++i)
         {
             MDV_OUT("  \"%s\" -- \"%s\"\n",
-                mdv_uuid_to_str(&links[i].node[0]).ptr,
-                mdv_uuid_to_str(&links[i].node[1]).ptr);
+                mdv_uuid_to_str(topology->links[i].node[0]).ptr,
+                mdv_uuid_to_str(topology->links[i].node[1]).ptr);
         }
 
         MDV_OUT("}\n");
 
-        mdv_free(links, "topology");
+        mdv_free(topology, "topology");
     }
     else
         MDV_INF("Topology request failed with error '%s' (%d)\n", mdv_strerror(err), err);

@@ -40,19 +40,19 @@ static int mdv_node_id_cmp(uint32_t const *id1, uint32_t const *id2)
 }
 
 
-static size_t mdv_link_hash(uint32_t const **ids)
+static size_t mdv_link_hash(mdv_tracker_link const *link)
 {
     uint32_t a, b;
 
-    if ((*ids)[0] < (*ids)[1])
+    if (link->id[0] < link->id[1])
     {
-        a = (*ids)[0];
-        b = (*ids)[1];
+        a = link->id[0];
+        b = link->id[1];
     }
     else
     {
-        a = (*ids)[1];
-        b = (*ids)[0];
+        a = link->id[1];
+        b = link->id[0];
     }
 
     static size_t const FNV_offset_basis = 0xcbf29ce484222325;
@@ -67,30 +67,30 @@ static size_t mdv_link_hash(uint32_t const **ids)
 }
 
 
-static int mdv_link_cmp(uint32_t const **ids1, uint32_t const **ids2)
+static int mdv_link_cmp(mdv_tracker_link const *link1, mdv_tracker_link const *link2)
 {
     uint32_t a1, b1, a2, b2;
 
-    if ((*ids1)[0] < (*ids1)[1])
+    if (link1->id[0] < link1->id[1])
     {
-        a1 = (*ids1)[0];
-        b1 = (*ids1)[1];
+        a1 = link1->id[0];
+        b1 = link1->id[1];
     }
     else
     {
-        a1 = (*ids1)[1];
-        b1 = (*ids1)[0];
+        a1 = link1->id[1];
+        b1 = link1->id[0];
     }
 
-    if ((*ids2)[0] < (*ids2)[1])
+    if (link2->id[0] < link2->id[1])
     {
-        a2 = (*ids2)[0];
-        b2 = (*ids2)[1];
+        a2 = link2->id[0];
+        b2 = link2->id[1];
     }
     else
     {
-        a2 = (*ids2)[1];
-        b2 = (*ids2)[0];
+        a2 = link2->id[1];
+        b2 = link2->id[0];
     }
 
     if (a1 < a2)        return -1;

@@ -157,7 +157,7 @@ mdv_errno mdv_gossip_linkstate(mdv_core            *core,
     {
         if (peers->size)
         {
-            mdv_gossip_id *ids = mdv_stalloc(sizeof(uint32_t), peers->size * sizeof(uint32_t), "gossip ids");
+            mdv_gossip_id *ids = mdv_staligned_alloc(sizeof(uint32_t), peers->size * sizeof(uint32_t), "gossip ids");
 
             if (ids)
             {
@@ -274,7 +274,7 @@ mdv_errno mdv_gossip_linkstate_handler(mdv_core *core, mdv_msg const *msg)
             break;
         }
 
-        mdv_gossip_id *src_peers = mdv_stalloc(sizeof(mdv_gossip_id), *src_peers_count * sizeof(mdv_gossip_id), "gossip src ids");
+        mdv_gossip_id *src_peers = mdv_staligned_alloc(sizeof(mdv_gossip_id), *src_peers_count * sizeof(mdv_gossip_id), "gossip src ids");
 
         if (!src_peers)
         {
@@ -304,7 +304,7 @@ mdv_errno mdv_gossip_linkstate_handler(mdv_core *core, mdv_msg const *msg)
         }
 
         uint32_t const dst_peers_count = peers->size;
-        mdv_gossip_id *dst_peers = mdv_stalloc(sizeof(mdv_gossip_id), dst_peers_count * sizeof(mdv_gossip_id), "gossip dst ids");
+        mdv_gossip_id *dst_peers = mdv_staligned_alloc(sizeof(mdv_gossip_id), dst_peers_count * sizeof(mdv_gossip_id), "gossip dst ids");
 
         if (!dst_peers)
         {
@@ -340,7 +340,7 @@ mdv_errno mdv_gossip_linkstate_handler(mdv_core *core, mdv_msg const *msg)
         }
 
         uint32_t union_size = 0;
-        mdv_gossip_id *union_ids = mdv_stalloc(sizeof(mdv_gossip_id), (dst_peers_count + *src_peers_count) * sizeof(mdv_gossip_id), "gossip union ids");
+        mdv_gossip_id *union_ids = mdv_staligned_alloc(sizeof(mdv_gossip_id), (dst_peers_count + *src_peers_count) * sizeof(mdv_gossip_id), "gossip union ids");
 
         if (!union_ids)
         {

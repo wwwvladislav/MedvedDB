@@ -72,7 +72,7 @@ mdv_errno mdv_tablespace_log_create_table(mdv_tablespace *tablespace, uint32_t p
 
     int const obj_size = binn_size(&obj);
 
-    mdv_op *op = (mdv_op*)mdv_stalloc(sizeof(uint32_t), offsetof(mdv_op, payload) + obj_size, "DB op");
+    mdv_op *op = (mdv_op*)mdv_staligned_alloc(sizeof(uint32_t), offsetof(mdv_op, payload) + obj_size, "DB op");
 
     if (!op)
     {

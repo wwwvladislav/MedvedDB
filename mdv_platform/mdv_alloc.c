@@ -3,6 +3,7 @@
 #include "mdv_log.h"
 #include <rpmalloc.h>
 #include <stdatomic.h>
+#include <string.h>
 
 
 #define MDV_COUNT_ALLOCS_STAT
@@ -133,7 +134,13 @@ void mdv_free(void *ptr, char const *name)
 }
 
 
-void *mdv_stalloc(size_t alignment, size_t size, char const *name)
+void *mdv_stalloc(size_t size, char const *name)
+{
+    return mdv_staligned_alloc(1, size, name);
+}
+
+
+void *mdv_staligned_alloc(size_t alignment, size_t size, char const *name)
 {
     if (size + alignment < mdv_stack_free_space(_thread_local_buff))
     {
@@ -159,6 +166,45 @@ void *mdv_stalloc(size_t alignment, size_t size, char const *name)
 }
 
 
+void *mdv_strealloc(void *ptr, size_t size, char const *name)
+{
+    if ((uint8_t*)ptr >= _thread_local_buff.data
+        && (uint8_t*)ptr < _thread_local_buff.data + _thread_local_buff.size)
+    {
+        if ((uint8_t*)ptr + size < _thread_local_buff.data + _thread_local_buff.capacity)
+        {
+            _thread_local_buff.size = (uint8_t*)ptr + size - _thread_local_buff.data;
+            return ptr;
+        }
+
+        // No memory in threadlocal storage
+
+        void *new_ptr = mdv_alloc(size, name);
+        if (!new_ptr)
+            return 0;
+
+        size_t const data_size = _thread_local_buff.data + _thread_local_buff.size - (uint8_t*)ptr;
+
+        memcpy(new_ptr, ptr, data_size);
+
+        mdv_stfree(ptr, name);
+
+        return new_ptr;
+    }
+
+    return mdv_realloc(ptr, size, name);
+}
+
+
+void *mdv_strealloc2(void **ptr, size_t size, char const *name)
+{
+    void *new_ptr = mdv_strealloc(*ptr, size, name);
+    if (new_ptr)
+        *ptr = new_ptr;
+    return new_ptr;
+}
+
+
 void mdv_stfree(void *ptr, char const *name)
 {
     if (ptr)
@@ -174,3 +220,19 @@ void mdv_stfree(void *ptr, char const *name)
             mdv_free(ptr, name);
     }
 }
+
+
+mdv_allocator const mdv_default_allocator =
+{
+    .alloc      = &mdv_alloc,
+    .realloc    = &mdv_realloc2,
+    .free       = &mdv_free
+};
+
+
+mdv_allocator const mdv_stallocator =
+{
+    .alloc      = &mdv_stalloc,
+    .realloc    = &mdv_strealloc2,
+    .free       = &mdv_stfree
+};

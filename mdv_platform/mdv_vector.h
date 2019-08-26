@@ -9,16 +9,16 @@
  *
  */
 #pragma once
-#include "mdv_alloc.h"
 
 
 /// Vector definition
 #define mdv_vector(type)                        \
     struct                                      \
     {                                           \
-        size_t  capacity;                       \
-        size_t  size;                           \
-        type   *data;                           \
+        mdv_allocator  const *allocator;        \
+        size_t               capacity;          \
+        size_t               size;              \
+        type                *data;              \
     }
 
 
@@ -27,14 +27,16 @@
  *
  * @param vector [in]   Vector to be initialized
  * @param cpcty [in]    Vector capacity
+ * @param alloctr [in]  memory allocator
  *
  * @return On success, returns non zero pointer to the array
  * @return On error, return NULL pointer
  */
-#define mdv_vector_create(vector, cpcty)                                    \
-    ((vector).capacity = cpcty,                                             \
-    (vector).size = 0,                                                      \
-    (vector).data = mdv_alloc((cpcty) * sizeof(*(vector).data), #vector))
+#define mdv_vector_create(vector, cpcty, alloctr)                               \
+    ((vector).allocator = &alloctr,                                             \
+    (vector).capacity = cpcty,                                                  \
+    (vector).size = 0,                                                          \
+    (vector).data = (vector).allocator->alloc((cpcty) * sizeof(*(vector).data), #vector))
 
 
 /**
@@ -47,7 +49,7 @@
     {                                                                       \
         (vector).capacity = 0;                                              \
         (vector).size = 0;                                                  \
-        mdv_free((vector).data, #vector);                                   \
+        (vector).allocator->free((vector).data, #vector);                   \
     }
 
 
@@ -60,11 +62,11 @@
  * @return On success, returns non zero pointer to the new value
  * @return On error, return NULL pointer
  */
-#define mdv_vector_push_back(vector, item)                                              \
-    ((vector).size < (vector).capacity                                                  \
-        ? (vector).data[(vector).size++] = item, &(vector).data[(vector).size - 1]      \
-        : (mdv_realloc2((void**)&(vector).data, (vector).capacity * 2, #vector)         \
-            ? (vector).capacity *= 2,                                                   \
-              (vector).data[(vector).size++] = item,                                    \
-              &(vector).data[(vector).size - 1]                                         \
+#define mdv_vector_push_back(vector, item)                                                      \
+    ((vector).size < (vector).capacity                                                          \
+        ? (vector).data[(vector).size++] = item, &(vector).data[(vector).size - 1]              \
+        : ((vector).allocator->realloc((void**)&(vector).data, (vector).capacity * 2, #vector)  \
+            ? (vector).capacity *= 2,                                                           \
+              (vector).data[(vector).size++] = item,                                            \
+              &(vector).data[(vector).size - 1]                                                 \
             : 0))

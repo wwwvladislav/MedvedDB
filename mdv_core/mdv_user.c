@@ -6,6 +6,7 @@
 #include <mdv_log.h>
 #include <mdv_socket.h>
 #include <mdv_time.h>
+#include <mdv_topology.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -191,12 +192,18 @@ static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
     mdv_user    *user    = arg;
     mdv_tracker *tracker = &user->core->cluster.tracker;
 
-    // TODO
+    mdv_topology *topology = mdv_topology_extract(tracker);
+
+    if (topology)
+    {
+        mdv_topology_free(topology);
+    }
+
 
     mdv_msg_status const status =
     {
-        .err = MDV_NO_IMPL,
-        .message = ""
+        .err = MDV_FAILED,
+        .message = "Topology getting failed"
     };
 
     return mdv_user_status_reply(user, msg->hdr.number, &status);

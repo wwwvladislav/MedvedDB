@@ -488,3 +488,17 @@ mdv_row_base * mdv_unbinn_row(binn const *obj, mdv_field const *fields)
 
     return row;
 }
+
+
+bool mdv_topology_serialize(mdv_topology const *topology, binn *obj)
+{
+    // TODO
+    return false;
+}
+
+
+bool mdv_topology_deserialize(binn const *obj, mdv_topology *topology)
+{
+    // TODO
+    return false;
+}

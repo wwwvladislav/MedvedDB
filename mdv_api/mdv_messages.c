@@ -1,9 +1,6 @@
 #include "mdv_messages.h"
 #include <mdv_log.h>
-#include <mdv_alloc.h>
 #include <mdv_serialization.h>
-#include <mdv_rollbacker.h>
-#include <string.h>
 
 
 char const * mdv_msg_name(uint32_t id)

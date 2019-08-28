@@ -7,15 +7,15 @@
 
 
 /*
-   User                           Server
-     |    -------- HELLO ---------> |
-     |    <--- HELLO / STATUS ----- |
-     |                              |
-     |    ----  CREATE TABLE -----> |
-     |    <- TABLE INFO / STATUS -- |
-     |                              |
-     |    ----  GET TOPOLOGY -----> |
-     |    <-- TOPOLOGY / STATUS --- |
+   User                               Server
+     | HELLO >>>>>                      |
+     |             <<<<< HELLO / STATUS |
+     |                                  |
+     | CREATE TABLE >>>>>               |
+     |        <<<<< TABLE INFO / STATUS |
+     |                                  |
+     | GET TOPOLOGY >>>>>               |
+     |          <<<<< TOPOLOGY / STATUS |
  */
 
 

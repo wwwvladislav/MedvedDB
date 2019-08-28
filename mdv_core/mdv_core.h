@@ -67,25 +67,3 @@ bool mdv_core_listen(mdv_core *core);
  */
 void mdv_core_connect(mdv_core *core);
 
-
-/**
- * @brief Register peer connection
- *
- * @param core [in]             core
- * @param new_node [in] [out]   node information
- *
- * @return On success, return MDV_OK and node->id is initialized by local unique numeric identifier
- * @return On error, return nonzero error code
- */
-mdv_errno mdv_core_peer_connected(mdv_core *core, mdv_node *new_node);
-
-
-/**
- * @brief Mark peer node as disconnected
- * @details Node is not deleted but only is marked as disconnected.
- *
- * @param core [in]     core
- * @param uuid [in]     node UUID
- */
-void mdv_core_peer_disconnected(mdv_core *core, mdv_uuid const *uuid);
-

@@ -1,7 +1,6 @@
 #include "mdv_p2pmsg.h"
 #include <mdv_log.h>
-#include <mdv_alloc.h>
-#include <string.h>
+#include <mdv_serialization.h>
 
 
 char const * mdv_p2p_msg_name(uint32_t id)
@@ -10,6 +9,7 @@ char const * mdv_p2p_msg_name(uint32_t id)
     {
         case mdv_message_id(p2p_hello):     return "P2P HELLO";
         case mdv_message_id(p2p_linkstate): return "P2P LINK STATE";
+        case mdv_message_id(p2p_toposync):  return "P2P TOPOLOGY SYNC";
     }
 
     return "P2P UNKOWN";
@@ -39,47 +39,19 @@ bool mdv_binn_p2p_hello(mdv_msg_p2p_hello const *msg, binn *obj)
 }
 
 
-uint32_t * mdv_unbinn_p2p_hello_version(binn const *obj)
+bool mdv_unbinn_p2p_hello(binn const *obj, mdv_msg_p2p_hello *msg)
 {
-    static _Thread_local uint32_t version;
-
-    if (!binn_object_get_uint32((void*)obj, "V", &version))
-    {
-        MDV_LOGE("unbinn_p2p_hello failed");
-        return 0;
-    }
-
-    return &version;
-}
-
-
-mdv_uuid * mdv_unbinn_p2p_hello_uuid(binn const *obj)
-{
-    static _Thread_local mdv_uuid uuid;
-
     if (0
-        || !binn_object_get_uint64((void*)obj, "U0", (uint64 *)&uuid.u64[0])
-        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&uuid.u64[1]))
+        || !binn_object_get_uint32((void*)obj, "V", &msg->version)
+        || !binn_object_get_uint64((void*)obj, "U0", (uint64 *)&msg->uuid.u64[0])
+        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&msg->uuid.u64[1])
+        || !binn_object_get_str((void*)obj, "L", &msg->listen))
     {
         MDV_LOGE("unbinn_p2p_hello failed");
-        return 0;
+        return false;
     }
 
-    return &uuid;
-}
-
-
-char const * mdv_unbinn_p2p_hello_listen(binn const *obj)
-{
-    char *listen = 0;
-
-    if (!binn_object_get_str((void*)obj, "L", &listen))
-    {
-        MDV_LOGE("unbinn_p2p_hello failed");
-        return 0;
-    }
-
-    return listen;
+    return true;
 }
 
 
@@ -248,4 +220,23 @@ bool mdv_unbinn_p2p_linkstate_peers(binn const *obj, uint32_t *peers, uint32_t p
     }
 
     return i == peers_count;
+}
+
+
+bool mdv_binn_p2p_toposync(mdv_msg_p2p_toposync const *msg, binn *obj)
+{
+    return mdv_topology_serialize(msg->topology, obj);
+}
+
+
+bool mdv_unbinn_p2p_toposync(binn const *obj, mdv_msg_p2p_toposync *msg)
+{
+    msg->topology = mdv_topology_deserialize(obj);
+    return msg->topology != 0;
+}
+
+void mdv_p2p_toposync_free(mdv_msg_p2p_toposync *msg)
+{
+    mdv_topology_free(msg->topology);
+    msg->topology = 0;
 }

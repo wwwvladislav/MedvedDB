@@ -172,31 +172,3 @@ void mdv_core_connect(mdv_core *core)
     }
 }
 
-
-mdv_errno mdv_core_peer_connected(mdv_core *core, mdv_node *new_node)
-{
-    mdv_errno err = mdv_tracker_peer_connected(&core->cluster.tracker, new_node);
-
-    if (err == MDV_OK)
-        mdv_nodes_store_async(core->jobber, core->storage.metainf, new_node);
-
-    // Link state notification broadcast
-    if (new_node->connected && !new_node->accepted)
-    {
-        // Node joined from the same segment
-        mdv_gossip_linkstate(core, &core->metainf.uuid.value, MDV_CONFIG.server.listen.ptr, &new_node->uuid, true);
-
-        // TODO: Two isolated segments joined
-    }
-
-    return err;
-}
-
-
-void mdv_core_peer_disconnected(mdv_core *core, mdv_uuid const *uuid)
-{
-    mdv_tracker_peer_disconnected(&core->cluster.tracker, uuid);
-    mdv_gossip_linkstate(core, &core->metainf.uuid.value, MDV_CONFIG.server.listen.ptr, uuid, false);
-
-    // TODO: Link state notification broadcast
-}

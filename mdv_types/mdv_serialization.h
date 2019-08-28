@@ -27,9 +27,8 @@ bool mdv_topology_serialize(mdv_topology const *topology, binn *obj);
  * @brief Deserialize network topology
  *
  * @param obj [in]       serialized topology
- * @param topology [out] network topology
  *
- * @return On success returns true.
- * @return On error returns false.
+ * @return On success returns non NULL pointer to topology.
+ * @return On error returns NULL.
  */
-bool mdv_topology_deserialize(binn const *obj, mdv_topology *topology);
+mdv_topology * mdv_topology_deserialize(binn const *obj);

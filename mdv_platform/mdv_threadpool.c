@@ -144,8 +144,8 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
                            256,
                            offsetof(mdv_threadpool_task_base, fd),
                            sizeof(mdv_descriptor),
-                           (mdv_hash_fn)mdv_descriptor_hash,
-                           (mdv_key_cmp_fn)mdv_descriptor_cmp))
+                           (mdv_hash_fn)&mdv_descriptor_hash,
+                           (mdv_key_cmp_fn)&mdv_descriptor_cmp))
     {
         MDV_LOGE("threadpool_create failed");
         mdv_rollback(rollbacker);

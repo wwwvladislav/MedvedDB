@@ -69,8 +69,8 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
                       capacity,                                                 \
                       offsetof(type, key_field),                                \
                       sizeof(((type*)0)->key_field),                            \
-                      (mdv_hash_fn)hash_fn,                                     \
-                      (mdv_key_cmp_fn)key_cmp_fn)
+                      (mdv_hash_fn)&hash_fn,                                    \
+                      (mdv_key_cmp_fn)&key_cmp_fn)
 
 
 /**

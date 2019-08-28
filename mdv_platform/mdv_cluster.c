@@ -228,7 +228,7 @@ mdv_errno mdv_cluster_create(mdv_cluster *cluster, mdv_cluster_config const *clu
         .userdata = cluster
     };
 
-    if (!mdv_hashmap_init(cluster->conctx_cfgs, mdv_conctx_config, type, cluster_config->conctx.size, &mdv_hash_u8, &mdv_cmp_u8))
+    if (!mdv_hashmap_init(cluster->conctx_cfgs, mdv_conctx_config, type, cluster_config->conctx.size, mdv_hash_u8, mdv_cmp_u8))
     {
         MDV_LOGE("Cluster manager creation failed.");
         mdv_tracker_free(&cluster->tracker);

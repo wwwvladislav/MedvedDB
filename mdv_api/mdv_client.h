@@ -5,6 +5,7 @@
  */
 #pragma once
 #include <mdv_types.h>
+#include <mdv_topology.h>
 #include <mdv_errno.h>
 
 
@@ -34,21 +35,6 @@ typedef struct
 
 /// Client descriptor
 typedef struct mdv_client mdv_client;
-
-
-/// Topology description
-typedef struct
-{
-    size_t       nodes_count;           ///< Nodes count
-    size_t       links_count;           ///< Links count
-
-    mdv_uuid    *nodes;                 ///< Nodes unique identifiers
-
-    struct
-    {
-        mdv_uuid    *node[2];           ///< Linked nodes identifiers
-    }           *links;                 ///< Links array
-} mdv_topology;
 
 
 /**

@@ -93,7 +93,7 @@ mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd)
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &pd->requests_mutex);
 
 
-    if (!mdv_hashmap_init(pd->handlers, mdv_dispatcher_handler, id, 4, &mdv_id_hash, &mdv_id_cmp))
+    if (!mdv_hashmap_init(pd->handlers, mdv_dispatcher_handler, id, 4, mdv_id_hash, mdv_id_cmp))
     {
         MDV_LOGE("Handlers map for messages dispatcher not created");
         mdv_rollback(rollbacker);
@@ -103,7 +103,7 @@ mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd)
     mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &pd->handlers);
 
 
-    if (!mdv_hashmap_init(pd->requests, mdv_request, request_id, MDV_DISP_REQS, &mdv_id_hash, &mdv_id_cmp))
+    if (!mdv_hashmap_init(pd->requests, mdv_request, request_id, MDV_DISP_REQS, mdv_id_hash, mdv_id_cmp))
     {
         MDV_LOGE("Requests map for messages dispatcher not created");
         mdv_rollback(rollbacker);

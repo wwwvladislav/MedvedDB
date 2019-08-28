@@ -1,6 +1,7 @@
 #include "mdv_serialization.h"
 #include <mdv_log.h>
 #include <mdv_alloc.h>
+#include <mdv_rollbacker.h>
 
 
 static bool binn_field(mdv_field const *field, binn *obj)
@@ -492,13 +493,209 @@ mdv_row_base * mdv_unbinn_row(binn const *obj, mdv_field const *fields)
 
 bool mdv_topology_serialize(mdv_topology const *topology, binn *obj)
 {
-    // TODO
-    return false;
+    mdv_rollbacker(4) rollbacker;
+    mdv_rollbacker_clear(rollbacker);
+
+    binn nodes;
+    binn links;
+
+    if (!binn_create_object(obj))
+    {
+        MDV_LOGE("binn_topology failed");
+        return false;
+    }
+
+    mdv_rollbacker_push(rollbacker, binn_free, obj);
+
+    if (!binn_create_list(&nodes))
+    {
+        MDV_LOGE("binn_topology failed");
+        mdv_rollback(rollbacker);
+        return false;
+    }
+
+    mdv_rollbacker_push(rollbacker, binn_free, &nodes);
+
+    if (!binn_create_list(&links))
+    {
+        MDV_LOGE("binn_topology failed");
+        mdv_rollback(rollbacker);
+        return false;
+    }
+
+    mdv_rollbacker_push(rollbacker, binn_free, &links);
+
+    for(uint32_t i = 0; i < topology->nodes_count; ++i)
+    {
+        binn node;
+        uint8_t tmp[64];
+
+        if (!binn_create(&node, BINN_OBJECT, sizeof tmp, tmp))
+        {
+            MDV_LOGE("binn_topology failed");
+            mdv_rollback(rollbacker);
+            return false;
+        }
+
+        if (0
+            || !binn_object_set_uint64(&node, "A", topology->nodes[i].u64[0])
+            || !binn_object_set_uint64(&node, "B", topology->nodes[i].u64[1])
+            || !binn_list_add_object(&nodes, &node))
+        {
+            MDV_LOGE("binn_topology failed");
+            binn_free(&node);
+            mdv_rollback(rollbacker);
+            return false;
+        }
+
+        binn_free(&node);
+    }
+
+    for(uint32_t i = 0; i < topology->links_count; ++i)
+    {
+        binn link;
+        uint8_t tmp[64];
+
+        if (!binn_create(&link, BINN_OBJECT, sizeof tmp, tmp))
+        {
+            MDV_LOGE("binn_topology failed");
+            mdv_rollback(rollbacker);
+            return false;
+        }
+
+        uint64_t const n0 = (uint64_t)(topology->links[i].node[0] - topology->nodes);
+        uint64_t const n1 = (uint64_t)(topology->links[i].node[1] - topology->nodes);
+
+        if (0
+            || !binn_object_set_uint64(&link, "A", n0)
+            || !binn_object_set_uint64(&link, "B", n1)
+            || !binn_object_set_uint32(&link, "W", topology->links[i].weight)
+            || !binn_list_add_object(&links, &link))
+        {
+            MDV_LOGE("binn_topology failed");
+            binn_free(&link);
+            mdv_rollback(rollbacker);
+            return false;
+        }
+
+        binn_free(&link);
+    }
+
+    if (0
+        || !binn_object_set_uint64(obj, "NC", topology->nodes_count)
+        || !binn_object_set_uint64(obj, "LC", topology->links_count)
+        || !binn_object_set_list(obj, "N", &nodes)
+        || !binn_object_set_list(obj, "L", &links))
+    {
+        MDV_LOGE("binn_topology failed");
+        mdv_rollback(rollbacker);
+        return false;
+    }
+
+    binn_free(&nodes);
+    binn_free(&links);
+
+    return true;
 }
 
 
-bool mdv_topology_deserialize(binn const *obj, mdv_topology *topology)
+mdv_topology * mdv_topology_deserialize(binn const *obj)
 {
-    // TODO
-    return false;
+    uint64   nodes_count = 0;
+    uint64   links_count = 0;
+    binn    *nodes = 0;
+    binn    *links = 0;
+
+    if (0
+        || !binn_object_get_uint64((void*)obj, "NC", &nodes_count)
+        || !binn_object_get_uint64((void*)obj, "LC", &links_count)
+        || !binn_object_get_list((void*)obj, "N", (void**)&nodes)
+        || !binn_object_get_list((void*)obj, "L", (void**)&links))
+    {
+        MDV_LOGE("unbinn_topology failed");
+        return 0;
+    }
+
+    mdv_topology *topology =
+        mdv_alloc(sizeof(mdv_topology)
+        + sizeof(mdv_uuid) * nodes_count
+        + sizeof(mdv_link) * links_count,
+        "topology");
+
+    if (!topology)
+    {
+        MDV_LOGE("No memory for network topology");
+        return 0;
+    }
+
+    topology->nodes_count = (size_t)nodes_count;
+    topology->links_count = (size_t)links_count;
+    topology->nodes       = (void*)(topology + 1);
+    topology->links       = (void*)(topology->nodes + topology->nodes_count);
+
+    binn_iter iter;
+    binn value;
+
+    size_t i;
+
+    // load nodes
+    i = 0;
+    binn_list_foreach(nodes, value)
+    {
+        if (i > nodes_count)
+        {
+            MDV_LOGE("unbinn_topology failed");
+            mdv_free(topology, "topology");
+            return 0;
+        }
+
+        mdv_uuid *node = topology->nodes + i;
+
+        if (0
+            || !binn_object_get_uint64(&value, "A", (uint64*)&node->u64[0])
+            || !binn_object_get_uint64(&value, "B", (uint64*)&node->u64[1]))
+        {
+            MDV_LOGE("unbinn_topology failed");
+            mdv_free(topology, "topology");
+            return 0;
+        }
+
+        ++i;
+    }
+
+    // load links
+    i = 0;
+    binn_list_foreach(links, value)
+    {
+        if (i > links_count)
+        {
+            MDV_LOGE("unbinn_topology failed");
+            mdv_free(topology, "topology");
+            return 0;
+        }
+
+        uint64 n0;
+        uint64 n1;
+
+        mdv_link *link = topology->links + i;
+
+        if (0
+            || !binn_object_get_uint64(&value, "A", &n0)
+            || !binn_object_get_uint64(&value, "B", &n1)
+            || !binn_object_get_uint32(&value, "W", &link->weight)
+            || n0 >= nodes_count
+            || n1 >= nodes_count)
+        {
+            MDV_LOGE("unbinn_topology failed");
+            mdv_free(topology, "topology");
+            return 0;
+        }
+
+        link->node[0] = topology->nodes + n0;
+        link->node[1] = topology->nodes + n1;
+
+        ++i;
+    }
+
+    return topology;
 }

@@ -24,7 +24,7 @@ MU_TEST(platform_hashmap)
 
     mdv_hashmap map;
 
-    mu_check(mdv_hashmap_init(map, map_entry, key, 5, &int_hash, &int_keys_cmp));
+    mu_check(mdv_hashmap_init(map, map_entry, key, 5, int_hash, int_keys_cmp));
 
     map_entry entry = {};
 

@@ -196,6 +196,7 @@ mdv_errno mdv_core_peer_connected(mdv_core *core, mdv_node *new_node)
 void mdv_core_peer_disconnected(mdv_core *core, mdv_uuid const *uuid)
 {
     mdv_tracker_peer_disconnected(&core->cluster.tracker, uuid);
+    mdv_gossip_linkstate(core, &core->metainf.uuid.value, MDV_CONFIG.server.listen.ptr, uuid, false);
 
     // TODO: Link state notification broadcast
 }

@@ -151,6 +151,8 @@ mdv_errno mdv_gossip_linkstate(mdv_core            *core,
     mdv_tracker *tracker = &core->cluster.tracker;
     mdv_errno err = MDV_OK;
 
+    mdv_tracker_linkstate(tracker, src_peer, dst_peer, connected);
+
     mdv_gossip_peers *peers = mdv_gossip_peers_get(tracker, true);
 
     if (peers)

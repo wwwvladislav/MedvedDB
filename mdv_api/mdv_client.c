@@ -118,24 +118,24 @@ static mdv_errno mdv_client_status_handler(mdv_msg const *msg, mdv_errno *err)
 }
 
 
-static mdv_errno mdv_client_topology_handler(mdv_msg const *msg, mdv_msg_topology **topology)
+static mdv_errno mdv_client_topology_handler(mdv_msg const *msg, mdv_topology **topology)
 {
-    // TODO
-/*
     binn binn_msg;
 
     if(!binn_load(msg->payload, &binn_msg))
         return MDV_FAILED;
 
-    if (!mdv_unbinn_table_info(&binn_msg, table_info))
+    *topology = mdv_unbinn_topology(&binn_msg);
+
+    if (!*topology)
     {
-        MDV_LOGE("Invalid table information");
+        MDV_LOGE("Invalid topology");
         binn_free(&binn_msg);
         return MDV_FAILED;
     }
 
     binn_free(&binn_msg);
-*/
+
     return MDV_OK;
 }
 
@@ -353,11 +353,7 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
         {
             case mdv_message_id(topology):
             {
-//                mdv_msg_table_info info;
-//                err = mdv_client_table_info_handler(&resp, &info);
-//                if (err == MDV_OK)
-//                    table->uuid = info.uuid;
-                MDV_LOGI("TODO: Read topology!!!");
+                err = mdv_client_topology_handler(&resp, topology);
                 break;
             }
 

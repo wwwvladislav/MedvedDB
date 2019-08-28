@@ -161,6 +161,21 @@ mdv_errno mdv_tracker_linkstate(mdv_tracker         *tracker,
 
 
 /**
+ * @brief Link state tracking between two peers.
+ *
+ * @param tracker [in]          Topology tracker
+ * @param link [in]             Link between two nodes
+ * @param connected [in]        Connection status
+ *
+ * @return On success, return MDV_OK
+ * @return On error, return nonzero error code
+ */
+mdv_errno mdv_tracker_linkstate2(mdv_tracker            *tracker,
+                                 mdv_tracker_link const *link,
+                                 bool                    connected);
+
+
+/**
  * @brief Return links count in network topology.
  *
  * @param tracker [in]          Topology tracker
@@ -178,3 +193,14 @@ size_t mdv_tracker_links_count(mdv_tracker *tracker);
  * @param fn [in]               function pointer
  */
 void mdv_tracker_links_foreach(mdv_tracker *tracker, void *arg, void (*fn)(mdv_tracker_link const *, void *));
+
+
+/**
+ * @brief Returns node uuid by local numeric id
+ *
+ * @param tracker [in]
+ * @param id [in]
+ * @param uuid [out]
+ * @return On success, returns true.
+ */
+bool mdv_tracker_node_uuid(mdv_tracker *tracker, uint32_t id, mdv_uuid *uuid);

@@ -138,24 +138,22 @@ static void mdv_show_topology(char const *args)
 
     mdv_errno err = mdv_get_topology(client, &topology);
 
-    if (err == MDV_OK
-        || !topology)
+    if (err == MDV_OK && topology)
     {
         // Display topology
-        MDV_INF("Usage: neato topology.dot -O -Tpng\n\n");
+        MDV_INF("Usage: sfdp topology.dot -O -Tpng\n\n");
 
         MDV_OUT("graph topology {\n");
 
         for (size_t i = 0; i < topology->links_count; ++i)
         {
-            MDV_OUT("  \"%s\" -- \"%s\"\n",
-                mdv_uuid_to_str(topology->links[i].node[0]).ptr,
-                mdv_uuid_to_str(topology->links[i].node[1]).ptr);
+            MDV_OUT("  \"%s\" -- ", mdv_uuid_to_str(topology->links[i].node[0]).ptr);
+            MDV_OUT("\"%s\"\n", mdv_uuid_to_str(topology->links[i].node[1]).ptr);
         }
 
         MDV_OUT("}\n");
 
-        mdv_free(topology, "topology");
+        mdv_topology_free(topology);
     }
     else
         MDV_INF("Topology request failed with error '%s' (%d)\n", mdv_strerror(err), err);

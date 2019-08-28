@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <mdv_binn.h>
 #include <mdv_types.h>
+#include <mdv_topology.h>
 
 
 /*
@@ -63,23 +64,8 @@ mdv_message_def(get_topology, 5,
 );
 
 
-typedef struct
-{
-    mdv_uuid    uuid;
-} mdv_toponode;
-
-
-typedef struct
-{
-    mdv_toponode *node[2];
-} mdv_topolink;
-
-
 mdv_message_def(topology, 6,
-    uint64_t        nodes_count;
-    uint64_t        links_count;
-    mdv_toponode   *nodes;
-    mdv_topolink   *links;
+    mdv_topology *topology;
 );
 
 
@@ -107,6 +93,4 @@ bool                        mdv_unbinn_get_topology         (binn const *obj, md
 
 
 bool                        mdv_binn_topology               (mdv_msg_topology const *msg, binn *obj);
-uint64_t *                  mdv_unbinn_topology_nodes_count (binn const *obj);
-uint64_t *                  mdv_unbinn_topology_links_count (binn const *obj);
-bool                        mdv_unbinn_topology             (binn const *obj, mdv_msg_topology *msg);   /// nodes_count and links_count must be valid
+mdv_topology *              mdv_unbinn_topology             (binn const *obj);

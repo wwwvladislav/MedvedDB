@@ -9,6 +9,7 @@
  *
  */
 #pragma once
+#include "mdv_alloc.h"
 
 
 /// Vector definition
@@ -70,3 +71,29 @@
               (vector).data[(vector).size++] = item,                                            \
               &(vector).data[(vector).size - 1]                                                 \
             : 0))
+
+
+/**
+ * @brief vector entries iterator
+ *
+ * @param vector [in]   vector
+ * @param type [in]     vector item type
+ * @param entry [out]   vector entry
+ */
+#define mdv_vector_foreach(vector, type, entry)         \
+    for(type *entry = (vector).data,                    \
+        *end = (vector).data + (vector).size;           \
+        entry < end;                                    \
+        ++entry)
+
+
+/**
+ * @brief Checks if the container has no elements
+ */
+#define mdv_vector_empty(vector) ((vector).size == 0)
+
+
+/**
+ * @brief Returns the number of elements in the container
+ */
+#define mdv_vector_size(vector) (vector).size

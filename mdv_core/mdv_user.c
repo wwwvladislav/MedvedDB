@@ -92,6 +92,32 @@ static mdv_errno mdv_user_table_info_reply(mdv_user *user, uint16_t id, mdv_msg_
 }
 
 
+static mdv_errno mdv_user_topology_reply(mdv_user *user, uint16_t id, mdv_msg_topology const *msg)
+{
+    binn obj;
+
+    if (!mdv_binn_topology(msg, &obj))
+        return MDV_FAILED;
+
+    mdv_msg message =
+    {
+        .hdr =
+        {
+            .id = mdv_msg_topology_id,
+            .number = id,
+            .size = binn_size(&obj)
+        },
+        .payload = binn_ptr(&obj)
+    };
+
+    mdv_errno err = mdv_user_reply(user, &message);
+
+    binn_free(&obj);
+
+    return err;
+}
+
+
 static mdv_errno mdv_user_wave_handler(mdv_msg const *msg, void *arg)
 {
     MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
@@ -196,9 +222,17 @@ static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
 
     if (topology)
     {
-        mdv_topology_free(topology);
-    }
+        mdv_msg_topology const msg_topology =
+        {
+            .topology = topology
+        };
 
+        mdv_errno err = mdv_user_topology_reply(user, msg->hdr.number, &msg_topology);
+
+        mdv_topology_free(topology);
+
+        return err;
+    }
 
     mdv_msg_status const status =
     {

@@ -9,7 +9,7 @@
     |                       <<<<< HELLO |
     |                                   |
     | TOPOLOGY SYNC >>>>>               |   Network topology synchronization. Send topology.
-    |              <<<<< TOPOLOGY DELTA |
+    |               <<<<< TOPOLOGY DIFF |
     |                                   |
     | LINK STATE >>>>>                  |   [broadcast]
  */
@@ -36,6 +36,11 @@ mdv_message_def(p2p_toposync, 1000 + 2,
 );
 
 
+mdv_message_def(p2p_topodiff, 1000 + 3,
+    mdv_topology *topology;         ///< Network topology
+);
+
+
 char const *            mdv_p2p_msg_name                        (uint32_t id);
 
 
@@ -55,3 +60,8 @@ bool                    mdv_unbinn_p2p_linkstate_peers          (binn const *obj
 bool                    mdv_binn_p2p_toposync                   (mdv_msg_p2p_toposync const *msg, binn *obj);
 bool                    mdv_unbinn_p2p_toposync                 (binn const *obj, mdv_msg_p2p_toposync *msg);
 void                    mdv_p2p_toposync_free                   (mdv_msg_p2p_toposync *msg);
+
+
+bool                    mdv_binn_p2p_topodiff                   (mdv_msg_p2p_topodiff const *msg, binn *obj);
+bool                    mdv_unbinn_p2p_topodiff                 (binn const *obj, mdv_msg_p2p_topodiff *msg);
+void                    mdv_p2p_topodiff_free                   (mdv_msg_p2p_topodiff *msg);

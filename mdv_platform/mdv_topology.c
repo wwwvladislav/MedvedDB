@@ -4,6 +4,21 @@
 #include "mdv_hashmap.h"
 #include "mdv_rollbacker.h"
 #include "mdv_log.h"
+#include <stdlib.h>
+
+
+static mdv_topology empty_topology =
+{
+    .nodes_count = 0,
+    .links_count = 0
+};
+
+
+static mdv_topology_delta empty_topology_delta =
+{
+    .ab = &empty_topology,
+    .ba = &empty_topology
+};
 
 
 typedef struct
@@ -90,11 +105,18 @@ static void mdv_tracker_link_add(mdv_tracker_link const *link, void *arg)
 }
 
 
-static mdv_topology empty_topology =
+int mdv_link_cmp(mdv_link const *a, mdv_link const *b)
 {
-    .nodes_count = 0,
-    .links_count = 0
-};
+    if (mdv_uuid_cmp(a->node[0], b->node[0]) < 0)
+        return -1;
+    else if (mdv_uuid_cmp(a->node[0], b->node[0]) > 0)
+        return 1;
+    else if (mdv_uuid_cmp(a->node[1], b->node[1]) < 0)
+        return -1;
+    else if (mdv_uuid_cmp(a->node[1], b->node[1]) > 0)
+        return 1;
+    return 0;
+}
 
 
 mdv_topology * mdv_topology_extract(struct mdv_tracker *tracker)
@@ -193,6 +215,11 @@ mdv_topology * mdv_topology_extract(struct mdv_tracker *tracker)
     mdv_hashmap_free(tmp.unique_ids);
     mdv_vector_free(tmp.links);
 
+    qsort(topology->links,
+          topology->links_count,
+          sizeof *topology->links,
+          (int (*)(const void *, const void *))&mdv_link_cmp);
+
     return topology;
 }
 
@@ -202,3 +229,14 @@ void mdv_topology_free(mdv_topology *topology)
     if (topology && topology != &empty_topology)
         mdv_free(topology, "topology");
 }
+
+
+mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const *b)
+{
+    // TODO:
+    return &empty_topology_delta;
+}
+
+
+void mdv_topology_delta_free(mdv_topology_delta *delta)
+{}

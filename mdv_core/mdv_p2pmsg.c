@@ -10,6 +10,7 @@ char const * mdv_p2p_msg_name(uint32_t id)
         case mdv_message_id(p2p_hello):     return "P2P HELLO";
         case mdv_message_id(p2p_linkstate): return "P2P LINK STATE";
         case mdv_message_id(p2p_toposync):  return "P2P TOPOLOGY SYNC";
+        case mdv_message_id(p2p_topodiff):  return "P2P TOPOLOGY DIFF";
     }
 
     return "P2P UNKOWN";
@@ -235,7 +236,28 @@ bool mdv_unbinn_p2p_toposync(binn const *obj, mdv_msg_p2p_toposync *msg)
     return msg->topology != 0;
 }
 
+
 void mdv_p2p_toposync_free(mdv_msg_p2p_toposync *msg)
+{
+    mdv_topology_free(msg->topology);
+    msg->topology = 0;
+}
+
+
+bool mdv_binn_p2p_topodiff(mdv_msg_p2p_topodiff const *msg, binn *obj)
+{
+    return mdv_topology_serialize(msg->topology, obj);
+}
+
+
+bool mdv_unbinn_p2p_topodiff(binn const *obj, mdv_msg_p2p_topodiff *msg)
+{
+    msg->topology = mdv_topology_deserialize(obj);
+    return msg->topology != 0;
+}
+
+
+void mdv_p2p_topodiff_free(mdv_msg_p2p_topodiff *msg)
 {
     mdv_topology_free(msg->topology);
     msg->topology = 0;

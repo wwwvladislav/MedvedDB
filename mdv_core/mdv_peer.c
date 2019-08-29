@@ -29,7 +29,7 @@ static mdv_errno mdv_peer_hello_reply(mdv_peer *peer, uint16_t id, mdv_msg_p2p_h
     if (!mdv_binn_p2p_hello(msg, &hey))
         return MDV_FAILED;
 
-    mdv_msg message =
+    mdv_msg const message =
     {
         .hdr =
         {
@@ -43,6 +43,32 @@ static mdv_errno mdv_peer_hello_reply(mdv_peer *peer, uint16_t id, mdv_msg_p2p_h
     mdv_errno err = mdv_peer_reply(peer, &message);
 
     binn_free(&hey);
+
+    return err;
+}
+
+
+static mdv_errno mdv_peer_topodiff_reply(mdv_peer *peer, uint16_t id, mdv_msg_p2p_topodiff const *msg)
+{
+    binn obj;
+
+    if (!mdv_binn_p2p_topodiff(msg, &obj))
+        return MDV_FAILED;
+
+    mdv_msg const message =
+    {
+        .hdr =
+        {
+            .id     = mdv_message_id(p2p_topodiff),
+            .number = id,
+            .size   = binn_size(&obj)
+        },
+        .payload = binn_ptr(&obj)
+    };
+
+    mdv_errno err = mdv_peer_reply(peer, &message);
+
+    binn_free(&obj);
 
     return err;
 }
@@ -83,7 +109,7 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 
     if(peer->conctx->dir == MDV_CHIN)
     {
-        mdv_msg_p2p_hello hello =
+        mdv_msg_p2p_hello const hello =
         {
             .version = MDV_VERSION,
             .uuid    = peer->conctx->cluster->uuid,
@@ -161,7 +187,79 @@ static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
     mdv_rollbacker_push(rollbacker, mdv_topology_free, topology);
 
     // Topologies difference calculation
-    // TODO:
+    mdv_topology_delta *delta = mdv_topology_diff(topology, req.topology);
+
+    if (!delta)
+    {
+        MDV_LOGE("Topology synchronization request processing failed");
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_topology_delta_free, delta);
+
+    mdv_msg_p2p_topodiff const topodiff =
+    {
+        .topology = delta->ab
+    };
+
+    mdv_errno err = mdv_peer_topodiff_reply(peer, msg->hdr.number, &topodiff);
+
+    if (delta->ba && delta->ba->links_count)
+    {
+        // Two isolated segments joined
+        // TODO: Broadcast delta->ba to own segment.
+        for(size_t i = 0; i < delta->ba->links_count; ++i)
+            mdv_tracker_linkstate(tracker, delta->ba->links[i].node[0], delta->ba->links[i].node[1], true);
+    }
+
+    mdv_rollback(rollbacker);
+
+    return err;
+}
+
+
+static mdv_errno mdv_peer_topodiff_handler(mdv_msg const *msg, void *arg)
+{
+    mdv_peer *peer = arg;
+    mdv_core *core = peer->core;
+    mdv_tracker *tracker = &core->cluster.tracker;
+
+    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
+
+    mdv_rollbacker(2) rollbacker;
+    mdv_rollbacker_clear(rollbacker);
+
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
+        return MDV_FAILED;
+    }
+
+    mdv_rollbacker_push(rollbacker, binn_free, &binn_msg);
+
+    mdv_msg_p2p_topodiff req;
+
+    if (!mdv_unbinn_p2p_topodiff(&binn_msg, &req))
+    {
+        MDV_LOGE("Topology difference processing failed");
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_p2p_topodiff_free, &req);
+
+    mdv_topology const *topology = req.topology;
+
+    if (topology)
+    {
+        // TODO: Broadcast topology to own segment if segment was isolated.
+
+        for(size_t i = 0; i < topology->links_count; ++i)
+            mdv_tracker_linkstate(tracker, topology->links[i].node[0], topology->links[i].node[1], true);
+    }
 
     mdv_rollback(rollbacker);
 
@@ -269,6 +367,7 @@ mdv_errno mdv_peer_init(void *ctx, mdv_conctx *conctx, void *userdata)
         { mdv_message_id(p2p_hello),        &mdv_peer_hello_handler,        peer },
         { mdv_message_id(p2p_linkstate),    &mdv_peer_linkstate_handler,    peer },
         { mdv_message_id(p2p_toposync),     &mdv_peer_toposync_handler,     peer },
+        { mdv_message_id(p2p_topodiff),     &mdv_peer_topodiff_handler,     peer },
     };
 
     for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)

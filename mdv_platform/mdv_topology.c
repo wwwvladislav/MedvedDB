@@ -119,6 +119,14 @@ int mdv_link_cmp(mdv_link const *a, mdv_link const *b)
 }
 
 
+static size_t mdv_topology_size(size_t nodes_count, size_t links_count)
+{
+    return sizeof(mdv_topology)
+            + sizeof(mdv_uuid) * nodes_count
+            + sizeof(mdv_link) * links_count;
+}
+
+
 mdv_topology * mdv_topology_extract(struct mdv_tracker *tracker)
 {
     size_t const links_count = mdv_tracker_links_count(tracker);
@@ -160,11 +168,10 @@ mdv_topology * mdv_topology_extract(struct mdv_tracker *tracker)
         return &empty_topology;
     }
 
-    mdv_topology *topology =
-        mdv_alloc(sizeof(mdv_topology)
-        + sizeof(mdv_uuid) * mdv_hashmap_size(tmp.unique_ids)
-        + sizeof(mdv_link) * mdv_vector_size(tmp.links),
-        "topology");
+    mdv_topology *topology = mdv_alloc(
+                                mdv_topology_size(
+                                    mdv_hashmap_size(tmp.unique_ids),
+                                    mdv_vector_size(tmp.links)), "topology");
 
     if (!topology)
     {
@@ -233,6 +240,18 @@ void mdv_topology_free(mdv_topology *topology)
 
 mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const *b)
 {
+    if (!a->links_count && !b->links_count)
+        return &empty_topology_delta;
+    else if (!a->links_count)
+    {
+//        mdv_topology_delta *delta = mdv_alloc(
+//                                        sizeof(mdv_topology_delta) +
+//                                        mdv_topology_size(), "topology_delta");
+    }
+    else if (!b->links_count)
+    {
+    }
+
     // TODO:
     return &empty_topology_delta;
 }

@@ -3,6 +3,7 @@
 #include "mdv_vector.h"
 #include "mdv_hashmap.h"
 #include "mdv_rollbacker.h"
+#include "mdv_algorithm.h"
 #include "mdv_log.h"
 #include <stdlib.h>
 
@@ -29,6 +30,13 @@ typedef struct
 } mdv_topology_node_id;
 
 
+typedef struct
+{
+    uint32_t  idx;
+    mdv_uuid *uuid;
+} mdv_topology_node_ref;
+
+
 static size_t mdv_u32_hash(uint32_t const *v)
 {
     return *v;
@@ -38,6 +46,18 @@ static size_t mdv_u32_hash(uint32_t const *v)
 static int mdv_u32_keys_cmp(uint32_t const *a, uint32_t const *b)
 {
     return (int)*a - *b;
+}
+
+
+static size_t mdv_uuid_ptr_hash(mdv_uuid const **v)
+{
+    return mdv_uuid_hash(*v);
+}
+
+
+static int mdv_uuid_ptr_cmp(mdv_uuid const **a, mdv_uuid const **b)
+{
+    return mdv_uuid_cmp(*a, *b);
 }
 
 
@@ -124,6 +144,73 @@ static size_t mdv_topology_size(size_t nodes_count, size_t links_count)
     return sizeof(mdv_topology)
             + sizeof(mdv_uuid) * nodes_count
             + sizeof(mdv_link) * links_count;
+}
+
+
+static void mdv_topology_copy(mdv_topology *dst, mdv_topology const *src)
+{
+    dst->nodes_count = src->nodes_count;
+    dst->links_count = src->links_count;
+
+    memcpy(dst->nodes, src->nodes, sizeof *src->nodes * src->nodes_count);
+
+    for(size_t i = 0; i < src->links_count; ++i)
+    {
+        size_t const s = src->links[i].node[0] - src->nodes;
+        size_t const d = src->links[i].node[1] - src->nodes;
+        dst->links[i].node[0] = dst->nodes + s;
+        dst->links[i].node[1] = dst->nodes + d;
+        dst->links[i].weight = src->links[i].weight;
+    }
+}
+
+
+static bool mdv_topology_unique_nodes_get(mdv_hashmap *nodes, mdv_link const *links, size_t links_count)
+{
+    if (!mdv_hashmap_init(*nodes, mdv_topology_node_ref, uuid, 64, mdv_uuid_ptr_hash, mdv_uuid_ptr_cmp))
+    {
+        MDV_LOGE("no memory for network topology delta");
+        return false;
+    }
+
+    uint32_t idx = 0;
+
+    for(size_t i = 0; i < links_count; ++i)
+    {
+        if (!mdv_hashmap_find(*nodes, links[i].node[0]))
+        {
+            mdv_topology_node_ref const n =
+            {
+                .idx = idx++,
+                .uuid = links[i].node[0]
+            };
+
+            if (!mdv_hashmap_insert(*nodes, n))
+            {
+                MDV_LOGE("no memory for network topology delta");
+                mdv_hashmap_free(*nodes);
+                return false;
+            }
+        }
+
+        if (!mdv_hashmap_find(*nodes, links[i].node[1]))
+        {
+            mdv_topology_node_ref const n =
+            {
+                .idx = idx++,
+                .uuid = links[i].node[1]
+            };
+
+            if (!mdv_hashmap_insert(*nodes, n))
+            {
+                MDV_LOGE("no memory for network topology delta");
+                mdv_hashmap_free(*nodes);
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 
@@ -244,18 +331,110 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
         return &empty_topology_delta;
     else if (!a->links_count)
     {
-//        mdv_topology_delta *delta = mdv_alloc(
-//                                        sizeof(mdv_topology_delta) +
-//                                        mdv_topology_size(), "topology_delta");
+        mdv_topology_delta *delta = mdv_alloc(
+                                        sizeof(mdv_topology_delta) +
+                                        mdv_topology_size(b->nodes_count, b->links_count), "topology_delta");
+        if (!delta)
+        {
+            MDV_LOGE("no memory for network topology delta");
+            return 0;
+        }
+
+        delta->ab = &empty_topology;
+
+        delta->ba = (mdv_topology*)(delta + 1);
+        delta->ba->nodes = (void*)(delta->ba + 1);
+        delta->ba->links = (void*)(delta->ba->nodes + delta->ba->nodes_count);
+        mdv_topology_copy(delta->ba, b);
+
+        return delta;
     }
     else if (!b->links_count)
     {
+        mdv_topology_delta *delta = mdv_alloc(
+                                        sizeof(mdv_topology_delta) +
+                                        mdv_topology_size(a->nodes_count, a->links_count), "topology_delta");
+        if (!delta)
+        {
+            MDV_LOGE("no memory for network topology delta");
+            return 0;
+        }
+
+        delta->ab = (mdv_topology*)(delta + 1);
+        delta->ab->nodes = (void*)(delta->ab + 1);
+        delta->ab->links = (void*)(delta->ab->nodes + delta->ab->nodes_count);
+        mdv_topology_copy(delta->ab, a);
+
+        delta->ba = &empty_topology;
+
+        return delta;
     }
 
+    mdv_link *tmp_links = mdv_staligned_alloc(sizeof(mdv_link), sizeof(mdv_link) * (a->links_count + b->links_count), "delta_links");
+
+    if (!tmp_links)
+    {
+        MDV_LOGE("no memory for network topology delta");
+        return 0;
+    }
+
+    mdv_rollbacker(4) rollbacker;
+    mdv_rollbacker_clear(rollbacker);
+
+    mdv_rollbacker_push(rollbacker, mdv_stfree, tmp_links, "delta_links");
+
+    mdv_link *a_links = tmp_links;
+    mdv_link *b_links = tmp_links + a->links_count;
+
+    memcpy(a_links, a->links, sizeof(mdv_link) * a->links_count);
+    memcpy(b_links, b->links, sizeof(mdv_link) * b->links_count);
+
+    // {a} - {b} calculation
+    uint32_t const ab_size = mdv_exclude(a_links,  sizeof(mdv_link), a->links_count,
+                                         b->links, sizeof(mdv_link), b->links_count,
+                                         (int (*)(const void *a, const void *b))&mdv_link_cmp);
+
+    // {b} - {a} calculation
+    uint32_t const ba_size = mdv_exclude(b_links,  sizeof(mdv_link), b->links_count,
+                                         a->links, sizeof(mdv_link), a->links_count,
+                                         (int (*)(const void *a, const void *b))&mdv_link_cmp);
+
+    mdv_hashmap ab_nodes, ba_nodes;
+
+    if (ab_size)
+    {
+        if (!mdv_topology_unique_nodes_get(&ab_nodes, a_links, ab_size))
+        {
+            mdv_rollback(rollbacker);
+            return 0;
+        }
+
+        mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &ab_nodes);
+    }
+
+    if (ba_size)
+    {
+        if (!mdv_topology_unique_nodes_get(&ba_nodes, b_links, ba_size))
+        {
+            mdv_rollback(rollbacker);
+            return 0;
+        }
+
+        mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &ba_nodes);
+    }
+
+    //bool mdv_topology_unique_nodes_get(mdv_hashmap *nodes, mdv_link const *links, size_t links_count)
+    // mdv_topology_create(mdv_topology *dst, mdv_link const *links, size_t links_count)
     // TODO:
+
+    mdv_rollback(rollbacker);
+
     return &empty_topology_delta;
 }
 
 
 void mdv_topology_delta_free(mdv_topology_delta *delta)
-{}
+{
+    if (delta && delta != &empty_topology_delta)
+        mdv_free(delta, "topology_delta");
+}

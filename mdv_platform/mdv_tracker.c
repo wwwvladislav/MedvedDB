@@ -582,26 +582,33 @@ void mdv_tracker_links_foreach(mdv_tracker *tracker, void *arg, void (*fn)(mdv_t
 }
 
 
-bool mdv_tracker_node_uuid(mdv_tracker *tracker, uint32_t id, mdv_uuid *uuid)
+mdv_node * mdv_tracker_node_by_id(mdv_tracker *tracker, uint32_t id)
 {
-    if (id == MDV_LOCAL_ID)
+    mdv_node *node = 0;
+
+    if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
-        *uuid = tracker->uuid;
-        return true;
+        if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
+        {
+            mdv_node_id *node_id = mdv_hashmap_find(tracker->ids, id);
+
+            if (node_id)
+            {
+                static _Thread_local char buff[offsetof(mdv_node, addr) + MDV_ADDR_LEN_MAX + 1];
+
+                if (node_id->node->size <= sizeof buff)
+                {
+                    node = (mdv_node *)buff;
+                    memcpy(node, node_id->node, node_id->node->size);
+                }
+                else
+                    MDV_LOGE("Incorrect node size");
+            }
+
+            mdv_mutex_unlock(&tracker->ids_mutex);
+        }
+        mdv_mutex_unlock(&tracker->nodes_mutex);
     }
 
-    mdv_node_id *node_id = 0;
-
-    if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
-    {
-        node_id = mdv_hashmap_find(tracker->ids, id);
-        mdv_mutex_unlock(&tracker->ids_mutex);
-    }
-
-    if (!node_id)
-        return false;
-
-    *uuid = node_id->node->uuid;
-
-    return true;
+    return node;
 }

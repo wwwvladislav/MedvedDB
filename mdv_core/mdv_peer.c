@@ -210,7 +210,7 @@ static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
         // Two isolated segments joined
         // TODO: Broadcast delta->ba to own segment.
         for(size_t i = 0; i < delta->ba->links_count; ++i)
-            mdv_tracker_linkstate(tracker, delta->ba->links[i].node[0], delta->ba->links[i].node[1], true);
+            mdv_tracker_linkstate(tracker, &delta->ba->links[i].node[0]->uuid, &delta->ba->links[i].node[1]->uuid, true);
     }
 
     mdv_rollback(rollbacker);
@@ -258,7 +258,7 @@ static mdv_errno mdv_peer_topodiff_handler(mdv_msg const *msg, void *arg)
         // TODO: Broadcast topology to own segment if segment was isolated.
 
         for(size_t i = 0; i < topology->links_count; ++i)
-            mdv_tracker_linkstate(tracker, topology->links[i].node[0], topology->links[i].node[1], true);
+            mdv_tracker_linkstate(tracker, &topology->links[i].node[0]->uuid, &topology->links[i].node[1]->uuid, true);
     }
 
     mdv_rollback(rollbacker);

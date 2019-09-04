@@ -154,10 +154,10 @@ mdv_errno mdv_tracker_peers_call(mdv_tracker *tracker, uint32_t id, void *arg, m
  * @return On success, return MDV_OK
  * @return On error, return nonzero error code
  */
-mdv_errno mdv_tracker_linkstate(mdv_tracker         *tracker,
-                                mdv_uuid const      *peer_1,
-                                mdv_uuid const      *peer_2,
-                                bool                 connected);
+mdv_errno mdv_tracker_linkstate(mdv_tracker     *tracker,
+                                mdv_uuid const  *peer_1,
+                                mdv_uuid const  *peer_2,
+                                bool             connected);
 
 
 /**
@@ -201,6 +201,6 @@ void mdv_tracker_links_foreach(mdv_tracker *tracker, void *arg, void (*fn)(mdv_t
  * @param tracker [in]
  * @param id [in]
  * @param uuid [out]
- * @return On success, returns true.
+ * @return On success, returns non NULL node pointer.
  */
-bool mdv_tracker_node_uuid(mdv_tracker *tracker, uint32_t id, mdv_uuid *uuid);
+mdv_node * mdv_tracker_node_by_id(mdv_tracker *tracker, uint32_t id);

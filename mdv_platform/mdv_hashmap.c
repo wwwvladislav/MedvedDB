@@ -143,7 +143,7 @@ mdv_list_entry_base * _mdv_hashmap_insert(mdv_hashmap *hm, void const *item, siz
 }
 
 
-void * _mdv_hashmap_find(mdv_hashmap *hm, void const *key)
+void * _mdv_hashmap_find(mdv_hashmap const *hm, void const *key)
 {
     size_t const bucket_idx = hm->hash_fn(key) % hm->capacity;
 

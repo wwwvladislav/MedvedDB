@@ -44,7 +44,7 @@ void                  _mdv_hashmap_free(mdv_hashmap *hm);
 void                  _mdv_hashmap_clear(mdv_hashmap *hm);
 int                   _mdv_hashmap_resize(mdv_hashmap *hm, size_t capacity);
 mdv_list_entry_base * _mdv_hashmap_insert(mdv_hashmap *hm, void const *item, size_t size);
-void *                _mdv_hashmap_find(mdv_hashmap *hm, void const *key);
+void *                _mdv_hashmap_find(mdv_hashmap const *hm, void const *key);
 int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
 /// @endcond
 
@@ -65,7 +65,7 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @return 0 if hash map is not initialized
  */
 #define mdv_hashmap_init(hm, type, key_field, capacity, hash_fn, key_cmp_fn)    \
-    _mdv_hashmap_init(&hm,                                                      \
+    _mdv_hashmap_init(&(hm),                                                      \
                       capacity,                                                 \
                       offsetof(type, key_field),                                \
                       sizeof(((type*)0)->key_field),                            \
@@ -79,7 +79,7 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @param hm [in] Hash map allocated by mdv_hashmap()
  */
 #define mdv_hashmap_free(hm)                                    \
-    _mdv_hashmap_free(&hm)
+    _mdv_hashmap_free(&(hm))
 
 
 /**
@@ -88,7 +88,7 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @param hm [in] Hash map allocated by mdv_hashmap()
  */
 #define mdv_hashmap_clear(hm)                                    \
-    _mdv_hashmap_clear(&hm)
+    _mdv_hashmap_clear(&(hm))
 
 
 /**
@@ -111,7 +111,7 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @return 0 if hash map wasn't resized
  */
 #define mdv_hashmap_resize(hm, capacity)                        \
-    _mdv_hashmap_resize(&hm, capacity)
+    _mdv_hashmap_resize(&(hm), capacity)
 
 
 /**
@@ -124,7 +124,7 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @return 0 if no memory
  */
 #define mdv_hashmap_insert(hm, item)                            \
-    _mdv_hashmap_insert(&hm, &item, sizeof(item))
+    _mdv_hashmap_insert(&(hm), &(item), sizeof(item))
 
 
 /**
@@ -137,7 +137,7 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @return NULL if no entry found
  */
 #define mdv_hashmap_find(hm, key)                               \
-    _mdv_hashmap_find(&hm, &key)
+    _mdv_hashmap_find(&(hm), &(key))
 
 
 /**
@@ -150,7 +150,7 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @return 0 if hash map wasn't removed
  */
 #define mdv_hashmap_erase(hm, key)                              \
-    _mdv_hashmap_erase(&hm, &key)
+    _mdv_hashmap_erase(&(hm), &(key))
 
 
 /**
@@ -169,5 +169,5 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @endcode
  */
 #define mdv_hashmap_foreach(hm, type, entry)                    \
-    for(size_t i = 0; i < hm.capacity; ++i)                     \
-        mdv_list_foreach(hm.buckets[i], type, entry)
+    for(size_t i = 0; i < (hm).capacity; ++i)                   \
+        mdv_list_foreach((hm).buckets[i], type, entry)

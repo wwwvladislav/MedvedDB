@@ -10,22 +10,30 @@
 #include "mdv_uuid.h"
 
 
+/// Node description
+typedef struct
+{
+    mdv_uuid    uuid;                   ///< Unique identifier
+    char const *addr;                   ///< Address
+} mdv_toponode;
+
+
 /// Link description
 typedef struct
 {
-    mdv_uuid   *node[2];                ///< Linked nodes identifiers
-    uint32_t    weight;                 ///< Link weight. Bigger is better.
-} mdv_link;
+    mdv_toponode   *node[2];            ///< Linked nodes
+    uint32_t        weight;             ///< Link weight. Bigger is better.
+} mdv_topolink;
 
 
 /// Topology description
 typedef struct
 {
-    size_t       nodes_count;           ///< Nodes count
-    size_t       links_count;           ///< Links count
+    size_t          nodes_count;        ///< Nodes count
+    size_t          links_count;        ///< Links count
 
-    mdv_uuid    *nodes;                 ///< Nodes unique identifiers array
-    mdv_link    *links;                 ///< Links array
+    mdv_toponode    *nodes;             ///< Nodes array
+    mdv_topolink    *links;             ///< Links array
 } mdv_topology;
 
 
@@ -51,7 +59,7 @@ struct mdv_tracker;
  * @return zero if a is equal to b
  * @return an integer greater than zero if a is greater then b
  */
-int mdv_link_cmp(mdv_link const *a, mdv_link const *b);
+int mdv_link_cmp(mdv_topolink const *a, mdv_topolink const *b);
 
 
 /**
@@ -91,3 +99,9 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
  * @param delta [in] topologies difference
  */
 void mdv_topology_delta_free(mdv_topology_delta *delta);
+
+
+/**
+ * @brief Calculate memory size required for topology
+ */
+size_t mdv_topology_size(mdv_topology const *topology);

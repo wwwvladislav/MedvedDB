@@ -67,10 +67,34 @@ static mdv_node * mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid)
 }
 
 
+static void mdv_add_current_node(mdv_tracker *tracker)
+{
+    size_t const size = offsetof(mdv_node, addr) + MDV_CONFIG.server.listen.size + 1;
+
+    char buff[size];
+
+    memset(buff, 0, size);
+
+    mdv_node *node = (mdv_node *)buff;
+
+    node->size      = size;
+    node->uuid      = tracker->uuid;
+    node->userdata  = 0;
+    node->id        = MDV_LOCAL_ID;
+
+    memcpy(node->addr, MDV_CONFIG.server.listen.ptr, MDV_CONFIG.server.listen.size);
+
+    mdv_tracker_append(tracker, node);
+}
+
+
 mdv_errno mdv_nodes_load(mdv_storage *storage, mdv_tracker *tracker)
 {
     mdv_rollbacker(2) rollbacker;
     mdv_rollbacker_clear(rollbacker);
+
+    // Add current node
+    mdv_add_current_node(tracker);
 
     // Start transaction
     mdv_transaction transaction = mdv_transaction_start(storage);

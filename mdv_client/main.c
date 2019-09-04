@@ -147,8 +147,8 @@ static void mdv_show_topology(char const *args)
 
         for (size_t i = 0; i < topology->links_count; ++i)
         {
-            MDV_OUT("  \"%s\" -- ", mdv_uuid_to_str(topology->links[i].node[0]).ptr);
-            MDV_OUT("\"%s\"\n", mdv_uuid_to_str(topology->links[i].node[1]).ptr);
+            MDV_OUT("  \"%s\" -- ", mdv_uuid_to_str(&topology->links[i].node[0]->uuid).ptr);
+            MDV_OUT("\"%s\"\n", mdv_uuid_to_str(&topology->links[i].node[1]->uuid).ptr);
         }
 
         MDV_OUT("}\n");

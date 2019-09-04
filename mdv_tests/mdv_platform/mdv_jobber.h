@@ -2,11 +2,12 @@
 #include "../minunit.h"
 #include <mdv_jobber.h>
 #include <mdv_condvar.h>
+#include <stdatomic.h>
 
 
 typedef struct mdv_test_job_data
 {
-    int         counter;
+    atomic_int  counter;
     mdv_condvar cv;
 } mdv_test_job_data;
 
@@ -15,7 +16,7 @@ static void mdv_test_job(mdv_job_base *job)
 {
     mdv_test_job_data *data = (mdv_test_job_data *)job->data;
 
-    if (++data->counter >= 42)
+    if (atomic_fetch_add(&data->counter, 1) + 1 >= 42)
         mdv_condvar_signal(&data->cv);
 }
 
@@ -57,9 +58,9 @@ MU_TEST(platform_jobber)
     for(int i = 0; i < 42; ++i)
         mu_check(mdv_jobber_push(jobber, (mdv_job_base*)&job) == MDV_OK);
 
-    mu_check(mdv_condvar_timedwait(&job.data.cv, 100) == MDV_OK);
+    mu_check(mdv_condvar_wait(&job.data.cv) == MDV_OK);
 
-    mu_check(job.data.counter == 42);
+    mu_check(atomic_load(&job.data.counter) == 42);
 
     mdv_condvar_free(&job.data.cv);
 

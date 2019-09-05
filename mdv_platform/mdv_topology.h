@@ -29,6 +29,7 @@ typedef struct
 /// Topology description
 typedef struct
 {
+    size_t          size;               ///< topology data structure size
     size_t          nodes_count;        ///< Nodes count
     size_t          links_count;        ///< Links count
 
@@ -99,9 +100,3 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
  * @param delta [in] topologies difference
  */
 void mdv_topology_delta_free(mdv_topology_delta *delta);
-
-
-/**
- * @brief Calculate memory size required for topology
- */
-size_t mdv_topology_size(mdv_topology const *topology);

@@ -582,10 +582,8 @@ bool mdv_topology_serialize(mdv_topology const *topology, binn *obj)
         binn_free(&link);
     }
 
-    size_t const topology_size = mdv_topology_size(topology);
-
     if (0
-        || !binn_object_set_uint64(obj, "S", topology_size)
+        || !binn_object_set_uint64(obj, "S", topology->size)
         || !binn_object_set_uint64(obj, "NC", topology->nodes_count)
         || !binn_object_set_uint64(obj, "LC", topology->links_count)
         || !binn_object_set_list(obj, "N", &nodes)
@@ -630,6 +628,7 @@ mdv_topology * mdv_topology_deserialize(binn const *obj)
         return 0;
     }
 
+    topology->size        = topology_size;
     topology->nodes_count = (size_t)nodes_count;
     topology->links_count = (size_t)links_count;
     topology->nodes       = (void*)(topology + 1);

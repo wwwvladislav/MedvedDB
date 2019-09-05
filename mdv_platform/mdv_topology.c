@@ -11,6 +11,7 @@
 
 static mdv_topology empty_topology =
 {
+    .size = sizeof(mdv_topology),
     .nodes_count = 0,
     .links_count = 0
 };
@@ -179,27 +180,14 @@ static size_t mdv_topology_size_by_node_refs(mdv_hashmap const *node_refs, size_
 }
 
 
-size_t mdv_topology_size(mdv_topology const *topology)
-{
-    size_t toposize = sizeof(mdv_topology)
-                        + sizeof(mdv_toponode) * topology->nodes_count
-                        + sizeof(mdv_topolink) * topology->links_count;
-
-    for(size_t i = 0; i < topology->nodes_count; ++i)
-    {
-        toposize += strlen(topology->nodes[i].addr) + 1;
-    }
-
-    return toposize;
-}
-
-
 static void mdv_topology_copy(mdv_topology *dst, mdv_topology const *src)
 {
+    dst->size        = src->size;
     dst->nodes_count = src->nodes_count;
     dst->links_count = src->links_count;
 
     char *strs_space = (char *)(dst->links + dst->links_count);
+    char const *strs_space_end = (char const*)dst + dst->size;
 
     for(size_t i = 0; i < src->nodes_count; ++i)
     {
@@ -207,6 +195,12 @@ static void mdv_topology_copy(mdv_topology *dst, mdv_topology const *src)
         dst->nodes[i].addr = strs_space;
 
         size_t const addr_size = strlen(src->nodes[i].addr) + 1;
+
+        if (strs_space + addr_size > strs_space_end)
+        {
+            MDV_LOGF("Invalid network topology size");
+            break;
+        }
 
         memcpy(strs_space, src->nodes[i].addr, addr_size);
 
@@ -224,12 +218,14 @@ static void mdv_topology_copy(mdv_topology *dst, mdv_topology const *src)
 }
 
 
-static void mdv_topology_copy2(mdv_topology *dst, mdv_hashmap const *node_refs, mdv_topolink const *links, size_t links_count)
+static void mdv_topology_copy2(mdv_topology *dst, size_t topology_size, mdv_hashmap const *node_refs, mdv_topolink const *links, size_t links_count)
 {
+    dst->size = topology_size;
     dst->nodes_count = mdv_hashmap_size(*node_refs);
     dst->links_count = links_count;
 
     char *strs_space = (char *)(dst->links + dst->links_count);
+    char const *strs_space_end = (char const*)dst + dst->size;
 
     uint32_t idx = 0;
 
@@ -240,6 +236,12 @@ static void mdv_topology_copy2(mdv_topology *dst, mdv_hashmap const *node_refs, 
         entry->idx = idx++;
 
         size_t const addr_size = strlen(entry->pnode->addr) + 1;
+
+        if (strs_space + addr_size > strs_space_end)
+        {
+            MDV_LOGF("Invalid network topology size");
+            break;
+        }
 
         memcpy(strs_space, entry->pnode->addr, addr_size);
 
@@ -343,10 +345,11 @@ mdv_topology * mdv_topology_extract(mdv_tracker *tracker)
         return &empty_topology;
     }
 
-    mdv_topology *topology = mdv_alloc(
-                                mdv_topology_size_by_node_ids(
+    size_t const topology_size = mdv_topology_size_by_node_ids(
                                     &tmp.unique_ids,
-                                    mdv_vector_size(tmp.links)), "topology");
+                                    mdv_vector_size(tmp.links));
+
+    mdv_topology *topology = mdv_alloc(topology_size, "topology");
 
     if (!topology)
     {
@@ -357,6 +360,7 @@ mdv_topology * mdv_topology_extract(mdv_tracker *tracker)
 
     mdv_rollbacker_push(rollbacker, mdv_free, topology, "topology");
 
+    topology->size        = topology_size;
     topology->nodes_count = mdv_hashmap_size(tmp.unique_ids);
     topology->links_count = mdv_vector_size(tmp.links);
     topology->nodes       = (void*)(topology + 1);
@@ -365,6 +369,7 @@ mdv_topology * mdv_topology_extract(mdv_tracker *tracker)
     uint32_t n = 0;
 
     char *strs_space = (char *)(topology->links + topology->links_count);
+    char const *strs_space_end = (char const*)topology + topology->size;
 
     mdv_hashmap_foreach(tmp.unique_ids, mdv_topology_node_id, entry)
     {
@@ -373,6 +378,13 @@ mdv_topology * mdv_topology_extract(mdv_tracker *tracker)
         topology->nodes[n].addr = strs_space;
 
         size_t const addr_size = strlen(entry->node.addr) + 1;
+
+        if (strs_space + addr_size > strs_space_end)
+        {
+            MDV_LOGE("Invalid network topology size");
+            mdv_rollback(rollbacker);
+            return 0;
+        }
 
         memcpy(strs_space, entry->node.addr, addr_size);
 
@@ -434,7 +446,7 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
     {
         mdv_topology_delta *delta = mdv_alloc(
                                         sizeof(mdv_topology_delta) +
-                                        mdv_topology_size(b), "topology_delta");
+                                        b->size, "topology_delta");
         if (!delta)
         {
             MDV_LOGE("no memory for network topology delta");
@@ -454,7 +466,7 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
     {
         mdv_topology_delta *delta = mdv_alloc(
                                         sizeof(mdv_topology_delta) +
-                                        mdv_topology_size(a), "topology_delta");
+                                        a->size, "topology_delta");
         if (!delta)
         {
             MDV_LOGE("no memory for network topology delta");
@@ -531,8 +543,10 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
         delta = &empty_topology_delta;
     else if (!ab_size)
     {
-        delta = mdv_alloc(sizeof(mdv_topology_delta) +
-                          mdv_topology_size_by_node_refs(&ba_nodes, ba_size), "topology_delta");
+        size_t const topology_size = mdv_topology_size_by_node_refs(&ba_nodes, ba_size);
+
+        delta = mdv_alloc(sizeof(mdv_topology_delta) + topology_size, "topology_delta");
+
         if (delta)
         {
             delta->ab = &empty_topology;
@@ -542,15 +556,17 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
             delta->ba->links_count = ba_size;
             delta->ba->nodes = (void*)(delta->ba + 1);
             delta->ba->links = (void*)(delta->ba->nodes + delta->ba->nodes_count);
-            mdv_topology_copy2(delta->ba, &ba_nodes, ba_links, ba_size);
+            mdv_topology_copy2(delta->ba, topology_size, &ba_nodes, ba_links, ba_size);
         }
         else
             MDV_LOGE("no memory for network topology delta");
     }
     else if (!ba_size)
     {
-        delta = mdv_alloc(sizeof(mdv_topology_delta) +
-                          mdv_topology_size_by_node_refs(&ab_nodes, ab_size), "topology_delta");
+        size_t const topology_size = mdv_topology_size_by_node_refs(&ab_nodes, ab_size);
+
+        delta = mdv_alloc(sizeof(mdv_topology_delta) + topology_size, "topology_delta");
+
         if (!delta)
         {
             MDV_LOGE("no memory for network topology delta");
@@ -562,15 +578,16 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
         delta->ab->links_count = ab_size;
         delta->ab->nodes = (void*)(delta->ab + 1);
         delta->ab->links = (void*)(delta->ab->nodes + delta->ab->nodes_count);
-        mdv_topology_copy2(delta->ab, &ab_nodes, ab_links, ab_size);
+        mdv_topology_copy2(delta->ab, topology_size, &ab_nodes, ab_links, ab_size);
 
         delta->ba = &empty_topology;
     }
     else
     {
-        delta = mdv_alloc(sizeof(mdv_topology_delta) +
-                          mdv_topology_size_by_node_refs(&ab_nodes, ab_size) +
-                          mdv_topology_size_by_node_refs(&ba_nodes, ba_size), "topology_delta");
+        size_t const ab_topology_size = mdv_topology_size_by_node_refs(&ab_nodes, ab_size);
+        size_t const ba_topology_size = mdv_topology_size_by_node_refs(&ba_nodes, ba_size);
+
+        delta = mdv_alloc(sizeof(mdv_topology_delta) + ab_topology_size + ba_topology_size, "topology_delta");
         if (!delta)
         {
             MDV_LOGE("no memory for network topology delta");
@@ -589,8 +606,8 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
         delta->ba->nodes = (void*)(delta->ba + 1);
         delta->ba->links = (void*)(delta->ba->nodes + delta->ba->nodes_count);
 
-        mdv_topology_copy2(delta->ab, &ab_nodes, ab_links, ab_size);
-        mdv_topology_copy2(delta->ba, &ba_nodes, ba_links, ba_size);
+        mdv_topology_copy2(delta->ab, ab_topology_size, &ab_nodes, ab_links, ab_size);
+        mdv_topology_copy2(delta->ba, ba_topology_size, &ba_nodes, ba_links, ba_size);
     }
 
     mdv_rollback(rollbacker);

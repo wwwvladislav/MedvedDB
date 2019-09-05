@@ -143,6 +143,36 @@ static mdv_errno mdv_peer_linkstate_handler(mdv_msg const *msg, void *arg)
 }
 
 
+static void mdv_peer_toposync_node_add(mdv_peer *peer, mdv_uuid const *uuid, char const *addr)
+{
+    mdv_core *core = peer->core;
+    mdv_tracker *tracker = &core->cluster.tracker;
+
+    size_t const addr_len = strlen(addr);
+    size_t const node_size = offsetof(mdv_node, addr) + addr_len + 1;
+
+    char buf[node_size];
+
+    mdv_node *node = (mdv_node *)buf;
+
+    memset(node, 0, sizeof *node);
+
+    node->size      = node_size;
+    node->uuid      = *uuid;
+    node->userdata  = 0;
+    node->id        = 0;
+    node->connected = 0;
+    node->accepted  = 0;
+    node->active    = 1;
+
+    memcpy(node->addr, addr, addr_len + 1);
+
+    // Save peer information and connection state in memory
+    if (mdv_tracker_append(tracker, node, true))
+        mdv_nodes_store_async(core->jobber, core->storage.metainf, node);
+}
+
+
 static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
 {
     mdv_peer *peer = arg;
@@ -209,6 +239,10 @@ static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
     {
         // Two isolated segments joined
         // TODO: Broadcast delta->ba to own segment.
+
+        for(size_t i = 0; i < delta->ba->nodes_count; ++i)
+            mdv_peer_toposync_node_add(peer, &delta->ba->nodes[i].uuid, delta->ba->nodes[i].addr);
+
         for(size_t i = 0; i < delta->ba->links_count; ++i)
             mdv_tracker_linkstate(tracker, &delta->ba->links[i].node[0]->uuid, &delta->ba->links[i].node[1]->uuid, true);
     }
@@ -256,6 +290,9 @@ static mdv_errno mdv_peer_topodiff_handler(mdv_msg const *msg, void *arg)
     if (topology)
     {
         // TODO: Broadcast topology to own segment if segment was isolated.
+
+        for(size_t i = 0; i < topology->nodes_count; ++i)
+            mdv_peer_toposync_node_add(peer, &topology->nodes[i].uuid, topology->nodes[i].addr);
 
         for(size_t i = 0; i < topology->links_count; ++i)
             mdv_tracker_linkstate(tracker, &topology->links[i].node[0]->uuid, &topology->links[i].node[1]->uuid, true);

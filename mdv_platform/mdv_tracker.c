@@ -394,24 +394,35 @@ void mdv_tracker_peer_disconnected(mdv_tracker *tracker, mdv_uuid const *uuid)
 }
 
 
-void mdv_tracker_append(mdv_tracker *tracker, mdv_node const *node)
+bool mdv_tracker_append(mdv_tracker *tracker, mdv_node *new_node, bool is_new)
 {
+    bool is_added = false;
+
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
-        if (!mdv_tracker_find(tracker, &node->uuid))
+        mdv_node *node = mdv_tracker_find(tracker, &node->uuid);
+
+        if (!node)
         {
             if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
             {
-                if (tracker->max_id < node->id)
-                    tracker->max_id = node->id;
+                if (is_new)
+                    new_node->id = mdv_tracker_new_id(tracker);
+                else if (tracker->max_id < new_node->id)
+                    tracker->max_id = new_node->id;
 
-                mdv_tracker_insert(tracker, node);
+                mdv_tracker_insert(tracker, new_node);
+
+                is_added = true;
+
                 mdv_mutex_unlock(&tracker->ids_mutex);
             }
         }
 
         mdv_mutex_unlock(&tracker->nodes_mutex);
     }
+
+    return is_added;
 }
 
 

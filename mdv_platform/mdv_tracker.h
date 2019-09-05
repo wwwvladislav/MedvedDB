@@ -103,10 +103,13 @@ void mdv_tracker_peer_disconnected(mdv_tracker *tracker, mdv_uuid const *uuid);
 /**
  * @brief node into the tracker
  *
- * @param tracker [in]          Topology tracker
- * @param node [in] [out]       node information
+ * @param tracker [in]      Topology tracker
+ * @param node [in] [out]   node information
+ * @param is_new [in]       New node flag (if it's true new identifier is generated)
+ *
+ * @return true if node was added
  */
-void mdv_tracker_append(mdv_tracker *tracker, mdv_node const *node);
+bool mdv_tracker_append(mdv_tracker *tracker, mdv_node *node, bool is_new);
 
 
 /**

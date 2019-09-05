@@ -84,7 +84,7 @@ static void mdv_add_current_node(mdv_tracker *tracker)
 
     memcpy(node->addr, MDV_CONFIG.server.listen.ptr, MDV_CONFIG.server.listen.size);
 
-    mdv_tracker_append(tracker, node);
+    mdv_tracker_append(tracker, node, false);
 }
 
 
@@ -137,7 +137,7 @@ mdv_errno mdv_nodes_load(mdv_storage *storage, mdv_tracker *tracker)
         if (node)
         {
             MDV_LOGI("Node: [%u] %s, %s", node->id, mdv_uuid_to_str(&node->uuid).ptr, node->addr);
-            mdv_tracker_append(tracker, node);
+            mdv_tracker_append(tracker, node, false);
         }
         else
             MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(uuid).ptr);

@@ -34,8 +34,8 @@ mdv_errno mdv_nodes_store_async(mdv_jobber *jobber, mdv_storage *storage, mdv_no
     if (!job)
         return MDV_NO_MEM;
 
-    job->fn         = mdv_nodes_store_fn;
-    job->finalize   = mdv_nodes_store_finalize;
+    job->fn             = mdv_nodes_store_fn;
+    job->finalize       = mdv_nodes_store_finalize;
     job->data.storage   = mdv_storage_retain(storage);
 
     memcpy(&job->data.node, node, node->size);

@@ -313,7 +313,7 @@ mdv_errno mdv_user_post(mdv_user *user, mdv_msg *msg)
 
 static mdv_errno mdv_user_reply(mdv_user *user, mdv_msg const *msg)
 {
-    MDV_LOGI(">>>>> %s'", mdv_msg_name(msg->hdr.id));
+    MDV_LOGI(">>>>> '%s'", mdv_msg_name(msg->hdr.id));
     return mdv_dispatcher_reply(user->conctx->dispatcher, msg);
 }
 

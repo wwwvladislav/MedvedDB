@@ -29,7 +29,7 @@ typedef struct
     uint32_t        id;
     uint32_t        idx;
     mdv_toponode    node;
-} mdv_topology_node_id;
+} mdv_topology_node;
 
 
 typedef struct
@@ -70,15 +70,15 @@ typedef struct
 {
     mdv_tracker     *tracker;
     mdv_links_array  links;
-    mdv_hashmap      unique_ids;
+    mdv_hashmap      unique_nodes;
 } mdv_tracker_links_tmp;
 
 
-static mdv_topology_node_id const *mdv_topology_node_id_register(mdv_tracker_links_tmp *tmp, uint32_t id)
+static mdv_topology_node const *mdv_topology_node_register(mdv_tracker_links_tmp *tmp, uint32_t id)
 {
-    mdv_topology_node_id const *nid = mdv_hashmap_find(tmp->unique_ids, id);
+    mdv_topology_node const *toponode = mdv_hashmap_find(tmp->unique_nodes, id);
 
-    if (!nid)
+    if (!toponode)
     {
         mdv_node *node = mdv_tracker_node_by_id(tmp->tracker, id);
 
@@ -89,21 +89,21 @@ static mdv_topology_node_id const *mdv_topology_node_id_register(mdv_tracker_lin
         }
 
         size_t const addr_size = strlen(node->addr) + 1;
-        size_t const size = sizeof(mdv_topology_node_id) + addr_size;
+        size_t const size = sizeof(mdv_topology_node) + addr_size;
 
         char buf[size];
 
-        mdv_topology_node_id *node_id = (void*)buf;
+        mdv_topology_node *new_toponode = (void*)buf;
 
-        char *addr_dst = (char*)(node_id + 1);
+        char *addr_dst = (char*)(new_toponode + 1);
 
-        node_id->id = id;
-        node_id->node.uuid = node->uuid;
-        node_id->node.addr = addr_dst;
+        new_toponode->id = id;
+        new_toponode->node.uuid = node->uuid;
+        new_toponode->node.addr = addr_dst;
 
         memcpy(addr_dst, node->addr, addr_size);
 
-        mdv_list_entry_base *entry = _mdv_hashmap_insert(&tmp->unique_ids, node_id, size);
+        mdv_list_entry_base *entry = _mdv_hashmap_insert(&tmp->unique_nodes, new_toponode, size);
 
         if (!entry)
         {
@@ -111,10 +111,13 @@ static mdv_topology_node_id const *mdv_topology_node_id_register(mdv_tracker_lin
             return 0;
         }
 
-        nid = (void*)entry->data;
+        new_toponode = (void*)entry->data;
+        new_toponode->node.addr = (char*)(new_toponode + 1);
+
+        toponode = new_toponode;
     }
 
-    return nid;
+    return toponode;
 }
 
 
@@ -124,8 +127,8 @@ static void mdv_tracker_link_add(mdv_tracker_link const *link, void *arg)
 
     if (mdv_vector_push_back(tmp->links, *link))
     {
-        mdv_topology_node_id const *id0 = mdv_topology_node_id_register(tmp, link->id[0]);
-        mdv_topology_node_id const *id1 = mdv_topology_node_id_register(tmp, link->id[1]);
+        mdv_topology_node const *id0 = mdv_topology_node_register(tmp, link->id[0]);
+        mdv_topology_node const *id1 = mdv_topology_node_register(tmp, link->id[1]);
 
         if (id0 && id1)
             return;
@@ -155,14 +158,13 @@ static size_t mdv_topology_size_by_node_ids(mdv_hashmap const *node_ids, size_t 
                         + sizeof(mdv_toponode) * mdv_hashmap_size(*node_ids)
                         + sizeof(mdv_topolink) * links_count;
 
-    mdv_hashmap_foreach(*node_ids, mdv_topology_node_id, entry)
+    mdv_hashmap_foreach(*node_ids, mdv_topology_node, entry)
     {
         toposize += strlen(entry->node.addr) + 1;
     }
 
     return toposize;
 }
-
 
 
 static size_t mdv_topology_size_by_node_refs(mdv_hashmap const *node_refs, size_t links_count)
@@ -328,14 +330,14 @@ mdv_topology * mdv_topology_extract(mdv_tracker *tracker)
 
     mdv_rollbacker_push(rollbacker, mdv_stfree, tmp.links.data, "tmp.links");
 
-    if (!mdv_hashmap_init(tmp.unique_ids, mdv_topology_node_id, id, 64, mdv_u32_hash, mdv_u32_keys_cmp))
+    if (!mdv_hashmap_init(tmp.unique_nodes, mdv_topology_node, id, 64, mdv_u32_hash, mdv_u32_keys_cmp))
     {
         MDV_LOGE("No memory for network topology");
         mdv_rollback(rollbacker);
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tmp.unique_ids);
+    mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tmp.unique_nodes);
 
     mdv_tracker_links_foreach(tracker, &tmp, &mdv_tracker_link_add);
 
@@ -346,7 +348,7 @@ mdv_topology * mdv_topology_extract(mdv_tracker *tracker)
     }
 
     size_t const topology_size = mdv_topology_size_by_node_ids(
-                                    &tmp.unique_ids,
+                                    &tmp.unique_nodes,
                                     mdv_vector_size(tmp.links));
 
     mdv_topology *topology = mdv_alloc(topology_size, "topology");
@@ -361,7 +363,7 @@ mdv_topology * mdv_topology_extract(mdv_tracker *tracker)
     mdv_rollbacker_push(rollbacker, mdv_free, topology, "topology");
 
     topology->size        = topology_size;
-    topology->nodes_count = mdv_hashmap_size(tmp.unique_ids);
+    topology->nodes_count = mdv_hashmap_size(tmp.unique_nodes);
     topology->links_count = mdv_vector_size(tmp.links);
     topology->nodes       = (void*)(topology + 1);
     topology->links       = (void*)(topology->nodes + topology->nodes_count);
@@ -371,7 +373,7 @@ mdv_topology * mdv_topology_extract(mdv_tracker *tracker)
     char *strs_space = (char *)(topology->links + topology->links_count);
     char const *strs_space_end = (char const*)topology + topology->size;
 
-    mdv_hashmap_foreach(tmp.unique_ids, mdv_topology_node_id, entry)
+    mdv_hashmap_foreach(tmp.unique_nodes, mdv_topology_node, entry)
     {
         entry->idx = n;
         topology->nodes[n].uuid = entry->node.uuid;
@@ -397,8 +399,8 @@ mdv_topology * mdv_topology_extract(mdv_tracker *tracker)
 
     mdv_vector_foreach(tmp.links, mdv_tracker_link, link)
     {
-        mdv_topology_node_id const *id0 = mdv_hashmap_find(tmp.unique_ids, link->id[0]);
-        mdv_topology_node_id const *id1 = mdv_hashmap_find(tmp.unique_ids, link->id[1]);
+        mdv_topology_node const *id0 = mdv_hashmap_find(tmp.unique_nodes, link->id[0]);
+        mdv_topology_node const *id1 = mdv_hashmap_find(tmp.unique_nodes, link->id[1]);
 
         if (!id0 || !id1)
         {
@@ -416,7 +418,7 @@ mdv_topology * mdv_topology_extract(mdv_tracker *tracker)
         ++n;
     }
 
-    mdv_hashmap_free(tmp.unique_ids);
+    mdv_hashmap_free(tmp.unique_nodes);
     mdv_vector_free(tmp.links);
 
     qsort(topology->links,

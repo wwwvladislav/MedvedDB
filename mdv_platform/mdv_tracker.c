@@ -400,11 +400,11 @@ bool mdv_tracker_append(mdv_tracker *tracker, mdv_node *new_node, bool is_new)
 
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
-        mdv_node *node = mdv_tracker_find(tracker, &node->uuid);
-
-        if (!node)
+        if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
         {
-            if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
+            mdv_node *node = mdv_tracker_find(tracker, &new_node->uuid);
+
+            if (!node)
             {
                 if (is_new)
                     new_node->id = mdv_tracker_new_id(tracker);
@@ -414,11 +414,10 @@ bool mdv_tracker_append(mdv_tracker *tracker, mdv_node *new_node, bool is_new)
                 mdv_tracker_insert(tracker, new_node);
 
                 is_added = true;
-
-                mdv_mutex_unlock(&tracker->ids_mutex);
             }
-        }
 
+            mdv_mutex_unlock(&tracker->ids_mutex);
+        }
         mdv_mutex_unlock(&tracker->nodes_mutex);
     }
 
@@ -613,7 +612,7 @@ mdv_node * mdv_tracker_node_by_id(mdv_tracker *tracker, uint32_t id)
                     memcpy(node, node_id->node, node_id->node->size);
                 }
                 else
-                    MDV_LOGE("Incorrect node size");
+                    MDV_LOGE("Incorrect node size: %zd", node_id->node->size);
             }
 
             mdv_mutex_unlock(&tracker->ids_mutex);

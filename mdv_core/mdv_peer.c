@@ -151,6 +151,12 @@ static void mdv_peer_toposync_node_add(mdv_peer *peer, mdv_uuid const *uuid, cha
     size_t const addr_len = strlen(addr);
     size_t const node_size = offsetof(mdv_node, addr) + addr_len + 1;
 
+    if (addr_len > MDV_ADDR_LEN_MAX)
+    {
+        MDV_LOGE("Invalid address length: %zu", addr_len);
+        return;
+    }
+
     char buf[node_size];
 
     mdv_node *node = (mdv_node *)buf;

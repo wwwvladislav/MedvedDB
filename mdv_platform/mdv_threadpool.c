@@ -179,21 +179,21 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
 }
 
 
-void mdv_threadpool_stop(mdv_threadpool *tp)
+void mdv_threadpool_stop(mdv_threadpool *threadpool)
 {
     uint64_t data = 0xDEADFA11;
     size_t len = sizeof data;
 
-    while(mdv_write(tp->stopfd, &data, &len) == MDV_EAGAIN)
+    while(mdv_write(threadpool->stopfd, &data, &len) == MDV_EAGAIN)
     {
         len = sizeof data;
     }
 
-    for(size_t i = 0; i < tp->config.size; ++i)
+    for(size_t i = 0; i < threadpool->config.size; ++i)
     {
-        if (tp->threads[i])
+        if (threadpool->threads[i])
         {
-            mdv_errno err = mdv_thread_join(tp->threads[i]);
+            mdv_errno err = mdv_thread_join(threadpool->threads[i]);
             if (err != MDV_OK)
                 MDV_LOGE("Thread join failed with error '%s' (%d)", mdv_strerror(err), err);
         }
@@ -201,15 +201,15 @@ void mdv_threadpool_stop(mdv_threadpool *tp)
 }
 
 
-void mdv_threadpool_free(mdv_threadpool *tp)
+void mdv_threadpool_free(mdv_threadpool *threadpool)
 {
-    if (tp)
+    if (threadpool)
     {
-        mdv_epoll_close(tp->epollfd);
-        mdv_eventfd_close(tp->stopfd);
-        mdv_hashmap_free(tp->tasks);
-        mdv_mutex_free(&tp->tasks_mtx);
-        mdv_free(tp, "threadpool");
+        mdv_epoll_close(threadpool->epollfd);
+        mdv_eventfd_close(threadpool->stopfd);
+        mdv_hashmap_free(threadpool->tasks);
+        mdv_mutex_free(&threadpool->tasks_mtx);
+        mdv_free(threadpool, "threadpool");
     }
 }
 

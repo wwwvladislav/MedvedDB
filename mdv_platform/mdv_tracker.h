@@ -44,14 +44,10 @@ typedef struct mdv_tracker
     mdv_uuid             uuid;          ///< Global unique identifier for current node (i.e. self UUID)
     volatile uint32_t    max_id;        ///< Maximum node identifier
 
-    mdv_hashmap          nodes;         ///< Nodes map (UUID -> mdv_node)
     mdv_mutex            nodes_mutex;   ///< nodes guard mutex
-
+    mdv_hashmap          nodes;         ///< Nodes map (UUID -> mdv_node)
     mdv_hashmap          ids;           ///< Node identifiers (id -> mdv_node *)
-    mdv_mutex            ids_mutex;     ///< node identifiers guard mutex
-
     mdv_hashmap          peers;         ///< Peers (i.e. connected neighbours. UUID -> mdv_node *)
-    mdv_mutex            peers_mutex;   ///< node identifiers guard mutex
 
     mdv_hashmap          links;         ///< Links (id -> id's vector)
     mdv_mutex            links_mutex;   ///< Links guard mutex

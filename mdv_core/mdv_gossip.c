@@ -146,6 +146,7 @@ mdv_errno mdv_gossip_linkstate(mdv_core            *core,
                                mdv_uuid const      *src_peer,
                                char const          *src_listen,
                                mdv_uuid const      *dst_peer,
+                               char const          *dst_listen,
                                bool                 connected)
 {
     mdv_tracker *tracker = &core->cluster.tracker;
@@ -168,9 +169,16 @@ mdv_errno mdv_gossip_linkstate(mdv_core            *core,
 
                 mdv_msg_p2p_linkstate const linkstate =
                 {
-                    .src_peer       = *src_peer,
-                    .dst_peer       = *dst_peer,
-                    .src_listen     = src_listen,
+                    .src =
+                    {
+                        .uuid = *src_peer,
+                        .addr = src_listen
+                    },
+                    .dst =
+                    {
+                        .uuid = *dst_peer,
+                        .addr = dst_listen
+                    },
                     .connected      = connected,
                     .peers_count    = peers->size,
                     .peers          = ids
@@ -202,15 +210,11 @@ static int mdv_gossip_ids_cmp(const void *a, const void *b)
 }
 
 
-static void mdv_gossip_linkstate_track(mdv_core       *core,
-                                       mdv_uuid const *src_peer,
-                                       mdv_uuid const *dst_peer,
-                                       char const     *src_addr,
-                                       bool            connected)
+static void mdv_gossip_node_track(mdv_core *core, mdv_toponode const *toponode)
 {
     mdv_tracker *tracker = &core->cluster.tracker;
 
-    size_t const addr_len = strlen(src_addr);
+    size_t const addr_len = strlen(toponode->addr);
     size_t const node_size = offsetof(mdv_node, addr) + addr_len + 1;
 
     char buf[node_size];
@@ -220,17 +224,29 @@ static void mdv_gossip_linkstate_track(mdv_core       *core,
     memset(node, 0, sizeof *node);
 
     node->size      = node_size;
-    node->uuid      = *src_peer;
+    node->uuid      = toponode->uuid;
     node->active    = 1;
 
-    memcpy(node->addr, src_addr, addr_len + 1);
+    memcpy(node->addr, toponode->addr, addr_len + 1);
 
     mdv_errno err = mdv_tracker_peer_connected(tracker, node);
 
     if (err == MDV_OK)
         mdv_nodes_store_async(core->jobber, core->storage.metainf, node);
+}
 
-    mdv_tracker_linkstate(tracker, src_peer, dst_peer, connected);
+
+static void mdv_gossip_linkstate_track(mdv_core           *core,
+                                       mdv_toponode const *src,
+                                       mdv_toponode const *dst,
+                                       bool                connected)
+{
+    mdv_tracker *tracker = &core->cluster.tracker;
+
+    mdv_gossip_node_track(core, src);
+    mdv_gossip_node_track(core, dst);
+
+    mdv_tracker_linkstate(tracker, &src->uuid, &dst->uuid, connected);
 }
 
 
@@ -251,24 +267,22 @@ mdv_errno mdv_gossip_linkstate_handler(mdv_core *core, mdv_msg const *msg)
 
     mdv_rollbacker_push(rollbacker, binn_free, &binn_msg);
 
-    mdv_uuid    *src_peer           = mdv_unbinn_p2p_linkstate_src_peer(&binn_msg);
-    mdv_uuid    *dst_peer           = mdv_unbinn_p2p_linkstate_dst_peer(&binn_msg);
-    char const  *src_listen         = mdv_unbinn_p2p_linkstate_src_listen(&binn_msg);
-    bool        *connected          = mdv_unbinn_p2p_linkstate_connected(&binn_msg);
-    uint32_t    *src_peers_count    = mdv_unbinn_p2p_linkstate_peers_count(&binn_msg);
+    mdv_toponode *src             = mdv_unbinn_p2p_linkstate_src(&binn_msg);
+    mdv_toponode *dst             = mdv_unbinn_p2p_linkstate_dst(&binn_msg);
+    bool         *connected       = mdv_unbinn_p2p_linkstate_connected(&binn_msg);
+    uint32_t     *src_peers_count = mdv_unbinn_p2p_linkstate_peers_count(&binn_msg);
 
     mdv_errno err = MDV_FAILED;
 
     do
     {
-        if (!src_peer
-            || !dst_peer
-            || !src_listen
+        if (   !src
+            || !dst
             || !connected
             || !src_peers_count)
             break;
 
-        mdv_gossip_linkstate_track(core, src_peer, dst_peer, src_listen, *connected);
+        mdv_gossip_linkstate_track(core, src, dst, *connected);
 
         if (*src_peers_count > MDV_MAX_CLUSTER_SIZE)
         {
@@ -359,9 +373,8 @@ mdv_errno mdv_gossip_linkstate_handler(mdv_core *core, mdv_msg const *msg)
 
         mdv_msg_p2p_linkstate const linkstate =
         {
-            .src_peer       = *src_peer,
-            .dst_peer       = *dst_peer,
-            .src_listen     = src_listen,
+            .src            = *src,
+            .dst            = *dst,
             .connected      = *connected,
             .peers_count    = union_size,
             .peers          = union_ids

@@ -102,13 +102,13 @@ typedef struct mdv_cluster
 /**
  * @brief Create cluster manager
  *
- * @param cluster [out]     cluster manager to be initialized
- * @param config [in]       cluster manager configuration
+ * @param cluster [out]         cluster manager to be initialized
+ * @param cluster_config [in]   cluster manager configuration
  *
  * @return On success, return MDV_OK
  * @return On error, return nonzero error code
  */
-mdv_errno mdv_cluster_create(mdv_cluster *cluster, mdv_cluster_config const *config);
+mdv_errno mdv_cluster_create(mdv_cluster *cluster, mdv_cluster_config const *cluster_config);
 
 
 /**

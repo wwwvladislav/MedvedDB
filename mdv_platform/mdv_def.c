@@ -47,7 +47,7 @@ mdv_errno mdv_write_all(mdv_descriptor fd, void const *data, size_t len)
 
             case MDV_OK:
             {
-                data += wlen;
+                data = (char const *)data + wlen;
                 total += wlen;
                 continue;
             }

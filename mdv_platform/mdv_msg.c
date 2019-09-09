@@ -82,7 +82,7 @@ mdv_errno mdv_read_msg(mdv_descriptor fd, mdv_msg *msg)
 
         size_t len = msg->hdr.size - available_size;
 
-        mdv_errno err = mdv_read(fd, msg->payload + available_size, &len);
+        mdv_errno err = mdv_read(fd, (char*)msg->payload + available_size, &len);
 
         if (err != MDV_OK)
             return err;

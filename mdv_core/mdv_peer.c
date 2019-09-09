@@ -527,7 +527,10 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid c
         mdv_peer_toposync(peer);
 
         // Link-state broadcasting to all network
-        mdv_gossip_linkstate(core, &core->metainf.uuid.value, MDV_CONFIG.server.listen.ptr, &node->uuid, true);
+        mdv_gossip_linkstate(core,
+                            &core->metainf.uuid.value, MDV_CONFIG.server.listen.ptr,
+                            &node->uuid, node->addr,
+                            true);
     }
     else
     {
@@ -550,7 +553,12 @@ static void mdv_peer_disconnected(mdv_peer *peer, mdv_uuid const *uuid)
     // Save peer connection state in memory
     mdv_tracker_peer_disconnected(tracker, uuid);
 
+    mdv_node *node = mdv_tracker_node_by_id(tracker, peer->peer_id);
+
     // Link-state broadcasting to all network
-    mdv_gossip_linkstate(core, &core->metainf.uuid.value, MDV_CONFIG.server.listen.ptr, uuid, false);
+    mdv_gossip_linkstate(core,
+                        &core->metainf.uuid.value, MDV_CONFIG.server.listen.ptr,
+                        uuid, node ? node->addr : "UNKNOWN",
+                        false);
 }
 

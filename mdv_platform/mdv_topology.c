@@ -446,9 +446,8 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
     // We can remove this optimization if we want more simpler logic.
     else if (!a->links_count)
     {
-        mdv_topology_delta *delta = mdv_alloc(
-                                        sizeof(mdv_topology_delta) +
-                                        b->size, "topology_delta");
+        mdv_topology_delta *delta = mdv_alloc(sizeof(mdv_topology_delta) + b->size, "topology_delta");
+
         if (!delta)
         {
             MDV_LOGE("no memory for network topology delta");
@@ -466,9 +465,8 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
     }
     else if (!b->links_count)
     {
-        mdv_topology_delta *delta = mdv_alloc(
-                                        sizeof(mdv_topology_delta) +
-                                        a->size, "topology_delta");
+        mdv_topology_delta *delta = mdv_alloc(sizeof(mdv_topology_delta) + a->size, "topology_delta");
+
         if (!delta)
         {
             MDV_LOGE("no memory for network topology delta");
@@ -602,7 +600,7 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
         delta->ab->nodes = (void*)(delta->ab + 1);
         delta->ab->links = (void*)(delta->ab->nodes + delta->ab->nodes_count);
 
-        delta->ba = (mdv_topology*)(delta->ab->links + delta->ab->links_count);
+        delta->ba = (mdv_topology*)((char*)delta->ab + ab_topology_size);
         delta->ba->nodes_count = mdv_hashmap_size(ba_nodes);
         delta->ba->links_count = ba_size;
         delta->ba->nodes = (void*)(delta->ba + 1);

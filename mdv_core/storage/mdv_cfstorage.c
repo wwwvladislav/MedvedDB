@@ -30,8 +30,8 @@ struct mdv_cfstorage
 
 
 static bool mdv_cfstorage_log_seek(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, uint64_t pos);
-static bool mdv_cfstorage_log_tell(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, mdv_cfstorage_applied_pos *pos);
-static void mdv_cfstorage_log_last(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, mdv_cfstorage_applied_pos *pos);
+static bool mdv_cfstorage_log_tell(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, mdv_cfstorage_applied_pos *positions);
+static void mdv_cfstorage_log_last(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, mdv_cfstorage_applied_pos *positions);
 
 /// @endcond
 

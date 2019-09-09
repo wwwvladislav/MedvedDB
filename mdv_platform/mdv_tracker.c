@@ -180,7 +180,7 @@ static uint32_t mdv_tracker_new_id(mdv_tracker *tracker)
 
 mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
 {
-    mdv_rollbacker(8) rollbacker;
+    mdv_rollbacker(6) rollbacker;
     mdv_rollbacker_clear(rollbacker);
 
     tracker->uuid   = *uuid;
@@ -225,16 +225,6 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
     mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tracker->ids);
 
 
-    if (mdv_mutex_create(&tracker->ids_mutex) != MDV_OK)
-    {
-        MDV_LOGE("Nodes storage mutex not created");
-        mdv_rollback(rollbacker);
-        return MDV_FAILED;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tracker->ids_mutex);
-
-
     if (!mdv_hashmap_init(tracker->peers,
                           mdv_peer_id,
                           uuid,
@@ -248,16 +238,6 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
     }
 
     mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tracker->peers);
-
-
-    if (mdv_mutex_create(&tracker->peers_mutex) != MDV_OK)
-    {
-        MDV_LOGE("Peers storage mutex not created");
-        mdv_rollback(rollbacker);
-        return MDV_FAILED;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tracker->peers_mutex);
 
 
     if (!mdv_hashmap_init(tracker->links,
@@ -292,15 +272,11 @@ void mdv_tracker_free(mdv_tracker *tracker)
 {
     if (tracker)
     {
-        mdv_hashmap_free(tracker->ids);
-        mdv_mutex_free(&tracker->ids_mutex);
-
-        mdv_hashmap_free(tracker->peers);
-        mdv_mutex_free(&tracker->peers_mutex);
-
         mdv_hashmap_free(tracker->links);
         mdv_mutex_free(&tracker->links_mutex);
 
+        mdv_hashmap_free(tracker->ids);
+        mdv_hashmap_free(tracker->peers);
         mdv_hashmap_free(tracker->nodes);
         mdv_mutex_free(&tracker->nodes_mutex);
 
@@ -315,53 +291,45 @@ mdv_errno mdv_tracker_peer_connected(mdv_tracker *tracker, mdv_node *new_node)
 
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
-        if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
+        mdv_node *node = mdv_tracker_find(tracker, &new_node->uuid);
+
+        err = MDV_OK;
+
+        if (node)
         {
-            if (mdv_mutex_lock(&tracker->peers_mutex) == MDV_OK)
+            new_node->id    = node->id;
+
+            if (!node->connected)
             {
-                mdv_node *node = mdv_tracker_find(tracker, &new_node->uuid);
+                node->accepted  = new_node->accepted;
+                node->active    = 1;
+                node->userdata  = new_node->userdata;
 
-                err = MDV_OK;
-
-                if (node)
+                if (strcmp(new_node->addr, node->addr) != 0)
                 {
-                    new_node->id    = node->id;
-
-                    if (!node->connected)
-                    {
-                        node->accepted  = new_node->accepted;
-                        node->active    = 1;
-                        node->userdata  = new_node->userdata;
-
-                        if (strcmp(new_node->addr, node->addr) != 0)
-                        {
-                            // Node address changed
-                            err = mdv_tracker_insert(tracker, new_node) ? MDV_OK : MDV_FAILED;
-                        }
-                        else if (new_node->connected)
-                        {
-                            // Connection status changed
-                            node->connected = 1;
-                            err = mdv_tracker_insert_peer(tracker, node);
-                        }
-                    }
-                    else
-                    {
-                        err = MDV_EEXIST;
-                        MDV_LOGD("Connection with '%s' is already exist", mdv_uuid_to_str(&node->uuid).ptr);
-                    }
-                }
-                else
-                {
-                    new_node->id = mdv_tracker_new_id(tracker);
-                    new_node->active = 1;
+                    // Node address changed
                     err = mdv_tracker_insert(tracker, new_node) ? MDV_OK : MDV_FAILED;
                 }
-
-                mdv_mutex_unlock(&tracker->peers_mutex);
+                else if (new_node->connected)
+                {
+                    // Connection status changed
+                    node->connected = 1;
+                    err = mdv_tracker_insert_peer(tracker, node);
+                }
             }
-            mdv_mutex_unlock(&tracker->ids_mutex);
+            else
+            {
+                err = MDV_EEXIST;
+                MDV_LOGD("Connection with '%s' is already exist", mdv_uuid_to_str(&node->uuid).ptr);
+            }
         }
+        else
+        {
+            new_node->id = mdv_tracker_new_id(tracker);
+            new_node->active = 1;
+            err = mdv_tracker_insert(tracker, new_node) ? MDV_OK : MDV_FAILED;
+        }
+
         mdv_mutex_unlock(&tracker->nodes_mutex);
     }
 
@@ -377,16 +345,11 @@ void mdv_tracker_peer_disconnected(mdv_tracker *tracker, mdv_uuid const *uuid)
 
         if (node)
         {
-            if (mdv_mutex_lock(&tracker->peers_mutex) == MDV_OK)
-            {
-                node->connected = 0;
-                node->accepted  = 0;
-                node->active    = 0;
-                node->userdata  = 0;
-                mdv_tracker_erase_peer(tracker, uuid);
-
-                mdv_mutex_unlock(&tracker->peers_mutex);
-            }
+            node->connected = 0;
+            node->accepted  = 0;
+            node->active    = 0;
+            node->userdata  = 0;
+            mdv_tracker_erase_peer(tracker, uuid);
         }
 
         mdv_mutex_unlock(&tracker->nodes_mutex);
@@ -400,24 +363,20 @@ bool mdv_tracker_append(mdv_tracker *tracker, mdv_node *new_node, bool is_new)
 
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
-        if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
+        mdv_node *node = mdv_tracker_find(tracker, &new_node->uuid);
+
+        if (!node)
         {
-            mdv_node *node = mdv_tracker_find(tracker, &new_node->uuid);
+            if (is_new)
+                new_node->id = mdv_tracker_new_id(tracker);
+            else if (tracker->max_id < new_node->id)
+                tracker->max_id = new_node->id;
 
-            if (!node)
-            {
-                if (is_new)
-                    new_node->id = mdv_tracker_new_id(tracker);
-                else if (tracker->max_id < new_node->id)
-                    tracker->max_id = new_node->id;
+            mdv_tracker_insert(tracker, new_node);
 
-                mdv_tracker_insert(tracker, new_node);
-
-                is_added = true;
-            }
-
-            mdv_mutex_unlock(&tracker->ids_mutex);
+            is_added = true;
         }
+
         mdv_mutex_unlock(&tracker->nodes_mutex);
     }
 
@@ -427,13 +386,13 @@ bool mdv_tracker_append(mdv_tracker *tracker, mdv_node *new_node, bool is_new)
 
 void mdv_tracker_peers_foreach(mdv_tracker *tracker, void *arg, void (*fn)(mdv_node *, void *))
 {
-    if (mdv_mutex_lock(&tracker->peers_mutex) == MDV_OK)
+    if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
         mdv_hashmap_foreach(tracker->peers, mdv_peer_id, entry)
         {
             fn(entry->node, arg);
         }
-        mdv_mutex_unlock(&tracker->peers_mutex);
+        mdv_mutex_unlock(&tracker->nodes_mutex);
     }
 }
 
@@ -442,10 +401,10 @@ size_t mdv_tracker_peers_count(mdv_tracker *tracker)
 {
     size_t peers_count = 0;
 
-    if (mdv_mutex_lock(&tracker->peers_mutex) == MDV_OK)
+    if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
         peers_count = mdv_hashmap_size(tracker->peers);
-        mdv_mutex_unlock(&tracker->peers_mutex);
+        mdv_mutex_unlock(&tracker->nodes_mutex);
     }
 
     return peers_count;
@@ -456,15 +415,9 @@ mdv_errno mdv_tracker_peers_call(mdv_tracker *tracker, uint32_t id, void *arg, m
 {
     mdv_errno err = MDV_FAILED;
 
-    if (mdv_mutex_lock(&tracker->peers_mutex) == MDV_OK)
+    if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
-        mdv_node_id *node_id = 0;
-
-        if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
-        {
-            node_id = mdv_hashmap_find(tracker->ids, id);
-            mdv_mutex_unlock(&tracker->ids_mutex);
-        }
+        mdv_node_id *node_id = mdv_hashmap_find(tracker->ids, id);
 
         if (node_id)
         {
@@ -474,7 +427,7 @@ mdv_errno mdv_tracker_peers_call(mdv_tracker *tracker, uint32_t id, void *arg, m
                 err = fn(node, arg);
         }
 
-        mdv_mutex_unlock(&tracker->peers_mutex);
+        mdv_mutex_unlock(&tracker->nodes_mutex);
     }
 
     return err;
@@ -598,25 +551,21 @@ mdv_node * mdv_tracker_node_by_id(mdv_tracker *tracker, uint32_t id)
 
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
-        if (mdv_mutex_lock(&tracker->ids_mutex) == MDV_OK)
+        mdv_node_id *node_id = mdv_hashmap_find(tracker->ids, id);
+
+        if (node_id)
         {
-            mdv_node_id *node_id = mdv_hashmap_find(tracker->ids, id);
+            static _Thread_local char buff[offsetof(mdv_node, addr) + MDV_ADDR_LEN_MAX + 1];
 
-            if (node_id)
+            if (node_id->node->size <= sizeof buff)
             {
-                static _Thread_local char buff[offsetof(mdv_node, addr) + MDV_ADDR_LEN_MAX + 1];
-
-                if (node_id->node->size <= sizeof buff)
-                {
-                    node = (mdv_node *)buff;
-                    memcpy(node, node_id->node, node_id->node->size);
-                }
-                else
-                    MDV_LOGE("Incorrect node size: %zd", node_id->node->size);
+                node = (mdv_node *)buff;
+                memcpy(node, node_id->node, node_id->node->size);
             }
-
-            mdv_mutex_unlock(&tracker->ids_mutex);
+            else
+                MDV_LOGE("Incorrect node size: %zd", node_id->node->size);
         }
+
         mdv_mutex_unlock(&tracker->nodes_mutex);
     }
 

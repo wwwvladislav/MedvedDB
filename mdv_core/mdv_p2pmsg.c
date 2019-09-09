@@ -86,11 +86,12 @@ bool mdv_binn_p2p_linkstate(mdv_msg_p2p_linkstate const *msg, binn *obj)
     uint8_t const flags = msg->connected;
 
     if (0
-        || !binn_object_set_uint64(obj, "U1", msg->src_peer.u64[0])
-        || !binn_object_set_uint64(obj, "U2", msg->src_peer.u64[1])
-        || !binn_object_set_uint64(obj, "U3", msg->dst_peer.u64[0])
-        || !binn_object_set_uint64(obj, "U4", msg->dst_peer.u64[1])
-        || !binn_object_set_str(obj,    "L", (char*)msg->src_listen)
+        || !binn_object_set_uint64(obj, "U1", msg->src.uuid.u64[0])
+        || !binn_object_set_uint64(obj, "U2", msg->src.uuid.u64[1])
+        || !binn_object_set_uint64(obj, "U3", msg->dst.uuid.u64[0])
+        || !binn_object_set_uint64(obj, "U4", msg->dst.uuid.u64[1])
+        || !binn_object_set_str(obj,    "A1", (char*)msg->src.addr)
+        || !binn_object_set_str(obj,    "A2", (char*)msg->dst.addr)
         || !binn_object_set_uint8(obj,  "F", flags)
         || !binn_object_set_uint32(obj, "S", msg->peers_count)
         || !binn_object_set_list(obj,   "P", &peers))
@@ -107,35 +108,45 @@ bool mdv_binn_p2p_linkstate(mdv_msg_p2p_linkstate const *msg, binn *obj)
 }
 
 
-mdv_uuid * mdv_unbinn_p2p_linkstate_src_peer(binn const *obj)
+mdv_toponode * mdv_unbinn_p2p_linkstate_src(binn const *obj)
 {
-    static _Thread_local mdv_uuid uuid;
+    static _Thread_local mdv_toponode toponode;
+
+    char *addr = 0;
 
     if (0
-        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&uuid.u64[0])
-        || !binn_object_get_uint64((void*)obj, "U2", (uint64 *)&uuid.u64[1]))
+        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&toponode.uuid.u64[0])
+        || !binn_object_get_uint64((void*)obj, "U2", (uint64 *)&toponode.uuid.u64[1])
+        || !binn_object_get_str((void*)obj, "A1", &addr))
     {
         MDV_LOGE("p2p_linkstate_src_peer failed");
         return 0;
     }
 
-    return &uuid;
+    toponode.addr = addr;
+
+    return &toponode;
 }
 
 
-mdv_uuid * mdv_unbinn_p2p_linkstate_dst_peer(binn const *obj)
+mdv_toponode * mdv_unbinn_p2p_linkstate_dst(binn const *obj)
 {
-    static _Thread_local mdv_uuid uuid;
+    static _Thread_local mdv_toponode toponode;
+
+    char *addr = 0;
 
     if (0
-        || !binn_object_get_uint64((void*)obj, "U3", (uint64 *)&uuid.u64[0])
-        || !binn_object_get_uint64((void*)obj, "U4", (uint64 *)&uuid.u64[1]))
+        || !binn_object_get_uint64((void*)obj, "U3", (uint64 *)&toponode.uuid.u64[0])
+        || !binn_object_get_uint64((void*)obj, "U4", (uint64 *)&toponode.uuid.u64[1])
+        || !binn_object_get_str((void*)obj, "A2", &addr))
     {
         MDV_LOGE("p2p_linkstate_dst_peer failed");
         return 0;
     }
 
-    return &uuid;
+    toponode.addr = addr;
+
+    return &toponode;
 }
 
 
@@ -195,8 +206,8 @@ bool mdv_unbinn_p2p_linkstate_peers(binn const *obj, uint32_t *peers, uint32_t p
         return false;
     }
 
-    binn_iter iter;
-    binn value;
+    binn_iter iter = {};
+    binn value = {};
     size_t i = 0;
 
     binn_list_foreach(binn_peers, value)

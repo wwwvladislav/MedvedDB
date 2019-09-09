@@ -52,7 +52,7 @@ int _mdv_queue_push_multiple(mdv_queue_base *queue, void const *data, size_t siz
         {
             size_t const first_block_size = free_space_0 * queue->item_size;
             memcpy(queue->data + tail * queue->item_size, data, first_block_size);
-            memcpy(queue->data, data + first_block_size, size - first_block_size);
+            memcpy(queue->data, (char const *)data + first_block_size, size - first_block_size);
         }
     }
     else
@@ -130,7 +130,7 @@ int _mdv_queue_pop_multiple(mdv_queue_base *queue, void *data, size_t size)
         {
             size_t const first_block_size = data_block_0 * queue->item_size;
             memcpy(data, queue->data + head * queue->item_size, first_block_size);
-            memcpy(data + first_block_size, queue->data, size - first_block_size);
+            memcpy((char *)data + first_block_size, queue->data, size - first_block_size);
         }
     }
 

@@ -151,7 +151,7 @@ void *mdv_staligned_alloc(size_t alignment, size_t size, char const *name)
         if (align)
             align = alignment - align;
 
-        ptr += align;
+        ptr = (char*)ptr + align;
 
         MDV_LOGD("stalloc(%p:%zu) '%s'", ptr, size, name);
 

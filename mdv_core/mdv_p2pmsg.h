@@ -22,12 +22,11 @@ mdv_message_def(p2p_hello, 1000,
 
 
 mdv_message_def(p2p_linkstate, 1000 + 1,
-    mdv_uuid    src_peer;           ///< First peer unique identifier
-    mdv_uuid    dst_peer;           ///< Second peer unique identifier
-    char const *src_listen;         ///< First peer listening address
-    uint8_t     connected:1;        ///< 1, if first peer connected to second peer
-    uint32_t    peers_count;        ///< Count of notified peers
-    uint32_t   *peers;              ///< Notified peers list
+    mdv_toponode    src;            ///< First peer unique identifier
+    mdv_toponode    dst;            ///< Second peer unique identifier
+    uint8_t         connected:1;    ///< 1, if first peer connected to second peer
+    uint32_t        peers_count;    ///< Count of notified peers
+    uint32_t       *peers;          ///< Notified peers list
 );
 
 
@@ -49,9 +48,8 @@ bool                    mdv_unbinn_p2p_hello                    (binn const *obj
 
 
 bool                    mdv_binn_p2p_linkstate                  (mdv_msg_p2p_linkstate const *msg, binn *obj);
-mdv_uuid *              mdv_unbinn_p2p_linkstate_src_peer       (binn const *obj);
-mdv_uuid *              mdv_unbinn_p2p_linkstate_dst_peer       (binn const *obj);
-char const *            mdv_unbinn_p2p_linkstate_src_listen     (binn const *obj);
+mdv_toponode *          mdv_unbinn_p2p_linkstate_src            (binn const *obj);
+mdv_toponode *          mdv_unbinn_p2p_linkstate_dst            (binn const *obj);
 bool *                  mdv_unbinn_p2p_linkstate_connected      (binn const *obj);
 uint32_t *              mdv_unbinn_p2p_linkstate_peers_count    (binn const *obj);
 bool                    mdv_unbinn_p2p_linkstate_peers          (binn const *obj, uint32_t *peers, uint32_t peers_count);

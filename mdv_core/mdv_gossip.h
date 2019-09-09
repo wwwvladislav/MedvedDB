@@ -40,6 +40,7 @@ typedef struct mdv_gossip_peers
  * @param src_peer [in]         First peer unique identifier
  * @param src_listen [in]       First peer listening address
  * @param dst_peer [in]         Second peer unique identifier
+ * @param dst_listen [in]       Second peer listening address
  * @param connected [in]        1, if first peer connected to second peer
  *
  * @return On success, return MDV_OK
@@ -49,6 +50,7 @@ mdv_errno mdv_gossip_linkstate(mdv_core            *core,
                                mdv_uuid const      *src_peer,
                                char const          *src_listen,
                                mdv_uuid const      *dst_peer,
+                               char const          *dst_listen,
                                bool                 connected);
 
 

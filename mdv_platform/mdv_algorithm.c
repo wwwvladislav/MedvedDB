@@ -72,17 +72,17 @@ uint32_t mdv_exclude(void       *set_a, size_t itmsize_a, size_t size_a,
                      void const *set_b, size_t itmsize_b, size_t size_b,
                      int (*cmp)(const void *, const void *))
 {
-    void const *set_a_begin = set_a;
-    void const *set_a_end   = set_a + size_a * itmsize_a;
-    void const *set_b_begin = set_b;
-    void const *set_b_end   = set_b + size_b * itmsize_b;
-    void *set_out           = set_a;
+    char const *set_a_begin = set_a;
+    char const *set_a_end   = (char*)set_a + size_a * itmsize_a;
+    char const *set_b_begin = set_b;
+    char const *set_b_end   = (char*)set_b + size_b * itmsize_b;
+    char *set_out           = set_a;
 
     while(set_a < set_a_end)
     {
         if (set_b >= set_b_end)
         {
-            for(; set_a < set_a_end; set_a += itmsize_a)
+            for(; set_a < set_a_end; set_a = (char*)set_a + itmsize_a)
             {
                 memcpy(set_out, set_a, itmsize_a);
                 set_out += itmsize_a;
@@ -94,13 +94,13 @@ uint32_t mdv_exclude(void       *set_a, size_t itmsize_a, size_t size_a,
         {
             memcpy(set_out, set_a, itmsize_a);
             set_out += itmsize_a;
-            set_a += itmsize_a;
+            set_a = (char*)set_a + itmsize_a;
         }
         else
         {
             if (cmp(set_a, set_b) == 0)
-                set_a += itmsize_a;
-            set_b += itmsize_b;
+                set_a = (char*)set_a + itmsize_a;
+            set_b = (char*)set_b + itmsize_b;
         }
     }
 

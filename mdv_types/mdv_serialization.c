@@ -264,8 +264,8 @@ mdv_table_base * mdv_unbinn_table(binn const *obj)
         return 0;
     }
 
-    binn_iter iter;
-    binn value;
+    binn_iter iter = {};
+    binn value = {};
     size_t i = 0;
 
     binn_list_foreach(fields, value)
@@ -389,8 +389,8 @@ static uint32_t binn_list_size(binn *obj)
 
 mdv_row_base * mdv_unbinn_row(binn const *obj, mdv_field const *fields)
 {
-    binn_iter iter;
-    binn value;
+    binn_iter iter = {};
+    binn value = {};
 
     uint32_t size = offsetof(mdv_row_base, fields);
     uint32_t fields_count = 0;
@@ -459,8 +459,8 @@ mdv_row_base * mdv_unbinn_row(binn const *obj, mdv_field const *fields)
         }
         else
         {
-            binn_iter arr_iter;
-            binn arr_value;
+            binn_iter arr_iter = {};
+            binn arr_value = {};
             uint32_t arr_len = 0;
 
             row->fields[fields_count].ptr = buff;
@@ -636,8 +636,8 @@ mdv_topology * mdv_topology_deserialize(binn const *obj)
 
     char *strs_space = (char *)(topology->links + topology->links_count);
 
-    binn_iter iter;
-    binn value;
+    binn_iter iter = {};
+    binn value = {};
 
     size_t i;
 

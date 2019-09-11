@@ -6,8 +6,7 @@
  * @version 0.1
  * @date 2019-08-01
  *
- * @copyright Copyright (c) 2019, Vladislav Volkov`
- *
+ * @copyright Copyright (c) 2019, Vladislav Volkov
  */
 #pragma once
 #include "mdv_threadpool.h"

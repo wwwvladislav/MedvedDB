@@ -10,8 +10,10 @@
  */
 #pragma once
 #include "mdv_topology.h"
+#include "mdv_hashmap.h"
 
 
 typedef struct
 {
+    //mdv_hashmap
 } mdv_router;

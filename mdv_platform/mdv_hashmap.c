@@ -8,20 +8,20 @@
 #define MDV_HASHMAP_LOAD_FACTOR 3 / 4
 
 
-int _mdv_hashmap_init(mdv_hashmap *hm,
-                      size_t capacity,
-                      size_t key_offset,
-                      size_t key_size,
-                      mdv_hash_fn hash_fn,
+int _mdv_hashmap_init(mdv_hashmap   *hm,
+                      size_t         capacity,
+                      uint32_t       key_offset,
+                      uint32_t       key_size,
+                      mdv_hash_fn    hash_fn,
                       mdv_key_cmp_fn key_cmp_fn)
 {
-    hm->capacity = capacity;
-    hm->size = 0;
-    hm->key_offset = key_offset;
-    hm->key_size = key_size;
-    hm->hash_fn = hash_fn;
-    hm->key_cmp_fn = key_cmp_fn;
-    hm->buckets = mdv_alloc(capacity * sizeof(mdv_hashmap_bucket), "hashmap.buckets");
+    hm->capacity    = capacity;
+    hm->size        = 0;
+    hm->key_offset  = key_offset;
+    hm->key_size    = key_size;
+    hm->hash_fn     = hash_fn;
+    hm->key_cmp_fn  = key_cmp_fn;
+    hm->buckets     = mdv_alloc(capacity * sizeof(mdv_hashmap_bucket), "hashmap.buckets");
 
     if (!hm->buckets)
     {

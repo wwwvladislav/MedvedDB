@@ -2,7 +2,7 @@
  * @brief Hash map.
  */
 #pragma once
-#include <stddef.h>
+#include "mdv_def.h"
 #include "mdv_list.h"
 
 
@@ -23,8 +23,8 @@ typedef struct mdv_hashmap
 {
     size_t               capacity;                          ///< Hash map capacity
     size_t               size;                              ///< Items number stored in hash map
-    size_t               key_offset;                        ///< key offset inside hash map value
-    size_t               key_size;                          ///< key size
+    uint32_t             key_offset;                        ///< key offset inside hash map value
+    uint32_t             key_size;                          ///< key size
     mdv_hashmap_bucket  *buckets;                           ///< pointer to hash table
     mdv_hash_fn          hash_fn;                           ///< Hash function
     mdv_key_cmp_fn       key_cmp_fn;                        ///< Keys comparison function (used if hash collision happens)
@@ -34,11 +34,11 @@ typedef struct mdv_hashmap
 /// @cond Doxygen_Suppress
 
 
-int                   _mdv_hashmap_init(mdv_hashmap *hm,
-                                        size_t capacity,
-                                        size_t key_offset,
-                                        size_t key_size,
-                                        mdv_hash_fn hash_fn,
+int                   _mdv_hashmap_init(mdv_hashmap   *hm,
+                                        size_t         capacity,
+                                        uint32_t       key_offset,
+                                        uint32_t       key_size,
+                                        mdv_hash_fn    hash_fn,
                                         mdv_key_cmp_fn key_cmp_fn);
 void                  _mdv_hashmap_free(mdv_hashmap *hm);
 void                  _mdv_hashmap_clear(mdv_hashmap *hm);

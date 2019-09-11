@@ -356,7 +356,7 @@ bool mdv_binn_row(mdv_field const *fields, mdv_row_base const *row, binn *list)
             }
 
             for(uint32_t j = 0; res && j < arr_size; ++j)
-                res = binn_add_to_list(field_items, fields[i].type, row->fields[i].ptr + j * field_type_size);
+                res = binn_add_to_list(field_items, fields[i].type, (char const *)row->fields[i].ptr + j * field_type_size);
 
             if (res)
                 res = binn_list_add_list(list, field_items);

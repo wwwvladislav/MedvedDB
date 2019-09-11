@@ -78,11 +78,11 @@ uint32_t mdv_exclude(void       *set_a, size_t itmsize_a, size_t size_a,
     char const *set_b_end   = (char*)set_b + size_b * itmsize_b;
     char *set_out           = set_a;
 
-    while(set_a < set_a_end)
+    while((char const*)set_a < set_a_end)
     {
-        if (set_b >= set_b_end)
+        if ((char const*)set_b >= set_b_end)
         {
-            for(; set_a < set_a_end; set_a = (char*)set_a + itmsize_a)
+            for(; (char const *)set_a < set_a_end; set_a = (char*)set_a + itmsize_a)
             {
                 memcpy(set_out, set_a, itmsize_a);
                 set_out += itmsize_a;

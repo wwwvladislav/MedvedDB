@@ -35,7 +35,7 @@ void _mdv_list_clear(mdv_list *l)
 }
 
 
-void _mdv_list_remove(mdv_list *l, mdv_list_entry_base *entry)
+void _mdv_list_exclude(mdv_list *l, mdv_list_entry_base *entry)
 {
     mdv_list_entry_base *entry4remove = entry;
 
@@ -48,8 +48,13 @@ void _mdv_list_remove(mdv_list *l, mdv_list_entry_base *entry)
         entry->next->prev = entry->prev;
     else
         l->last = entry->prev;
+}
 
-    mdv_free(entry4remove, "list_entry");
+
+void _mdv_list_remove(mdv_list *l, mdv_list_entry_base *entry)
+{
+    _mdv_list_exclude(l, entry);
+    mdv_free(entry, "list_entry");
 }
 
 

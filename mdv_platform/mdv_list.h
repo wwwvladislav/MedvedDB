@@ -49,6 +49,7 @@ typedef struct mdv_list
 mdv_list_entry_base * _mdv_list_push_back(mdv_list *l, void const *val, size_t size);
 void                  _mdv_list_emplace_back(mdv_list *l, mdv_list_entry_base *entry);
 void                  _mdv_list_clear(mdv_list *l);
+void                  _mdv_list_exclude(mdv_list *l, mdv_list_entry_base *entry);
 void                  _mdv_list_remove(mdv_list *l, mdv_list_entry_base *entry);
 void                  _mdv_list_pop_back(mdv_list *l);
 /// @endcond
@@ -138,6 +139,16 @@ void                  _mdv_list_pop_back(mdv_list *l);
  */
 #define mdv_list_remove(l, entry)           \
     _mdv_list_remove(&(l), (mdv_list_entry_base *)(entry))
+
+
+/**
+ * @brief Exclude entry from the list without deallocation
+ *
+ * @param l [in]        list
+ * @param entry [in]    list entry
+ */
+#define mdv_list_exclude(l, entry)           \
+    _mdv_list_exclude(&(l), (mdv_list_entry_base *)(entry))
 
 
 /**

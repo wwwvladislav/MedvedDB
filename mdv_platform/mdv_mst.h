@@ -12,15 +12,26 @@
 #include "mdv_def.h"
 
 
-typedef struct mdv_mstnode
+typedef struct
 {
-    void                *data;
-    uint32_t             weight;
-//    struct mdv_mst_node *
+    void *data;
 } mdv_mstnode;
+
+
+typedef struct mdv_mstlink
+{
+    mdv_mstnode *src;
+    mdv_mstnode *dst;
+    uint32_t    weight;
+} mdv_mstlink;
 
 
 typedef struct
 {
-
+    size_t      size;
+    mdv_mstlink links[1];
 } mdv_mst;
+
+
+mdv_mst * mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
+                       mdv_mstlink const *links, size_t links_count);

@@ -18,6 +18,7 @@
 #include "mdv_platform/mdv_jobber.h"
 #include "mdv_platform/mdv_algorithm.h"
 #include "mdv_platform/mdv_topology.h"
+#include "mdv_platform/mdv_mst.h"
 
 
 MU_TEST_SUITE(platform)
@@ -41,4 +42,5 @@ MU_TEST_SUITE(platform)
     MU_RUN_TEST(platform_jobber);
     MU_RUN_TEST(platform_algorithm);
     MU_RUN_TEST(platform_topology);
+    MU_RUN_TEST(platform_mst);
 }

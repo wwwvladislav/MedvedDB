@@ -3,12 +3,14 @@
 #include "mdv_log.h"
 
 
-typedef struct mdv_mstset
+typedef struct mdv_mstset mdv_mstset;
+
+struct mdv_mstset
 {
     size_t              set_id;     ///< MST subset identifier
-    size_t              link_id;    ///< link with minimum distance
-    struct mdv_mstset   *next;      ///< Next subset pointer
-} mdv_mstset;
+    mdv_mstlink const  *link;       ///< link with minimum distance
+    mdv_mstset         *next;       ///< Next subset pointer
+};
 
 
 static void mdv_union_subsets(mdv_mstset *subsests, size_t id1, size_t id2)
@@ -26,6 +28,12 @@ static void mdv_union_subsets(mdv_mstset *subsests, size_t id1, size_t id2)
     }
 
     subset2_end->next = subset1_next ? subset1_next : &subsests[id1];
+}
+
+
+static int mdv_mstlink_cmp(mdv_mstlink const *a, mdv_mstlink const *b)
+{
+    // todo
 }
 
 
@@ -52,7 +60,7 @@ mdv_mst * mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
     {
         // initialize subsets links
         for(size_t i = 0; i < nodes_count; ++i)
-            subsets[i].link_id = ~0u;
+            subsets[i].link = 0;
 
         // search the closest subsets
         for(size_t i = 0; i < links_count; ++i)
@@ -71,27 +79,27 @@ mdv_mst * mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
                 continue;       // link is from the same subset
 
             // Get shortests links identifiers for src and dst sets
-            size_t const src_link_id = subsets[src_set_id].link_id;
-            size_t const dst_link_id = subsets[dst_set_id].link_id;
+            mdv_mstlink const *src_link = subsets[src_set_id].link;
+            mdv_mstlink const *dst_link = subsets[dst_set_id].link;
 
             // Minimize the shortests link identifier for src set
-            if (src_link_id == ~0u
-                || links[src_link_id].weight > link->weight)
-                subsets[src_set_id].link_id = i;
+            if (!src_link
+                || src_link->weight > link->weight)
+                subsets[src_set_id].link = link;
 
             // Minimize the shortests link identifier for dst set
-            if (dst_link_id == ~0u
-                || links[dst_link_id].weight > link->weight)
-                subsets[dst_set_id].link_id = i;
+            if (!dst_link
+                || dst_link->weight > link->weight)
+                subsets[dst_set_id].link = link;
         }
 
         for(size_t i = 0; i < nodes_count; ++i)
         {
-            if (subsets[i].link_id != ~0)
+            if (subsets[i].link)
             {
                 // Get linked nodes identifiers
-                size_t const src_id = links[subsets[i].link_id].src - nodes;
-                size_t const dst_id = links[subsets[i].link_id].dst - nodes;
+                size_t const src_id = subsets[i].link->src - nodes;
+                size_t const dst_id = subsets[i].link->dst - nodes;
 
                 // Get set identifiers for nodes
                 size_t const src_set_id = subsets[src_id].set_id;
@@ -99,6 +107,8 @@ mdv_mst * mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
 
                 if(src_set_id == dst_set_id)
                     continue;       // link is from the same subset
+
+                printf("MST edge: %zu - %zu\n", src_id, dst_id);
 
                 // Union subsets
                 mdv_union_subsets(subsets, src_set_id, dst_set_id);

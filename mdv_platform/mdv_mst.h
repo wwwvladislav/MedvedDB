@@ -20,9 +20,9 @@ typedef struct
 
 typedef struct mdv_mstlink
 {
-    mdv_mstnode *src;
-    mdv_mstnode *dst;
-    uint32_t    weight;
+    mdv_mstnode const *src;
+    mdv_mstnode const *dst;
+    uint32_t           weight;
 } mdv_mstlink;
 
 

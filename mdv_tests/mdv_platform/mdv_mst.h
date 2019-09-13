@@ -18,64 +18,32 @@ MU_TEST(platform_mst)
         { .data = (void *)8 },
     };
 
-    mdv_mstlink const links[] =
+    mdv_mstlink links[] =
     {
-        { .src = nodes + 0, .dst = nodes + 1, .weight = 4 },
-        { .src = nodes + 0, .dst = nodes + 7, .weight = 8 },
+        { .src = nodes + 0, .dst = nodes + 1, .weight = 4 },    // 0
+        { .src = nodes + 0, .dst = nodes + 7, .weight = 8 },    // 1
         { .src = nodes + 1, .dst = nodes + 7, .weight = 11 },
         { .src = nodes + 1, .dst = nodes + 2, .weight = 8 },
-        { .src = nodes + 7, .dst = nodes + 6, .weight = 1 },
+        { .src = nodes + 7, .dst = nodes + 6, .weight = 1 },    // 4
         { .src = nodes + 7, .dst = nodes + 8, .weight = 7 },
-        { .src = nodes + 2, .dst = nodes + 8, .weight = 2 },
+        { .src = nodes + 2, .dst = nodes + 8, .weight = 2 },    // 6
         { .src = nodes + 8, .dst = nodes + 6, .weight = 6 },
-        { .src = nodes + 2, .dst = nodes + 3, .weight = 7 },
-        { .src = nodes + 6, .dst = nodes + 5, .weight = 2 },
-        { .src = nodes + 2, .dst = nodes + 5, .weight = 4 },
+        { .src = nodes + 2, .dst = nodes + 3, .weight = 7 },    // 8
+        { .src = nodes + 6, .dst = nodes + 5, .weight = 2 },    // 9
+        { .src = nodes + 2, .dst = nodes + 5, .weight = 4 },    // 10
         { .src = nodes + 3, .dst = nodes + 5, .weight = 14 },
-        { .src = nodes + 3, .dst = nodes + 4, .weight = 9 },
+        { .src = nodes + 3, .dst = nodes + 4, .weight = 9 },    // 12
         { .src = nodes + 5, .dst = nodes + 4, .weight = 10 },
     };
 
-    mdv_mst *mst = mdv_mst_find(nodes, sizeof nodes / sizeof *nodes,
-                                links, sizeof links / sizeof *links);
-/*
-    mdv_list list = {};
+    size_t const mst_links[] = { 0, 1, 4, 6, 8, 9, 10, 12 };
 
-    int n = 0;
+    size_t mst_size = mdv_mst_find(nodes, sizeof nodes / sizeof *nodes,
+                                   links, sizeof links / sizeof *links);
 
-    mu_check(mdv_list_push_back(list, n));  n++;
-    mu_check(mdv_list_push_back(list, n));  n++;
-    mu_check(mdv_list_push_back(list, n));  n++;
+    mu_check(mst_size == sizeof mst_links / sizeof *mst_links);
 
-    n = 0;
-
-    mdv_list_foreach(list, int, entry)
-    {
-        mu_check(*entry == n++);
-    }
-
-    mdv_list_remove(list, list.next->next);
-
-    n = 0;
-
-    mdv_list_foreach(list, int, entry)
-    {
-        mu_check(*entry == n);
-        n += 2;
-    }
-
-    mdv_list_pop_back(list);
-
-    n = 0;
-
-    mdv_list_foreach(list, int, entry)
-    {
-        mu_check(*entry == n);
-        n++;
-    }
-
-    mu_check(n == 1);
-
-    mdv_list_clear(list);
-*/
+    for(size_t i = 0, j = 0; i < sizeof links / sizeof *links; ++i)
+        if(links[i].mst)
+            mu_check(i == mst_links[j++]);
 }

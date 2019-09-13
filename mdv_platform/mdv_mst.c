@@ -7,9 +7,9 @@ typedef struct mdv_mstset mdv_mstset;
 
 struct mdv_mstset
 {
-    size_t              set_id;     ///< MST subset identifier
-    mdv_mstlink const  *link;       ///< link with minimum distance
-    mdv_mstset         *next;       ///< Next subset pointer
+    size_t       set_id;    ///< MST subset identifier
+    mdv_mstlink *link;      ///< link with minimum distance
+    mdv_mstset  *next;      ///< Next subset pointer
 };
 
 
@@ -33,12 +33,46 @@ static void mdv_union_subsets(mdv_mstset *subsests, size_t id1, size_t id2)
 
 static int mdv_mstlink_cmp(mdv_mstlink const *a, mdv_mstlink const *b)
 {
-    // todo
+    int w = a->weight - b->weight;
+    if (w)
+        return w;
+
+    mdv_mstnode const *a1, *a2;
+
+    if (a->src < a->dst)
+    {
+        a1 = a->src;
+        a2 = a->dst;
+    }
+    else
+    {
+        a1 = a->dst;
+        a2 = a->src;
+    }
+
+    mdv_mstnode const *b1, *b2;
+
+    if (b->src < b->dst)
+    {
+        b1 = b->src;
+        b2 = b->dst;
+    }
+    else
+    {
+        b1 = b->dst;
+        b2 = b->src;
+    }
+
+    w = a1 - b1;
+    if (w)
+        return w;
+
+    return a2 - b2;
 }
 
 
-mdv_mst * mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
-                       mdv_mstlink const *links, size_t links_count)
+size_t mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
+                    mdv_mstlink       *links, size_t links_count)
 {
     mdv_mstset *subsets = mdv_staligned_alloc(sizeof(mdv_mstset), sizeof(mdv_mstset) * nodes_count, "MST subsets");
 
@@ -54,7 +88,11 @@ mdv_mst * mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
         subsets[i].next = 0;
     }
 
+    for(size_t i = 0; i < links_count; ++i)
+        links[i].mst = 0;
+
     size_t num_trees = nodes_count;
+    size_t mst_size = 0;
 
     while (num_trees > 1)
     {
@@ -65,7 +103,7 @@ mdv_mst * mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
         // search the closest subsets
         for(size_t i = 0; i < links_count; ++i)
         {
-            mdv_mstlink const *link = links + i;
+            mdv_mstlink *link = links + i;
 
             // Get linked nodes identifiers
             size_t const src_id = link->src - nodes;
@@ -84,12 +122,12 @@ mdv_mst * mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
 
             // Minimize the shortests link identifier for src set
             if (!src_link
-                || src_link->weight > link->weight)
+                || mdv_mstlink_cmp(src_link, link) > 0)
                 subsets[src_set_id].link = link;
 
             // Minimize the shortests link identifier for dst set
             if (!dst_link
-                || dst_link->weight > link->weight)
+                || mdv_mstlink_cmp(dst_link, link) > 0)
                 subsets[dst_set_id].link = link;
         }
 
@@ -108,7 +146,8 @@ mdv_mst * mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
                 if(src_set_id == dst_set_id)
                     continue;       // link is from the same subset
 
-                printf("MST edge: %zu - %zu\n", src_id, dst_id);
+                subsets[i].link->mst = 1;
+                mst_size++;
 
                 // Union subsets
                 mdv_union_subsets(subsets, src_set_id, dst_set_id);
@@ -118,9 +157,7 @@ mdv_mst * mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
         }
     }
 
-    // TODO: return MST
-
     mdv_stfree(subsets, "MST subsets");
 
-    return 0;
+    return mst_size;
 }

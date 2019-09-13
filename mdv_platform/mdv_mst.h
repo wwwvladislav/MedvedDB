@@ -19,7 +19,6 @@ typedef struct
 } mdv_mstnode;
 
 
-
 /// Link between two graph nodes
 typedef struct mdv_mstlink
 {

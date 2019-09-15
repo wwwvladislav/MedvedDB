@@ -40,7 +40,7 @@ static int mdv_node_id_cmp(uint32_t const *id1, uint32_t const *id2)
 }
 
 
-static size_t mdv_link_hash(mdv_tracker_link const *link)
+static size_t mdv_tracker_link_hash(mdv_tracker_link const *link)
 {
     uint32_t a, b;
 
@@ -67,7 +67,7 @@ static size_t mdv_link_hash(mdv_tracker_link const *link)
 }
 
 
-static int mdv_link_cmp(mdv_tracker_link const *link1, mdv_tracker_link const *link2)
+static int mdv_tracker_link_cmp(mdv_tracker_link const *link1, mdv_tracker_link const *link2)
 {
     uint32_t a1, b1, a2, b2;
 
@@ -244,8 +244,8 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
                           mdv_tracker_link,
                           id,
                           256,
-                          mdv_link_hash,
-                          mdv_link_cmp))
+                          mdv_tracker_link_hash,
+                          mdv_tracker_link_cmp))
     {
         MDV_LOGE("There is no memory for links");
         mdv_rollback(rollbacker);

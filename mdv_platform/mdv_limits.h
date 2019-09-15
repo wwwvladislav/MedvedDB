@@ -5,3 +5,4 @@
 #define MDV_ADDR_LEN_MAX    256
 #define MDV_LISTEN_BACKLOG  256
 #define MDV_MSG_SIZE_MAX    (1024 * 1024)
+#define MDV_LINK_WEIGHT_MAX (1024 * 1024)

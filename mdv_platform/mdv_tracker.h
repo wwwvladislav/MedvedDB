@@ -12,29 +12,29 @@
 
 enum
 {
-    MDV_LOCAL_ID = 0            ///< Local identifier for current node
+    MDV_LOCAL_ID = 0                    ///< Local identifier for current node
 };
 
 
 /// Cluster node information
 typedef struct
 {
-    size_t      size;           ///< Current data structure size
-    mdv_uuid    uuid;           ///< Global unique identifier
-    void       *userdata;       ///< Userdata associated with node (for instance, connection context)
-    uint32_t    id;             ///< Unique identifier inside current server
-    uint8_t     connected:1;    ///< Connection establisched
-    uint8_t     accepted:1;     ///< Incoming connection (i.e connection accepted)
-    uint8_t     active:1;       ///< Node is active (i.e. runned)
-    char        addr[1];        ///< Node address in following format: protocol://host:port
+    size_t      size;                   ///< Current data structure size
+    mdv_uuid    uuid;                   ///< Global unique identifier
+    void       *userdata;               ///< Userdata associated with node (for instance, connection context)
+    uint32_t    id;                     ///< Unique identifier inside current server
+    uint8_t     connected:1;            ///< Connection establisched
+    uint8_t     accepted:1;             ///< Incoming connection (i.e connection accepted)
+    uint8_t     active:1;               ///< Node is active (i.e. runned)
+    char        addr[1];                ///< Node address in following format: protocol://host:port
 } mdv_node;
 
 
 /// Link between nodes
 typedef struct
 {
-    uint32_t    id[2];          ///< Unique identifiers inside current server
-    uint32_t    weight;         ///< Link weight. Bigger is better.
+    uint32_t    id[2];                  ///< Unique identifiers inside current server
+    uint32_t    weight;                 ///< Link weight. Bigger is better.
 } mdv_tracker_link;
 
 

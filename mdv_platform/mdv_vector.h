@@ -97,3 +97,9 @@
  * @brief Returns the number of elements in the container
  */
 #define mdv_vector_size(vector) (vector).size
+
+
+/**
+ * @brief Erases all elements from the container. After this call, mdv_vector_size() returns zero.
+ */
+#define mdv_vector_clear(vector) ((vector).size = 0)

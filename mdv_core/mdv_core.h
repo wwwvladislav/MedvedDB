@@ -11,6 +11,7 @@
 #pragma once
 #include <mdv_cluster.h>
 #include <mdv_jobber.h>
+#include "mdv_datasync.h"
 #include "storage/mdv_metainf.h"
 #include "storage/mdv_tablespace.h"
 
@@ -21,6 +22,7 @@ typedef struct mdv_core
     mdv_jobber     *jobber;             ///< Jobs scheduler
     mdv_cluster     cluster;            ///< Cluster manager
     mdv_metainf     metainf;            ///< Metainformation (DB version, node UUID etc.)
+    mdv_datasync    datasync;           ///< Data synchronizer
 
     struct
     {

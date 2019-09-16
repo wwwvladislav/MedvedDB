@@ -519,7 +519,13 @@ void mdv_cfstorage_log_last(mdv_cfstorage *cfstorage, uint32_t first_node, uint3
 }
 
 
-bool mdv_cfstorage_log_apply(mdv_cfstorage *cfstorage, mdv_cfstorage_log_handler handler)
+bool mdv_cfstorage_sync(mdv_cfstorage *cfstorage, void *arg, mdv_cfstorage_sync_fn fn)
+{
+    return false;
+}
+
+
+bool mdv_cfstorage_log_apply(mdv_cfstorage *cfstorage)
 {
     // TODO
     return false;

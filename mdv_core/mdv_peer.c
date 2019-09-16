@@ -521,6 +521,10 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid c
     // Save peer information and connection state in memory
     mdv_errno err = mdv_tracker_peer_connected(tracker, node);
 
+    // Update routing table
+    if (err == MDV_OK)
+        mdv_datasync_update_routes(&core->datasync, tracker);
+
     if (peer->conctx->dir == MDV_CHOUT)
     {
         // Synchronize network topology

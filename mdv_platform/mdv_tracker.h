@@ -1,6 +1,6 @@
 /**
  * @file
- * @brief Nodes and topology tracker
+ * @brief Nodes and network topology tracker
  */
 
 #pragma once
@@ -38,7 +38,7 @@ typedef struct
 } mdv_tracker_link;
 
 
-/// Nodes and topology tracker
+/// Nodes and network topology tracker
 typedef struct mdv_tracker
 {
     mdv_uuid             uuid;          ///< Global unique identifier for current node (i.e. self UUID)

@@ -17,9 +17,9 @@
     struct                                      \
     {                                           \
         mdv_allocator  const *allocator;        \
-        size_t               capacity;          \
-        size_t               size;              \
-        type                *data;              \
+        size_t                capacity;         \
+        size_t                size;             \
+        type                 *data;             \
     }
 
 

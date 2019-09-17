@@ -132,7 +132,6 @@ static bool mdv_router_topology_create(mdv_router_topology *topology, mdv_tracke
 
     mdv_hashmap_foreach(topology->unique_nodes, mdv_router_node, node)
     {
-        MDV_LOGE("OOOOOOOOOOOOOOOOOOOOOOO %p", node);
         pnodes[i++] = node;
     }
 
@@ -188,14 +187,14 @@ mdv_errno mdv_routes_find(mdv_routes *routes, mdv_tracker *tracker)
         return MDV_NO_MEM;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_stfree, mst_nodes);
+    mdv_rollbacker_push(rollbacker, mdv_stfree, mst_nodes, "mst_nodes");
 
     mdv_hashmap_foreach(topology.unique_nodes, mdv_router_node, node)
     {
         mst_nodes[node->idx].data = (void*)(size_t)node->id;
     }
 
-    mdv_mstlink *mst_links = mdv_stalloc(mdv_vector_size(topology.links), "mst_links");
+    mdv_mstlink *mst_links = mdv_stalloc(mdv_vector_size(topology.links) * sizeof(mdv_mstlink), "mst_links");
 
     if (!mst_links)
     {
@@ -204,7 +203,7 @@ mdv_errno mdv_routes_find(mdv_routes *routes, mdv_tracker *tracker)
         return MDV_NO_MEM;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_stfree, mst_links);
+    mdv_rollbacker_push(rollbacker, mdv_stfree, mst_links, "mst_links");
 
     for(size_t i = 0; i < mdv_vector_size(topology.links); ++i)
     {
@@ -233,9 +232,9 @@ mdv_errno mdv_routes_find(mdv_routes *routes, mdv_tracker *tracker)
             if (mst_links[i].mst)
             {
                 if ((size_t)mst_links[i].src->data == MDV_LOCAL_ID)
-                    mdv_vector_push_back(*routes, (uint32_t)(size_t)mst_links[i].dst);
+                    mdv_vector_push_back(*routes, (uint32_t)(size_t)mst_links[i].dst->data);
                 else if ((size_t)mst_links[i].dst->data == MDV_LOCAL_ID)
-                    mdv_vector_push_back(*routes, (uint32_t)(size_t)mst_links[i].src);
+                    mdv_vector_push_back(*routes, (uint32_t)(size_t)mst_links[i].src->data);
             }
         }
     }

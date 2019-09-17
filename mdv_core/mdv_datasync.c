@@ -57,9 +57,11 @@ mdv_errno mdv_datasync_update_routes(mdv_datasync *datasync, mdv_tracker *tracke
         mdv_vector_free(datasync->routes);
         datasync->routes = routes;
 
+        MDV_LOGD("New routes count=%zu", mdv_vector_size(routes));
+
         for(size_t i = 0; i < mdv_vector_size(routes); ++i)
         {
-            MDV_LOGF(">>>>>>>>>>>>>>>>>>>>>: %u", routes.data[i]);
+            MDV_LOGD("Route[%zu]: %u", i, routes.data[i]);
         }
 
         mdv_mutex_unlock(&datasync->mutex);

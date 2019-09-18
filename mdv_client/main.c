@@ -180,7 +180,7 @@ static void mdv_test_scenario(char const *args)
 
     if (err == MDV_OK)
     {
-        MDV_INF("New table '%s' with UUID '%s' was successfully created\n", table.name.ptr, mdv_uuid_to_str(&table.uuid).ptr);
+        MDV_INF("New table '%s' with UUID '%s' successfully created\n", table.name.ptr, mdv_uuid_to_str(&table.uuid).ptr);
     }
     else
     {

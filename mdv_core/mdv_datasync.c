@@ -5,12 +5,12 @@
 #include <mdv_rollbacker.h>
 
 
-mdv_errno mdv_datasync_create(mdv_datasync *datasync, mdv_datasync_config const *config)
+mdv_errno mdv_datasync_create(mdv_datasync *datasync, mdv_tablespace *tablespace)
 {
-    mdv_rollbacker(2) rollbacker;
+    mdv_rollbacker(4) rollbacker;
     mdv_rollbacker_clear(rollbacker);
 
-    datasync->tablespace = config->tablespace;
+    datasync->tablespace = tablespace;
 
     mdv_errno err = mdv_mutex_create(&datasync->mutex);
 
@@ -22,17 +22,6 @@ mdv_errno mdv_datasync_create(mdv_datasync *datasync, mdv_datasync_config const 
 
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &datasync->mutex);
 
-    datasync->threadpool = mdv_threadpool_create(&config->threadpool);
-
-    if (!datasync->threadpool)
-    {
-        MDV_LOGE("Threadpool creation failed");
-        mdv_rollback(rollbacker);
-        return MDV_FAILED;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_threadpool_free, datasync->threadpool);
-
     if (!mdv_vector_create(datasync->routes, 64, mdv_default_allocator))
     {
         MDV_LOGE("No memorty for routes");
@@ -40,18 +29,14 @@ mdv_errno mdv_datasync_create(mdv_datasync *datasync, mdv_datasync_config const 
         return MDV_NO_MEM;
     }
 
+    atomic_init(&datasync->status, 0);
+
     return MDV_OK;
 }
 
 
 void mdv_datasync_free(mdv_datasync *datasync)
 {
-    // Stop thread pool
-    mdv_threadpool_stop(datasync->threadpool);
-
-    // Free thread pool
-    mdv_threadpool_free(datasync->threadpool);
-
     mdv_vector_free(datasync->routes);
 
     mdv_mutex_free(&datasync->mutex);
@@ -96,8 +81,31 @@ mdv_errno mdv_datasync_update_routes(mdv_datasync *datasync, mdv_tracker *tracke
 }
 
 
-bool mdv_datasync_do(mdv_datasync *datasync)
+void mdv_datasync_start(mdv_datasync *datasync, mdv_tracker *tracker, mdv_jobber *jobber)
 {
-    // TODO:
-    return false;
+    do
+    {
+        unsigned int status = atomic_load_explicit(&datasync->status, memory_order_acquire);
+
+        if(status & MDV_DS_SCHEDULED)
+            return;
+
+        if (!status)
+        {
+            if (!atomic_compare_exchange_strong(&datasync->status, &status, MDV_DS_SCHEDULED))
+                continue;
+            break;
+        }
+
+        if(status & MDV_DS_STARTED)
+        {
+            if (!atomic_compare_exchange_strong(&datasync->status, &status, status | MDV_DS_RESTART))
+                continue;
+            return;
+        }
+    } while(true);
+
+    // Schedule data synchronization
+
+    MDV_LOGE("DATA SYNC!");
 }

@@ -132,20 +132,7 @@ bool mdv_core_create(mdv_core *core)
 
 
     // Data synchronizer
-    mdv_datasync_config const ds_config =
-    {
-        .threadpool =
-        {
-            .size = MDV_CONFIG.datasync.workers,
-            .thread_attrs =
-            {
-                .stack_size = MDV_THREAD_STACK_SIZE
-            }
-        },
-        .tablespace = &core->storage.tablespace
-    };
-
-    if (mdv_datasync_create(&core->datasync, &ds_config) != MDV_OK)
+    if (mdv_datasync_create(&core->datasync, &core->storage.tablespace) != MDV_OK)
     {
         MDV_LOGE("Jobs scheduler creation failed");
         mdv_rollback(rollbacker);
@@ -175,9 +162,9 @@ bool mdv_core_create(mdv_core *core)
 
 void mdv_core_free(mdv_core *core)
 {
+    mdv_datasync_free(&core->datasync);
     mdv_cluster_free(&core->cluster);
     mdv_jobber_free(core->jobber);
-    mdv_datasync_free(&core->datasync);
     mdv_storage_release(core->storage.metainf);
     mdv_tablespace_close(&core->storage.tablespace);
 }

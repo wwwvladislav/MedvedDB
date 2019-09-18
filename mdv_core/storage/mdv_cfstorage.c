@@ -15,17 +15,17 @@
 
 typedef struct
 {
-    atomic_uint_fast64_t top;   // last insertion point
-    atomic_uint_fast64_t pos;   // applied point
+    atomic_uint_fast64_t top;                   ///< last insertion point
+    atomic_uint_fast64_t pos;                   ///< applied point
 } mdv_cfstorage_applied_pos;
 
 
 struct mdv_cfstorage
 {
-    uint32_t                  nodes_num;        // cluster size
-    mdv_storage              *data;             // data storage
-    mdv_storage              *tr_log;           // transaction log storage
-    mdv_cfstorage_applied_pos applied[1];       // transaction logs applied positions
+    uint32_t                  nodes_num;        ///< cluster size
+    mdv_storage              *data;             ///< data storage
+    mdv_storage              *tr_log;           ///< transaction log storage
+    mdv_cfstorage_applied_pos applied[1];       ///< transaction logs applied positions
 };
 
 
@@ -38,6 +38,9 @@ static void mdv_cfstorage_log_last(mdv_cfstorage *cfstorage, uint32_t first_node
 
 mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num)
 {
+    mdv_rollbacker(5) rollbacker;
+    mdv_rollbacker_clear(rollbacker);
+
     mdv_cfstorage *cfstorage = (mdv_cfstorage *)mdv_alloc(offsetof(mdv_cfstorage, applied) + sizeof(mdv_cfstorage_applied_pos) * nodes_num, "cfstorage");
 
     if (!cfstorage)
@@ -45,6 +48,9 @@ mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num)
         MDV_LOGE("No free space of memory for cfstorage");
         return 0;
     }
+
+    mdv_rollbacker_push(rollbacker, mdv_free, cfstorage, "cfstorage");
+
 
     cfstorage->nodes_num = nodes_num;
     cfstorage->data = 0;
@@ -55,11 +61,6 @@ mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num)
         atomic_init(&cfstorage->applied[i].pos, 0);
         atomic_init(&cfstorage->applied[i].top, 0);
     }
-
-    mdv_rollbacker(2) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
-
-    mdv_rollbacker_push(rollbacker, mdv_cfstorage_close, cfstorage);
 
     mdv_string const str_uuid = mdv_uuid_to_str(uuid);
 
@@ -88,16 +89,30 @@ mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num)
 
     mdv_rollbacker_push(rollbacker, mdv_rmdir, path.ptr);
 
-    cfstorage->data = mdv_storage_open(path.ptr, MDV_STRG_DATA, MDV_STRG_DATA_MAPS, MDV_STRG_NOSUBDIR);
-    cfstorage->tr_log = mdv_storage_open(path.ptr, MDV_STRG_TRANSACTION_LOG, MDV_STRG_TRANSACTION_LOG_MAPS(nodes_num), MDV_STRG_NOSUBDIR);
 
-    if (!cfstorage->data
-        || !cfstorage->tr_log)
+    cfstorage->data = mdv_storage_open(path.ptr, MDV_STRG_DATA, MDV_STRG_DATA_MAPS, MDV_STRG_NOSUBDIR);
+
+    if (!cfstorage->data)
     {
         MDV_LOGE("Storage '%s' wasn't created", str_uuid.ptr);
         mdv_rollback(rollbacker);
         return 0;
     }
+
+    mdv_rollbacker_push(rollbacker, mdv_storage_release, cfstorage->data);
+
+
+    cfstorage->tr_log = mdv_storage_open(path.ptr, MDV_STRG_TRANSACTION_LOG, MDV_STRG_TRANSACTION_LOG_MAPS(nodes_num), MDV_STRG_NOSUBDIR);
+
+    if (!cfstorage->tr_log)
+    {
+        MDV_LOGE("Storage '%s' wasn't created", str_uuid.ptr);
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_storage_release, cfstorage->tr_log);
+
 
     if (!mdv_cfstorage_log_seek(cfstorage, 0, nodes_num, 0))
     {

@@ -534,7 +534,10 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid c
 
     // Update routing table
     if (err == MDV_OK)
+    {
         mdv_datasync_update_routes(&core->datasync, tracker);
+        mdv_datasync_start(&core->datasync, tracker, core->jobber);
+    }
 
     if (peer->conctx->dir == MDV_CHOUT)
     {

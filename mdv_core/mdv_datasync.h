@@ -12,7 +12,16 @@
 #include <mdv_router.h>
 #include <mdv_tracker.h>
 #include <mdv_mutex.h>
+#include <mdv_threadpool.h>
 #include "storage/mdv_tablespace.h"
+
+
+/// Data synchronizer configuration
+typedef struct
+{
+    mdv_threadpool_config   threadpool;     ///< Thread pool options
+    mdv_tablespace         *tablespace;     ///< DB tables space
+} mdv_datasync_config;
 
 
 /// Data synchronizer
@@ -21,6 +30,7 @@ typedef struct
     mdv_mutex       mutex;          ///< Mutex for routes guard
     mdv_routes      routes;         ///< Routes for data synchronization
     mdv_tablespace *tablespace;     ///< DB tables space
+    mdv_threadpool *threadpool;     ///< Thread pool for data synchronization
 } mdv_datasync;
 
 
@@ -28,12 +38,12 @@ typedef struct
  * @brief Create data synchronizer
  *
  * @param datasync [out]    Data synchronizer for initialization
- * @param tablespace [in]   DB tables space
+ * @param config [in]       Data synchronizer configuration
  *
  * @return MDV_OK on success
  * @return nonzero value on error
  */
-mdv_errno mdv_datasync_create(mdv_datasync *datasync, mdv_tablespace *tablespace);
+mdv_errno mdv_datasync_create(mdv_datasync *datasync, mdv_datasync_config const *config);
 
 
 /**

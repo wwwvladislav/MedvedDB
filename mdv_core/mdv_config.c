@@ -50,6 +50,12 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         MDV_LOGI("Storage worker queues: %u", config->storage.worker_queues);
     }
 
+    else if (MDV_CFG_MATCH("datasync", "workers"))
+    {
+        config->datasync.workers = atoi(value);
+        MDV_LOGI("Datasync workers: %u", config->datasync.workers);
+    }
+
     else if (MDV_CFG_MATCH("log", "level"))
     {
         config->log.level = mdv_str_pdup(config->mempool, value);
@@ -125,6 +131,8 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.storage.path                 = mdv_str_static("./data");
     MDV_CONFIG.storage.workers              = 4;
     MDV_CONFIG.storage.worker_queues        = 4;
+
+    MDV_CONFIG.datasync.workers             = 4;
 
     MDV_CONFIG.transaction.batch_size       = 1000;
 

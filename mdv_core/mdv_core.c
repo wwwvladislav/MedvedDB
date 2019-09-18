@@ -103,7 +103,7 @@ bool mdv_core_create(mdv_core *core)
 
 
     // Jobs scheduler
-    mdv_jobber_config const config =
+    mdv_jobber_config const jr_config =
     {
         .threadpool =
         {
@@ -119,7 +119,7 @@ bool mdv_core_create(mdv_core *core)
         }
     };
 
-    core->jobber = mdv_jobber_create(&config);
+    core->jobber = mdv_jobber_create(&jr_config);
 
     if (!core->jobber)
     {
@@ -132,7 +132,20 @@ bool mdv_core_create(mdv_core *core)
 
 
     // Data synchronizer
-    if (mdv_datasync_create(&core->datasync, &core->storage.tablespace) != MDV_OK)
+    mdv_datasync_config const ds_config =
+    {
+        .threadpool =
+        {
+            .size = MDV_CONFIG.datasync.workers,
+            .thread_attrs =
+            {
+                .stack_size = MDV_THREAD_STACK_SIZE
+            }
+        },
+        .tablespace = &core->storage.tablespace
+    };
+
+    if (mdv_datasync_create(&core->datasync, &ds_config) != MDV_OK)
     {
         MDV_LOGE("Jobs scheduler creation failed");
         mdv_rollback(rollbacker);

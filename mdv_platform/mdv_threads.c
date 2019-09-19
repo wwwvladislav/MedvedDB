@@ -117,7 +117,7 @@ mdv_thread mdv_thread_self()
 
 int mdv_thread_equal(mdv_thread t1, mdv_thread t2)
 {
-        return pthread_equal(*(pthread_t*)&t1, *(pthread_t*)&t2);
+    return pthread_equal(*(pthread_t*)&t1, *(pthread_t*)&t2);
 }
 
 

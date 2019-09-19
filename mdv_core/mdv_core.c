@@ -132,7 +132,10 @@ bool mdv_core_create(mdv_core *core)
 
 
     // Data synchronizer
-    if (mdv_datasync_create(&core->datasync, &core->storage.tablespace) != MDV_OK)
+    if (mdv_datasync_create(&core->datasync,
+                            &core->storage.tablespace,
+                            &core->cluster.tracker,
+                            core->jobber) != MDV_OK)
     {
         MDV_LOGE("Jobs scheduler creation failed");
         mdv_rollback(rollbacker);
@@ -162,8 +165,9 @@ bool mdv_core_create(mdv_core *core)
 
 void mdv_core_free(mdv_core *core)
 {
-    mdv_datasync_free(&core->datasync);
+    mdv_datasync_stop(&core->datasync);
     mdv_cluster_free(&core->cluster);
+    mdv_datasync_free(&core->datasync);
     mdv_jobber_free(core->jobber);
     mdv_storage_release(core->storage.metainf);
     mdv_tablespace_close(&core->storage.tablespace);

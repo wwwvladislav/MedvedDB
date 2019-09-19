@@ -137,7 +137,6 @@ static mdv_errno mdv_peer_linkstate_handler(mdv_msg const *msg, void *arg)
 {
     mdv_peer *peer = arg;
     mdv_core *core = peer->core;
-    mdv_tracker *tracker = &core->cluster.tracker;
 
     MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
@@ -145,7 +144,7 @@ static mdv_errno mdv_peer_linkstate_handler(mdv_msg const *msg, void *arg)
 
     // Update routing table
     if (err == MDV_OK)
-        mdv_datasync_update_routes(&core->datasync, tracker);
+        mdv_datasync_update_routes(&core->datasync);
 
     return err;
 }
@@ -315,7 +314,7 @@ static mdv_errno mdv_peer_topodiff_handler(mdv_msg const *msg, void *arg)
     mdv_rollback(rollbacker);
 
     // Update routing table
-     mdv_datasync_update_routes(&core->datasync, tracker);
+     mdv_datasync_update_routes(&core->datasync);
 
     return MDV_OK;
 }
@@ -535,8 +534,8 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid c
     // Update routing table
     if (err == MDV_OK)
     {
-        mdv_datasync_update_routes(&core->datasync, tracker);
-        mdv_datasync_start(&core->datasync, tracker, core->jobber);
+        mdv_datasync_update_routes(&core->datasync);
+        mdv_datasync_start(&core->datasync);
     }
 
     if (peer->conctx->dir == MDV_CHOUT)
@@ -572,7 +571,7 @@ static void mdv_peer_disconnected(mdv_peer *peer, mdv_uuid const *uuid)
     mdv_tracker_peer_disconnected(tracker, uuid);
 
     // Update routing table
-    mdv_datasync_update_routes(&core->datasync, tracker);
+    mdv_datasync_update_routes(&core->datasync);
 
     mdv_node *node = mdv_tracker_node_by_id(tracker, peer->peer_id);
 

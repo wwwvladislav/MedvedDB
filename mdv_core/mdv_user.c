@@ -189,7 +189,7 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
 
     if (err == MDV_OK)
     {
-        mdv_datasync_start(&core->datasync, tracker, core->jobber);
+        mdv_datasync_start(&core->datasync);
 
         mdv_msg_table_info const table_info =
         {

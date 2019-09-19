@@ -13,8 +13,10 @@
 #include <mdv_tracker.h>
 #include <mdv_mutex.h>
 #include <mdv_jobber.h>
-#include "storage/mdv_tablespace.h"
+#include <mdv_threads.h>
+#include <mdv_eventfd.h>
 #include <stdatomic.h>
+#include "storage/mdv_tablespace.h"
 
 
 /// Data synchronizer configuration
@@ -24,28 +26,17 @@ typedef struct
 } mdv_datasync_config;
 
 
-/**
- * @brief Data synchronizer statuses
- * @details Valid states:
-        SCHEDULED
-        STARTED
-        STARTED + RESTART
- */
-typedef enum
-{
-    MDV_DS_SCHEDULED    = 1 << 0,
-    MDV_DS_STARTED      = 1 << 1,
-    MDV_DS_RESTART      = 1 << 2
-} mdv_datasync_status;
-
-
 /// Data synchronizer
 typedef struct
 {
     mdv_mutex       mutex;          ///< Mutex for routes guard
     mdv_routes      routes;         ///< Routes for data synchronization
     mdv_tablespace *tablespace;     ///< DB tables space
-    atomic_uint     status;         ///< Synchronization status
+    mdv_tracker    *tracker;        ///< Nodes and network topology tracker
+    mdv_jobber     *jobber;         ///< Jobs scheduler
+    mdv_descriptor  start;          ///< Signal for synchronization starting
+    mdv_thread      thread;         ///< Synchronization thread
+    atomic_bool     active;         ///< Data synchronizer status
 } mdv_datasync;
 
 
@@ -54,11 +45,24 @@ typedef struct
  *
  * @param datasync [out]    Data synchronizer for initialization
  * @param tablespace [in]   Storage
+ * @param tracker [in]      Nodes and network topology tracker
+ * @param jobber [in]       Jobs scheduler
  *
  * @return MDV_OK on success
  * @return nonzero value on error
  */
-mdv_errno mdv_datasync_create(mdv_datasync *datasync, mdv_tablespace *tablespace);
+mdv_errno mdv_datasync_create(mdv_datasync *datasync,
+                              mdv_tablespace *tablespace,
+                              mdv_tracker *tracker,
+                              mdv_jobber *jobber);
+
+
+/**
+ * @brief Stop data synchronization
+ *
+ * @param datasync [in] Data synchronizer
+ */
+void mdv_datasync_stop(mdv_datasync *datasync);
 
 
 /**
@@ -73,22 +77,19 @@ void mdv_datasync_free(mdv_datasync *datasync);
  * @brief Update data synchronization routes
  *
  * @param datasync [in] Data synchronizer
- * @param tracker [in]  Nodes and network topology tracker
  *
  * @return MDV_OK on success
  * @return nonzero value on error
  */
-mdv_errno mdv_datasync_update_routes(mdv_datasync *datasync, mdv_tracker *tracker);
+mdv_errno mdv_datasync_update_routes(mdv_datasync *datasync);
 
 
 /**
  * @brief Start transaction logs synchronization
  *
  * @param datasync [in] Data synchronizer
- * @param tracker [in]  Nodes and network topology tracker
- * @param jobber [in]   Jobs scheduler
  *
  * @return true if data synchronization is required
  * @return false if data synchronization is completed
  */
-void mdv_datasync_start(mdv_datasync *datasync, mdv_tracker *tracker, mdv_jobber *jobber);
+void mdv_datasync_start(mdv_datasync *datasync);

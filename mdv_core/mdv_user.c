@@ -185,7 +185,7 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
         return MDV_FAILED;
     }
 
-    mdv_errno err = mdv_tablespace_log_create_table(&user->core->storage.tablespace, 0, (mdv_table_base*)&create_table->table);
+    mdv_errno err = mdv_tablespace_log_create_table(&user->core->storage.tablespace, MDV_LOCAL_ID, (mdv_table_base*)&create_table->table);
 
     if (err == MDV_OK)
     {

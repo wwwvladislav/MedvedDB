@@ -17,6 +17,7 @@ typedef struct
 {
     atomic_uint_fast64_t top;                   ///< last insertion point
     atomic_uint_fast64_t pos;                   ///< applied point
+    atomic_uint_fast64_t sync;                  ///< synchronization point
 } mdv_cfstorage_applied_pos;
 
 
@@ -29,7 +30,7 @@ struct mdv_cfstorage
 };
 
 
-static bool mdv_cfstorage_log_seek(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, uint64_t pos);
+static bool mdv_cfstorage_log_idxs_init(mdv_cfstorage *cfstorage, char const *map_name, uint32_t first_node, uint32_t last_node, uint64_t pos);
 static bool mdv_cfstorage_log_tell(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, mdv_cfstorage_applied_pos *positions);
 static void mdv_cfstorage_log_top(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, mdv_cfstorage_applied_pos *positions);
 
@@ -60,6 +61,7 @@ mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num)
     {
         atomic_init(&cfstorage->applied[i].pos, 0);
         atomic_init(&cfstorage->applied[i].top, 0);
+        atomic_init(&cfstorage->applied[i].sync, 0);
     }
 
     mdv_string const str_uuid = mdv_uuid_to_str(uuid);
@@ -90,7 +92,10 @@ mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num)
     mdv_rollbacker_push(rollbacker, mdv_rmdir, path.ptr);
 
 
-    cfstorage->data = mdv_storage_open(path.ptr, MDV_STRG_DATA, MDV_STRG_DATA_MAPS, MDV_STRG_NOSUBDIR);
+    cfstorage->data = mdv_storage_open(path.ptr,
+                                       MDV_STRG_DATA,
+                                       MDV_STRG_DATA_MAPS,
+                                       MDV_STRG_NOSUBDIR);
 
     if (!cfstorage->data)
     {
@@ -102,7 +107,10 @@ mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num)
     mdv_rollbacker_push(rollbacker, mdv_storage_release, cfstorage->data);
 
 
-    cfstorage->tr_log = mdv_storage_open(path.ptr, MDV_STRG_TRANSACTION_LOG, MDV_STRG_TRANSACTION_LOG_MAPS(nodes_num), MDV_STRG_NOSUBDIR);
+    cfstorage->tr_log = mdv_storage_open(path.ptr,
+                                         MDV_STRG_TRANSACTION_LOG,
+                                         MDV_STRG_TRANSACTION_LOG_MAPS(nodes_num),
+                                         MDV_STRG_NOSUBDIR);
 
     if (!cfstorage->tr_log)
     {
@@ -114,9 +122,16 @@ mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num)
     mdv_rollbacker_push(rollbacker, mdv_storage_release, cfstorage->tr_log);
 
 
-    if (!mdv_cfstorage_log_seek(cfstorage, 0, nodes_num, 0))
+    if (!mdv_cfstorage_log_idxs_init(cfstorage, MDV_MAP_APPLIED_POS, 0, nodes_num, 0))
     {
-        MDV_LOGE("Storage '%s' wasn't initialized", str_uuid.ptr);
+        MDV_LOGE("Map '%s' initialization failed", MDV_MAP_APPLIED_POS);
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    if (!mdv_cfstorage_log_idxs_init(cfstorage, MDV_MAP_SYNC_POS, 0, nodes_num, 0))
+    {
+        MDV_LOGE("Map '%s' initialization failed", MDV_MAP_SYNC_POS);
         mdv_rollback(rollbacker);
         return 0;
     }
@@ -403,7 +418,7 @@ bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count,
 }
 
 
-bool mdv_cfstorage_log_seek(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, uint64_t pos)
+bool mdv_cfstorage_log_idxs_init(mdv_cfstorage *cfstorage, char const *map_name, uint32_t first_node, uint32_t last_node, uint64_t pos)
 {
     mdv_rollbacker(2) rollbacker;
     mdv_rollbacker_clear(rollbacker);
@@ -418,8 +433,11 @@ bool mdv_cfstorage_log_seek(mdv_cfstorage *cfstorage, uint32_t first_node, uint3
 
     mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
 
-    // Open METAINF table in transaction log
-    mdv_map map = mdv_map_open(&transaction, MDV_MAP_METAINF, MDV_MAP_CREATE | MDV_MAP_INTEGERKEY);
+    // Open table in transaction log
+    mdv_map map = mdv_map_open(&transaction,
+                               map_name,
+                               MDV_MAP_CREATE | MDV_MAP_INTEGERKEY);
+
     if (!mdv_map_ok(map))
     {
         MDV_LOGE("CFstorage METAINF table '%s' not opened", MDV_STRG_TRANSACTION_LOG);
@@ -473,7 +491,7 @@ bool mdv_cfstorage_log_tell(mdv_cfstorage *cfstorage, uint32_t first_node, uint3
     mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
 
     // Open METAINF table in transaction log
-    mdv_map map = mdv_map_open(&transaction, MDV_MAP_METAINF, 0);
+    mdv_map map = mdv_map_open(&transaction, MDV_MAP_APPLIED_POS, 0);
     if (!mdv_map_ok(map))
     {
         MDV_LOGE("CFstorage METAINF table in '%s' not opened", MDV_STRG_TRANSACTION_LOG);
@@ -542,20 +560,20 @@ bool mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint32_t peer_id, void *arg, m
         return false;
     }
 
-    uint64_t const top = atomic_load(&cfstorage->applied[peer_id].top);
-    uint64_t const pos = atomic_load(&cfstorage->applied[peer_id].pos);
-    uint64_t const new_records_count = top - pos;
-
-    for(uint64_t sync_count = 0; sync_count < new_records_count;)
-    {
-        uint32_t batch_size = MDV_CONFIG.datasync.batch_size < new_records_count
-                                ? MDV_CONFIG.datasync.batch_size
-                                : new_records_count;
-
-        // TODO
-
-        sync_count += batch_size;
-    }
+//    uint64_t const top = atomic_load(&cfstorage->applied[peer_id].top);
+//    uint64_t const pos = atomic_load(&cfstorage->applied[peer_id].pos);
+//    uint64_t const new_records_count = top - pos;
+//
+//    for(uint64_t sync_count = 0; sync_count < new_records_count;)
+//    {
+//        uint32_t batch_size = MDV_CONFIG.datasync.batch_size < new_records_count
+//                                ? MDV_CONFIG.datasync.batch_size
+//                                : new_records_count;
+//
+//        // TODO
+//
+//        sync_count += batch_size;
+//    }
 
     return false;
 }

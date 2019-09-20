@@ -9,21 +9,39 @@
 typedef struct mdv_datasync_context
 {
     uint32_t        peer_id;        ///< Peer local identifier
-    mdv_tablespace *tablespace;     ///< DB tables space
-    mdv_tracker    *tracker;        ///< Nodes and network topology tracker
-    mdv_jobber     *jobber;         ///< Jobs scheduler
+    mdv_datasync   *datasync;       ///< Data synchronizer
+    mdv_cfstorage  *storage;        ///< Data storage for synchronization
 } mdv_datasync_context;
 
 
-typedef mdv_job(mdv_datasync_context) mdv_datasync_job;
+typedef mdv_job(mdv_datasync_context)     mdv_datasync_job;
+
+
+static bool mdv_datasync_is_active(mdv_datasync *datasync)
+{
+    return atomic_load(&datasync->active);
+}
+
+
+static bool mdv_datasync_cfs(void *arg, size_t count, mdv_cfstorage_op const *ops)
+{
+    MDV_LOGE("OOOOOOOOOOOOOOOOOOOOO sync!");
+    // TODO
+    return false;
+}
 
 
 static void mdv_datasync_fn(mdv_job_base *job)
 {
-    mdv_datasync_context *ctx = (mdv_datasync_context *)job->data;
+    mdv_datasync_context *ctx      = (mdv_datasync_context *)job->data;
+    mdv_datasync         *datasync = ctx->datasync;
+    mdv_cfstorage        *storage  = ctx->storage;
 
-    MDV_LOGE("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOO SYNC %u", ctx->peer_id);
-    // TODO
+    if (!mdv_datasync_is_active(datasync))
+        return;
+
+    if (!mdv_cfstorage_sync(storage, ctx->peer_id, 0, mdv_datasync_cfs))
+        MDV_LOGE("Data synchronization failed for peer %u", ctx->peer_id);
 }
 
 
@@ -59,6 +77,32 @@ static bool mdv_datasync_routes(mdv_datasync *datasync, mdv_routes *routes)
 }
 
 
+static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_id, mdv_cfstorage *storage)
+{
+    mdv_datasync_job *job = mdv_alloc(sizeof(mdv_datasync_job), "datasync_job");
+
+    if (!job)
+    {
+        MDV_LOGE("No memory for data synchronization job");
+        return;
+    }
+
+    job->fn             = mdv_datasync_fn;
+    job->finalize       = mdv_datasync_finalize;
+    job->data.peer_id   = peer_id;
+    job->data.datasync  = datasync;
+    job->data.storage   = storage;
+
+    mdv_errno err = mdv_jobber_push(datasync->jobber, (mdv_job_base*)job);
+
+    if (err != MDV_OK)
+    {
+        MDV_LOGE("Data synchronization job failed");
+        mdv_free(job, "datasync_job");
+    }
+}
+
+
 // Main data synchronization thread generates asynchronous jobs for each peer.
 static void mdv_datasync_main(mdv_datasync *datasync)
 {
@@ -69,28 +113,9 @@ static void mdv_datasync_main(mdv_datasync *datasync)
 
     mdv_vector_foreach(routes, uint32_t, route)
     {
-        mdv_datasync_job *job = mdv_alloc(sizeof(mdv_datasync_job), "datasync_job");
+        mdv_datasync_job_emit(datasync, *route, datasync->tablespace->tables);
 
-        if (!job)
-        {
-            MDV_LOGE("No memory for data synchronization job");
-            break;
-        }
-
-        job->fn              = mdv_datasync_fn;
-        job->finalize        = mdv_datasync_finalize;
-        job->data.peer_id    = *route;
-        job->data.tablespace = datasync->tablespace;
-        job->data.tracker    = datasync->tracker;
-        job->data.jobber     = datasync->jobber;
-
-        mdv_errno err = mdv_jobber_push(datasync->jobber, (mdv_job_base*)job);
-
-        if (err != MDV_OK)
-        {
-            MDV_LOGE("Data synchronization job failed");
-            mdv_free(job, "datasync_job");
-        }
+        // TODO: push jobs for rows
     }
 
     mdv_vector_free(routes);
@@ -124,14 +149,14 @@ static void * mdv_datasync_thread(void *arg)
         return 0;
     }
 
-    while(atomic_load(&datasync->active))
+    while(mdv_datasync_is_active(datasync))
     {
         mdv_epoll_event events[1];
         uint32_t size = sizeof events / sizeof *events;
 
         mdv_epoll_wait(epfd, events, &size, -1);
 
-        if (!atomic_load(&datasync->active))
+        if (!mdv_datasync_is_active(datasync))
             break;
 
         if (size)
@@ -157,7 +182,7 @@ static void * mdv_datasync_thread(void *arg)
 
 void mdv_datasync_stop(mdv_datasync *datasync)
 {
-    if (atomic_load(&datasync->active) == true)
+    if (mdv_datasync_is_active(datasync))
     {
         atomic_store(&datasync->active, false);
 
@@ -218,7 +243,7 @@ mdv_errno mdv_datasync_create(mdv_datasync *datasync,
         return err;
     }
 
-    while(atomic_load(&datasync->active) == false)
+    while(!mdv_datasync_is_active(datasync))
         mdv_sleep(100);
 
     mdv_rollbacker_push(rollbacker, mdv_datasync_stop, datasync);
@@ -246,7 +271,7 @@ void mdv_datasync_free(mdv_datasync *datasync)
 
 mdv_errno mdv_datasync_update_routes(mdv_datasync *datasync)
 {
-    if (atomic_load(&datasync->active) == false)
+    if (!mdv_datasync_is_active(datasync))
         return MDV_FAILED;
 
     mdv_routes routes;

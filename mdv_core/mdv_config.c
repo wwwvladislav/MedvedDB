@@ -57,6 +57,12 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         MDV_LOGI("Log level: %s", config->log.level.ptr);
     }
 
+    else if (MDV_CFG_MATCH("datasync", "batch_size"))
+    {
+        config->datasync.batch_size = atoi(value);
+        MDV_LOGI("Data sync batch size: %u", config->datasync.batch_size);
+    }
+
     else if (MDV_CFG_MATCH("transaction", "batch_size"))
     {
         config->transaction.batch_size = atoi(value);
@@ -125,6 +131,8 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.storage.path                 = mdv_str_static("./data");
     MDV_CONFIG.storage.workers              = 4;
     MDV_CONFIG.storage.worker_queues        = 4;
+
+    MDV_CONFIG.datasync.batch_size          = 256;
 
     MDV_CONFIG.transaction.batch_size       = 1000;
 

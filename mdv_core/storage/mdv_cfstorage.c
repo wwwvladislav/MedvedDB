@@ -31,7 +31,7 @@ struct mdv_cfstorage
 
 static bool mdv_cfstorage_log_seek(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, uint64_t pos);
 static bool mdv_cfstorage_log_tell(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, mdv_cfstorage_applied_pos *positions);
-static void mdv_cfstorage_log_last(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, mdv_cfstorage_applied_pos *positions);
+static void mdv_cfstorage_log_top(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, mdv_cfstorage_applied_pos *positions);
 
 /// @endcond
 
@@ -176,7 +176,7 @@ mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num)
         return 0;
     }
 
-    mdv_cfstorage_log_last(cfstorage, 0, nodes_num, cfstorage->applied);
+    mdv_cfstorage_log_top(cfstorage, 0, nodes_num, cfstorage->applied);
 
     MDV_LOGI("Storage '%s' opened", str_uuid.ptr);
 
@@ -504,7 +504,7 @@ bool mdv_cfstorage_log_tell(mdv_cfstorage *cfstorage, uint32_t first_node, uint3
 }
 
 
-void mdv_cfstorage_log_last(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, mdv_cfstorage_applied_pos *positions)
+void mdv_cfstorage_log_top(mdv_cfstorage *cfstorage, uint32_t first_node, uint32_t last_node, mdv_cfstorage_applied_pos *positions)
 {
     // Start transaction
     mdv_transaction transaction = mdv_transaction_start(cfstorage->tr_log);
@@ -534,8 +534,29 @@ void mdv_cfstorage_log_last(mdv_cfstorage *cfstorage, uint32_t first_node, uint3
 }
 
 
-bool mdv_cfstorage_sync(mdv_cfstorage *cfstorage, void *arg, mdv_cfstorage_sync_fn fn)
+bool mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint32_t peer_id, void *arg, mdv_cfstorage_sync_fn fn)
 {
+    if (peer_id >= cfstorage->nodes_num)
+    {
+        MDV_LOGE("Peer identifier %u is too big", peer_id);
+        return false;
+    }
+
+    uint64_t const top = atomic_load(&cfstorage->applied[peer_id].top);
+    uint64_t const pos = atomic_load(&cfstorage->applied[peer_id].pos);
+    uint64_t const new_records_count = top - pos;
+
+    for(uint64_t sync_count = 0; sync_count < new_records_count;)
+    {
+        uint32_t batch_size = MDV_CONFIG.datasync.batch_size < new_records_count
+                                ? MDV_CONFIG.datasync.batch_size
+                                : new_records_count;
+
+        // TODO
+
+        sync_count += batch_size;
+    }
+
     return false;
 }
 

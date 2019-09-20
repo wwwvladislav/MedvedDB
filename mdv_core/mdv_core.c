@@ -167,8 +167,8 @@ void mdv_core_free(mdv_core *core)
 {
     mdv_datasync_stop(&core->datasync);
     mdv_cluster_free(&core->cluster);
-    mdv_datasync_free(&core->datasync);
     mdv_jobber_free(core->jobber);
+    mdv_datasync_free(&core->datasync);
     mdv_storage_release(core->storage.metainf);
     mdv_tablespace_close(&core->storage.tablespace);
 }

@@ -25,17 +25,6 @@ typedef struct
 } mdv_op;
 
 
-mdv_errno mdv_tablespace_create(mdv_tablespace *tablespace, uint32_t nodes_num)
-{
-    tablespace->tables = mdv_cfstorage_create(&MDV_DB_TABLES, nodes_num);
-
-    mdv_errno err = tablespace->tables
-                        ? MDV_OK
-                        : MDV_FAILED;
-    return err;
-}
-
-
 mdv_errno mdv_tablespace_open(mdv_tablespace *tablespace, uint32_t nodes_num)
 {
     tablespace->tables = mdv_cfstorage_open(&MDV_DB_TABLES, nodes_num);

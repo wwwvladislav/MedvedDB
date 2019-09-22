@@ -17,19 +17,7 @@ typedef struct
 
 
 /**
- * @brief Create new tablespace.
- *
- * @param tablespace [out] Pointer to a tablespace structure
- * @param nodes_num [in] Cluster nodes count
- *
- * @return MDV_OK if wait operation successfully completed
- * @return non zero value if error has occurred
- */
-mdv_errno mdv_tablespace_create(mdv_tablespace *tablespace, uint32_t nodes_num);
-
-
-/**
- * @brief Open existing tablespace.
+ * @brief Open or create tablespace.
  *
  * @param tablespace [out] Pointer to a tablespace structure
  * @param nodes_num [in] Cluster nodes count

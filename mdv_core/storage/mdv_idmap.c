@@ -5,11 +5,12 @@
 #include <stdatomic.h>
 
 
-typedef struct
+struct mdv_idmap
 {
     mdv_storage            *storage;
+    size_t                  size;
     atomic_uint_fast64_t    ids[1];
-} mdv_idmap;
+};
 
 
 mdv_idmap * mdv_idmap_open(mdv_storage *storage, char const *name, size_t size)
@@ -26,12 +27,9 @@ mdv_idmap * mdv_idmap_open(mdv_storage *storage, char const *name, size_t size)
     }
 
     idmap->storage = mdv_storage_retain(storage);
+    idmap->size = size;
 
-    mdv_rollbacker_push(rollbacker, mdv_idmap_free, map);
-
-    // Ids map initialization
-    //for(size_t i = 0; i < size; ++i)
-    //    atomic_init(idmap->ids + i, 0);
+    mdv_rollbacker_push(rollbacker, mdv_idmap_free, idmap);
 
     // Start transaction
     mdv_transaction transaction = mdv_transaction_start(storage);
@@ -45,7 +43,7 @@ mdv_idmap * mdv_idmap_open(mdv_storage *storage, char const *name, size_t size)
 
     mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
 
-    // Open table in transaction log
+    // Try to open table
     mdv_map map = mdv_map_open(&transaction,
                                name,
                                MDV_MAP_CREATE | MDV_MAP_INTEGERKEY);
@@ -66,12 +64,18 @@ mdv_idmap * mdv_idmap_open(mdv_storage *storage, char const *name, size_t size)
         mdv_data k = { sizeof i, (void*)&i };
         mdv_data v = { sizeof idx, &idx };
 
-        if (!mdv_map_put(&map, &transaction, &k, &v))
+        if (!mdv_map_get(&map, &transaction, &k, &v))
         {
-            MDV_LOGE("OP insertion failed.");
-            mdv_rollback(rollbacker);
-            return 0;
+            if (!mdv_map_put(&map, &transaction, &k, &v))
+            {
+                MDV_LOGE("OP insertion failed.");
+                mdv_rollback(rollbacker);
+                return 0;
+            }
         }
+
+        // Ids map initialization
+        atomic_init(idmap->ids + i, idx);
     }
 
     if (!mdv_transaction_commit(&transaction))
@@ -91,7 +95,7 @@ void mdv_idmap_free(mdv_idmap *idmap)
 {
     if (idmap)
     {
-        mdv_storage_free(idmap->storage);
+        mdv_storage_release(idmap->storage);
         mdv_free(idmap, "idmap");
     }
 }

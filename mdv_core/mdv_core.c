@@ -91,8 +91,7 @@ bool mdv_core_create(mdv_core *core)
 
 
     // Tablespace
-    if (mdv_tablespace_open(&core->storage.tablespace, MDV_MAX_CLUSTER_SIZE) != MDV_OK
-        && mdv_tablespace_create(&core->storage.tablespace, MDV_MAX_CLUSTER_SIZE) != MDV_OK)
+    if (mdv_tablespace_open(&core->storage.tablespace, MDV_MAX_CLUSTER_SIZE) != MDV_OK)
     {
         MDV_LOGE("DB tables space creation failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
         mdv_rollback(rollbacker);

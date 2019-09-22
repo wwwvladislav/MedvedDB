@@ -19,7 +19,6 @@ typedef struct
 typedef bool (*mdv_cfstorage_sync_fn)(void *arg, size_t count, mdv_cfstorage_op const *ops);
 
 
-mdv_cfstorage * mdv_cfstorage_create(mdv_uuid const *uuid, uint32_t nodes_num);
 mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num);
 bool            mdv_cfstorage_drop(mdv_uuid const *uuid);
 void            mdv_cfstorage_close(mdv_cfstorage *cfstorage);

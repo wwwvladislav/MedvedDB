@@ -131,7 +131,7 @@ mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num)
 
     mdv_cfstorage_log_top(cfstorage, nodes_num, cfstorage->top);
 
-    MDV_LOGI("New storage '%s' created", str_uuid.ptr);
+    MDV_LOGI("Storage '%s' opened", str_uuid.ptr);
 
     return cfstorage;
 }
@@ -203,7 +203,10 @@ static bool mdv_cfstorage_is_key_deleted(mdv_cfstorage *cfstorage, mdv_transacti
 }
 
 
-bool mdv_cfstorage_add(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count, mdv_cfstorage_op const *ops)
+bool mdv_cfstorage_add(mdv_cfstorage *cfstorage,
+                       uint32_t peer_id,
+                       size_t count,
+                       mdv_cfstorage_op const *ops)
 {
     mdv_rollbacker(4) rollbacker;
     mdv_rollbacker_clear(rollbacker);
@@ -220,7 +223,9 @@ bool mdv_cfstorage_add(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count,
     mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
 
     // Open transaction log
-    mdv_map tr_log = mdv_map_open(&transaction, MDV_MAP_TRANSACTION_LOG(peer_id), MDV_MAP_CREATE);
+    mdv_map tr_log = mdv_map_open(&transaction,
+                                  MDV_MAP_TRANSACTION_LOG(peer_id),
+                                  MDV_MAP_CREATE | MDV_MAP_INTEGERKEY);
 
     if (!mdv_map_ok(tr_log))
     {
@@ -295,6 +300,7 @@ bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count,
 
     // Start transaction
     mdv_transaction transaction = mdv_transaction_start(cfstorage->tr_log);
+
     if (!mdv_transaction_ok(transaction))
     {
         MDV_LOGE("CFstorage transaction not started");
@@ -304,7 +310,8 @@ bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count,
     mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
 
     // Open transaction log
-    mdv_map tr_log = mdv_map_open(&transaction, MDV_MAP_TRANSACTION_LOG(peer_id), MDV_MAP_CREATE);
+    mdv_map tr_log = mdv_map_open(&transaction, MDV_MAP_TRANSACTION_LOG(peer_id), MDV_MAP_CREATE | MDV_MAP_INTEGERKEY);
+
     if (!mdv_map_ok(tr_log))
     {
         MDV_LOGE("CFstorage table '%s' not opened", MDV_STRG_TRANSACTION_LOG);
@@ -316,6 +323,7 @@ bool mdv_cfstorage_rem(mdv_cfstorage *cfstorage, uint32_t peer_id, size_t count,
 
     // Open removed objects table
     mdv_map rem_map = mdv_map_open(&transaction, MDV_MAP_REMOVED, MDV_MAP_CREATE);
+
     if (!mdv_map_ok(rem_map))
     {
         MDV_LOGE("CFstorage table '%s' not opened", MDV_MAP_REMOVED);
@@ -379,13 +387,17 @@ void mdv_cfstorage_log_top(mdv_cfstorage *cfstorage, size_t size, atomic_uint_fa
     for(size_t i = 0; i < size; ++i)
     {
         // Open transaction log
-        mdv_map map = mdv_map_open(&transaction, MDV_MAP_TRANSACTION_LOG(i), MDV_MAP_SILENT);
+        mdv_map map = mdv_map_open(&transaction,
+                                   MDV_MAP_TRANSACTION_LOG(i),
+                                   MDV_MAP_SILENT | MDV_MAP_INTEGERKEY);
 
         if (!mdv_map_ok(map))
         {
             atomic_init(arr + i, 0);
             continue;
         }
+
+        mdv_map_foreach_entry entry = {};
 
         mdv_map_foreach_explicit(transaction, map, entry, MDV_CURSOR_LAST, MDV_CURSOR_NEXT)
         {
@@ -400,6 +412,67 @@ void mdv_cfstorage_log_top(mdv_cfstorage *cfstorage, size_t size, atomic_uint_fa
 }
 
 
+static size_t mdv_cfstorage_log_read(mdv_cfstorage *cfstorage,
+                                     uint32_t peer_id,
+                                     uint64_t pos,
+                                     size_t size,
+                                     mdv_cfstorage_op *ops)
+{
+    mdv_rollbacker(2) rollbacker;
+    mdv_rollbacker_clear(rollbacker);
+
+    // Start transaction
+    mdv_transaction transaction = mdv_transaction_start(cfstorage->tr_log);
+
+    if (!mdv_transaction_ok(transaction))
+    {
+        MDV_LOGE("CFstorage transaction not started");
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
+
+    // Open transaction log
+    mdv_map tr_log = mdv_map_open(&transaction,
+                                  MDV_MAP_TRANSACTION_LOG(peer_id),
+                                  MDV_MAP_SILENT | MDV_MAP_INTEGERKEY);
+
+    if (!mdv_map_ok(tr_log))
+    {
+        MDV_LOGE("CFstorage table '%s' not opened", MDV_STRG_TRANSACTION_LOG);
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &tr_log);
+
+    mdv_map_foreach_entry entry =
+    {
+        .key =
+        {
+            .size = sizeof pos,
+            .ptr = &pos
+        }
+    };
+
+    size_t n = 0;
+
+    mdv_map_foreach_explicit(transaction, tr_log, entry, MDV_CURSOR_SET, MDV_CURSOR_NEXT)
+    {
+        // atomic_init(arr + i, *(uint64_t*)entry.key.ptr);
+        // TODO:
+
+        if(++n >= size)
+            mdv_map_foreach_break(entry);
+    }
+
+    mdv_map_close(&tr_log);
+    mdv_transaction_abort(&transaction);
+
+    return n;
+}
+
+
 bool mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint32_t peer_id, void *arg, mdv_cfstorage_sync_fn fn)
 {
     if (peer_id >= cfstorage->nodes_num)
@@ -408,22 +481,71 @@ bool mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint32_t peer_id, void *arg, m
         return false;
     }
 
-//    uint64_t const top = atomic_load(&cfstorage->applied[peer_id].top);
-//    uint64_t const pos = atomic_load(&cfstorage->applied[peer_id].pos);
-//    uint64_t const new_records_count = top - pos;
-//
-//    for(uint64_t sync_count = 0; sync_count < new_records_count;)
-//    {
-//        uint32_t batch_size = MDV_CONFIG.datasync.batch_size < new_records_count
-//                                ? MDV_CONFIG.datasync.batch_size
-//                                : new_records_count;
-//
-//        // TODO
-//
-//        sync_count += batch_size;
-//    }
+    uint64_t pos = 0;
 
-    return false;
+    if (!mdv_idmap_at(cfstorage->sync, peer_id, &pos))
+    {
+        MDV_LOGE("Transaction log synchronization failed for peer %u", peer_id);
+        return false;
+    }
+
+    uint64_t const top = atomic_load(cfstorage->top + peer_id);
+
+    if (top < pos)
+    {
+        MDV_LOGE("Identifiers map was corrupted");
+        return false;
+    }
+
+    uint64_t const new_records_count = top - pos;
+
+    for(uint64_t sync_count = 0; sync_count < new_records_count;)
+    {
+        size_t batch_size = MDV_CONFIG.datasync.batch_size < new_records_count
+                                ? MDV_CONFIG.datasync.batch_size
+                                : new_records_count;
+
+        mdv_cfstorage_op *ops = mdv_stalloc(sizeof(mdv_cfstorage_op) * batch_size, "cfstorage_ops");
+
+        if (ops)
+        {
+            MDV_LOGE("No memory for transaction logs synchronization");
+            return false;
+        }
+
+        size_t sync_size = mdv_cfstorage_log_read(cfstorage, peer_id, pos, batch_size, ops);
+
+        do
+        {
+            if (!sync_size)
+                break;
+
+            if (!fn(arg, sync_size, ops))
+            {
+                sync_size = 0;
+                break;
+            }
+
+            if (!mdv_idmap_set(cfstorage->sync, peer_id, pos + sync_size))
+            {
+                sync_size = 0;
+                break;
+            }
+        }
+        while(false);
+
+        mdv_stfree(ops, "cfstorage_ops");
+
+        if (!sync_size)
+            return false;
+
+        if (sync_size < batch_size)
+            break;
+
+        sync_count += sync_size;
+    }
+
+    return true;
 }
 
 

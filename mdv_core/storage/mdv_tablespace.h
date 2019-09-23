@@ -52,8 +52,7 @@ void mdv_tablespace_close(mdv_tablespace *tablespace);
  * @param peer_id [in] Peer identifier which produced table
  * @param table [in] [out] Table description
  *
- * @return MDV_OK if wait operation successfully completed and table->uuid contains new table UUID.
- * @return non zero value if error has occurred
+ * @return non zero table identifier pointer if operation successfully completed.
  */
-mdv_errno mdv_tablespace_log_create_table(mdv_tablespace *tablespace, uint32_t peer_id, mdv_table_base *table);
+mdv_rowid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base const *table);
 

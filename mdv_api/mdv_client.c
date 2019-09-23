@@ -262,7 +262,7 @@ void mdv_client_close(mdv_client *client)
 }
 
 
-mdv_errno mdv_create_table(mdv_client *client, mdv_table_base *table)
+mdv_errno mdv_create_table(mdv_client *client, mdv_table_base const *table, mdv_growid *id)
 {
     mdv_msg_create_table_base *create_table = (mdv_msg_create_table_base *)table;
 
@@ -296,7 +296,7 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_base *table)
                 mdv_msg_table_info info;
                 err = mdv_client_table_info_handler(&resp, &info);
                 if (err == MDV_OK)
-                    table->uuid = info.uuid;
+                    *id = info.id;
                 break;
             }
 

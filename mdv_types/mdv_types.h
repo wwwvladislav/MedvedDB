@@ -16,6 +16,26 @@ typedef struct
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Row ID
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+typedef struct __attribute__((packed))
+{
+    uint32_t peer;
+    uint64_t id;
+} mdv_rowid;
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Global row ID
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+typedef struct __attribute__((packed))
+{
+    mdv_uuid peer;
+    uint64_t id;
+} mdv_growid;
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Field
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 typedef enum
@@ -57,7 +77,6 @@ typedef struct
 #define mdv_table(N)                \
     struct mdv_table_##N            \
     {                               \
-        mdv_uuid        uuid;       \
         mdv_string      name;       \
         uint32_t        size;       \
         mdv_field       fields[N];  \
@@ -79,17 +98,6 @@ typedef mdv_table(0) mdv_table_base;
 
 
 typedef mdv_row(1) mdv_row_base;
-
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Row ID
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define mdv_rowid(NL, RL)               \
-    struct                              \
-    {                                   \
-        mdv_bigint(NL)  nide_id;        \
-        mdv_bigint(RL)  row_id;         \
-    }
 
 
 uint32_t mdv_field_type_size(mdv_field_type t);

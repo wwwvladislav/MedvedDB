@@ -56,7 +56,7 @@ typedef mdv_msg_create_table(1) mdv_msg_create_table_base;
 
 
 mdv_message_def(table_info, 4,
-    mdv_uuid    uuid;
+    mdv_growid  id;
 );
 
 

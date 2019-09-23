@@ -1,6 +1,7 @@
 #include "mdv_tablespace.h"
 #include <mdv_serialization.h>
 #include <mdv_alloc.h>
+#include <mdv_tracker.h>
 
 
 /// Storage for DB tables
@@ -51,13 +52,12 @@ void mdv_tablespace_close(mdv_tablespace *tablespace)
 }
 
 
-mdv_errno mdv_tablespace_log_create_table(mdv_tablespace *tablespace, uint32_t peer_id, mdv_table_base *table)
+mdv_rowid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base const *table)
 {
-    table->uuid = mdv_uuid_generate();
-
     binn obj;
+
     if (!mdv_binn_table(table, &obj))
-        return MDV_FAILED;
+        return 0;
 
     int const obj_size = binn_size(&obj);
 
@@ -66,7 +66,7 @@ mdv_errno mdv_tablespace_log_create_table(mdv_tablespace *tablespace, uint32_t p
     if (!op)
     {
         binn_free(&obj);
-        return MDV_NO_MEM;
+        return 0;
     }
 
     op->op = MDV_OP_TABLE_CREATE;
@@ -77,11 +77,8 @@ mdv_errno mdv_tablespace_log_create_table(mdv_tablespace *tablespace, uint32_t p
 
     mdv_cfstorage_op cfop =
     {
-        .key =
-        {
-            .size = sizeof(table->uuid),
-            .ptr = table->uuid.u8
-        },
+        .type = MDV_CF_ADD,
+        .row_id = 0,
         .op =
         {
             .size = sizeof(op),
@@ -89,11 +86,19 @@ mdv_errno mdv_tablespace_log_create_table(mdv_tablespace *tablespace, uint32_t p
         }
     };
 
-    mdv_errno ret = mdv_cfstorage_add(tablespace->tables, peer_id, 1, &cfop)
-                        ? MDV_OK
-                        : MDV_FAILED;
+    mdv_rowid const *rowid = 0;
+
+    if (mdv_cfstorage_log_add(tablespace->tables, MDV_LOCAL_ID, 1, &cfop))
+    {
+        static _Thread_local mdv_rowid id;
+
+        id.peer = MDV_LOCAL_ID;
+        id.id = cfop.row_id;
+
+        rowid = &id;
+    }
 
     mdv_stfree(op, "DB op");
 
-    return ret;
+    return rowid;
 }

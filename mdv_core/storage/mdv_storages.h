@@ -15,10 +15,9 @@
 
 
 #define MDV_STRG_TRANSACTION_LOG        "transaction.log"
-#define MDV_STRG_TRANSACTION_LOG_MAPS(N)(4 + N)
+#define MDV_STRG_TRANSACTION_LOG_MAPS(N)(3 + N)
 #define MDV_MAP_APPLIED_POS             "APPLIED"
 #define MDV_MAP_SYNC_POS                "SYNC"
-#define MDV_MAP_ADDED                   "ADDED"
 #define MDV_MAP_REMOVED                 "REMOVED"
 
 

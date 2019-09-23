@@ -61,11 +61,12 @@ void mdv_client_close(mdv_client *client);
  *
  * @param client [in]   DB client
  * @param table [in]    Table description
+ * @param id [out]      Table identifier
  *
  * @return On success, return MDV_OK. The table->uuid contains new table UUID.
  * @return On error, return non zero value
  */
-mdv_errno mdv_create_table(mdv_client *client, mdv_table_base *table);
+mdv_errno mdv_create_table(mdv_client *client, mdv_table_base const *table, mdv_growid *id);
 
 
 /**

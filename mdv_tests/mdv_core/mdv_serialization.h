@@ -8,7 +8,6 @@ static void test_table_serialization()
 {
     mdv_table(3) tbl =
     {
-        .uuid = mdv_uuid_generate(),
         .name = mdv_str_static("my_table"),
         .size = 3,
         .fields =
@@ -23,7 +22,6 @@ static void test_table_serialization()
     mu_check(mdv_binn_table((mdv_table_base const *)&tbl, &obj));
     mdv_table_base * deserialized_tbl = mdv_unbinn_table(&obj);
 
-    mu_check(mdv_uuid_cmp(&deserialized_tbl->uuid, &tbl.uuid) == 0);
     mu_check(deserialized_tbl->size == tbl.size);
     mu_check(deserialized_tbl->name.size == tbl.name.size);
     mu_check(memcmp(deserialized_tbl->name.ptr, tbl.name.ptr, tbl.name.size) == 0);

@@ -9,6 +9,7 @@
 #include <mdv_topology.h>
 #include <stddef.h>
 #include <string.h>
+#include <assert.h>
 
 
 static mdv_errno mdv_user_reply(mdv_user *user, mdv_msg const *msg);
@@ -185,15 +186,23 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
         return MDV_FAILED;
     }
 
-    mdv_errno err = mdv_tablespace_log_create_table(&user->core->storage.tablespace, MDV_LOCAL_ID, (mdv_table_base*)&create_table->table);
+    mdv_rowid const *rowid = mdv_tablespace_create_table(&user->core->storage.tablespace, (mdv_table_base*)&create_table->table);
 
-    if (err == MDV_OK)
+    mdv_errno err = MDV_FAILED;
+
+    if (rowid)
     {
         mdv_datasync_start(&core->datasync);
 
+        assert(rowid->peer == MDV_LOCAL_ID);
+
         mdv_msg_table_info const table_info =
         {
-            .uuid = create_table->table.uuid
+            .id =
+            {
+                .peer = user->core->metainf.uuid.value,
+                .id = rowid->id
+            }
         };
 
         err = mdv_user_table_info_reply(user, msg->hdr.number, &table_info);
@@ -202,7 +211,7 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
     {
         mdv_msg_status const status =
         {
-            .err = err,
+            .err = MDV_FAILED,
             .message = ""
         };
 

@@ -176,11 +176,13 @@ static void mdv_test_scenario(char const *args)
         }
     };
 
-    mdv_errno err = mdv_create_table(client, (mdv_table_base *)&table);
+    mdv_growid id;
+
+    mdv_errno err = mdv_create_table(client, (mdv_table_base *)&table, &id);
 
     if (err == MDV_OK)
     {
-        MDV_INF("New table '%s' with UUID '%s' successfully created\n", table.name.ptr, mdv_uuid_to_str(&table.uuid).ptr);
+        MDV_INF("New table '%s' with ID '%llu' successfully created\n", table.name.ptr, id.id);
     }
     else
     {

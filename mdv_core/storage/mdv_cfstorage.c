@@ -12,6 +12,7 @@
 #include <mdv_types.h>
 #include <stdatomic.h>
 #include <stddef.h>
+#include <assert.h>
 
 
 /// @cond Doxygen_Suppress
@@ -381,6 +382,11 @@ static size_t mdv_cfstorage_log_read(mdv_cfstorage *cfstorage,
 
     mdv_map_foreach_explicit(transaction, tr_log, entry, MDV_CURSOR_SET, MDV_CURSOR_NEXT)
     {
+        assert(entry.key.size == sizeof(ops[n].row_id));
+
+        ops[n].row_id = *(uint64_t*)entry.key.ptr;
+        //TODO: read ops[n].op
+
         // atomic_init(arr + i, *(uint64_t*)entry.key.ptr);
         // TODO:
 
@@ -421,14 +427,16 @@ bool mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint32_t peer_id, void *arg, m
         return false;
     }
 
-    for(;;)
+    bool failed = false;
+
+    while(!failed)
     {
         size_t sync_size = mdv_cfstorage_log_read(cfstorage, peer_id, pos, batch_size, ops);
 
-        if (!sync_size)
+        if (!sync_size)     // No data in TR log
             break;
 
-        bool failed = false;
+        pos = ops[sync_size - 1].row_id + 1;
 
         do
         {
@@ -438,8 +446,6 @@ bool mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint32_t peer_id, void *arg, m
                 break;
             }
 
-            pos = ops[sync_size - 1].row_id + 1;
-
             if (!mdv_idmap_set(cfstorage->sync, peer_id, pos))
             {
                 failed = true;
@@ -447,14 +453,11 @@ bool mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint32_t peer_id, void *arg, m
             }
         }
         while(false);
-
-        mdv_stfree(ops, "cfstorage_ops");
-
-        if (failed)
-            return false;
     }
 
-    return true;
+    mdv_stfree(ops, "cfstorage_ops");
+
+    return !failed;
 }
 
 

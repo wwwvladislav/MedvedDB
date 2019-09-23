@@ -61,14 +61,14 @@ static void mdv_job_handler(uint32_t events, mdv_threadpool_task_base *task_base
 
 mdv_jobber * mdv_jobber_create(mdv_jobber_config const *config)
 {
-    mdv_rollbacker(2) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
     mdv_jobber *jobber = mdv_alloc(offsetof(mdv_jobber, jobs) + config->queue.count * sizeof(mdv_jobber_queue), "jobber");
 
     if (!jobber)
     {
         MDV_LOGE("No memory for job scheduler");
+        mdv_rollback(rollbacker);
         return 0;
     }
 
@@ -130,6 +130,8 @@ mdv_jobber * mdv_jobber_create(mdv_jobber_config const *config)
             return 0;
         }
     }
+
+    mdv_rollbacker_free(rollbacker);
 
     return jobber;
 }

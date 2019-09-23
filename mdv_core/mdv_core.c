@@ -64,8 +64,7 @@ static bool mdv_core_cluster_create(mdv_core *core)
 
 bool mdv_core_create(mdv_core *core)
 {
-    mdv_rollbacker(5) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
 
     // DB meta information storage
     core->storage.metainf = mdv_metainf_storage_open(MDV_CONFIG.storage.path.ptr);
@@ -73,6 +72,7 @@ bool mdv_core_create(mdv_core *core)
     if (!core->storage.metainf)
     {
         MDV_LOGE("Service initialization failed. Can't create metainf storage '%s'", MDV_CONFIG.storage.path.ptr);
+        mdv_rollback(rollbacker);
         return false;
     }
 
@@ -157,6 +157,8 @@ bool mdv_core_create(mdv_core *core)
     MDV_LOGI("Storage version: %u", core->metainf.version.value);
 
     MDV_LOGI("Node UUID: %s", mdv_uuid_to_str(&core->metainf.uuid.value).ptr);
+
+    mdv_rollbacker_free(rollbacker);
 
     return true;
 }

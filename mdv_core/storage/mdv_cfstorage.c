@@ -35,14 +35,14 @@ static void mdv_cfstorage_log_top(mdv_cfstorage *cfstorage, size_t size, atomic_
 
 mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num)
 {
-    mdv_rollbacker(6) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(6);
 
     mdv_cfstorage *cfstorage = (mdv_cfstorage *)mdv_alloc(offsetof(mdv_cfstorage, top) + sizeof(atomic_uint_fast64_t) * nodes_num, "cfstorage");
 
     if (!cfstorage)
     {
         MDV_LOGE("No free space of memory for cfstorage");
+        mdv_rollback(rollbacker);
         return 0;
     }
 
@@ -136,6 +136,8 @@ mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num)
 
     MDV_LOGI("Storage '%s' opened", str_uuid.ptr);
 
+    mdv_rollbacker_free(rollbacker);
+
     return cfstorage;
 }
 
@@ -213,8 +215,7 @@ bool mdv_cfstorage_log_add(mdv_cfstorage *cfstorage,
                            size_t count,
                            mdv_cfstorage_op const *ops)
 {
-    mdv_rollbacker(4) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     // Start transaction
     mdv_transaction transaction = mdv_transaction_start(cfstorage->tr_log);
@@ -222,6 +223,7 @@ bool mdv_cfstorage_log_add(mdv_cfstorage *cfstorage,
     if (!mdv_transaction_ok(transaction))
     {
         MDV_LOGE("CFstorage transaction not started");
+        mdv_rollback(rollbacker);
         return false;
     }
 
@@ -288,6 +290,8 @@ bool mdv_cfstorage_log_add(mdv_cfstorage *cfstorage,
 
     mdv_map_close(&tr_log);
 
+    mdv_rollbacker_free(rollbacker);
+
     return true;
 }
 
@@ -341,8 +345,7 @@ static size_t mdv_cfstorage_log_read(mdv_cfstorage *cfstorage,
                                      size_t size,
                                      mdv_cfstorage_op *ops)
 {
-    mdv_rollbacker(2) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
     // Start transaction
     mdv_transaction transaction = mdv_transaction_start(cfstorage->tr_log);
@@ -350,6 +353,7 @@ static size_t mdv_cfstorage_log_read(mdv_cfstorage *cfstorage,
     if (!mdv_transaction_ok(transaction))
     {
         MDV_LOGE("CFstorage transaction not started");
+        mdv_rollback(rollbacker);
         return 0;
     }
 
@@ -395,7 +399,10 @@ static size_t mdv_cfstorage_log_read(mdv_cfstorage *cfstorage,
     }
 
     mdv_map_close(&tr_log);
+
     mdv_transaction_abort(&transaction);
+
+    mdv_rollbacker_free(rollbacker);
 
     return n;
 }

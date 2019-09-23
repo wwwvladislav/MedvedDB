@@ -142,8 +142,7 @@ static mdv_errno mdv_client_topology_handler(mdv_msg const *msg, mdv_topology **
 
 mdv_client * mdv_client_connect(mdv_client_config const *config)
 {
-    mdv_rollbacker(4) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     mdv_client_init();
 
@@ -154,6 +153,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
     if (!client)
     {
         MDV_LOGE("No memory for new client");
+        mdv_rollback(rollbacker);
         mdv_client_finalize();
         return 0;
     }
@@ -245,6 +245,8 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
         mdv_client_finalize();
         return 0;
     }
+
+    mdv_rollbacker_free(rollbacker);
 
     return client;
 }

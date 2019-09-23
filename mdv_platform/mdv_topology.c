@@ -313,8 +313,7 @@ mdv_topology * mdv_topology_extract(mdv_tracker *tracker)
     if (!links_count)
         return &empty_topology;
 
-    mdv_rollbacker(4) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     mdv_tracker_links_tmp tmp =
     {
@@ -426,6 +425,8 @@ mdv_topology * mdv_topology_extract(mdv_tracker *tracker)
           sizeof *topology->links,
           (int (*)(const void *, const void *))&mdv_link_cmp);
 
+    mdv_rollbacker_free(rollbacker);
+
     return topology;
 }
 
@@ -484,6 +485,8 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
     }
     // optimizations end
 
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+
     mdv_topolink *tmp_links = mdv_staligned_alloc(sizeof(mdv_topolink), sizeof(mdv_topolink) * (a->links_count + b->links_count), "delta_links");
 
     if (!tmp_links)
@@ -491,9 +494,6 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
         MDV_LOGE("no memory for network topology delta");
         return 0;
     }
-
-    mdv_rollbacker(4) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
 
     mdv_rollbacker_push(rollbacker, mdv_stfree, tmp_links, "delta_links");
 
@@ -570,6 +570,7 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
         if (!delta)
         {
             MDV_LOGE("no memory for network topology delta");
+            mdv_rollback(rollbacker);
             return 0;
         }
 
@@ -591,6 +592,7 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const
         if (!delta)
         {
             MDV_LOGE("no memory for network topology delta");
+            mdv_rollback(rollbacker);
             return 0;
         }
 

@@ -180,8 +180,7 @@ static uint32_t mdv_tracker_new_id(mdv_tracker *tracker)
 
 mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
 {
-    mdv_rollbacker(6) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(6);
 
     tracker->uuid   = *uuid;
     tracker->max_id = 0;
@@ -194,6 +193,7 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
                           mdv_uuid_cmp))
     {
         MDV_LOGE("There is no memory for nodes");
+        mdv_rollback(rollbacker);
         return MDV_NO_MEM;
     }
 
@@ -263,6 +263,8 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
     }
 
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tracker->links_mutex);
+
+    mdv_rollbacker_free(rollbacker);
 
     return MDV_OK;
 }

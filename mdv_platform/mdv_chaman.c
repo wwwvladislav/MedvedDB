@@ -86,8 +86,7 @@ static void mdv_chaman_select_handler(uint32_t events, mdv_threadpool_task_base 
 
 mdv_chaman * mdv_chaman_create(mdv_chaman_config const *config)
 {
-    mdv_rollbacker(4) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     // Allocate memory
     mdv_chaman *chaman = mdv_alloc(sizeof(mdv_chaman), "chaman");
@@ -95,6 +94,7 @@ mdv_chaman * mdv_chaman_create(mdv_chaman_config const *config)
     if(!chaman)
     {
         MDV_LOGE("No memory for chaman");
+        mdv_rollback(rollbacker);
         return 0;
     }
 
@@ -116,6 +116,8 @@ mdv_chaman * mdv_chaman_create(mdv_chaman_config const *config)
     }
 
     mdv_rollbacker_push(rollbacker, mdv_threadpool_free, chaman->threadpool);
+
+    mdv_rollbacker_free(rollbacker);
 
     return chaman;
 }
@@ -340,8 +342,7 @@ static void mdv_chaman_accept_handler(uint32_t events, mdv_threadpool_task_base 
 
 mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr)
 {
-    mdv_rollbacker(2) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
     mdv_socket_type socktype = MDV_SOCK_STREAM;
     mdv_sockaddr sockaddr;
@@ -351,6 +352,7 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr)
     if (err != MDV_OK)
     {
         MDV_LOGE("Address resolution failed with error '%s' (%d)", mdv_strerror(err), err);
+        mdv_rollback(rollbacker);
         return err;
     }
 
@@ -360,6 +362,7 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr)
     if(sd == MDV_INVALID_DESCRIPTOR)
     {
         MDV_LOGE("Listener socket '%s' not created", addr.ptr);
+        mdv_rollback(rollbacker);
         return MDV_FAILED;
     }
 
@@ -412,14 +415,15 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr)
         return err;
     }
 
+    mdv_rollbacker_free(rollbacker);
+
     return MDV_OK;
 }
 
 
 mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr, uint8_t type)
 {
-    mdv_rollbacker(2) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
     mdv_socket_type socktype = MDV_SOCK_STREAM;
     mdv_sockaddr sockaddr;
@@ -429,6 +433,7 @@ mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr, uint8_t 
     if (err != MDV_OK)
     {
         MDV_LOGE("Address resolution failed with error '%s' (%d)", mdv_strerror(err), err);
+        mdv_rollback(rollbacker);
         return err;
     }
 
@@ -437,6 +442,7 @@ mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr, uint8_t 
     if(sd == MDV_INVALID_DESCRIPTOR)
     {
         MDV_LOGE("Listener socket '%s' not created", addr.ptr);
+        mdv_rollback(rollbacker);
         return MDV_FAILED;
     }
 
@@ -449,6 +455,7 @@ mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr, uint8_t 
     if (err != MDV_INPROGRESS)
     {
         MDV_LOGE("Connection to %s failed with error '%s' (%d)", addr.ptr, mdv_strerror(err), err);
+        mdv_rollback(rollbacker);
         return err;
     }
 
@@ -473,6 +480,8 @@ mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr, uint8_t 
         mdv_rollback(rollbacker);
         return err;
     }
+
+    mdv_rollbacker_free(rollbacker);
 
     return MDV_OK;
 }

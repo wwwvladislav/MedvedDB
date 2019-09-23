@@ -490,8 +490,7 @@ mdv_row_base * mdv_unbinn_row(binn const *obj, mdv_field const *fields)
 
 bool mdv_topology_serialize(mdv_topology const *topology, binn *obj)
 {
-    mdv_rollbacker(4) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     binn nodes;
     binn links;
@@ -499,6 +498,7 @@ bool mdv_topology_serialize(mdv_topology const *topology, binn *obj)
     if (!binn_create_object(obj))
     {
         MDV_LOGE("binn_topology failed");
+        mdv_rollback(rollbacker);
         return false;
     }
 
@@ -593,6 +593,8 @@ bool mdv_topology_serialize(mdv_topology const *topology, binn *obj)
 
     binn_free(&nodes);
     binn_free(&links);
+
+    mdv_rollbacker_free(rollbacker);
 
     return true;
 }

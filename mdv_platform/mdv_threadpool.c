@@ -86,8 +86,7 @@ static mdv_errno mdv_threadpool_add_default_tasks(mdv_threadpool *threadpool)
 
 mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
 {
-    mdv_rollbacker(4) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     size_t const mem_size = offsetof(mdv_threadpool, data_space) + config->size * sizeof(mdv_thread);
 
@@ -96,6 +95,7 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
     if(!tp)
     {
         MDV_LOGE("threadpool_create failed");
+        mdv_rollback(rollbacker);
         return 0;
     }
 
@@ -156,6 +156,7 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
     if (mdv_threadpool_add_default_tasks(tp) != MDV_OK)
     {
         MDV_LOGE("threadpool_create failed");
+        mdv_rollbacker_free(rollbacker);
         mdv_threadpool_free(tp);
         return 0;
     }
@@ -169,11 +170,14 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
         if (err != MDV_OK)
         {
             MDV_LOGE("threadpool_create failed");
+            mdv_rollbacker_free(rollbacker);
             mdv_threadpool_stop(tp);
             mdv_threadpool_free(tp);
             return 0;
         }
     }
+
+    mdv_rollbacker_free(rollbacker);
 
     return tp;
 }

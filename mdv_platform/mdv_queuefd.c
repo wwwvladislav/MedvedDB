@@ -6,14 +6,15 @@
 
 int _mdv_queuefd_init(mdv_queuefd_base *queue)
 {
-    mdv_rollbacker(4) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     if (mdv_mutex_create(&queue->rmutex) != MDV_OK)
     {
         MDV_LOGE("queuefd_init failed");
+        mdv_rollback(rollbacker);
         return 0;
     }
+
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &queue->rmutex);
 
     if (mdv_mutex_create(&queue->wmutex) != MDV_OK)
@@ -22,6 +23,7 @@ int _mdv_queuefd_init(mdv_queuefd_base *queue)
         mdv_rollback(rollbacker);
         return 0;
     }
+
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &queue->wmutex);
 
     queue->event = mdv_eventfd(true);
@@ -32,6 +34,8 @@ int _mdv_queuefd_init(mdv_queuefd_base *queue)
         mdv_rollback(rollbacker);
         return 0;
     }
+
+    mdv_rollbacker_free(rollbacker);
 
     return 1;
 }

@@ -53,14 +53,14 @@ static int mdv_id_cmp(void const *id1, void const *id2) { return (int)*(uint16_t
 
 mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd)
 {
-    mdv_rollbacker(5) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
 
     mdv_dispatcher *pd = (mdv_dispatcher *)mdv_alloc(sizeof(mdv_dispatcher), "dispatcher");
 
     if (!pd)
     {
         MDV_LOGE("No memory for messages dispatcher");
+        mdv_rollback(rollbacker);
         return 0;
     }
 
@@ -129,6 +129,8 @@ mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd)
     }
 
     MDV_LOGD("Messages dispatcher %p created", pd);
+
+    mdv_rollbacker_free(rollbacker);
 
     return pd;
 }

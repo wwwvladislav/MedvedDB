@@ -254,14 +254,14 @@ mdv_errno mdv_gossip_linkstate_handler(mdv_core *core, mdv_msg const *msg)
 {
     mdv_tracker *tracker = &core->cluster.tracker;
 
-    mdv_rollbacker(8) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(8);
 
     binn binn_msg;
 
     if(!binn_load(msg->payload, &binn_msg))
     {
         MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
+        mdv_rollback(rollbacker);
         return MDV_FAILED;
     }
 

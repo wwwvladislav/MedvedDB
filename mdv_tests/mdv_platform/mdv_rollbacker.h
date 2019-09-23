@@ -24,8 +24,7 @@ static void test_rollbacker_3(int *arg1, int *arg2, int *arg3)
 
 MU_TEST(platform_rollbacker)
 {
-    mdv_rollbacker(3) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
     int args1[1] = {};
     int args2[2] = {};
@@ -36,7 +35,7 @@ MU_TEST(platform_rollbacker)
     mdv_rollbacker_push(rollbacker, test_rollbacker_3, args3, args3 + 1, args3 + 2);
 
 
-    mdv_rollback(rollbacker)
+    mdv_rollback(rollbacker);
 
     mu_check(args1[0] == 1);
     mu_check(args2[0] == 1 && args2[1] == 2);

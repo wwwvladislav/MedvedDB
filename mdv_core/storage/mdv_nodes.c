@@ -90,8 +90,7 @@ static void mdv_add_current_node(mdv_tracker *tracker)
 
 mdv_errno mdv_nodes_load(mdv_storage *storage, mdv_tracker *tracker)
 {
-    mdv_rollbacker(2) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
     // Add current node
     mdv_add_current_node(tracker);
@@ -154,14 +153,15 @@ mdv_errno mdv_nodes_load(mdv_storage *storage, mdv_tracker *tracker)
 
     mdv_map_close(&nodes_map);
 
+    mdv_rollbacker_free(rollbacker);
+
     return MDV_OK;
 }
 
 
 mdv_errno mdv_nodes_store(mdv_storage *storage, mdv_node const *node)
 {
-    mdv_rollbacker(2) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
     // Start transaction
     mdv_transaction transaction = mdv_transaction_start(storage);
@@ -228,6 +228,8 @@ mdv_errno mdv_nodes_store(mdv_storage *storage, mdv_node const *node)
     }
 
     mdv_map_close(&nodes_map);
+
+    mdv_rollbacker_free(rollbacker);
 
     return MDV_OK;
 }

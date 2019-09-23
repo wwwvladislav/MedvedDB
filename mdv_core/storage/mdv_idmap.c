@@ -18,8 +18,7 @@ mdv_idmap * mdv_idmap_open(mdv_storage *storage, char const *name, size_t size)
 {
     size_t const name_len = strlen(name);
 
-    mdv_rollbacker(4) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     mdv_idmap *idmap = mdv_alloc(offsetof(mdv_idmap, ids) +
                                  sizeof(atomic_uint_fast64_t) * size +
@@ -28,6 +27,7 @@ mdv_idmap * mdv_idmap_open(mdv_storage *storage, char const *name, size_t size)
     if (!idmap)
     {
         MDV_LOGE("No memory for ids map");
+        mdv_rollback(rollbacker);
         return 0;
     }
 
@@ -95,6 +95,8 @@ mdv_idmap * mdv_idmap_open(mdv_storage *storage, char const *name, size_t size)
 
     mdv_map_close(&map);
 
+    mdv_rollbacker_free(rollbacker);
+
     return idmap;
 }
 
@@ -131,8 +133,7 @@ bool mdv_idmap_set(mdv_idmap *idmap, uint32_t pos, uint64_t val)
         return false;
     }
 
-    mdv_rollbacker(2) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
     // Start transaction
     mdv_transaction transaction = mdv_transaction_start(idmap->storage);
@@ -140,6 +141,7 @@ bool mdv_idmap_set(mdv_idmap *idmap, uint32_t pos, uint64_t val)
     if (!mdv_transaction_ok(transaction))
     {
         MDV_LOGE("CFstorage transaction not started");
+        mdv_rollback(rollbacker);
         return false;
     }
 
@@ -180,6 +182,8 @@ bool mdv_idmap_set(mdv_idmap *idmap, uint32_t pos, uint64_t val)
     }
 
     mdv_map_close(&map);
+
+    mdv_rollbacker_free(rollbacker);
 
     return true;
 }

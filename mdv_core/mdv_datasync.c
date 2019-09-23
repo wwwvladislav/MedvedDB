@@ -199,8 +199,7 @@ mdv_errno mdv_datasync_create(mdv_datasync *datasync,
                               mdv_tracker *tracker,
                               mdv_jobber *jobber)
 {
-    mdv_rollbacker(4) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     datasync->tablespace = tablespace;
     datasync->tracker = tracker;
@@ -211,6 +210,7 @@ mdv_errno mdv_datasync_create(mdv_datasync *datasync,
     if (err != MDV_OK)
     {
         MDV_LOGE("Mutex creation failed with error %d", err);
+        mdv_rollback(rollbacker);
         return err;
     }
 
@@ -254,6 +254,8 @@ mdv_errno mdv_datasync_create(mdv_datasync *datasync,
         mdv_rollback(rollbacker);
         return MDV_NO_MEM;
     }
+
+    mdv_rollbacker_free(rollbacker);
 
     return MDV_OK;
 }

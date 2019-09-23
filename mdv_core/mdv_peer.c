@@ -194,14 +194,14 @@ static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
 
     MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
-    mdv_rollbacker(4) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     binn binn_msg;
 
     if(!binn_load(msg->payload, &binn_msg))
     {
         MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
+        mdv_rollback(rollbacker);
         return MDV_FAILED;
     }
 
@@ -274,14 +274,14 @@ static mdv_errno mdv_peer_topodiff_handler(mdv_msg const *msg, void *arg)
 
     MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
-    mdv_rollbacker(2) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
     binn binn_msg;
 
     if(!binn_load(msg->payload, &binn_msg))
     {
         MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
+        mdv_rollback(rollbacker);
         return MDV_FAILED;
     }
 
@@ -314,7 +314,7 @@ static mdv_errno mdv_peer_topodiff_handler(mdv_msg const *msg, void *arg)
     mdv_rollback(rollbacker);
 
     // Update routing table
-     mdv_datasync_update_routes(&core->datasync);
+    mdv_datasync_update_routes(&core->datasync);
 
     return MDV_OK;
 }

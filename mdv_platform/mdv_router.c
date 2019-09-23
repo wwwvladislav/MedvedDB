@@ -165,14 +165,14 @@ mdv_errno mdv_routes_find(mdv_routes *routes, mdv_tracker *tracker)
     if (!links_count)
         return MDV_OK;
 
-    mdv_rollbacker(4) rollbacker;
-    mdv_rollbacker_clear(rollbacker);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     mdv_router_topology topology;
 
     if (!mdv_router_topology_create(&topology, tracker, links_count))
     {
         MDV_LOGE("No memorty for routes");
+        mdv_rollback(rollbacker);
         return MDV_NO_MEM;
     }
 

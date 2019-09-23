@@ -201,10 +201,16 @@ static bool mdv_cfstorage_is_key_deleted(mdv_cfstorage *cfstorage,
 }
 
 
+uint64_t mdv_cfstorage_new_id(mdv_cfstorage *cfstorage, uint32_t peer_id)
+{
+    return atomic_fetch_add_explicit(&cfstorage->top[peer_id], 1, memory_order_relaxed) + 1;
+}
+
+
 bool mdv_cfstorage_log_add(mdv_cfstorage *cfstorage,
                            uint32_t peer_id,
                            size_t count,
-                           mdv_cfstorage_op *ops)
+                           mdv_cfstorage_op const *ops)
 {
     mdv_rollbacker(4) rollbacker;
     mdv_rollbacker_clear(rollbacker);
@@ -248,10 +254,6 @@ bool mdv_cfstorage_log_add(mdv_cfstorage *cfstorage,
 
     for(size_t i = 0; i < count; ++i)
     {
-        ops[i].row_id = peer_id == MDV_LOCAL_ID && ops[i].type == MDV_CF_ADD
-                        ? atomic_fetch_add_explicit(&cfstorage->top[peer_id], 1, memory_order_relaxed) + 1
-                        : ops[i].row_id;
-
         mdv_rowid rowid =
         {
             .peer = peer_id,
@@ -409,46 +411,38 @@ bool mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint32_t peer_id, void *arg, m
         return false;
     }
 
-    uint64_t const top = atomic_load(cfstorage->top + peer_id);
+    size_t const batch_size = MDV_CONFIG.datasync.batch_size;
 
-    if (top < pos)
+    mdv_cfstorage_op *ops = mdv_stalloc(sizeof(mdv_cfstorage_op) * batch_size, "cfstorage_ops");
+
+    if (ops)
     {
-        MDV_LOGE("Identifiers map was corrupted");
+        MDV_LOGE("No memory for transaction logs synchronization");
         return false;
     }
 
-    uint64_t const new_records_count = top - pos;
-
-    for(uint64_t sync_count = 0; sync_count < new_records_count;)
+    for(;;)
     {
-        size_t batch_size = MDV_CONFIG.datasync.batch_size < new_records_count
-                                ? MDV_CONFIG.datasync.batch_size
-                                : new_records_count;
-
-        mdv_cfstorage_op *ops = mdv_stalloc(sizeof(mdv_cfstorage_op) * batch_size, "cfstorage_ops");
-
-        if (ops)
-        {
-            MDV_LOGE("No memory for transaction logs synchronization");
-            return false;
-        }
-
         size_t sync_size = mdv_cfstorage_log_read(cfstorage, peer_id, pos, batch_size, ops);
+
+        if (!sync_size)
+            break;
+
+        bool failed = false;
 
         do
         {
-            if (!sync_size)
-                break;
-
             if (!fn(arg, sync_size, ops))
             {
-                sync_size = 0;
+                failed = true;
                 break;
             }
 
-            if (!mdv_idmap_set(cfstorage->sync, peer_id, pos + sync_size))
+            pos = ops[sync_size - 1].row_id + 1;
+
+            if (!mdv_idmap_set(cfstorage->sync, peer_id, pos))
             {
-                sync_size = 0;
+                failed = true;
                 break;
             }
         }
@@ -456,13 +450,8 @@ bool mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint32_t peer_id, void *arg, m
 
         mdv_stfree(ops, "cfstorage_ops");
 
-        if (!sync_size)
+        if (failed)
             return false;
-
-        if (sync_size < batch_size)
-            break;
-
-        sync_count += sync_size;
     }
 
     return true;

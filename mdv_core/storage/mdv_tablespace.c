@@ -77,8 +77,7 @@ mdv_rowid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_ta
 
     mdv_cfstorage_op cfop =
     {
-        .type = MDV_CF_ADD,
-        .row_id = 0,
+        .row_id = mdv_cfstorage_new_id(tablespace->tables, MDV_LOCAL_ID),
         .op =
         {
             .size = sizeof(op),

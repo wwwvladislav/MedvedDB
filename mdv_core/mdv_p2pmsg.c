@@ -546,8 +546,19 @@ bool mdv_unbinn_p2p_cfslog_data_rows(binn const *obj,
             return 0;
         }
 
-// TODO
-// peers[i] = (uint32_t)v;
+        if (dataspace_size < size)
+        {
+            MDV_LOGE("unbinn_p2p_cfslog_data_count failed");
+            return 0;
+        }
+
+        rows[i].op.size = (uint32_t)size;
+        rows[i].op.ptr = dataspace;
+
+        memcpy(dataspace, ptr, size);
+
+        dataspace += size;
+        dataspace_size -= size;
 
         ++i;
     }

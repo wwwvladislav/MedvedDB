@@ -51,7 +51,7 @@ void mdv_rollbacker_free(mdv_rollbacker *rbr);
 /**
  * @brief Stores rollback operation
  */
-bool mdv_rollbacker_push_(mdv_rollbacker *rbr, mdv_rollback_op const *op);
+bool _mdv_rollbacker_push(mdv_rollbacker *rbr, mdv_rollback_op const *op);
 
 
 /// Selector for rollbacker function
@@ -62,7 +62,7 @@ bool mdv_rollbacker_push_(mdv_rollbacker *rbr, mdv_rollback_op const *op);
 #define mdv_rollbacker_push_1(rbr, fn, arg1)                                                    \
     {                                                                                           \
         mdv_rollback_op const op_##fn = { (mdv_rollback_fn_1)&fn, 1, { arg1 } };                \
-        mdv_rollbacker_push_(rbr, &op_##fn);                                                    \
+        _mdv_rollbacker_push(rbr, &op_##fn);                                                    \
     }
 
 
@@ -70,7 +70,7 @@ bool mdv_rollbacker_push_(mdv_rollbacker *rbr, mdv_rollback_op const *op);
 #define mdv_rollbacker_push_2(rbr, fn, arg1, arg2)                                              \
     {                                                                                           \
         mdv_rollback_op const op_##fn = { (mdv_rollback_fn_2)&fn, 2, { arg1, arg2 } };          \
-        mdv_rollbacker_push_(rbr, &op_##fn);                                                    \
+        _mdv_rollbacker_push(rbr, &op_##fn);                                                    \
     }
 
 
@@ -78,7 +78,7 @@ bool mdv_rollbacker_push_(mdv_rollbacker *rbr, mdv_rollback_op const *op);
 #define mdv_rollbacker_push_3(rbr, fn, arg1, arg2, arg3)                                        \
     {                                                                                           \
         mdv_rollback_op const op_##fn = { (mdv_rollback_fn_3)&fn, 3, { arg1, arg2, arg3 } };    \
-        mdv_rollbacker_push_(rbr, &op_##fn);                                                    \
+        _mdv_rollbacker_push(rbr, &op_##fn);                                                    \
     }
 
 

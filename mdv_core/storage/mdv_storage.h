@@ -251,8 +251,10 @@ typedef struct mdv_map_foreach_entry
 
 
 #define mdv_map_foreach_break(entry)                        \
+{                                                           \
     mdv_cursor_close(&entry.cursor);                        \
-    break;
+    break;                                                  \
+}
 
 
 void mdv_map_read (mdv_map *pmap, mdv_transaction *ptransaction, void *map_fields);

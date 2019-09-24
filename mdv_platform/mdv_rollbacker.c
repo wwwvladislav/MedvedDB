@@ -33,7 +33,7 @@ void mdv_rollbacker_free(mdv_rollbacker *rbr)
 }
 
 
-bool mdv_rollbacker_push_(mdv_rollbacker *rbr, mdv_rollback_op const *op)
+bool _mdv_rollbacker_push(mdv_rollbacker *rbr, mdv_rollback_op const *op)
 {
     if (rbr->size >= rbr->capacity)
     {

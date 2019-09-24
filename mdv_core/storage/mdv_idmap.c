@@ -8,7 +8,7 @@
 struct mdv_idmap
 {
     mdv_storage            *storage;
-    size_t                  size;
+    uint64_t                size;
     char                   *name;
     atomic_uint_fast64_t    ids[1];
 };
@@ -111,7 +111,7 @@ void mdv_idmap_free(mdv_idmap *idmap)
 }
 
 
-bool mdv_idmap_at(mdv_idmap *idmap, uint32_t pos, uint64_t *val)
+bool mdv_idmap_at(mdv_idmap *idmap, uint64_t pos, uint64_t *val)
 {
     if (pos >= idmap->size)
     {
@@ -125,7 +125,7 @@ bool mdv_idmap_at(mdv_idmap *idmap, uint32_t pos, uint64_t *val)
 }
 
 
-bool mdv_idmap_set(mdv_idmap *idmap, uint32_t pos, uint64_t val)
+bool mdv_idmap_set(mdv_idmap *idmap, uint64_t pos, uint64_t val)
 {
     if (pos >= idmap->size)
     {

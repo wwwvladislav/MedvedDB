@@ -12,20 +12,21 @@
 #include <mdv_types.h>
 #include <stdatomic.h>
 #include <stddef.h>
-#include <assert.h>
 
 
 /// @cond Doxygen_Suppress
 
 struct mdv_cfstorage
 {
-    uint32_t                nodes_num;          ///< cluster size
+    mdv_uuid                uuid;               ///< storage UUID
     mdv_storage            *data;               ///< data storage
     mdv_storage            *tr_log;             ///< transaction log storage
     mdv_idmap              *applied;            ///< transaction logs applied positions
-    mdv_idmap              *sync;               ///< transaction logs synchronization positions
     atomic_uint_fast64_t    top[1];             ///< transaction logs last insertion positions
 };
+
+
+typedef mdv_list_entry(mdv_cfstorage_op) mdv_cfstorage_op_list_entry;
 
 
 static void mdv_cfstorage_log_top(mdv_cfstorage *cfstorage, size_t size, atomic_uint_fast64_t *arr);
@@ -35,7 +36,7 @@ static void mdv_cfstorage_log_top(mdv_cfstorage *cfstorage, size_t size, atomic_
 
 mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(6);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
 
     mdv_cfstorage *cfstorage = (mdv_cfstorage *)mdv_alloc(offsetof(mdv_cfstorage, top) + sizeof(atomic_uint_fast64_t) * nodes_num, "cfstorage");
 
@@ -49,7 +50,7 @@ mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num)
     mdv_rollbacker_push(rollbacker, mdv_free, cfstorage, "cfstorage");
 
 
-    cfstorage->nodes_num = nodes_num;
+    cfstorage->uuid = *uuid;
 
     mdv_string const str_uuid = mdv_uuid_to_str(uuid);
 
@@ -120,18 +121,6 @@ mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num)
 
     mdv_rollbacker_push(rollbacker, mdv_idmap_free, cfstorage->applied);
 
-
-    cfstorage->sync = mdv_idmap_open(cfstorage->tr_log, MDV_MAP_SYNC_POS, nodes_num);
-
-    if (!cfstorage->sync)
-    {
-        MDV_LOGE("Map '%s' initialization failed", MDV_MAP_SYNC_POS);
-        mdv_rollback(rollbacker);
-        return 0;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_idmap_free, cfstorage->sync);
-
     mdv_cfstorage_log_top(cfstorage, nodes_num, cfstorage->top);
 
     MDV_LOGI("Storage '%s' opened", str_uuid.ptr);
@@ -147,7 +136,6 @@ void mdv_cfstorage_close(mdv_cfstorage *cfstorage)
     if(cfstorage)
     {
         mdv_idmap_free(cfstorage->applied);
-        mdv_idmap_free(cfstorage->sync);
         mdv_storage_release(cfstorage->data);
         mdv_storage_release(cfstorage->tr_log);
         cfstorage->data = 0;
@@ -343,7 +331,7 @@ static size_t mdv_cfstorage_log_read(mdv_cfstorage *cfstorage,
                                      uint32_t peer_id,
                                      uint64_t pos,
                                      size_t size,
-                                     mdv_cfstorage_op *ops)
+                                     mdv_list *ops)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
@@ -366,7 +354,6 @@ static size_t mdv_cfstorage_log_read(mdv_cfstorage *cfstorage,
 
     if (!mdv_map_ok(tr_log))
     {
-        MDV_LOGE("CFstorage table '%s' not opened", MDV_STRG_TRANSACTION_LOG);
         mdv_rollback(rollbacker);
         return 0;
     }
@@ -384,15 +371,24 @@ static size_t mdv_cfstorage_log_read(mdv_cfstorage *cfstorage,
 
     size_t n = 0;
 
-    mdv_map_foreach_explicit(transaction, tr_log, entry, MDV_CURSOR_SET, MDV_CURSOR_NEXT)
+    mdv_map_foreach_explicit(transaction, tr_log, entry, MDV_SET_RANGE, MDV_CURSOR_NEXT)
     {
-        assert(entry.key.size == sizeof(ops[n].row_id));
+        // TODO: use stallocator
+        mdv_cfstorage_op_list_entry *op = mdv_alloc(sizeof(mdv_cfstorage_op_list_entry) + entry.value.size, "cfstorage_op_list_entry");
 
-        ops[n].row_id = *(uint64_t*)entry.key.ptr;
-        //TODO: read ops[n].op
+        if (!op)
+        {
+            MDV_LOGE("No memory for TR log entry");
+            mdv_map_foreach_break(entry);
+        }
 
-        // atomic_init(arr + i, *(uint64_t*)entry.key.ptr);
-        // TODO:
+        op->data.row_id = *(uint64_t*)entry.key.ptr;
+        op->data.op.size = entry.value.size;
+        op->data.op.ptr = op + 1;
+
+        memcpy(op->data.op.ptr, entry.value.ptr, entry.value.size);
+
+        mdv_list_emplace_back(ops, (mdv_list_entry_base *)op);
 
         if(++n >= size)
             mdv_map_foreach_break(entry);
@@ -408,63 +404,27 @@ static size_t mdv_cfstorage_log_read(mdv_cfstorage *cfstorage,
 }
 
 
-bool mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint32_t peer_id, void *arg, mdv_cfstorage_sync_fn fn)
+uint64_t mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint64_t sync_pos, uint32_t peer_src, uint32_t peer_dst, void *arg, mdv_cfstorage_sync_fn fn)
 {
-    if (peer_id >= cfstorage->nodes_num)
-    {
-        MDV_LOGE("Peer identifier %u is too big", peer_id);
-        return false;
-    }
-
-    uint64_t pos = 0;
-
-    if (!mdv_idmap_at(cfstorage->sync, peer_id, &pos))
-    {
-        MDV_LOGE("Transaction log synchronization failed for peer %u", peer_id);
-        return false;
-    }
-
     size_t const batch_size = MDV_CONFIG.datasync.batch_size;
 
-    mdv_cfstorage_op *ops = mdv_stalloc(sizeof(mdv_cfstorage_op) * batch_size, "cfstorage_ops");
+    mdv_list ops = {};
 
-    if (ops)
+    for(bool ok = true; ok;)
     {
-        MDV_LOGE("No memory for transaction logs synchronization");
-        return false;
-    }
+        size_t count = mdv_cfstorage_log_read(cfstorage, peer_src, sync_pos, batch_size, &ops);
 
-    bool failed = false;
-
-    while(!failed)
-    {
-        size_t sync_size = mdv_cfstorage_log_read(cfstorage, peer_id, pos, batch_size, ops);
-
-        if (!sync_size)     // No data in TR log
+        if (!count)     // No data in TR log
             break;
 
-        pos = ops[sync_size - 1].row_id + 1;
+        sync_pos = mdv_list_back(&ops, mdv_cfstorage_op)->row_id + 1;
 
-        do
-        {
-            if (!fn(arg, sync_size, ops))
-            {
-                failed = true;
-                break;
-            }
+        ok = fn(arg, peer_src, peer_dst, count, &ops);
 
-            if (!mdv_idmap_set(cfstorage->sync, peer_id, pos))
-            {
-                failed = true;
-                break;
-            }
-        }
-        while(false);
+        mdv_list_clear(&ops);
     }
 
-    mdv_stfree(ops, "cfstorage_ops");
-
-    return !failed;
+    return sync_pos;
 }
 
 

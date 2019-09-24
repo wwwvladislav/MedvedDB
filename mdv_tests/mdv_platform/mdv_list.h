@@ -9,32 +9,32 @@ MU_TEST(platform_list)
 
     int n = 0;
 
-    mu_check(mdv_list_push_back(list, n));  n++;
-    mu_check(mdv_list_push_back(list, n));  n++;
-    mu_check(mdv_list_push_back(list, n));  n++;
+    mu_check(mdv_list_push_back(&list, n)); n++;
+    mu_check(mdv_list_push_back(&list, n)); n++;
+    mu_check(mdv_list_push_back(&list, n)); n++;
 
     n = 0;
 
-    mdv_list_foreach(list, int, entry)
+    mdv_list_foreach(&list, int, entry)
     {
         mu_check(*entry == n++);
     }
 
-    mdv_list_remove(list, list.next->next);
+    mdv_list_remove(&list, list.next->next);
 
     n = 0;
 
-    mdv_list_foreach(list, int, entry)
+    mdv_list_foreach(&list, int, entry)
     {
         mu_check(*entry == n);
         n += 2;
     }
 
-    mdv_list_pop_back(list);
+    mdv_list_pop_back(&list);
 
     n = 0;
 
-    mdv_list_foreach(list, int, entry)
+    mdv_list_foreach(&list, int, entry)
     {
         mu_check(*entry == n);
         n++;
@@ -42,5 +42,5 @@ MU_TEST(platform_list)
 
     mu_check(n == 1);
 
-    mdv_list_clear(list);
+    mdv_list_clear(&list);
 }

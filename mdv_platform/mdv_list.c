@@ -1,10 +1,9 @@
 #include "mdv_list.h"
-#include "mdv_alloc.h"
 #include "mdv_log.h"
 #include <string.h>
 
 
-mdv_list_entry_base * _mdv_list_push_back(mdv_list *l, void const *val, size_t size)
+mdv_list_entry_base * mdv_list_push_back_ptr(mdv_list *l, void const *val, size_t size)
 {
     mdv_list_entry_base *entry = (mdv_list_entry_base *)mdv_alloc(offsetof(mdv_list_entry_base, data) + size, "list_entry");
 
@@ -16,13 +15,13 @@ mdv_list_entry_base * _mdv_list_push_back(mdv_list *l, void const *val, size_t s
 
     memcpy(entry->data, val, size);
 
-    _mdv_list_emplace_back(l, entry);
+    mdv_list_emplace_back(l, entry);
 
     return entry;
 }
 
 
-void _mdv_list_clear(mdv_list *l)
+void mdv_list_clear(mdv_list *l)
 {
     for(mdv_list_entry_base *entry = l->next; entry;)
     {
@@ -35,7 +34,7 @@ void _mdv_list_clear(mdv_list *l)
 }
 
 
-void _mdv_list_exclude(mdv_list *l, mdv_list_entry_base *entry)
+void mdv_list_exclude(mdv_list *l, mdv_list_entry_base *entry)
 {
     mdv_list_entry_base *entry4remove = entry;
 
@@ -51,14 +50,14 @@ void _mdv_list_exclude(mdv_list *l, mdv_list_entry_base *entry)
 }
 
 
-void _mdv_list_remove(mdv_list *l, mdv_list_entry_base *entry)
+void mdv_list_remove(mdv_list *l, mdv_list_entry_base *entry)
 {
-    _mdv_list_exclude(l, entry);
+    mdv_list_exclude(l, entry);
     mdv_free(entry, "list_entry");
 }
 
 
-void _mdv_list_emplace_back(mdv_list *l, mdv_list_entry_base *entry)
+void mdv_list_emplace_back(mdv_list *l, mdv_list_entry_base *entry)
 {
     if (!l->next)
     {
@@ -77,7 +76,13 @@ void _mdv_list_emplace_back(mdv_list *l, mdv_list_entry_base *entry)
 }
 
 
-void _mdv_list_pop_back(mdv_list *l)
+void mdv_list_pop_back(mdv_list *l)
 {
-    _mdv_list_remove(l, l->last);
+    mdv_list_remove(l, l->last);
+}
+
+
+bool mdv_list_empty(mdv_list *l)
+{
+    return l->next == 0;
 }

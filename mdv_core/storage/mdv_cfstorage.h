@@ -4,6 +4,7 @@
 #include "mdv_storage.h"
 #include <mdv_types.h>
 #include <mdv_uuid.h>
+#include <mdv_list.h>
 
 
 typedef struct mdv_cfstorage mdv_cfstorage;
@@ -16,7 +17,7 @@ typedef struct
 } mdv_cfstorage_op;
 
 
-typedef bool (*mdv_cfstorage_sync_fn)(void *arg, size_t count, mdv_cfstorage_op const *ops);
+typedef bool (*mdv_cfstorage_sync_fn)(void *arg, uint32_t peer_src, uint32_t peer_dst, size_t count, mdv_list const *ops);
 
 
 mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num);
@@ -32,8 +33,10 @@ bool            mdv_cfstorage_log_add(mdv_cfstorage *cfstorage,
                                       size_t count,
                                       mdv_cfstorage_op const *ops);
 
-bool            mdv_cfstorage_sync(mdv_cfstorage *cfstorage,
-                                   uint32_t peer_id,
+uint64_t        mdv_cfstorage_sync(mdv_cfstorage *cfstorage,
+                                   uint64_t sync_pos,
+                                   uint32_t peer_src,
+                                   uint32_t peer_dst,
                                    void *arg,
                                    mdv_cfstorage_sync_fn fn);
 

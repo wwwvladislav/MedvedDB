@@ -170,4 +170,4 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  */
 #define mdv_hashmap_foreach(hm, type, entry)                        \
     for(size_t hm_idx__ = 0; hm_idx__ < (hm).capacity; ++hm_idx__)  \
-        mdv_list_foreach((hm).buckets[hm_idx__], type, entry)
+        mdv_list_foreach((hm).buckets + hm_idx__, type, entry)

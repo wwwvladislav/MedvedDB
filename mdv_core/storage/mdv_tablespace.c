@@ -61,7 +61,9 @@ mdv_rowid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_ta
 
     int const obj_size = binn_size(&obj);
 
-    mdv_op *op = (mdv_op*)mdv_staligned_alloc(sizeof(uint32_t), offsetof(mdv_op, payload) + obj_size, "DB op");
+    size_t const op_size = offsetof(mdv_op, payload) + obj_size;
+
+    mdv_op *op = (mdv_op*)mdv_staligned_alloc(sizeof(uint32_t), op_size, "DB op");
 
     if (!op)
     {
@@ -80,7 +82,7 @@ mdv_rowid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_ta
         .row_id = mdv_cfstorage_new_id(tablespace->tables, MDV_LOCAL_ID),
         .op =
         {
-            .size = sizeof(op),
+            .size = op_size,
             .ptr = op
         }
     };

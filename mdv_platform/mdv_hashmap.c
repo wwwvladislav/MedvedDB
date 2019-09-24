@@ -50,7 +50,7 @@ void _mdv_hashmap_clear(mdv_hashmap *hm)
     if(hm->size)
     {
         for(size_t i = 0; i < hm->capacity; ++i)
-            mdv_list_clear(hm->buckets[i]);
+            mdv_list_clear(hm->buckets + i);
     }
 }
 
@@ -75,7 +75,7 @@ int _mdv_hashmap_resize(mdv_hashmap *hm, size_t capacity)
 
                     size_t const bucket_idx = hm->hash_fn(entry->data + hm->key_offset) % capacity;
 
-                    mdv_list_emplace_back(hm->buckets[bucket_idx], entry);
+                    mdv_list_emplace_back(hm->buckets + bucket_idx, entry);
 
                     entry = next;
                 }
@@ -124,14 +124,14 @@ mdv_list_entry_base * _mdv_hashmap_insert(mdv_hashmap *hm, void const *item, siz
         if(hm->key_cmp_fn(key, entry->data + hm->key_offset) == 0)
         {
             // Remove old value
-            mdv_list_remove(*bucket, entry);
+            mdv_list_remove(bucket, entry);
             hm->size--;
             break;
         }
     }
 
     // Insert new value
-    mdv_list_entry_base * entry = mdv_list_push_back_ptr(*bucket, item, size);
+    mdv_list_entry_base * entry = mdv_list_push_back_ptr(bucket, item, size);
 
     if (entry)
     {
@@ -169,7 +169,7 @@ int _mdv_hashmap_erase(mdv_hashmap *hm, void const *key)
     {
         if(hm->key_cmp_fn(key, entry->data + hm->key_offset) == 0)
         {
-            mdv_list_remove(*bucket, entry);
+            mdv_list_remove(bucket, entry);
             hm->size--;
             return 1;
         }

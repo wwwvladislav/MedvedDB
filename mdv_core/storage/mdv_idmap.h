@@ -45,7 +45,7 @@ void mdv_idmap_free(mdv_idmap *idmap);
  *
  * @return true if element successfully returned
  */
-bool mdv_idmap_at(mdv_idmap *idmap, uint32_t pos, uint64_t *val);
+bool mdv_idmap_at(mdv_idmap *idmap, uint64_t pos, uint64_t *val);
 
 
 /**
@@ -57,5 +57,5 @@ bool mdv_idmap_at(mdv_idmap *idmap, uint32_t pos, uint64_t *val);
  *
  * @return true if element successfully changed
  */
-bool mdv_idmap_set(mdv_idmap *idmap, uint32_t pos, uint64_t val);
+bool mdv_idmap_set(mdv_idmap *idmap, uint64_t pos, uint64_t val);
 

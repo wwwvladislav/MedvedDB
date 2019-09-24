@@ -8,7 +8,7 @@
 
 typedef struct mdv_datasync_context
 {
-    uint32_t        peer_id;        ///< Peer local identifier
+    uint32_t        peer_dst;       ///< Destination peer identifier
     mdv_datasync   *datasync;       ///< Data synchronizer
     mdv_cfstorage  *storage;        ///< Data storage for synchronization
 } mdv_datasync_context;
@@ -23,11 +23,18 @@ static bool mdv_datasync_is_active(mdv_datasync *datasync)
 }
 
 
-static bool mdv_datasync_cfs(void *arg, size_t count, mdv_cfstorage_op const *ops)
+static bool mdv_datasync_cfs(void *arg, uint32_t peer_src, uint32_t peer_dst, size_t count, mdv_list const *ops)  // mdv_cfstorage_op ops[]
 {
     MDV_LOGE("OOOOOOOOOOOOOOOOOOOOO sync!");
+
+    mdv_list_foreach(ops, mdv_cfstorage_op, op)
+    {
+        MDV_LOGE("OOOOOOOOOOOOOOOOOOOOO[%llu] size = %u", (unsigned long long)op->row_id, op->op.size);
+    }
+
     // TODO
-    return false;
+
+    return true;
 }
 
 
@@ -40,8 +47,12 @@ static void mdv_datasync_fn(mdv_job_base *job)
     if (!mdv_datasync_is_active(datasync))
         return;
 
-    if (!mdv_cfstorage_sync(storage, ctx->peer_id, 0, mdv_datasync_cfs))
-        MDV_LOGE("Data synchronization failed for peer %u", ctx->peer_id);
+    // Request sync positions
+    // TODO
+
+    // Start synchronization
+    if (!mdv_cfstorage_sync(storage, 0, MDV_LOCAL_ID, ctx->peer_dst, 0, mdv_datasync_cfs))
+        MDV_LOGE("Data synchronization failed for peer %u", ctx->peer_dst);
 }
 
 
@@ -77,7 +88,7 @@ static bool mdv_datasync_routes(mdv_datasync *datasync, mdv_routes *routes)
 }
 
 
-static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_id, mdv_cfstorage *storage)
+static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_dst, mdv_cfstorage *storage)
 {
     mdv_datasync_job *job = mdv_alloc(sizeof(mdv_datasync_job), "datasync_job");
 
@@ -89,7 +100,7 @@ static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_id, mdv_
 
     job->fn             = mdv_datasync_fn;
     job->finalize       = mdv_datasync_finalize;
-    job->data.peer_id   = peer_id;
+    job->data.peer_dst  = peer_dst;
     job->data.datasync  = datasync;
     job->data.storage   = storage;
 

@@ -26,6 +26,14 @@ typedef struct
 } mdv_op;
 
 
+/// Conflict-free Replicated Storage reference
+typedef struct
+{
+    mdv_uuid       uuid;        ///< Storage UUID
+    mdv_cfstorage *cfstorage;   ///< Conflict-free Replicated Storage
+} mdv_cfstorage_ref;
+
+
 mdv_errno mdv_tablespace_open(mdv_tablespace *tablespace, uint32_t nodes_num)
 {
     tablespace->tables = mdv_cfstorage_open(&MDV_DB_TABLES, nodes_num);

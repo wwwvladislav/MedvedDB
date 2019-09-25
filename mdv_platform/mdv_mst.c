@@ -131,6 +131,8 @@ size_t mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
                 subsets[dst_set_id].link = link;
         }
 
+        size_t num_trees_prev = num_trees;
+
         for(size_t i = 0; i < nodes_count; ++i)
         {
             if (subsets[i].link)
@@ -154,6 +156,12 @@ size_t mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
 
                 --num_trees;
             }
+        }
+
+        if (num_trees_prev == num_trees)    // some network segments is isolated
+        {
+            mst_size = 0;
+            break;
         }
     }
 

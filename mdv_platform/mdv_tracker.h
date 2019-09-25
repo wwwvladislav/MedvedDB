@@ -8,6 +8,7 @@
 #include "mdv_uuid.h"
 #include "mdv_hashmap.h"
 #include "mdv_mutex.h"
+#include "mdv_vector.h"
 
 
 enum
@@ -197,9 +198,20 @@ void mdv_tracker_links_foreach(mdv_tracker *tracker, void *arg, void (*fn)(mdv_t
 /**
  * @brief Returns node uuid by local numeric id
  *
- * @param tracker [in]
- * @param id [in]
- * @param uuid [out]
+ * @param tracker [in]  Topology tracker
+ * @param id [in]       Node identifier
+ *
  * @return On success, returns non NULL node pointer.
  */
 mdv_node * mdv_tracker_node_by_id(mdv_tracker *tracker, uint32_t id);
+
+
+/**
+ * @brief Return node identifiers
+ *
+ * @param tracker [in]  Topology tracker
+ *
+ * @return node identifiers (vector<uint32_t>)
+ */
+mdv_vector * mdv_tracker_nodes(mdv_tracker *tracker);
+

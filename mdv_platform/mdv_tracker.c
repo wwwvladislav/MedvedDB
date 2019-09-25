@@ -573,3 +573,27 @@ mdv_node * mdv_tracker_node_by_id(mdv_tracker *tracker, uint32_t id)
 
     return node;
 }
+
+
+mdv_vector * mdv_tracker_nodes(mdv_tracker *tracker)
+{
+    mdv_vector *ids = mdv_vector_create(tracker->max_id, sizeof(uint32_t), &mdv_default_allocator);
+
+    if (!ids)
+    {
+        MDV_LOGE("No memory for node identifiers");
+        return 0;
+    }
+
+    if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
+    {
+        mdv_hashmap_foreach(tracker->nodes, mdv_node, node)
+        {
+            if (!mdv_vector_push_back(ids, &node->id))
+                MDV_LOGE("No memory for node identifier");
+        }
+        mdv_mutex_unlock(&tracker->nodes_mutex);
+    }
+
+    return ids;
+}

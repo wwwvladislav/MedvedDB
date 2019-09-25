@@ -63,6 +63,8 @@ mdv_message_def(p2p_cfslog_sync, 1000 + 5,
 
 
 mdv_message_def(p2p_cfslog_state, 1000 + 6,
+    mdv_uuid    uuid;               ///< CF Storage unique identifier
+    mdv_uuid    peer;               ///< Peer unique identifier
     uint64_t    trlog_top;          ///< Last transaction log record identifier for requested CF Storage and peer.
 );
 

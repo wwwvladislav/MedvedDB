@@ -15,6 +15,7 @@
 #include <mdv_jobber.h>
 #include <mdv_threads.h>
 #include <mdv_eventfd.h>
+#include <mdv_msg.h>
 #include <stdatomic.h>
 #include "storage/mdv_tablespace.h"
 
@@ -94,3 +95,6 @@ mdv_errno mdv_datasync_update_routes(mdv_datasync *datasync);
  * @return false if data synchronization is completed
  */
 void mdv_datasync_start(mdv_datasync *datasync);
+
+
+mdv_errno mdv_datasync_cfslog_sync_handler(mdv_datasync *datasync, mdv_msg const *msg);

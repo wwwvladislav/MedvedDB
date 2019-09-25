@@ -198,6 +198,12 @@ uint64_t mdv_cfstorage_new_id(mdv_cfstorage *cfstorage, uint32_t peer_id)
 }
 
 
+mdv_uuid const * mdv_cfstorage_uuid(mdv_cfstorage *cfstorage)
+{
+    return &cfstorage->uuid;
+}
+
+
 bool mdv_cfstorage_log_add(mdv_cfstorage *cfstorage,
                            uint32_t peer_id,
                            size_t count,

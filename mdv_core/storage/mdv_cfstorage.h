@@ -28,6 +28,8 @@ void            mdv_cfstorage_close(mdv_cfstorage *cfstorage);
 
 uint64_t        mdv_cfstorage_new_id(mdv_cfstorage *cfstorage, uint32_t peer_id);
 
+mdv_uuid const* mdv_cfstorage_uuid(mdv_cfstorage *cfstorage);
+
 bool            mdv_cfstorage_log_add(mdv_cfstorage *cfstorage,
                                       uint32_t peer_id,
                                       size_t count,
@@ -41,3 +43,4 @@ uint64_t        mdv_cfstorage_sync(mdv_cfstorage *cfstorage,
                                    mdv_cfstorage_sync_fn fn);
 
 bool            mdv_cfstorage_log_apply(mdv_cfstorage *cfstorage);
+

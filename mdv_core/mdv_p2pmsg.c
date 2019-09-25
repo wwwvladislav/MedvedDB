@@ -363,7 +363,12 @@ bool mdv_binn_p2p_cfslog_state(mdv_msg_p2p_cfslog_state const *msg, binn *obj)
         return false;
     }
 
-    if (!binn_object_set_uint64(obj, "T", msg->trlog_top))
+    if (0
+        || !binn_object_set_uint64(obj, "U0", msg->uuid.u64[0])
+        || !binn_object_set_uint64(obj, "U1", msg->uuid.u64[1])
+        || !binn_object_set_uint64(obj, "P0", msg->peer.u64[0])
+        || !binn_object_set_uint64(obj, "P1", msg->peer.u64[1])
+        || !binn_object_set_uint64(obj, "T", msg->trlog_top))
     {
         binn_free(obj);
         MDV_LOGE("binn_p2p_cfslog_state failed");
@@ -377,7 +382,12 @@ bool mdv_binn_p2p_cfslog_state(mdv_msg_p2p_cfslog_state const *msg, binn *obj)
 
 bool mdv_unbinn_p2p_cfslog_state(binn const *obj, mdv_msg_p2p_cfslog_state *msg)
 {
-    if (!binn_object_get_uint64((void*)obj, "T", (uint64 *)&msg->trlog_top))
+    if (0
+        || !binn_object_get_uint64((void*)obj, "U0", (uint64 *)&msg->uuid.u64[0])
+        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&msg->uuid.u64[1])
+        || !binn_object_get_uint64((void*)obj, "P0", (uint64 *)&msg->peer.u64[0])
+        || !binn_object_get_uint64((void*)obj, "P1", (uint64 *)&msg->peer.u64[1])
+        || !binn_object_get_uint64((void*)obj, "T", (uint64 *)&msg->trlog_top))
     {
         MDV_LOGE("unbinn_p2p_cfslog_state failed");
         return false;

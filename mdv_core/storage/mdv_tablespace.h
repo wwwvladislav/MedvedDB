@@ -7,12 +7,13 @@
 #include "mdv_cfstorage.h"
 #include <mdv_types.h>
 #include <mdv_errno.h>
+#include <mdv_hashmap.h>
 
 
 /// DB tables space
 typedef struct
 {
-    mdv_cfstorage *tables;  ///< storage for DB tables descriptions
+    mdv_hashmap cfstorages;     ///< storages map (UUID -> mdv_cfstorage)
 } mdv_tablespace;
 
 

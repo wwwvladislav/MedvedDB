@@ -4,11 +4,14 @@
 #include <mdv_log.h>
 #include <mdv_rollbacker.h>
 #include <mdv_epoll.h>
+#include "mdv_p2pmsg.h"
+#include "mdv_peer.h"
 
 
 typedef struct mdv_datasync_context
 {
-    uint32_t        peer_dst;       ///< Destination peer identifier
+    uint32_t        peer_src;       ///< Source peer identifier
+    mdv_vector     *routes;         ///< Destination peers
     mdv_datasync   *datasync;       ///< Data synchronizer
     mdv_cfstorage  *storage;        ///< Data storage for synchronization
 } mdv_datasync_context;
@@ -23,8 +26,101 @@ static bool mdv_datasync_is_active(mdv_datasync *datasync)
 }
 
 
-static bool mdv_datasync_cfs(void *arg, uint32_t peer_src, uint32_t peer_dst, size_t count, mdv_list const *ops)  // mdv_cfstorage_op ops[]
+static mdv_errno mdv_datasync_cfslog_sync(mdv_datasync   *datasync,
+                                          mdv_uuid const *storage_uuid,
+                                          uint32_t        peer_src,
+                                          mdv_vector     *routes)
 {
+    mdv_tracker *tracker = datasync->tracker;
+
+    mdv_node const *node_src = mdv_tracker_node_by_id(tracker, peer_src);
+
+    if (!node_src)
+        return MDV_FAILED;
+
+    mdv_msg_p2p_cfslog_sync const sync =
+    {
+        .uuid = *storage_uuid,
+        .peer = node_src->uuid
+    };
+
+    binn obj;
+
+    if (mdv_binn_p2p_cfslog_sync(&sync, &obj))
+    {
+        mdv_msg message =
+        {
+            .hdr =
+            {
+                .id = mdv_message_id(p2p_cfslog_sync),
+                .size = binn_size(&obj)
+            },
+            .payload = binn_ptr(&obj)
+        };
+
+        mdv_vector_foreach(routes, uint32_t, dst)
+        {
+            if (peer_src == *dst)
+                continue;
+            mdv_tracker_peers_call(tracker, *dst, &message, &mdv_peer_node_post);
+        }
+
+        binn_free(&obj);
+    }
+    else
+        return MDV_FAILED;
+
+    return MDV_OK;
+}
+
+
+mdv_errno mdv_datasync_cfslog_sync_handler(mdv_datasync *datasync, mdv_msg const *msg)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_rollbacker_push(rollbacker, binn_free, &binn_msg);
+
+    mdv_msg_p2p_cfslog_sync cfslog_sync;
+
+    if (!mdv_unbinn_p2p_cfslog_sync(&binn_msg, &cfslog_sync))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    //if (mdv_uuid_cmp(&cfslog_sync.uuid, mdv_cfstorage_uuid(datasync->tablespace->tables)) == 0)
+    //{
+        // TODO: Tables storage synchronization
+    //}
+    //else
+    //{
+        // TODO: Rows storage synchronization
+    //}
+
+    mdv_rollback(rollbacker);
+
+    return MDV_OK;
+}
+
+
+static bool mdv_datasync_cfs(void           *arg,
+                             uint32_t        peer_src,
+                             uint32_t        peer_dst,
+                             size_t          count,
+                             mdv_list const *ops)   // mdv_cfstorage_op ops[]
+{
+    mdv_datasync_context *ctx = arg;
+
     MDV_LOGE("OOOOOOOOOOOOOOOOOOOOO sync!");
 
     mdv_list_foreach(ops, mdv_cfstorage_op, op)
@@ -47,12 +143,11 @@ static void mdv_datasync_fn(mdv_job_base *job)
     if (!mdv_datasync_is_active(datasync))
         return;
 
-    // Request sync positions
-    // TODO
+    mdv_datasync_cfslog_sync(datasync, mdv_cfstorage_uuid(ctx->storage), ctx->peer_src, ctx->routes);
 
-    // Start synchronization
-    if (!mdv_cfstorage_sync(storage, 0, MDV_LOCAL_ID, ctx->peer_dst, 0, mdv_datasync_cfs))
-        MDV_LOGE("Data synchronization failed for peer %u", ctx->peer_dst);
+
+        // if (!mdv_cfstorage_sync(storage, 0, *peer_id, ctx->peer_dst, ctx, mdv_datasync_cfs))
+        //     MDV_LOGE("Data synchronization failed for peer %u", ctx->peer_dst);
 }
 
 
@@ -60,6 +155,7 @@ static void mdv_datasync_finalize(mdv_job_base *job)
 {
     mdv_datasync_context *ctx = (mdv_datasync_context *)job->data;
     mdv_datasync         *datasync = ctx->datasync;
+    mdv_vector_release(ctx->routes);
     atomic_fetch_sub_explicit(&datasync->active_jobs, 1, memory_order_relaxed);
     mdv_free(job, "datasync_job");
 }
@@ -79,7 +175,7 @@ static mdv_vector * mdv_datasync_routes(mdv_datasync *datasync)
 }
 
 
-static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_dst, mdv_cfstorage *storage)
+static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_src, mdv_vector *routes, mdv_cfstorage *storage)
 {
     mdv_datasync_job *job = mdv_alloc(sizeof(mdv_datasync_job), "datasync_job");
 
@@ -91,7 +187,8 @@ static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_dst, mdv
 
     job->fn             = mdv_datasync_fn;
     job->finalize       = mdv_datasync_finalize;
-    job->data.peer_dst  = peer_dst;
+    job->data.peer_src  = peer_src;
+    job->data.routes    = mdv_vector_retain(routes);
     job->data.datasync  = datasync;
     job->data.storage   = storage;
 
@@ -112,19 +209,30 @@ static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_dst, mdv
 // Main data synchronization thread generates asynchronous jobs for each peer.
 static void mdv_datasync_main(mdv_datasync *datasync)
 {
-    mdv_vector *routes = mdv_datasync_routes(datasync);
+    mdv_vector *src_peers = mdv_tracker_nodes(datasync->tracker);
 
-    if (!routes)
+    if (!src_peers
+        || mdv_vector_empty(src_peers))
         return;
 
-    mdv_vector_foreach(routes, uint32_t, route)
+    mdv_vector *routes = mdv_datasync_routes(datasync);
+
+    if (!routes
+        || mdv_vector_empty(routes))
     {
-        mdv_datasync_job_emit(datasync, *route, datasync->tablespace->tables);
+        mdv_vector_release(src_peers);
+        return;
+    }
+
+    mdv_vector_foreach(src_peers, uint32_t, src)
+    {
+       mdv_datasync_job_emit(datasync, *src, routes, datasync->tablespace->tables);
 
         // TODO: push jobs for rows
     }
 
     mdv_vector_release(routes);
+    mdv_vector_release(src_peers);
 }
 
 

@@ -225,7 +225,10 @@ static void mdv_datasync_main(mdv_datasync *datasync)
 
     mdv_vector_foreach(src_peers, uint32_t, src)
     {
-        // TODO: mdv_datasync_job_emit(datasync, *src, routes, mdv_cfstorage_uuid(datasync->tablespace->tables));
+        mdv_hashmap_foreach(datasync->tablespace->storages, mdv_cfstorage_ref, ref)
+        {
+            mdv_datasync_job_emit(datasync, *src, routes, &ref->uuid);
+        }
     }
 
     mdv_vector_release(routes);

@@ -10,10 +10,19 @@
 #include <mdv_hashmap.h>
 
 
+/// Conflict-free Replicated Storage reference
+typedef struct
+{
+    mdv_uuid       uuid;        ///< Storage UUID
+    mdv_cfstorage *cfstorage;   ///< Conflict-free Replicated Storage
+} mdv_cfstorage_ref;
+
+
+
 /// DB tables space
 typedef struct
 {
-    mdv_hashmap cfstorages;     ///< storages map (UUID -> mdv_cfstorage)
+    mdv_hashmap storages;       ///< storages map (UUID -> mdv_cfstorage)
 } mdv_tablespace;
 
 
@@ -41,9 +50,20 @@ mdv_errno mdv_tablespace_drop();
 /**
  * @brief Close opened tablespace.
  *
- * @param tablespace [in] Pointer to a tablespace structure
+ * @param tablespace [in] Pointer to a tablespace
  */
 void mdv_tablespace_close(mdv_tablespace *tablespace);
+
+
+/**
+ * @brief Searches storage by UUID
+ *
+ * @param tablespace [in] Pointer to a tablespace
+ * @param uuid [in]       Storage UUID
+ *
+ * @return pointer to a storage
+ */
+mdv_cfstorage * mdv_tablespace_cfstorage(mdv_tablespace *tablespace, mdv_uuid const *uuid);
 
 
 /**

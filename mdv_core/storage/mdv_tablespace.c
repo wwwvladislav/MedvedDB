@@ -26,22 +26,36 @@ typedef struct
 } mdv_op;
 
 
-/// Conflict-free Replicated Storage reference
-typedef struct
-{
-    mdv_uuid       uuid;        ///< Storage UUID
-    mdv_cfstorage *cfstorage;   ///< Conflict-free Replicated Storage
-} mdv_cfstorage_ref;
-
-
 mdv_errno mdv_tablespace_open(mdv_tablespace *tablespace, uint32_t nodes_num)
 {
-    tablespace->tables = mdv_cfstorage_open(&MDV_DB_TABLES, nodes_num);
+    if (!mdv_hashmap_init(tablespace->storages,
+                          mdv_cfstorage_ref,
+                          uuid,
+                          64,
+                          mdv_uuid_hash,
+                          mdv_uuid_cmp))
+        return MDV_NO_MEM;
 
-    mdv_errno err = tablespace->tables
-                        ? MDV_OK
-                        : MDV_FAILED;
-    return err;
+    mdv_cfstorage_ref ref =
+    {
+        .uuid = MDV_DB_TABLES,
+        .cfstorage = mdv_cfstorage_open(&MDV_DB_TABLES, nodes_num)
+    };
+
+    if (!ref.cfstorage)
+    {
+        mdv_hashmap_free(tablespace->storages);
+        return MDV_FAILED;
+    }
+
+    if (!mdv_hashmap_insert(tablespace->storages, ref))
+    {
+        mdv_cfstorage_close(ref.cfstorage);
+        mdv_hashmap_free(tablespace->storages);
+        return MDV_FAILED;
+    }
+
+    return MDV_OK;
 }
 
 
@@ -55,13 +69,29 @@ mdv_errno mdv_tablespace_drop()
 
 void mdv_tablespace_close(mdv_tablespace *tablespace)
 {
-    mdv_cfstorage_close(tablespace->tables);
-    tablespace->tables = 0;
+    mdv_hashmap_foreach(tablespace->storages, mdv_cfstorage_ref, ref)
+    {
+        mdv_cfstorage_close(ref->cfstorage);
+    }
+
+    mdv_hashmap_free(tablespace->storages);
+}
+
+
+mdv_cfstorage * mdv_tablespace_cfstorage(mdv_tablespace *tablespace, mdv_uuid const *uuid)
+{
+    mdv_cfstorage_ref *ref = mdv_hashmap_find(tablespace->storages, *uuid);
+    return ref ? ref->cfstorage : 0;
 }
 
 
 mdv_rowid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base const *table)
 {
+    mdv_cfstorage *tables = mdv_tablespace_cfstorage(tablespace, &MDV_DB_TABLES);
+
+    if (!tables)
+        return 0;
+
     binn obj;
 
     if (!mdv_binn_table(table, &obj))
@@ -87,7 +117,7 @@ mdv_rowid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_ta
 
     mdv_cfstorage_op cfop =
     {
-        .row_id = mdv_cfstorage_new_id(tablespace->tables, MDV_LOCAL_ID),
+        .row_id = mdv_cfstorage_new_id(tables, MDV_LOCAL_ID),
         .op =
         {
             .size = op_size,
@@ -97,7 +127,7 @@ mdv_rowid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_ta
 
     mdv_rowid const *rowid = 0;
 
-    if (mdv_cfstorage_log_add(tablespace->tables, MDV_LOCAL_ID, 1, &cfop))
+    if (mdv_cfstorage_log_add(tables, MDV_LOCAL_ID, 1, &cfop))
     {
         static _Thread_local mdv_rowid id;
 

@@ -13,7 +13,7 @@ typedef struct mdv_datasync_context
     uint32_t        peer_src;       ///< Source peer identifier
     mdv_vector     *routes;         ///< Destination peers
     mdv_datasync   *datasync;       ///< Data synchronizer
-    mdv_cfstorage  *storage;        ///< Data storage for synchronization
+    mdv_uuid        storage;        ///< Data storage UUID for synchronization
 } mdv_datasync_context;
 
 
@@ -138,12 +138,11 @@ static void mdv_datasync_fn(mdv_job_base *job)
 {
     mdv_datasync_context *ctx      = (mdv_datasync_context *)job->data;
     mdv_datasync         *datasync = ctx->datasync;
-    mdv_cfstorage        *storage  = ctx->storage;
 
     if (!mdv_datasync_is_active(datasync))
         return;
 
-    mdv_datasync_cfslog_sync(datasync, mdv_cfstorage_uuid(ctx->storage), ctx->peer_src, ctx->routes);
+    mdv_datasync_cfslog_sync(datasync, &ctx->storage, ctx->peer_src, ctx->routes);
 
 
         // if (!mdv_cfstorage_sync(storage, 0, *peer_id, ctx->peer_dst, ctx, mdv_datasync_cfs))
@@ -175,7 +174,7 @@ static mdv_vector * mdv_datasync_routes(mdv_datasync *datasync)
 }
 
 
-static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_src, mdv_vector *routes, mdv_cfstorage *storage)
+static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_src, mdv_vector *routes, mdv_uuid const *storage)
 {
     mdv_datasync_job *job = mdv_alloc(sizeof(mdv_datasync_job), "datasync_job");
 
@@ -190,7 +189,7 @@ static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_src, mdv
     job->data.peer_src  = peer_src;
     job->data.routes    = mdv_vector_retain(routes);
     job->data.datasync  = datasync;
-    job->data.storage   = storage;
+    job->data.storage   = *storage;
 
     mdv_errno err = mdv_jobber_push(datasync->jobber, (mdv_job_base*)job);
 
@@ -226,9 +225,7 @@ static void mdv_datasync_main(mdv_datasync *datasync)
 
     mdv_vector_foreach(src_peers, uint32_t, src)
     {
-       mdv_datasync_job_emit(datasync, *src, routes, datasync->tablespace->tables);
-
-        // TODO: push jobs for rows
+        // TODO: mdv_datasync_job_emit(datasync, *src, routes, mdv_cfstorage_uuid(datasync->tablespace->tables));
     }
 
     mdv_vector_release(routes);

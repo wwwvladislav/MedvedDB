@@ -65,28 +65,17 @@ static void mdv_datasync_finalize(mdv_job_base *job)
 }
 
 
-static bool mdv_datasync_routes(mdv_datasync *datasync, mdv_routes *routes)
+static mdv_vector * mdv_datasync_routes(mdv_datasync *datasync)
 {
-    bool ret = false;
+    mdv_vector *routes = 0;
 
     if (mdv_mutex_lock(&datasync->mutex) == MDV_OK)
     {
-        if (!mdv_vector_empty(datasync->routes))
-        {
-            if (mdv_vector_create(*routes, mdv_vector_size(datasync->routes), mdv_stallocator))
-            {
-                mdv_vector_foreach(datasync->routes, uint32_t, route)
-                    mdv_vector_push_back(*routes, *route);
-                ret = true;
-            }
-            else
-                MDV_LOGE("No memorty for routes. Data synchronization failed.");
-        }
-
+        routes = mdv_vector_retain(datasync->routes);
         mdv_mutex_unlock(&datasync->mutex);
     }
 
-    return ret;
+    return routes;
 }
 
 
@@ -114,16 +103,18 @@ static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_dst, mdv
         mdv_free(job, "datasync_job");
     }
     else
+    {
         atomic_fetch_add_explicit(&datasync->active_jobs, 1, memory_order_relaxed);
+    }
 }
 
 
 // Main data synchronization thread generates asynchronous jobs for each peer.
 static void mdv_datasync_main(mdv_datasync *datasync)
 {
-    mdv_routes routes;
+    mdv_vector *routes = mdv_datasync_routes(datasync);
 
-    if (!mdv_datasync_routes(datasync, &routes))
+    if (!routes)
         return;
 
     mdv_vector_foreach(routes, uint32_t, route)
@@ -133,7 +124,7 @@ static void mdv_datasync_main(mdv_datasync *datasync)
         // TODO: push jobs for rows
     }
 
-    mdv_vector_free(routes);
+    mdv_vector_release(routes);
 }
 
 
@@ -222,6 +213,7 @@ mdv_errno mdv_datasync_create(mdv_datasync *datasync,
     datasync->tablespace = tablespace;
     datasync->tracker = tracker;
     datasync->jobber = jobber;
+    datasync->routes = 0;
 
     atomic_init(&datasync->active_jobs, 0);
 
@@ -268,13 +260,6 @@ mdv_errno mdv_datasync_create(mdv_datasync *datasync,
 
     mdv_rollbacker_push(rollbacker, mdv_datasync_stop, datasync);
 
-    if (!mdv_vector_create(datasync->routes, 64, mdv_default_allocator))
-    {
-        MDV_LOGE("No memorty for routes");
-        mdv_rollback(rollbacker);
-        return MDV_NO_MEM;
-    }
-
     mdv_rollbacker_free(rollbacker);
 
     return MDV_OK;
@@ -284,7 +269,7 @@ mdv_errno mdv_datasync_create(mdv_datasync *datasync,
 void mdv_datasync_free(mdv_datasync *datasync)
 {
     mdv_datasync_stop(datasync);
-    mdv_vector_free(datasync->routes);
+    mdv_vector_release(datasync->routes);
     mdv_mutex_free(&datasync->mutex);
     mdv_eventfd_close(datasync->start);
     memset(datasync, 0, sizeof(*datasync));
@@ -296,39 +281,31 @@ mdv_errno mdv_datasync_update_routes(mdv_datasync *datasync)
     if (!mdv_datasync_is_active(datasync))
         return MDV_FAILED;
 
-    mdv_routes routes;
+    mdv_vector *routes = mdv_routes_find(datasync->tracker);
 
-    if (!mdv_vector_create(routes, 64, mdv_default_allocator))
+    if (!routes)
     {
         MDV_LOGE("No memorty for routes");
         return MDV_NO_MEM;
     }
 
-    mdv_errno err = mdv_routes_find(&routes, datasync->tracker);
-
-    if (err != MDV_OK)
-    {
-        mdv_vector_free(routes);
-        return err;
-    }
-
     if (mdv_mutex_lock(&datasync->mutex) == MDV_OK)
     {
-        mdv_vector_free(datasync->routes);
+        mdv_vector_release(datasync->routes);
+
         datasync->routes = routes;
 
         MDV_LOGD("New routes count=%zu", mdv_vector_size(routes));
 
         for(size_t i = 0; i < mdv_vector_size(routes); ++i)
         {
-            MDV_LOGD("Route[%zu]: %u", i, routes.data[i]);
+            MDV_LOGD("Route[%zu]: %u", i, *(uint32_t*)mdv_vector_at(routes, i));
         }
 
         mdv_mutex_unlock(&datasync->mutex);
+
         return MDV_OK;
     }
-
-    mdv_vector_free(routes);
 
     return MDV_FAILED;
 }

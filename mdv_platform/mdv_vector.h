@@ -13,45 +13,56 @@
 
 
 /// Vector definition
-#define mdv_vector(type)                        \
-    struct                                      \
-    {                                           \
-        mdv_allocator  const *allocator;        \
-        size_t                capacity;         \
-        size_t                size;             \
-        type                 *data;             \
-    }
+typedef struct mdv_vector mdv_vector;
+
+
+mdv_vector *mdv_empty_vector;
 
 
 /**
  * @brief Create new vector with given capacity
  *
- * @param vector [in]   Vector to be initialized
- * @param cpcty [in]    Vector capacity
- * @param alloctr [in]  memory allocator
+ * @param capacity [in]     capacity
+ * @param item_size [in]    item size
+ * @param allocator [in]    memory allocator
  *
- * @return On success, returns non zero pointer to the array
+ * @return On success, returns non zero pointer to the vector
  * @return On error, return NULL pointer
  */
-#define mdv_vector_create(vector, cpcty, alloctr)                               \
-    ((vector).allocator = &alloctr,                                             \
-    (vector).capacity = cpcty,                                                  \
-    (vector).size = 0,                                                          \
-    (vector).data = (vector).allocator->alloc((cpcty) * sizeof(*(vector).data), #vector))
+mdv_vector * mdv_vector_create(size_t capacity, size_t item_size, mdv_allocator const *allocator);
 
 
 /**
- * @brief Frees vector created by mdv_vector_create()
- *
- * @param vector [in]   Vector to be freed
+ * @brief Retains vector.
+ * @details Reference counter is increased by one.
  */
-#define mdv_vector_free(vector)                                             \
-    if ((vector).data)                                                      \
-    {                                                                       \
-        (vector).capacity = 0;                                              \
-        (vector).size = 0;                                                  \
-        (vector).allocator->free((vector).data, #vector);                   \
-    }
+mdv_vector * mdv_vector_retain(mdv_vector *vector);
+
+
+/**
+ * @brief Releases vecror.
+ * @details Reference counter is decreased by one.
+ *          When the reference counter reaches zero, the vecror's destructor is called.
+ */
+void mdv_vector_release(mdv_vector *vector);
+
+
+/**
+ * @brief Returns pointer to the underlying array serving as element storage.
+ */
+void * mdv_vector_data(mdv_vector *vector);
+
+
+/**
+ * @brief Return vector size
+ */
+size_t mdv_vector_size(mdv_vector *vector);
+
+
+/**
+ * @brief Return vector capacity
+ */
+size_t mdv_vector_capacity(mdv_vector *vector);
 
 
 /**
@@ -63,14 +74,7 @@
  * @return On success, returns non zero pointer to the new value
  * @return On error, return NULL pointer
  */
-#define mdv_vector_push_back(vector, item)                                                      \
-    ((vector).size < (vector).capacity                                                          \
-        ? (vector).data[(vector).size++] = item, &(vector).data[(vector).size - 1]              \
-        : ((vector).allocator->realloc((void**)&(vector).data, (vector).capacity * 2, #vector)  \
-            ? (vector).capacity *= 2,                                                           \
-              (vector).data[(vector).size++] = item,                                            \
-              &(vector).data[(vector).size - 1]                                                 \
-            : 0))
+void * mdv_vector_push_back(mdv_vector *vector, void const *item);
 
 
 /**
@@ -81,8 +85,8 @@
  * @param entry [out]   vector entry
  */
 #define mdv_vector_foreach(vector, type, entry)         \
-    for(type *entry = (vector).data,                    \
-        *end = (vector).data + (vector).size;           \
+    for(type *entry = mdv_vector_data(vector),          \
+        *end = entry + mdv_vector_size(vector);         \
         entry < end;                                    \
         ++entry)
 
@@ -90,16 +94,16 @@
 /**
  * @brief Checks if the container has no elements
  */
-#define mdv_vector_empty(vector) ((vector).size == 0)
-
-
-/**
- * @brief Returns the number of elements in the container
- */
-#define mdv_vector_size(vector) (vector).size
+#define mdv_vector_empty(vector) (mdv_vector_size(vector) == 0)
 
 
 /**
  * @brief Erases all elements from the container. After this call, mdv_vector_size() returns zero.
  */
-#define mdv_vector_clear(vector) ((vector).size = 0)
+void mdv_vector_clear(mdv_vector *vector);
+
+
+/**
+ * @brief Returns a reference to the element at specified location pos, with bounds checking.
+ */
+void * mdv_vector_at(mdv_vector *vector, size_t pos);

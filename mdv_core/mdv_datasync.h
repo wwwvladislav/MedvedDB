@@ -30,7 +30,7 @@ typedef struct
 typedef struct
 {
     mdv_mutex       mutex;          ///< Mutex for routes guard
-    mdv_routes      routes;         ///< Routes for data synchronization
+    mdv_vector     *routes;         ///< Routes for data synchronization
     mdv_tablespace *tablespace;     ///< DB tables space
     mdv_tracker    *tracker;        ///< Nodes and network topology tracker
     mdv_jobber     *jobber;         ///< Jobs scheduler

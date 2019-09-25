@@ -8,7 +8,6 @@ struct mdv_rc
 {
     void (*destructor)(void *);
     atomic_uint_fast32_t    rc;
-    size_t                  size;
     uint8_t                 data[1];
 };
 
@@ -29,8 +28,6 @@ mdv_rc * mdv_rc_create(size_t size,
     rc->destructor = destructor;
 
     atomic_init(&rc->rc, 1);
-
-    rc->size = size;
 
     if (!constructor(arg, rc->data))
     {

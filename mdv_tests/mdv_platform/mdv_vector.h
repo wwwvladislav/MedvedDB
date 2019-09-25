@@ -6,18 +6,21 @@
 
 MU_TEST(platform_vector)
 {
-    mdv_vector(int) v;
-    mu_check(mdv_vector_create(v, 2, mdv_stallocator));
+    mdv_vector *v = mdv_vector_create(2, sizeof(int), &mdv_stallocator);
 
-    mu_check(mdv_vector_push_back(v, 0));
-    mu_check(mdv_vector_push_back(v, 1));
-    mu_check(mdv_vector_push_back(v, 2));
+    mu_check(v);
 
-    mu_check(v.capacity == 4);
-    mu_check(v.size == 3);
+    int arr[] = { 0, 1, 2 };
+
+    mu_check(mdv_vector_push_back(v, arr + 0));
+    mu_check(mdv_vector_push_back(v, arr + 1));
+    mu_check(mdv_vector_push_back(v, arr + 2));
+
+    mu_check(mdv_vector_capacity(v) == 4);
+    mu_check(mdv_vector_size(v) == 3);
 
     for(int i = 0; i < 3; ++i)
-        mu_check(v.data[i] == i);
+        mu_check(*(int*)mdv_vector_at(v, i) == i);
 
-    mdv_vector_free(v);
+    mdv_vector_release(v);
 }

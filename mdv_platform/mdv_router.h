@@ -12,17 +12,12 @@
 #include "mdv_vector.h"
 
 
-/// Neighbor node identifiers for data broadcasting
-typedef mdv_vector(uint32_t) mdv_routes;
-
-
 /**
  * @brief Find best routes
  *
  * @param routes [out]  routes
  * @param tracker [in]  Network topology tracker
  *
- * @return MDV_OK on success
- * @return nonzero value on error
+ * @return Vector of peers identifiers.
  */
-mdv_errno mdv_routes_find(mdv_routes *routes, mdv_tracker *tracker);
+mdv_vector * mdv_routes_find(mdv_tracker *tracker);

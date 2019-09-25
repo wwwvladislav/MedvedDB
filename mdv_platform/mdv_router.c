@@ -6,9 +6,6 @@
 #include <stdlib.h>
 
 
-typedef mdv_vector(mdv_tracker_link) mdv_tracker_links_vector;
-
-
 typedef struct
 {
     uint32_t id;
@@ -19,9 +16,9 @@ typedef struct
 
 typedef struct
 {
-    mdv_tracker                *tracker;
-    mdv_hashmap                 unique_nodes;
-    mdv_tracker_links_vector    links;
+    mdv_tracker     *tracker;
+    mdv_hashmap      unique_nodes;
+    mdv_vector      *links;             ///< vector<mdv_tracker_link>
 } mdv_router_topology;
 
 
@@ -82,7 +79,7 @@ static void mdv_router_link_add(mdv_tracker_link const *link, void *arg)
 {
     mdv_router_topology *topology = arg;
 
-    if (mdv_vector_push_back(topology->links, *link))
+    if (mdv_vector_push_back(topology->links, link))
     {
         mdv_router_node const *n1 = mdv_router_node_register(topology, link->id[0]);
         mdv_router_node const *n2 = mdv_router_node_register(topology, link->id[1]);
@@ -99,7 +96,9 @@ static bool mdv_router_topology_create(mdv_router_topology *topology, mdv_tracke
 {
     topology->tracker = tracker;
 
-    if (!mdv_vector_create(topology->links, links_count + 8, mdv_stallocator))
+    topology->links = mdv_vector_create(links_count + 8, sizeof(mdv_tracker_link), &mdv_stallocator);
+
+    if (!topology->links)
     {
         MDV_LOGE("No memorty for routes");
         return MDV_NO_MEM;
@@ -113,7 +112,7 @@ static bool mdv_router_topology_create(mdv_router_topology *topology, mdv_tracke
                           mdv_u32_keys_cmp))
     {
         MDV_LOGE("No memory for network topology");
-        mdv_stfree(topology->links.data, "tmp.links");
+        mdv_vector_release(topology->links);
         return MDV_NO_MEM;
     }
 
@@ -123,7 +122,7 @@ static bool mdv_router_topology_create(mdv_router_topology *topology, mdv_tracke
 
     if (!pnodes)
     {
-        mdv_stfree(topology->links.data, "tmp.links");
+        mdv_vector_release(topology->links);
         mdv_hashmap_free(topology->unique_nodes);
         return MDV_NO_MEM;
     }
@@ -151,19 +150,17 @@ static bool mdv_router_topology_create(mdv_router_topology *topology, mdv_tracke
 
 static void mdv_router_topology_free(mdv_router_topology *topology)
 {
-    mdv_stfree(topology->links.data, "tmp.links");
+    mdv_vector_release(topology->links);
     mdv_hashmap_free(topology->unique_nodes);
 }
 
 
-mdv_errno mdv_routes_find(mdv_routes *routes, mdv_tracker *tracker)
+mdv_vector * mdv_routes_find(mdv_tracker *tracker)
 {
     size_t const links_count = mdv_tracker_links_count(tracker);
 
-    mdv_vector_clear(*routes);
-
     if (!links_count)
-        return MDV_OK;
+        return mdv_empty_vector;
 
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
@@ -173,7 +170,7 @@ mdv_errno mdv_routes_find(mdv_routes *routes, mdv_tracker *tracker)
     {
         MDV_LOGE("No memorty for routes");
         mdv_rollback(rollbacker);
-        return MDV_NO_MEM;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_router_topology_free, &topology);
@@ -184,7 +181,7 @@ mdv_errno mdv_routes_find(mdv_routes *routes, mdv_tracker *tracker)
     {
         MDV_LOGE("No memorty for MST nodes");
         mdv_rollback(rollbacker);
-        return MDV_NO_MEM;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_stfree, mst_nodes, "mst_nodes");
@@ -200,14 +197,14 @@ mdv_errno mdv_routes_find(mdv_routes *routes, mdv_tracker *tracker)
     {
         MDV_LOGE("No memorty for MST links");
         mdv_rollback(rollbacker);
-        return MDV_NO_MEM;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_stfree, mst_links, "mst_links");
 
     for(size_t i = 0; i < mdv_vector_size(topology.links); ++i)
     {
-        mdv_tracker_link *link = topology.links.data + i;
+        mdv_tracker_link *link = mdv_vector_at(topology.links, i);
 
         uint32_t weight = link->weight > MDV_LINK_WEIGHT_MAX
                             ? MDV_LINK_WEIGHT_MAX:
@@ -227,19 +224,35 @@ mdv_errno mdv_routes_find(mdv_routes *routes, mdv_tracker *tracker)
 
     if (mst_size)
     {
+        mdv_vector *routes = mdv_vector_create(mst_size, sizeof(uint32_t), &mdv_default_allocator);
+
+        if (!routes)
+        {
+            MDV_LOGE("No memory for routes");
+            mdv_rollback(rollbacker);
+            return 0;
+        }
+
         for(size_t i = 0; i < mdv_vector_size(topology.links); ++i)
         {
             if (mst_links[i].mst)
             {
-                if ((size_t)mst_links[i].src->data == MDV_LOCAL_ID)
-                    mdv_vector_push_back(*routes, (uint32_t)(size_t)mst_links[i].dst->data);
-                else if ((size_t)mst_links[i].dst->data == MDV_LOCAL_ID)
-                    mdv_vector_push_back(*routes, (uint32_t)(size_t)mst_links[i].src->data);
+                uint32_t const src_node_id = (uint32_t)(size_t)mst_links[i].src->data;
+                uint32_t const dst_node_id = (uint32_t)(size_t)mst_links[i].dst->data;
+
+                if (src_node_id == MDV_LOCAL_ID)
+                    mdv_vector_push_back(routes, &dst_node_id);
+                else if (dst_node_id == MDV_LOCAL_ID)
+                    mdv_vector_push_back(routes, &src_node_id);
             }
         }
+
+        mdv_rollback(rollbacker);
+
+        return routes;
     }
 
     mdv_rollback(rollbacker);
 
-    return MDV_OK;
+    return mdv_empty_vector;
 }

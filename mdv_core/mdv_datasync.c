@@ -74,9 +74,41 @@ static mdv_errno mdv_datasync_cfslog_sync(mdv_datasync   *datasync,
 }
 
 
-mdv_errno mdv_datasync_cfslog_sync_handler(mdv_datasync *datasync, mdv_msg const *msg)
+
+static mdv_errno mdv_datasync_cfslog_state(mdv_datasync                   *datasync,
+                                           uint32_t                        peer_id,
+                                           mdv_msg_p2p_cfslog_state const *cfslog_state)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+    mdv_tracker *tracker = datasync->tracker;
+
+    binn obj;
+
+    if (mdv_binn_p2p_cfslog_state(cfslog_state, &obj))
+    {
+        mdv_msg message =
+        {
+            .hdr =
+            {
+                .id = mdv_message_id(p2p_cfslog_state),
+                .size = binn_size(&obj)
+            },
+            .payload = binn_ptr(&obj)
+        };
+
+        mdv_tracker_peers_call(tracker, peer_id, &message, &mdv_peer_node_post);
+
+        binn_free(&obj);
+    }
+    else
+        return MDV_FAILED;
+
+    return MDV_OK;
+}
+
+
+mdv_errno mdv_datasync_cfslog_sync_handler(mdv_datasync *datasync, uint32_t peer_id, mdv_msg const *msg)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
     binn binn_msg;
 
@@ -98,14 +130,22 @@ mdv_errno mdv_datasync_cfslog_sync_handler(mdv_datasync *datasync, mdv_msg const
         return MDV_FAILED;
     }
 
-    //if (mdv_uuid_cmp(&cfslog_sync.uuid, mdv_cfstorage_uuid(datasync->tablespace->tables)) == 0)
-    //{
-        // TODO: Tables storage synchronization
-    //}
-    //else
-    //{
-        // TODO: Rows storage synchronization
-    //}
+    mdv_cfstorage *storage = mdv_tablespace_cfstorage(datasync->tablespace, &cfslog_sync.uuid);
+
+    mdv_node *node = mdv_tracker_node_by_uuid(datasync->tracker, &cfslog_sync.peer);
+
+    if (storage && node)
+    {
+        mdv_msg_p2p_cfslog_state const cfslog_state =
+        {
+            .uuid = cfslog_sync.uuid,
+            .peer = cfslog_sync.peer,
+            .trlog_top = mdv_cfstorage_log_last_id(storage, node->id)
+        };
+
+        if (mdv_datasync_cfslog_state(datasync, peer_id, &cfslog_state) != MDV_OK)
+            MDV_LOGE("Cflog state notification failed");
+    }
 
     mdv_rollback(rollbacker);
 
@@ -119,7 +159,7 @@ static bool mdv_datasync_cfs(void           *arg,
                              size_t          count,
                              mdv_list const *ops)   // mdv_cfstorage_op ops[]
 {
-    mdv_datasync_context *ctx = arg;
+    mdv_datasync *datasync = arg;
 
     MDV_LOGE("OOOOOOOOOOOOOOOOOOOOO sync!");
 
@@ -134,6 +174,48 @@ static bool mdv_datasync_cfs(void           *arg,
 }
 
 
+mdv_errno mdv_datasync_cfslog_state_handler(mdv_datasync *datasync,
+                                            uint32_t peer_id,
+                                            mdv_msg const *msg)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
+
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_rollbacker_push(rollbacker, binn_free, &binn_msg);
+
+    mdv_msg_p2p_cfslog_state cfslog_state;
+
+    if (!mdv_unbinn_p2p_cfslog_state(&binn_msg, &cfslog_state))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_cfstorage *storage = mdv_tablespace_cfstorage(datasync->tablespace, &cfslog_state.uuid);
+
+    mdv_node *node = mdv_tracker_node_by_uuid(datasync->tracker, &cfslog_state.peer);
+
+    if (storage && node)
+    {
+        if (!mdv_cfstorage_sync(storage, 0, node->id, peer_id, datasync, mdv_datasync_cfs))
+            MDV_LOGE("Data synchronization failed for peer %u", peer_id);
+    }
+
+    mdv_rollback(rollbacker);
+
+    return MDV_OK;
+}
+
+
 static void mdv_datasync_fn(mdv_job_base *job)
 {
     mdv_datasync_context *ctx      = (mdv_datasync_context *)job->data;
@@ -143,10 +225,6 @@ static void mdv_datasync_fn(mdv_job_base *job)
         return;
 
     mdv_datasync_cfslog_sync(datasync, &ctx->storage, ctx->peer_src, ctx->routes);
-
-
-        // if (!mdv_cfstorage_sync(storage, 0, *peer_id, ctx->peer_dst, ctx, mdv_datasync_cfs))
-        //     MDV_LOGE("Data synchronization failed for peer %u", ctx->peer_dst);
 }
 
 

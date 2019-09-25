@@ -575,6 +575,34 @@ mdv_node * mdv_tracker_node_by_id(mdv_tracker *tracker, uint32_t id)
 }
 
 
+mdv_node * mdv_tracker_node_by_uuid(mdv_tracker *tracker, mdv_uuid const *uuid)
+{
+    mdv_node *ret = 0;
+
+    if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
+    {
+        mdv_node *node = mdv_hashmap_find(tracker->nodes, *uuid);
+
+        if (node)
+        {
+            static _Thread_local char buff[offsetof(mdv_node, addr) + MDV_ADDR_LEN_MAX + 1];
+
+            if (node->size <= sizeof buff)
+            {
+                ret = (mdv_node *)buff;
+                memcpy(ret, node, node->size);
+            }
+            else
+                MDV_LOGE("Incorrect node size: %zd", node->size);
+        }
+
+        mdv_mutex_unlock(&tracker->nodes_mutex);
+    }
+
+    return ret;
+}
+
+
 mdv_vector * mdv_tracker_nodes(mdv_tracker *tracker)
 {
     mdv_vector *ids = mdv_vector_create(tracker->max_id, sizeof(uint32_t), &mdv_default_allocator);

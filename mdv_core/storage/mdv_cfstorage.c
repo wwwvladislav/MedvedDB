@@ -19,6 +19,7 @@
 struct mdv_cfstorage
 {
     mdv_uuid                uuid;               ///< storage UUID
+    uint32_t                nodes_num;          ///< nodes count limit
     mdv_storage            *data;               ///< data storage
     mdv_storage            *tr_log;             ///< transaction log storage
     mdv_idmap              *applied;            ///< transaction logs applied positions
@@ -51,6 +52,7 @@ mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num)
 
 
     cfstorage->uuid = *uuid;
+    cfstorage->nodes_num = nodes_num;
 
     mdv_string const str_uuid = mdv_uuid_to_str(uuid);
 
@@ -438,4 +440,15 @@ bool mdv_cfstorage_log_apply(mdv_cfstorage *cfstorage)
 {
     // TODO
     return false;
+}
+
+
+uint64_t mdv_cfstorage_log_last_id(mdv_cfstorage *cfstorage, uint32_t peer_id)
+{
+    if (peer_id >= cfstorage->nodes_num)
+    {
+        MDV_LOGE("Node identifier is too big: %u", peer_id);
+        return 0;
+    }
+    return atomic_load_explicit(&cfstorage->top[peer_id], memory_order_relaxed);
 }

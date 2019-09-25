@@ -44,3 +44,4 @@ uint64_t        mdv_cfstorage_sync(mdv_cfstorage *cfstorage,
 
 bool            mdv_cfstorage_log_apply(mdv_cfstorage *cfstorage);
 
+uint64_t        mdv_cfstorage_log_last_id(mdv_cfstorage *cfstorage, uint32_t peer_id);

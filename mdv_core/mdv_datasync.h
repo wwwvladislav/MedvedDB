@@ -37,6 +37,7 @@ typedef struct
     mdv_descriptor  start;          ///< Signal for synchronization starting
     mdv_thread      thread;         ///< Synchronization thread
     atomic_bool     active;         ///< Data synchronizer status
+    atomic_size_t   active_jobs;    ///< Active jobs counter
 } mdv_datasync;
 
 

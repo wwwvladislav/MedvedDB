@@ -59,6 +59,8 @@ static void mdv_datasync_fn(mdv_job_base *job)
 static void mdv_datasync_finalize(mdv_job_base *job)
 {
     mdv_datasync_context *ctx = (mdv_datasync_context *)job->data;
+    mdv_datasync         *datasync = ctx->datasync;
+    atomic_fetch_sub_explicit(&datasync->active_jobs, 1, memory_order_relaxed);
     mdv_free(job, "datasync_job");
 }
 
@@ -111,6 +113,8 @@ static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_dst, mdv
         MDV_LOGE("Data synchronization job failed");
         mdv_free(job, "datasync_job");
     }
+    else
+        atomic_fetch_add_explicit(&datasync->active_jobs, 1, memory_order_relaxed);
 }
 
 
@@ -201,6 +205,9 @@ void mdv_datasync_stop(mdv_datasync *datasync)
         mdv_write_all(datasync->start, &signal, sizeof signal);
 
         mdv_thread_join(datasync->thread);
+
+        while(atomic_load_explicit(&datasync->active_jobs, memory_order_relaxed) > 0)
+            mdv_sleep(100);
     }
 }
 
@@ -215,6 +222,8 @@ mdv_errno mdv_datasync_create(mdv_datasync *datasync,
     datasync->tablespace = tablespace;
     datasync->tracker = tracker;
     datasync->jobber = jobber;
+
+    atomic_init(&datasync->active_jobs, 0);
 
     mdv_errno err = mdv_mutex_create(&datasync->mutex);
 

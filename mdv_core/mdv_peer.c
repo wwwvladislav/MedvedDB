@@ -343,6 +343,17 @@ static mdv_errno mdv_peer_cfslog_state_handler(mdv_msg const *msg, void *arg)
 }
 
 
+static mdv_errno mdv_peer_cfslog_data_handler(mdv_msg const *msg, void *arg)
+{
+    mdv_peer *peer = arg;
+    mdv_core *core = peer->core;
+
+    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
+
+    return mdv_datasync_cfslog_data_handler(&core->datasync, peer->peer_id, msg);
+}
+
+
 /**
  * @brief Post hello message
  */
@@ -446,6 +457,7 @@ mdv_errno mdv_peer_init(void *ctx, mdv_conctx *conctx, void *userdata)
         { mdv_message_id(p2p_topodiff),     &mdv_peer_topodiff_handler,     peer },
         { mdv_message_id(p2p_cfslog_sync),  &mdv_peer_cfslog_sync_handler,  peer },
         { mdv_message_id(p2p_cfslog_state), &mdv_peer_cfslog_state_handler, peer },
+        { mdv_message_id(p2p_cfslog_data),  &mdv_peer_cfslog_data_handler,  peer },
     };
 
     for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)

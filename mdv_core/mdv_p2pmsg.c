@@ -409,7 +409,7 @@ bool mdv_binn_p2p_cfslog_data(mdv_msg_p2p_cfslog_data const *msg, binn *obj)
 
     uint64_t data_size = 0;
 
-    for(uint32_t i = 0; i < msg->count; ++i)
+    mdv_list_foreach(msg->rows, mdv_cfslog_data, entry)
     {
         binn row;
 
@@ -421,8 +421,8 @@ bool mdv_binn_p2p_cfslog_data(mdv_msg_p2p_cfslog_data const *msg, binn *obj)
         }
 
         if (0
-            || !binn_object_set_uint64(&row, "I", msg->rows[i].row_id)
-            || !binn_object_set_blob(&row, "O", msg->rows[i].op.ptr, msg->rows[i].op.size)
+            || !binn_object_set_uint64(&row, "I", entry->row_id)
+            || !binn_object_set_blob(&row, "O", entry->op.ptr, entry->op.size)
             || !binn_list_add_object(&rows, &row))
         {
             MDV_LOGE("binn_p2p_cfslog_data failed");
@@ -431,7 +431,7 @@ bool mdv_binn_p2p_cfslog_data(mdv_msg_p2p_cfslog_data const *msg, binn *obj)
             return false;
         }
 
-        data_size += msg->rows[i].op.size;
+        data_size += entry->op.size;
 
         binn_free(&row);
     }
@@ -522,9 +522,10 @@ uint64_t * mdv_unbinn_p2p_cfslog_data_size(binn const *obj)
 }
 
 
-bool mdv_unbinn_p2p_cfslog_data_rows(binn const *obj,
-                                     mdv_cfslog_data *rows, uint32_t rows_count,
-                                     uint8_t *dataspace, size_t dataspace_size)
+typedef mdv_list_entry(mdv_cfslog_data) mdv_cfslog_data_list_entry;
+
+
+bool mdv_unbinn_p2p_cfslog_data_rows(binn const *obj, mdv_list *rows)
 {
     binn *rows_list = 0;
 
@@ -536,42 +537,40 @@ bool mdv_unbinn_p2p_cfslog_data_rows(binn const *obj,
 
     binn_iter iter = {};
     binn value = {};
-    size_t i = 0;
+
+    bool ret = true;
 
     binn_list_foreach(rows_list, value)
     {
-        if (i > rows_count)
-        {
-            MDV_LOGE("unbinn_p2p_cfslog_data_rows failed");
-            return false;
-        }
-
+        uint64_t row_id = 0;
         void *ptr = 0;
         int size = 0;
 
-        if (!binn_object_get_uint64((void*)&value, "I", (uint64*)&rows[i].row_id)
+        if (!binn_object_get_uint64((void*)&value, "I", (uint64*)&row_id)
             || !binn_object_get_blob((void*)&value, "O", &ptr, &size))
         {
+            ret = false;
             MDV_LOGE("unbinn_p2p_cfslog_data_count failed");
-            return 0;
+            break;
         }
 
-        if (dataspace_size < size)
+        mdv_cfslog_data_list_entry *op = mdv_alloc(sizeof(mdv_cfslog_data_list_entry) + size, "cfstorage_op_list_entry");
+
+        if (!op)
         {
-            MDV_LOGE("unbinn_p2p_cfslog_data_count failed");
-            return 0;
+            ret = false;
+            MDV_LOGE("No memory for TR log entry");
+            break;
         }
 
-        rows[i].op.size = (uint32_t)size;
-        rows[i].op.ptr = dataspace;
+        op->data.row_id = row_id;
+        op->data.op.size = size;
+        op->data.op.ptr = op + 1;
 
-        memcpy(dataspace, ptr, size);
+        memcpy(op->data.op.ptr, ptr, size);
 
-        dataspace += size;
-        dataspace_size -= size;
-
-        ++i;
+        mdv_list_emplace_back(rows, (mdv_list_entry_base *)op);
     }
 
-    return i == rows_count;
+    return ret;
 }

@@ -105,3 +105,9 @@ mdv_errno mdv_datasync_cfslog_sync_handler(mdv_datasync *datasync,
 mdv_errno mdv_datasync_cfslog_state_handler(mdv_datasync *datasync,
                                             uint32_t peer_id,
                                             mdv_msg const *msg);
+
+
+mdv_errno mdv_datasync_cfslog_data_handler(mdv_datasync *datasync,
+                                           uint32_t peer_id,
+                                           mdv_msg const *msg);
+

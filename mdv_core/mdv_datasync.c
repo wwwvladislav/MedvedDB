@@ -4,6 +4,7 @@
 #include <mdv_log.h>
 #include <mdv_rollbacker.h>
 #include <mdv_epoll.h>
+#include <mdv_assert.h>
 #include "mdv_p2pmsg.h"
 #include "mdv_peer.h"
 
@@ -153,22 +154,52 @@ mdv_errno mdv_datasync_cfslog_sync_handler(mdv_datasync *datasync, uint32_t peer
 }
 
 
+typedef struct
+{
+    mdv_datasync   *datasync;       ///< Data synchronizer
+    mdv_uuid        uuid;           ///< CF Storage unique identifier
+    mdv_uuid        peer;           ///< Peer unique identifier
+} mdv_datasync_cfs_context;
+
+
 static bool mdv_datasync_cfs(void           *arg,
                              uint32_t        peer_src,
                              uint32_t        peer_dst,
                              size_t          count,
-                             mdv_list const *ops)   // mdv_cfstorage_op ops[]
+                             mdv_list const *ops)       // mdv_cfstorage_op ops[]
 {
-    mdv_datasync *datasync = arg;
+    mdv_datasync_cfs_context *ctx = arg;
 
-    MDV_LOGE("OOOOOOOOOOOOOOOOOOOOO sync!");
+    mdv_static_assert(sizeof(mdv_cfslog_data) == sizeof(mdv_cfstorage_op));
 
-    mdv_list_foreach(ops, mdv_cfstorage_op, op)
+    mdv_msg_p2p_cfslog_data cfslog_data =
     {
-        MDV_LOGE("OOOOOOOOOOOOOOOOOOOOO[%llu] size = %u", (unsigned long long)op->row_id, op->op.size);
-    }
+        .uuid = ctx->uuid,
+        .peer = ctx->peer,
+        .count = count,
+        .rows = (mdv_list*)ops
+    };
 
-    // TODO
+    binn obj;
+
+    if (mdv_binn_p2p_cfslog_data(&cfslog_data, &obj))
+    {
+        mdv_msg message =
+        {
+            .hdr =
+            {
+                .id = mdv_message_id(p2p_cfslog_data),
+                .size = binn_size(&obj)
+            },
+            .payload = binn_ptr(&obj)
+        };
+
+        mdv_tracker_peers_call(ctx->datasync->tracker, peer_dst, &message, &mdv_peer_node_post);
+
+        binn_free(&obj);
+    }
+    else
+        return false;
 
     return true;
 }
@@ -178,7 +209,7 @@ mdv_errno mdv_datasync_cfslog_state_handler(mdv_datasync *datasync,
                                             uint32_t peer_id,
                                             mdv_msg const *msg)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(1);
 
     binn binn_msg;
 
@@ -206,8 +237,60 @@ mdv_errno mdv_datasync_cfslog_state_handler(mdv_datasync *datasync,
 
     if (storage && node)
     {
-        if (!mdv_cfstorage_sync(storage, 0, node->id, peer_id, datasync, mdv_datasync_cfs))
-            MDV_LOGE("Data synchronization failed for peer %u", peer_id);
+        mdv_datasync_cfs_context ctx =
+        {
+            .datasync = datasync,
+            .uuid = cfslog_state.uuid,
+            .peer = cfslog_state.peer
+        };
+
+        mdv_cfstorage_sync(storage,
+                           cfslog_state.trlog_top,
+                           node->id,           // peer_src
+                           peer_id,        // peer_dst
+                           &ctx,
+                           mdv_datasync_cfs);
+    }
+
+    mdv_rollback(rollbacker);
+
+    return MDV_OK;
+}
+
+
+mdv_errno mdv_datasync_cfslog_data_handler(mdv_datasync *datasync,
+                                           uint32_t peer_id,
+                                           mdv_msg const *msg)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
+
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_rollbacker_push(rollbacker, binn_free, &binn_msg);
+
+    mdv_list rows = {};
+
+    mdv_uuid const *storage_uuid = mdv_unbinn_p2p_cfslog_data_uuid(&binn_msg);
+    mdv_uuid const *peer_uuid = mdv_unbinn_p2p_cfslog_data_peer(&binn_msg);
+    uint32_t const *rows_count = mdv_unbinn_p2p_cfslog_data_count(&binn_msg);
+
+    if (mdv_unbinn_p2p_cfslog_data_rows(&binn_msg, &rows))
+    {
+        mdv_rollbacker_push(rollbacker, mdv_list_clear, &rows);
+
+        if (storage_uuid
+            && peer_uuid
+            && rows_count)
+        {
+            MDV_LOGE("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO: %u", *rows_count);
+        }
     }
 
     mdv_rollback(rollbacker);

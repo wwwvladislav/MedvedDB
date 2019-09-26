@@ -381,7 +381,6 @@ static size_t mdv_cfstorage_log_read(mdv_cfstorage *cfstorage,
 
     mdv_map_foreach_explicit(transaction, tr_log, entry, MDV_SET_RANGE, MDV_CURSOR_NEXT)
     {
-        // TODO: use stallocator
         mdv_cfstorage_op_list_entry *op = mdv_alloc(sizeof(mdv_cfstorage_op_list_entry) + entry.value.size, "cfstorage_op_list_entry");
 
         if (!op)

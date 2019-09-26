@@ -1,6 +1,7 @@
 #pragma once
 #include <mdv_messages.h>
 #include <mdv_topology.h>
+#include <mdv_list.h>
 
 
 /*
@@ -76,10 +77,10 @@ typedef struct
 } mdv_cfslog_data;
 
 mdv_message_def(p2p_cfslog_data, 1000 + 7,
-    mdv_uuid         uuid;          ///< CF Storage unique identifier
-    mdv_uuid         peer;          ///< Peer unique identifier
-    uint32_t         count;         ///< log records count
-    mdv_cfslog_data *rows;          ///< transaction log data
+    mdv_uuid    uuid;          ///< CF Storage unique identifier
+    mdv_uuid    peer;          ///< Peer unique identifier
+    uint32_t    count;         ///< log records count
+    mdv_list   *rows;          ///< transaction log data (list<mdv_cfslog_data>)
 );
 
 
@@ -125,6 +126,4 @@ mdv_uuid *              mdv_unbinn_p2p_cfslog_data_uuid         (binn const *obj
 mdv_uuid *              mdv_unbinn_p2p_cfslog_data_peer         (binn const *obj);
 uint32_t *              mdv_unbinn_p2p_cfslog_data_count        (binn const *obj);
 uint64_t *              mdv_unbinn_p2p_cfslog_data_size         (binn const *obj);
-bool                    mdv_unbinn_p2p_cfslog_data_rows         (binn const *obj,
-                                                                 mdv_cfslog_data *rows, uint32_t rows_count,
-                                                                 uint8_t *dataspace, size_t dataspace_size);
+bool                    mdv_unbinn_p2p_cfslog_data_rows         (binn const *obj, mdv_list *rows);

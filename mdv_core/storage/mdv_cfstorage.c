@@ -200,6 +200,12 @@ uint64_t mdv_cfstorage_new_id(mdv_cfstorage *cfstorage, uint32_t peer_id)
 }
 
 
+void mdv_cfstorage_top_id_update(mdv_cfstorage *cfstorage, uint32_t peer_id, uint64_t id)
+{
+    atomic_store_explicit(&cfstorage->top[peer_id], id, memory_order_relaxed);
+}
+
+
 mdv_uuid const * mdv_cfstorage_uuid(mdv_cfstorage *cfstorage)
 {
     return &cfstorage->uuid;
@@ -267,12 +273,13 @@ bool mdv_cfstorage_log_add(mdv_cfstorage  *cfstorage,
         {
             mdv_data k = { sizeof rowid.id, &rowid.id };
 
-            if (!mdv_map_put_unique(&tr_log, &transaction, &k, &op->op))
+            if (mdv_map_put_unique(&tr_log, &transaction, &k, &op->op))
             {
-                MDV_LOGE("OP insertion failed.");
-                mdv_rollback(rollbacker);
-                return false;
+                if (peer_id != MDV_LOCAL_ID)
+                    mdv_cfstorage_top_id_update(cfstorage, peer_id, op->row_id);
             }
+            else
+                MDV_LOGW("OP insertion failed.");
         }
     }
 

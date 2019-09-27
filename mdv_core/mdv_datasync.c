@@ -349,7 +349,7 @@ static mdv_vector * mdv_datasync_routes(mdv_datasync *datasync)
 
     if (mdv_mutex_lock(&datasync->mutex) == MDV_OK)
     {
-        routes = mdv_vector_retain(datasync->routes);
+        routes = datasync->routes ? mdv_vector_retain(datasync->routes): 0;
         mdv_mutex_unlock(&datasync->mutex);
     }
 

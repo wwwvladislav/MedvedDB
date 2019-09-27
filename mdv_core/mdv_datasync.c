@@ -237,19 +237,22 @@ mdv_errno mdv_datasync_cfslog_state_handler(mdv_datasync *datasync,
 
     if (storage && node)
     {
-        mdv_datasync_cfs_context ctx =
+        if (cfslog_state.trlog_top < mdv_cfstorage_log_last_id(storage, node->id))
         {
-            .datasync = datasync,
-            .uuid = cfslog_state.uuid,
-            .peer = cfslog_state.peer
-        };
+            mdv_datasync_cfs_context ctx =
+            {
+                .datasync = datasync,
+                .uuid = cfslog_state.uuid,
+                .peer = cfslog_state.peer
+            };
 
-        mdv_cfstorage_sync(storage,
-                           cfslog_state.trlog_top,
-                           node->id,           // peer_src
-                           peer_id,        // peer_dst
-                           &ctx,
-                           mdv_datasync_cfs);
+            mdv_cfstorage_sync(storage,
+                            cfslog_state.trlog_top,
+                            node->id,           // peer_src
+                            peer_id,        // peer_dst
+                            &ctx,
+                            mdv_datasync_cfs);
+        }
     }
 
     mdv_rollback(rollbacker);
@@ -275,19 +278,19 @@ mdv_errno mdv_datasync_cfslog_data_handler(mdv_datasync  *datasync,
 
     mdv_rollbacker_push(rollbacker, binn_free, &binn_msg);
 
-    mdv_list rows = {};
+    mdv_list ops = {};
 
     mdv_uuid const *storage_uuid = mdv_unbinn_p2p_cfslog_data_uuid(&binn_msg);
     mdv_uuid const *peer_uuid = mdv_unbinn_p2p_cfslog_data_peer(&binn_msg);
-    uint32_t const *rows_count = mdv_unbinn_p2p_cfslog_data_count(&binn_msg);
+    uint32_t const *ops_count = mdv_unbinn_p2p_cfslog_data_count(&binn_msg);
 
-    if (mdv_unbinn_p2p_cfslog_data_rows(&binn_msg, &rows))
+    if (mdv_unbinn_p2p_cfslog_data_rows(&binn_msg, &ops))
     {
-        mdv_rollbacker_push(rollbacker, mdv_list_clear, &rows);
+        mdv_rollbacker_push(rollbacker, mdv_list_clear, &ops);
 
         if (storage_uuid
             && peer_uuid
-            && rows_count)
+            && ops_count)
         {
             mdv_node const *node = mdv_tracker_node_by_uuid(datasync->tracker, peer_uuid);
 
@@ -297,7 +300,10 @@ mdv_errno mdv_datasync_cfslog_data_handler(mdv_datasync  *datasync,
 
                 if (storage)
                 {
-                    // TODO:
+                    if (mdv_cfstorage_log_add(storage, node->id, &ops))
+                        mdv_datasync_start(datasync);
+                    else
+                        MDV_LOGE("cfstorage_log_add failed");
                 }
                 else
                     MDV_LOGE("Unknown storage: %s", mdv_uuid_to_str(storage_uuid).ptr);

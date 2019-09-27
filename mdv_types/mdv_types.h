@@ -97,7 +97,7 @@ typedef mdv_table(0) mdv_table_base;
     }
 
 
-typedef mdv_row(1) mdv_row_base;
+typedef mdv_row(0) mdv_row_base;
 
 
 uint32_t mdv_field_type_size(mdv_field_type t);

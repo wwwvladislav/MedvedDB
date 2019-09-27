@@ -16,6 +16,9 @@
      |                                  |
      | GET TOPOLOGY >>>>>               |
      |          <<<<< TOPOLOGY / STATUS |
+     |                                  |
+     | INSERT ROW >>>>>                 |
+     |       <<<<< INSERT INFO / STATUS |
  */
 
 
@@ -69,6 +72,19 @@ mdv_message_def(topology, 6,
 );
 
 
+mdv_message_id_def(insert_row, 7);
+#define mdv_msg_insert_row(N)                           \
+    struct mdv_msg_insert_row_##N                       \
+    {                                                   \
+        mdv_uuid      table;                            \
+        mdv_row(N)    row;                              \
+    }
+typedef mdv_msg_insert_row(1) mdv_msg_insert_row_base;
+
+mdv_message_def(row_info, 8,
+    mdv_growid  id;
+);
+
 char const *                mdv_msg_name                    (uint32_t id);
 
 
@@ -94,3 +110,6 @@ bool                        mdv_unbinn_get_topology         (binn const *obj, md
 
 bool                        mdv_binn_topology               (mdv_msg_topology const *msg, binn *obj);
 mdv_topology *              mdv_unbinn_topology             (binn const *obj);
+
+bool                        mdv_binn_insert_row             (mdv_msg_insert_row_base const *msg,  mdv_field const * fields, binn *obj);
+mdv_msg_insert_row_base   * mdv_unbinn_insert_row           (binn const * obj, mdv_field const * fields);

@@ -109,7 +109,12 @@ bool                        mdv_unbinn_get_topology         (binn const *obj, md
 
 
 bool                        mdv_binn_topology               (mdv_msg_topology const *msg, binn *obj);
-mdv_topology *              mdv_unbinn_topology             (binn const *obj);
+mdv_topology              * mdv_unbinn_topology             (binn const *obj);
+
 
 bool                        mdv_binn_insert_row             (mdv_msg_insert_row_base const *msg,  mdv_field const * fields, binn *obj);
 mdv_msg_insert_row_base   * mdv_unbinn_insert_row           (binn const * obj, mdv_field const * fields);
+
+
+bool                        mdv_binn_row_info               (mdv_msg_row_info const *msg, binn *obj);
+bool                        mdv_unbinn_row_info             (binn const *obj, mdv_msg_row_info *msg);

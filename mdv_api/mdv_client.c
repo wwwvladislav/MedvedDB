@@ -140,6 +140,28 @@ static mdv_errno mdv_client_topology_handler(mdv_msg const *msg, mdv_topology **
 }
 
 
+static mdv_errno  mdv_client_row_info_handler(mdv_msg const * msg, mdv_msg_row_info *info)
+{
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+        return MDV_FAILED;
+
+    mdv_unbinn_row_info(&binn_msg, info);
+
+    if (!info)
+    {
+                MDV_LOGE("Invalid topology");
+        binn_free(&binn_msg);
+        return MDV_FAILED;
+    }
+
+    binn_free(&binn_msg);
+
+    return MDV_OK;
+}
+
+
 mdv_client * mdv_client_connect(mdv_client_config const *config)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
@@ -293,9 +315,9 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_base const *table, mdv_
     {
         switch(resp.hdr.id)
         {
-            case mdv_message_id(table_info):
+            case mdv_message_id(row_info):
             {
-                mdv_msg_table_info info;
+                mdv_msg_row_info info;
                 err = mdv_client_table_info_handler(&resp, &info);
                 if (err == MDV_OK)
                     *id = info.id;
@@ -378,3 +400,59 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
     return err;
 }
 
+
+mdv_errno mdv_insert_row(mdv_client *client, mdv_growid const *table_id, mdv_field const *fields, mdv_row_base const *row, mdv_growid *id)
+{
+    mdv_msg_insert_row_base *insert_row = (mdv_msg_insert_row_base *) row;
+
+    binn insert_row_msg;
+
+    if (!mdv_binn_insert_row(insert_row, fields, &insert_row_msg))
+        return MDV_FAILED;
+
+
+    mdv_msg req =
+            {
+                    .hdr =
+                            {
+                                    .id   = mdv_msg_insert_row_id,
+                                    .size = binn_size(&insert_row_msg)
+                            },
+                    .payload = binn_ptr(&insert_row_msg)
+            };
+
+    mdv_msg resp;
+
+    mdv_errno err = mdv_user_send(client->userdata.user, &req, &resp, client->response_timeout);
+
+    binn_free(&insert_row_msg);
+
+    if (err == MDV_OK)
+    {
+        switch(resp.hdr.id)
+        {
+            case mdv_message_id(table_info):
+            {
+                mdv_msg_row_info info;
+                err = mdv_client_row_info_handler(&resp, &info);
+                if (err == MDV_OK)
+                    *id = info.id;
+                break;
+            }
+
+            case mdv_message_id(status):
+            {
+                if (mdv_client_status_handler(&resp, &err) == MDV_OK)
+                    break;
+                // fallthrough
+            }
+
+            default:
+                err = MDV_FAILED;
+                        MDV_LOGE("Unexpected response");
+                break;
+        }
+
+        mdv_free_msg(&resp);
+    }
+}

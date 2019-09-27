@@ -258,8 +258,8 @@ mdv_errno mdv_datasync_cfslog_state_handler(mdv_datasync *datasync,
 }
 
 
-mdv_errno mdv_datasync_cfslog_data_handler(mdv_datasync *datasync,
-                                           uint32_t peer_id,
+mdv_errno mdv_datasync_cfslog_data_handler(mdv_datasync  *datasync,
+                                           uint32_t       peer_id,
                                            mdv_msg const *msg)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
@@ -289,8 +289,24 @@ mdv_errno mdv_datasync_cfslog_data_handler(mdv_datasync *datasync,
             && peer_uuid
             && rows_count)
         {
-            MDV_LOGE("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO: %u", *rows_count);
+            mdv_node const *node = mdv_tracker_node_by_uuid(datasync->tracker, peer_uuid);
+
+            if (node)
+            {
+                mdv_cfstorage *storage = mdv_tablespace_cfstorage(datasync->tablespace, storage_uuid);
+
+                if (storage)
+                {
+                    // TODO:
+                }
+                else
+                    MDV_LOGE("Unknown storage: %s", mdv_uuid_to_str(storage_uuid).ptr);
+            }
+            else
+                MDV_LOGE("Unknown node: %s", mdv_uuid_to_str(peer_uuid).ptr);
         }
+        else
+            MDV_LOGE("Missing data in sync message");
     }
 
     mdv_rollback(rollbacker);

@@ -8,6 +8,7 @@
 #include <mdv_types.h>
 #include <mdv_errno.h>
 #include <mdv_hashmap.h>
+#include <mdv_mutex.h>
 
 
 /// Conflict-free Replicated Storage reference
@@ -22,6 +23,7 @@ typedef struct
 /// DB tables space
 typedef struct
 {
+    mdv_mutex   mutex;          ///< Mutex for storages guard
     mdv_hashmap storages;       ///< storages map (UUID -> mdv_cfstorage)
 } mdv_tablespace;
 
@@ -36,15 +38,6 @@ typedef struct
  * @return non zero value if error has occurred
  */
 mdv_errno mdv_tablespace_open(mdv_tablespace *tablespace, uint32_t nodes_num);
-
-
-/**
- * @brief Delete existing tablespace.
- *
- * @return MDV_OK if wait operation successfully completed
- * @return non zero value if error has occurred
- */
-mdv_errno mdv_tablespace_drop();
 
 
 /**

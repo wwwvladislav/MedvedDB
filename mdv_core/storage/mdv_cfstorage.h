@@ -32,8 +32,7 @@ mdv_uuid const* mdv_cfstorage_uuid(mdv_cfstorage *cfstorage);
 
 bool            mdv_cfstorage_log_add(mdv_cfstorage *cfstorage,
                                       uint32_t peer_id,
-                                      size_t count,
-                                      mdv_cfstorage_op const *ops);
+                                      mdv_list const *ops); // list<mdv_cfstorage_op>
 
 uint64_t        mdv_cfstorage_sync(mdv_cfstorage *cfstorage,
                                    uint64_t sync_pos,

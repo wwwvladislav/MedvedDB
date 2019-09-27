@@ -206,10 +206,9 @@ mdv_uuid const * mdv_cfstorage_uuid(mdv_cfstorage *cfstorage)
 }
 
 
-bool mdv_cfstorage_log_add(mdv_cfstorage *cfstorage,
-                           uint32_t peer_id,
-                           size_t count,
-                           mdv_cfstorage_op const *ops)
+bool mdv_cfstorage_log_add(mdv_cfstorage  *cfstorage,
+                           uint32_t        peer_id,
+                           mdv_list const *ops)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
@@ -251,12 +250,12 @@ bool mdv_cfstorage_log_add(mdv_cfstorage *cfstorage,
 
     mdv_rollbacker_push(rollbacker, mdv_map_close, &rem_map);
 
-    for(size_t i = 0; i < count; ++i)
+    mdv_list_foreach(ops, mdv_cfstorage_op, op)
     {
         mdv_rowid rowid =
         {
             .peer = peer_id,
-            .id = ops[i].row_id
+            .id = op->row_id
         };
 
         mdv_data key = { sizeof rowid, &rowid };
@@ -268,7 +267,7 @@ bool mdv_cfstorage_log_add(mdv_cfstorage *cfstorage,
         {
             mdv_data k = { sizeof rowid.id, &rowid.id };
 
-            if (!mdv_map_put_unique(&tr_log, &transaction, &k, &ops[i].op))
+            if (!mdv_map_put_unique(&tr_log, &transaction, &k, &op->op))
             {
                 MDV_LOGE("OP insertion failed.");
                 mdv_rollback(rollbacker);

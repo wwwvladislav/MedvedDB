@@ -12,8 +12,8 @@ typedef struct mdv_cfstorage mdv_cfstorage;
 
 typedef struct
 {
-    uint64_t                row_id;
-    mdv_data                op;
+    uint64_t    row_id;
+    mdv_data    op;
 } mdv_cfstorage_op;
 
 
@@ -26,7 +26,7 @@ bool            mdv_cfstorage_drop(mdv_uuid const *uuid);
 
 void            mdv_cfstorage_close(mdv_cfstorage *cfstorage);
 
-uint64_t        mdv_cfstorage_new_id(mdv_cfstorage *cfstorage, uint32_t peer_id);
+uint64_t        mdv_cfstorage_new_id(mdv_cfstorage *cfstorage);
 
 mdv_uuid const* mdv_cfstorage_uuid(mdv_cfstorage *cfstorage);
 
@@ -41,6 +41,8 @@ uint64_t        mdv_cfstorage_sync(mdv_cfstorage *cfstorage,
                                    void *arg,
                                    mdv_cfstorage_sync_fn fn);
 
-bool            mdv_cfstorage_log_apply(mdv_cfstorage *cfstorage);
+bool            mdv_cfstorage_log_apply(mdv_cfstorage *cfstorage, uint32_t peer_id);
+
+bool            mdv_cfstorage_log_changed(mdv_cfstorage *cfstorage, uint32_t peer_id);
 
 uint64_t        mdv_cfstorage_log_last_id(mdv_cfstorage *cfstorage, uint32_t peer_id);

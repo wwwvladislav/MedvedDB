@@ -10,6 +10,7 @@
 #include <mdv_tracker.h>
 #include <mdv_binn.h>
 #include <mdv_types.h>
+#include <mdv_mutex.h>
 #include <stdatomic.h>
 #include <stddef.h>
 
@@ -23,6 +24,7 @@ struct mdv_cfstorage
     mdv_storage            *data;               ///< data storage
     mdv_storage            *tr_log;             ///< transaction log storage
     mdv_idmap              *applied;            ///< transaction logs applied positions
+    atomic_uint_fast64_t    id_generator;       ///< transaction log identifiers generator
     atomic_uint_fast64_t    top[1];             ///< transaction logs last insertion positions
 };
 
@@ -53,6 +55,8 @@ mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num)
 
     cfstorage->uuid = *uuid;
     cfstorage->nodes_num = nodes_num;
+
+    atomic_init(&cfstorage->id_generator, 0);
 
     mdv_string const str_uuid = mdv_uuid_to_str(uuid);
 
@@ -194,9 +198,9 @@ static bool mdv_cfstorage_is_key_deleted(mdv_cfstorage *cfstorage,
 }
 
 
-uint64_t mdv_cfstorage_new_id(mdv_cfstorage *cfstorage, uint32_t peer_id)
+uint64_t mdv_cfstorage_new_id(mdv_cfstorage *cfstorage)
 {
-    return atomic_fetch_add_explicit(&cfstorage->top[peer_id], 1, memory_order_relaxed) + 1;
+    return atomic_fetch_add_explicit(&cfstorage->id_generator, 1, memory_order_relaxed) + 1;
 }
 
 
@@ -441,7 +445,7 @@ uint64_t mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint64_t sync_pos, uint32_
 }
 
 
-bool mdv_cfstorage_log_apply(mdv_cfstorage *cfstorage)
+bool mdv_cfstorage_log_apply(mdv_cfstorage *cfstorage, uint32_t peer_id)
 {
     // TODO
     return false;
@@ -455,5 +459,20 @@ uint64_t mdv_cfstorage_log_last_id(mdv_cfstorage *cfstorage, uint32_t peer_id)
         MDV_LOGE("Node identifier is too big: %u", peer_id);
         return 0;
     }
-    return atomic_load_explicit(&cfstorage->top[peer_id], memory_order_relaxed);
+
+    return peer_id == MDV_LOCAL_ID
+                ? atomic_load_explicit(&cfstorage->id_generator, memory_order_relaxed)
+                : atomic_load_explicit(&cfstorage->top[peer_id], memory_order_relaxed);
 }
+
+
+bool mdv_cfstorage_log_changed(mdv_cfstorage *cfstorage, uint32_t peer_id)
+{
+    uint64_t applied_pos = 0;
+
+    if (!mdv_idmap_at(cfstorage->applied, peer_id, &applied_pos))
+        return false;
+
+    return applied_pos < mdv_cfstorage_log_last_id(cfstorage, peer_id);
+}
+

@@ -64,7 +64,7 @@ static bool mdv_core_cluster_create(mdv_core *core)
 
 bool mdv_core_create(mdv_core *core)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(6);
 
     // DB meta information storage
     core->storage.metainf = mdv_metainf_storage_open(MDV_CONFIG.storage.path.ptr);
@@ -136,12 +136,26 @@ bool mdv_core_create(mdv_core *core)
                             &core->cluster.tracker,
                             core->jobber) != MDV_OK)
     {
-        MDV_LOGE("Jobs scheduler creation failed");
+        MDV_LOGE("Data synchronizer creation failed");
         mdv_rollback(rollbacker);
         return false;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_datasync_free, &core->datasync);
+
+
+    // Data committer
+    if (mdv_committer_create(&core->committer,
+                             &core->storage.tablespace,
+                             &core->cluster.tracker,
+                             core->jobber) != MDV_OK)
+    {
+        MDV_LOGE("Data committer creation failed");
+        mdv_rollback(rollbacker);
+        return false;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_committer_free, &core->committer);
 
 
     // Cluster manager
@@ -167,9 +181,11 @@ bool mdv_core_create(mdv_core *core)
 void mdv_core_free(mdv_core *core)
 {
     mdv_datasync_stop(&core->datasync);
+    mdv_committer_stop(&core->committer);
     mdv_cluster_free(&core->cluster);
     mdv_jobber_free(core->jobber);
     mdv_datasync_free(&core->datasync);
+    mdv_committer_free(&core->committer);
     mdv_storage_release(core->storage.metainf);
     mdv_tablespace_close(&core->storage.tablespace);
 }

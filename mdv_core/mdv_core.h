@@ -12,6 +12,7 @@
 #include <mdv_cluster.h>
 #include <mdv_jobber.h>
 #include "mdv_datasync.h"
+#include "mdv_committer.h"
 #include "storage/mdv_metainf.h"
 #include "storage/mdv_tablespace.h"
 
@@ -23,6 +24,7 @@ typedef struct mdv_core
     mdv_cluster     cluster;            ///< Cluster manager
     mdv_metainf     metainf;            ///< Metainformation (DB version, node UUID etc.)
     mdv_datasync    datasync;           ///< Data synchronizer
+    mdv_committer   committer;          ///< Data committer
 
     struct
     {

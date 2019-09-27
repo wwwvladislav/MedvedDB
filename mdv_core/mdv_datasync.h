@@ -16,6 +16,7 @@
 #include <mdv_threads.h>
 #include <mdv_eventfd.h>
 #include <mdv_msg.h>
+#include <mdv_errno.h>
 #include <stdatomic.h>
 #include "storage/mdv_tablespace.h"
 
@@ -23,7 +24,7 @@
 /// Data synchronizer configuration
 typedef struct
 {
-    mdv_tablespace         *tablespace;     ///< DB tables space
+    mdv_tablespace *tablespace;     ///< DB tables space
 } mdv_datasync_config;
 
 

@@ -1,10 +1,10 @@
 #include "mdv_datasync.h"
 #include <mdv_alloc.h>
-#include <mdv_errno.h>
 #include <mdv_log.h>
 #include <mdv_rollbacker.h>
 #include <mdv_epoll.h>
 #include <mdv_assert.h>
+#include <mdv_rollbacker.h>
 #include "mdv_p2pmsg.h"
 #include "mdv_peer.h"
 
@@ -249,11 +249,13 @@ mdv_errno mdv_datasync_cfslog_state_handler(mdv_datasync *datasync,
             mdv_cfstorage_sync(storage,
                             cfslog_state.trlog_top,
                             node->id,           // peer_src
-                            peer_id,        // peer_dst
+                            peer_id,            // peer_dst
                             &ctx,
                             mdv_datasync_cfs);
         }
     }
+    else
+        MDV_LOGE("Storage or node not found. (storage: %p, node: %p)", storage, node);
 
     mdv_rollback(rollbacker);
 
@@ -391,31 +393,69 @@ static void mdv_datasync_job_emit(mdv_datasync *datasync, uint32_t peer_src, mdv
 // Main data synchronization thread generates asynchronous jobs for each peer.
 static void mdv_datasync_main(mdv_datasync *datasync)
 {
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+
+
     mdv_vector *src_peers = mdv_tracker_nodes(datasync->tracker);
 
-    if (!src_peers
-        || mdv_vector_empty(src_peers))
+    if (!src_peers)
+    {
+        mdv_rollback(rollbacker);
         return;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_vector_release, src_peers);
+
+    if (mdv_vector_empty(src_peers))
+    {
+        mdv_rollback(rollbacker);
+        return;
+    }
+
 
     mdv_vector *routes = mdv_datasync_routes(datasync);
 
-    if (!routes
-        || mdv_vector_empty(routes))
+    if (!routes)
     {
-        mdv_vector_release(src_peers);
+        mdv_rollback(rollbacker);
         return;
     }
 
+    mdv_rollbacker_push(rollbacker, mdv_vector_release, routes);
+
+    if (mdv_vector_empty(routes))
+    {
+        mdv_rollback(rollbacker);
+        return;
+    }
+
+
+    mdv_vector *storages = mdv_tablespace_storages(datasync->tablespace);
+
+    if (!storages)
+    {
+        mdv_rollback(rollbacker);
+        return;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_vector_release, storages);
+
+    if (mdv_vector_empty(storages))
+    {
+        mdv_rollback(rollbacker);
+        return;
+    }
+
+
     mdv_vector_foreach(src_peers, uint32_t, src)
     {
-        mdv_hashmap_foreach(datasync->tablespace->storages, mdv_cfstorage_ref, ref)
+        mdv_vector_foreach(storages, mdv_uuid, strg)
         {
-            mdv_datasync_job_emit(datasync, *src, routes, &ref->uuid);
+            mdv_datasync_job_emit(datasync, *src, routes, strg);
         }
     }
 
-    mdv_vector_release(routes);
-    mdv_vector_release(src_peers);
+    mdv_rollback(rollbacker);
 }
 
 

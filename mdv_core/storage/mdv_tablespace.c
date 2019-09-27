@@ -5,6 +5,14 @@
 #include <mdv_rollbacker.h>
 
 
+/// Conflict-free Replicated Storage reference
+typedef struct
+{
+    mdv_uuid       uuid;        ///< Storage UUID
+    mdv_cfstorage *cfstorage;   ///< Conflict-free Replicated Storage
+} mdv_cfstorage_ref;
+
+
 /// Storage for DB tables
 static const mdv_uuid MDV_DB_TABLES = {};
 
@@ -140,7 +148,7 @@ mdv_rowid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_ta
 
     mdv_cfstorage_op cfop =
     {
-        .row_id = mdv_cfstorage_new_id(tables, MDV_LOCAL_ID),
+        .row_id = mdv_cfstorage_new_id(tables),
         .op =
         {
             .size = op_size,
@@ -169,3 +177,24 @@ mdv_rowid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_ta
 
     return rowid;
 }
+
+
+mdv_vector * mdv_tablespace_storages(mdv_tablespace *tablespace)
+{
+    mdv_vector *uuids = mdv_vector_create(54, sizeof(mdv_uuid), &mdv_default_allocator);
+
+    if (!uuids)
+        return 0;
+
+    if (mdv_mutex_lock(&tablespace->mutex) == MDV_OK)
+    {
+        mdv_hashmap_foreach(tablespace->storages, mdv_cfstorage_ref, ref)
+        {
+            mdv_vector_push_back(uuids, &ref->uuid);
+        }
+        mdv_mutex_unlock(&tablespace->mutex);
+    }
+
+    return uuids;
+}
+

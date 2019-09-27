@@ -9,15 +9,7 @@
 #include <mdv_errno.h>
 #include <mdv_hashmap.h>
 #include <mdv_mutex.h>
-
-
-/// Conflict-free Replicated Storage reference
-typedef struct
-{
-    mdv_uuid       uuid;        ///< Storage UUID
-    mdv_cfstorage *cfstorage;   ///< Conflict-free Replicated Storage
-} mdv_cfstorage_ref;
-
+#include <mdv_vector.h>
 
 
 /// DB tables space
@@ -70,3 +62,12 @@ mdv_cfstorage * mdv_tablespace_cfstorage(mdv_tablespace *tablespace, mdv_uuid co
  */
 mdv_rowid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base const *table);
 
+
+/**
+ * @brief Return storages uuids vector.
+ *
+ * @param tablespace [in] Pointer to a tablespace structure
+ *
+ * @return storages uuids vector.
+ */
+mdv_vector * mdv_tablespace_storages(mdv_tablespace *tablespace);

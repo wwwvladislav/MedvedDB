@@ -188,6 +188,32 @@ static void mdv_test_scenario(char const *args)
     {
         MDV_INF("Table '%s' creation failed with error '%s' (%d)\n", table.name.ptr, mdv_strerror(err), err);
     }
+
+    mdv_growid row_id;
+
+    int int_value[] = {42, 43};
+    bool bool_value = true;
+
+    mdv_row(3) row = {
+        .size = 3,
+        .fields =
+        {
+            { 5, "hello" },
+            { sizeof(int_value), int_value },
+            { 1, &bool_value }
+        }
+    };
+
+    err = mdv_insert_row(client, &id, table.fields, (mdv_row_base *)&row, &row_id);
+
+    if (err == MDV_OK)
+    {
+        MDV_INF("New row with ID '%llu' successfully inserted\n",  row_id.id);
+    }
+    else
+    {
+        MDV_INF("New row insertion failed with error '%s' (%d)\n", mdv_strerror(err), err);
+    }
 }
 
 

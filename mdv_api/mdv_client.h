@@ -7,6 +7,7 @@
 #include <mdv_types.h>
 #include <mdv_topology.h>
 #include <mdv_errno.h>
+#include "../mdv_tests/mdv_platform/mdv_list.h"
 
 
 /// Client configuration. All options are mandatory.
@@ -81,3 +82,32 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_base const *table, mdv_
  */
 mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology);
 
+// todo - wee need to think about query validation and how we can t fetch info about table and its fields
+//typedef struct
+//{
+//    mdv_uuid uuid;
+//    mdv_table_base* table;
+//} mdv_table_info;
+//
+///**
+// *
+// * @param client
+// * @param name
+// * @param info
+// * @return
+// */
+//mdv_errno ndv_get_table_info(mdv_client *client, char const * name, mdv_list * info);
+
+/**
+ * @brief Insert row to given table
+ * @details This function implements insertion functionality.
+ *
+ * @param client [in]    DB client
+ * @param table_id [in]    The guid of table
+ * @param row [in]    Row description
+ * @param id [out]    Row identifier
+ *
+ * @return On success, return MDV_OK.
+ * @return On error, return non zero value
+ */
+mdv_errno mdv_insert_row(mdv_client *client, mdv_growid const *table_id, mdv_field const *fields, mdv_row_base const *row, mdv_growid *id);

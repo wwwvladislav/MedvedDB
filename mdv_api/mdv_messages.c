@@ -13,6 +13,7 @@ char const * mdv_msg_name(uint32_t id)
         case mdv_message_id(table_info):    return "TABLE INFO";
         case mdv_message_id(get_topology):  return "GET TOPOLOGY";
         case mdv_message_id(topology):      return "TOPOLOGY";
+        case mdv_message_id(insert_row):    return "INSERT ROW";
     }
     return "UNKOWN";
 }
@@ -171,4 +172,30 @@ bool mdv_binn_topology(mdv_msg_topology const *msg, binn *obj)
 mdv_topology * mdv_unbinn_topology(binn const *obj)
 {
     return mdv_topology_deserialize(obj);
+}
+
+
+bool mdv_binn_insert_row(mdv_msg_insert_row const *msg, mdv_field const * fields, binn *obj)
+{
+    return  mdv_binn_row(fields, msg->row, obj);
+}
+
+
+mdv_msg_insert_row * mdv_unbinn_insert_row(binn const *obj,  mdv_field const * fields)
+{
+    return (mdv_msg_insert_row *) mdv_unbinn_row(obj, fields);
+}
+
+
+bool mdv_unbinn_row_info(binn const *obj, mdv_msg_row_info *msg)
+{
+    uint64 id;
+    if (!binn_object_get_uint64((void*)obj, "I", &id))
+    {
+        MDV_LOGE("unbinn_row_info failed");
+        return false;
+    }
+    msg->id.id = id;
+
+    return true;
 }

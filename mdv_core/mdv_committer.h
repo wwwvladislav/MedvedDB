@@ -52,3 +52,12 @@ void mdv_committer_stop(mdv_committer *committer);
  * @param committer [in] Data committer for freeing
  */
 void mdv_committer_free(mdv_committer *committer);
+
+
+/**
+ * @brief Start data committer
+ *
+ * @param committer [in] Data committer
+ *
+ */
+void mdv_committer_start(mdv_committer *committer);

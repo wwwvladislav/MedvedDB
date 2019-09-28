@@ -204,16 +204,16 @@ static void mdv_test_scenario(char const *args)
         }
     };
 
-    err = mdv_insert_row(client, &id, table.fields, (mdv_row_base *)&row, &row_id);
+//    err = mdv_insert_row(client, &id, table.fields, (mdv_row_base *)&row, &row_id);
 
-    if (err == MDV_OK)
-    {
-        MDV_INF("New row with ID '%llu' successfully inserted\n",  row_id.id);
-    }
-    else
-    {
-        MDV_INF("New row insertion failed with error '%s' (%d)\n", mdv_strerror(err), err);
-    }
+//    if (err == MDV_OK)
+//    {
+//        MDV_INF("New row with ID '%llu' successfully inserted\n",  row_id.id);
+//    }
+//    else
+//    {
+//        MDV_INF("New row insertion failed with error '%s' (%d)\n", mdv_strerror(err), err);
+//    }
 }
 
 

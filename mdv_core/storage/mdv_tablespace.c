@@ -198,3 +198,43 @@ mdv_vector * mdv_tablespace_storages(mdv_tablespace *tablespace)
     return uuids;
 }
 
+
+static bool mdv_tablespace_log_apply_fn(void *arg, mdv_cfstorage_op const *op)
+{
+    mdv_tablespace *tablespace = arg;
+
+    mdv_op *db_op = op->op.ptr;
+
+    binn obj;
+
+    switch(db_op->op)
+    {
+        case MDV_OP_TABLE_CREATE:
+        {
+            break;
+        }
+
+        case MDV_OP_ROW_INSERT:
+        {
+        }
+
+        default:
+            MDV_LOGE("Unsupported DB operation");
+    }
+
+    binn_free(&obj);
+
+    return true;
+}
+
+
+bool mdv_tablespace_log_apply(mdv_tablespace *tablespace, mdv_uuid const *storage, uint32_t peer_id)
+{
+    mdv_cfstorage *cfstorage = mdv_tablespace_cfstorage(tablespace, storage);
+
+    if (!cfstorage)
+        return false;
+
+    return mdv_cfstorage_log_apply(cfstorage, peer_id, tablespace, &mdv_tablespace_log_apply_fn);
+}
+

@@ -350,7 +350,12 @@ static mdv_errno mdv_peer_cfslog_data_handler(mdv_msg const *msg, void *arg)
 
     MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
-    return mdv_datasync_cfslog_data_handler(&core->datasync, peer->peer_id, msg);
+    mdv_errno err = mdv_datasync_cfslog_data_handler(&core->datasync, peer->peer_id, msg);
+
+    if (err == MDV_OK)
+        mdv_committer_start(&core->committer);
+
+    return err;
 }
 
 

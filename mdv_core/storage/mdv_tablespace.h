@@ -71,3 +71,16 @@ mdv_rowid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_ta
  * @return storages uuids vector.
  */
 mdv_vector * mdv_tablespace_storages(mdv_tablespace *tablespace);
+
+
+/**
+ * @brief Applies a transaction log to the data storage.
+ *
+ * @param tablespace [in]   Pointer to a tablespace structure
+ * @param storage [in]      Storage UUID
+ * @param peer_id [in]      Peer identifier
+ *
+ * @return true if transaction log was successfully applied
+ * @return false if operation failed
+ */
+bool mdv_tablespace_log_apply(mdv_tablespace *tablespace, mdv_uuid const *storage, uint32_t peer_id);

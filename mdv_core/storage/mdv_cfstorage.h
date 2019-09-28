@@ -17,8 +17,14 @@ typedef struct
 } mdv_cfstorage_op;
 
 
-typedef bool (*mdv_cfstorage_sync_fn)(void *arg, uint32_t peer_src, uint32_t peer_dst, size_t count, mdv_list const *ops);
+typedef bool (*mdv_cfstorage_sync_fn)(void *arg,
+                                      uint32_t peer_src,
+                                      uint32_t peer_dst,
+                                      size_t count,
+                                      mdv_list const *ops);
 
+typedef bool (*mdv_cfstorage_apply_fn)(void *arg,
+                                       mdv_cfstorage_op const *op);
 
 mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num);
 
@@ -41,7 +47,10 @@ uint64_t        mdv_cfstorage_sync(mdv_cfstorage *cfstorage,
                                    void *arg,
                                    mdv_cfstorage_sync_fn fn);
 
-bool            mdv_cfstorage_log_apply(mdv_cfstorage *cfstorage, uint32_t peer_id);
+bool            mdv_cfstorage_log_apply(mdv_cfstorage *cfstorage,
+                                        uint32_t peer_id,
+                                        void *arg,
+                                        mdv_cfstorage_apply_fn fn);
 
 bool            mdv_cfstorage_log_changed(mdv_cfstorage *cfstorage, uint32_t peer_id);
 

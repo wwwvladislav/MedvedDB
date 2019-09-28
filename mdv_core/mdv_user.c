@@ -193,6 +193,7 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
     if (rowid)
     {
         mdv_datasync_start(&core->datasync);
+        mdv_committer_start(&core->committer);
 
         assert(rowid->peer == MDV_LOCAL_ID);
 

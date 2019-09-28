@@ -421,7 +421,12 @@ static size_t mdv_cfstorage_log_read(mdv_cfstorage *cfstorage,
 }
 
 
-uint64_t mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint64_t sync_pos, uint32_t peer_src, uint32_t peer_dst, void *arg, mdv_cfstorage_sync_fn fn)
+uint64_t mdv_cfstorage_sync(mdv_cfstorage *cfstorage,
+                            uint64_t sync_pos,
+                            uint32_t peer_src,
+                            uint32_t peer_dst,
+                            void *arg,
+                            mdv_cfstorage_sync_fn fn)
 {
     size_t const batch_size = MDV_CONFIG.datasync.batch_size;
 
@@ -445,10 +450,47 @@ uint64_t mdv_cfstorage_sync(mdv_cfstorage *cfstorage, uint64_t sync_pos, uint32_
 }
 
 
-bool mdv_cfstorage_log_apply(mdv_cfstorage *cfstorage, uint32_t peer_id)
+bool mdv_cfstorage_log_apply(mdv_cfstorage         *cfstorage,
+                             uint32_t               peer_id,
+                             void                  *arg,
+                             mdv_cfstorage_apply_fn fn)
 {
-    // TODO
-    return false;
+    uint64_t applied_pos = 0;
+
+    if (!mdv_idmap_at(cfstorage->applied, peer_id, &applied_pos))
+        return false;
+
+    if (applied_pos > mdv_cfstorage_log_last_id(cfstorage, peer_id))
+        return true;
+
+    size_t const batch_size = MDV_CONFIG.datasync.batch_size;
+
+    mdv_list ops = {};
+
+    for(bool ok = true; ok;)
+    {
+        size_t count = mdv_cfstorage_log_read(cfstorage, peer_id, applied_pos, batch_size, &ops);
+
+        if (!count)     // No data in TR log
+            break;
+
+        mdv_list_foreach(&ops, mdv_cfstorage_op, op)
+        {
+            ok = fn(arg, op);
+
+            if (!ok)
+            {
+                MDV_LOGE("TR Log operation not applied");
+                break;
+            }
+
+            applied_pos = op->row_id + 1;
+        }
+
+        mdv_list_clear(&ops);
+    }
+
+    return mdv_idmap_set(cfstorage->applied, peer_id, applied_pos);
 }
 
 

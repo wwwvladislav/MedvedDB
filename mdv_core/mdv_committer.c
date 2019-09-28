@@ -30,9 +30,8 @@ static void mdv_committer_fn(mdv_job_base *job)
     if (!mdv_committer_is_active(committer))
         return;
 
-    mdv_cfstorage *storage = mdv_tablespace_cfstorage(committer->tablespace, &ctx->storage);
-
-    mdv_cfstorage_log_apply(storage, ctx->peer_id);
+    if (!mdv_tablespace_log_apply(committer->tablespace, &ctx->storage, ctx->peer_id))
+        MDV_LOGE("Transaction log was not applied");
 }
 
 
@@ -170,7 +169,18 @@ static void * mdv_committer_thread(void *arg)
         if (!mdv_committer_is_active(committer))
             break;
 
-        mdv_committer_main(committer);
+        if (size)
+        {
+            if (events[0].events & MDV_EPOLLIN)
+            {
+                uint64_t signal;
+                size_t len = sizeof(signal);
+
+                while(mdv_read(committer->start, &signal, &len) == MDV_EAGAIN);
+
+                mdv_committer_main(committer);
+            }
+        }
     }
 
     mdv_epoll_close(epfd);
@@ -252,5 +262,12 @@ void mdv_committer_free(mdv_committer *committer)
     mdv_committer_stop(committer);
     mdv_eventfd_close(committer->start);
     memset(committer, 0, sizeof(*committer));
+}
+
+
+void mdv_committer_start(mdv_committer *committer)
+{
+    uint64_t const signal = 1;
+    mdv_write_all(committer->start, &signal, sizeof signal);
 }
 

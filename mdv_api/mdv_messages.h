@@ -73,13 +73,15 @@ mdv_message_def(topology, 6,
 
 
 mdv_message_def(insert_row, 7,
-    mdv_growid  table;
-    mdv_row_base *row;
+    mdv_growid          table;
+    mdv_row_base const *row;
 );
+
 
 mdv_message_def(row_info, 8,
     mdv_growid  id;
 );
+
 
 char const *                mdv_msg_name                    (uint32_t id);
 

@@ -147,11 +147,9 @@ static mdv_errno  mdv_client_row_info_handler(mdv_msg const * msg, mdv_msg_row_i
     if(!binn_load(msg->payload, &binn_msg))
         return MDV_FAILED;
 
-    mdv_unbinn_row_info(&binn_msg, info);
-
-    if (!info)
+    if (!mdv_unbinn_row_info(&binn_msg, info))
     {
-        MDV_LOGE("Invalid topology");
+        MDV_LOGE("Invalid row info");
         binn_free(&binn_msg);
         return MDV_FAILED;
     }
@@ -415,14 +413,14 @@ mdv_errno mdv_insert_row(mdv_client *client, mdv_growid const *table_id, mdv_fie
 
 
     mdv_msg req =
+    {
+        .hdr =
             {
-                    .hdr =
-                            {
-                                    .id   = mdv_msg_insert_row_id,
-                                    .size = binn_size(&insert_row_msg)
-                            },
-                    .payload = binn_ptr(&insert_row_msg)
-            };
+                .id   = mdv_msg_insert_row_id,
+                .size = binn_size(&insert_row_msg)
+            },
+        .payload = binn_ptr(&insert_row_msg)
+    };
 
     mdv_msg resp;
 

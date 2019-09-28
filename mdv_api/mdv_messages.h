@@ -18,7 +18,7 @@
      |          <<<<< TOPOLOGY / STATUS |
      |                                  |
      | INSERT ROW >>>>>                 |
-     |       <<<<< INSERT INFO / STATUS |
+     |          <<<<< ROW INFO / STATUS |
  */
 
 
@@ -72,14 +72,10 @@ mdv_message_def(topology, 6,
 );
 
 
-mdv_message_id_def(insert_row, 7);
-#define mdv_msg_insert_row(N)                           \
-    struct mdv_msg_insert_row_##N                       \
-    {                                                   \
-        mdv_uuid      table;                            \
-        mdv_row(N)    row;                              \
-    }
-typedef mdv_msg_insert_row(1) mdv_msg_insert_row_base;
+mdv_message_def(insert_row, 7,
+    mdv_growid  table;
+    mdv_row_base *row;
+);
 
 mdv_message_def(row_info, 8,
     mdv_growid  id;
@@ -112,8 +108,8 @@ bool                        mdv_binn_topology               (mdv_msg_topology co
 mdv_topology              * mdv_unbinn_topology             (binn const *obj);
 
 
-bool                        mdv_binn_insert_row             (mdv_msg_insert_row_base const *msg,  mdv_field const * fields, binn *obj);
-mdv_msg_insert_row_base   * mdv_unbinn_insert_row           (binn const * obj, mdv_field const * fields);
+bool                        mdv_binn_insert_row             (mdv_msg_insert_row const *msg,  mdv_field const * fields, binn *obj);
+mdv_msg_insert_row        * mdv_unbinn_insert_row           (binn const * obj, mdv_field const * fields);
 
 
 bool                        mdv_binn_row_info               (mdv_msg_row_info const *msg, binn *obj);

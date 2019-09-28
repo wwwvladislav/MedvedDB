@@ -175,15 +175,15 @@ mdv_topology * mdv_unbinn_topology(binn const *obj)
 }
 
 
-bool mdv_binn_insert_row(mdv_msg_insert_row_base const *msg, mdv_field const * fields, binn *obj)
+bool mdv_binn_insert_row(mdv_msg_insert_row const *msg, mdv_field const * fields, binn *obj)
 {
-    return  mdv_binn_row(fields, (mdv_row_base const*) &msg->row, obj);
+    return  mdv_binn_row(fields, msg->row, obj);
 }
 
 
-mdv_msg_insert_row_base * mdv_unbinn_insert_row(binn const *obj,  mdv_field const * fields)
+mdv_msg_insert_row * mdv_unbinn_insert_row(binn const *obj,  mdv_field const * fields)
 {
-    return (mdv_msg_insert_row_base *) mdv_unbinn_row(obj, fields);
+    return (mdv_msg_insert_row *) mdv_unbinn_row(obj, fields);
 }
 
 

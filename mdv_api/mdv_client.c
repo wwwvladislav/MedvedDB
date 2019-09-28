@@ -151,7 +151,7 @@ static mdv_errno  mdv_client_row_info_handler(mdv_msg const * msg, mdv_msg_row_i
 
     if (!info)
     {
-                MDV_LOGE("Invalid topology");
+        MDV_LOGE("Invalid topology");
         binn_free(&binn_msg);
         return MDV_FAILED;
     }
@@ -315,9 +315,9 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_base const *table, mdv_
     {
         switch(resp.hdr.id)
         {
-            case mdv_message_id(row_info):
+            case mdv_message_id(table_info):
             {
-                mdv_msg_row_info info;
+                mdv_msg_table_info info;
                 err = mdv_client_table_info_handler(&resp, &info);
                 if (err == MDV_OK)
                     *id = info.id;
@@ -403,11 +403,14 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
 
 mdv_errno mdv_insert_row(mdv_client *client, mdv_growid const *table_id, mdv_field const *fields, mdv_row_base const *row, mdv_growid *id)
 {
-    mdv_msg_insert_row_base *insert_row = (mdv_msg_insert_row_base *) row;
+    mdv_msg_insert_row row_msg;
+
+    row_msg.table = *table_id;
+    row_msg.row = row;
 
     binn insert_row_msg;
 
-    if (!mdv_binn_insert_row(insert_row, fields, &insert_row_msg))
+    if (!mdv_binn_insert_row(&row_msg, fields, &insert_row_msg))
         return MDV_FAILED;
 
 

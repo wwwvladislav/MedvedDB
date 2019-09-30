@@ -26,18 +26,50 @@ enum
 };
 
 
-/// DB operation
-typedef struct
+static mdv_cfstorage * mdv_tablespace_create_cfstorage(mdv_tablespace *tablespace, mdv_uuid const *uuid)
 {
-    uint32_t op;                ///< operation id
-    uint32_t alignment;         ///< alignment (unused)
-    uint8_t  payload[1];        ///< operation payload
-} mdv_op;
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
+    mdv_cfstorage_ref ref =
+    {
+        .uuid = *uuid,
+        .cfstorage = mdv_cfstorage_open(uuid, tablespace->nodes_num)
+    };
+
+    if (!ref.cfstorage)
+    {
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_cfstorage_close, ref.cfstorage);
+
+    if (mdv_mutex_lock(&tablespace->mutex) == MDV_OK)
+    {
+        if (!mdv_hashmap_insert(tablespace->storages, ref))
+        {
+            mdv_rollback(rollbacker);
+            ref.cfstorage = 0;
+        }
+        mdv_mutex_unlock(&tablespace->mutex);
+    }
+    else
+    {
+        mdv_rollback(rollbacker);
+        ref.cfstorage = 0;
+    }
+
+    return ref.cfstorage;
+
+
+    mdv_rollbacker_free(rollbacker);
+}
 
 mdv_errno mdv_tablespace_open(mdv_tablespace *tablespace, uint32_t nodes_num)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
+
+    tablespace->nodes_num = nodes_num;
 
     mdv_errno err = mdv_mutex_create(&tablespace->mutex);
 
@@ -207,10 +239,17 @@ static bool mdv_tablespace_log_apply_fn(void *arg, mdv_cfstorage_op const *op)
 
     binn obj;
 
+    if (!binn_load(db_op->payload, &obj))
+    {
+        MDV_LOGE("Invalid transaction operation");
+        return false;
+    }
+
     switch(db_op->op)
     {
         case MDV_OP_TABLE_CREATE:
         {
+            MDV_LOGE("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
             break;
         }
 

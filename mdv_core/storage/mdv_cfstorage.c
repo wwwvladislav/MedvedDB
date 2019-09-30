@@ -276,8 +276,9 @@ bool mdv_cfstorage_log_add(mdv_cfstorage  *cfstorage,
                                           &key))        // Delete op has priority
         {
             mdv_data k = { sizeof rowid.id, &rowid.id };
+            mdv_data v = { op->op.size, op->op.ptr };
 
-            if (mdv_map_put_unique(&tr_log, &transaction, &k, &op->op))
+            if (mdv_map_put_unique(&tr_log, &transaction, &k, &v))
             {
                 if (peer_id != MDV_LOCAL_ID)
                     mdv_cfstorage_top_id_update(cfstorage, peer_id, op->row_id);
@@ -401,7 +402,7 @@ static size_t mdv_cfstorage_log_read(mdv_cfstorage *cfstorage,
 
         op->data.row_id = *(uint64_t*)entry.key.ptr;
         op->data.op.size = entry.value.size;
-        op->data.op.ptr = op + 1;
+        op->data.op.ptr = (void*)(op + 1);
 
         memcpy(op->data.op.ptr, entry.value.ptr, entry.value.size);
 

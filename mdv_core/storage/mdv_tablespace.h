@@ -17,6 +17,7 @@ typedef struct
 {
     mdv_mutex   mutex;          ///< Mutex for storages guard
     mdv_hashmap storages;       ///< storages map (UUID -> mdv_cfstorage)
+    uint32_t    nodes_num;      ///< cluster maximum size
 } mdv_tablespace;
 
 

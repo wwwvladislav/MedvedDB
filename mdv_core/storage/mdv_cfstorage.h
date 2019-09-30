@@ -10,10 +10,23 @@
 typedef struct mdv_cfstorage mdv_cfstorage;
 
 
+/// DB operation
+typedef struct
+{
+    uint32_t op;                ///< operation id
+    uint32_t alignment;         ///< alignment (unused)
+    uint8_t  payload[1];        ///< operation payload
+} mdv_op;
+
+
 typedef struct
 {
     uint64_t    row_id;
-    mdv_data    op;
+    struct
+    {
+        uint32_t size;
+        mdv_op  *ptr;
+    } op;
 } mdv_cfstorage_op;
 
 

@@ -114,8 +114,8 @@ bool mdv_binn_table_info(mdv_msg_table_info const *msg, binn *obj)
     }
 
     if (0
-        || !binn_object_set_uint64(obj, "0", msg->id.peer.u64[0])
-        || !binn_object_set_uint64(obj, "1", msg->id.peer.u64[1])
+        || !binn_object_set_uint64(obj, "0", msg->id.node.u64[0])
+        || !binn_object_set_uint64(obj, "1", msg->id.node.u64[1])
         || !binn_object_set_uint64(obj, "I", msg->id.id))
     {
         binn_free(obj);
@@ -130,8 +130,8 @@ bool mdv_binn_table_info(mdv_msg_table_info const *msg, binn *obj)
 bool mdv_unbinn_table_info(binn const *obj, mdv_msg_table_info *msg)
 {
     if (0
-        || !binn_object_get_uint64((void*)obj, "0", (uint64 *)(msg->id.peer.u64 + 0))
-        || !binn_object_get_uint64((void*)obj, "1", (uint64 *)(msg->id.peer.u64 + 1))
+        || !binn_object_get_uint64((void*)obj, "0", (uint64 *)(msg->id.node.u64 + 0))
+        || !binn_object_get_uint64((void*)obj, "1", (uint64 *)(msg->id.node.u64 + 1))
         || !binn_object_get_uint64((void*)obj, "I", (uint64 *)&msg->id.id))
     {
         MDV_LOGE("unbinn_table_info failed");

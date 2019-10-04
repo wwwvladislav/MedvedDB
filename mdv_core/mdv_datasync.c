@@ -130,7 +130,7 @@ mdv_errno mdv_datasync_cfslog_sync_handler(mdv_datasync *datasync, uint32_t peer
         mdv_rollback(rollbacker);
         return MDV_FAILED;
     }
-
+/* TODO
     mdv_cfstorage *storage = mdv_tablespace_cfstorage(datasync->tablespace, &cfslog_sync.uuid);
 
     mdv_node *node = mdv_tracker_node_by_uuid(datasync->tracker, &cfslog_sync.peer);
@@ -147,7 +147,7 @@ mdv_errno mdv_datasync_cfslog_sync_handler(mdv_datasync *datasync, uint32_t peer
         if (mdv_datasync_cfslog_state(datasync, peer_id, &cfslog_state) != MDV_OK)
             MDV_LOGE("Cflog state notification failed");
     }
-
+*/
     mdv_rollback(rollbacker);
 
     return MDV_OK;
@@ -170,7 +170,7 @@ static bool mdv_datasync_cfs(void           *arg,
 {
     mdv_datasync_cfs_context *ctx = arg;
 
-    mdv_static_assert(sizeof(mdv_cfslog_data) == sizeof(mdv_cfstorage_op));
+    // TODO: mdv_static_assert(sizeof(mdv_cfslog_data) == sizeof(mdv_cfstorage_op));
 
     mdv_msg_p2p_cfslog_data cfslog_data =
     {
@@ -231,6 +231,7 @@ mdv_errno mdv_datasync_cfslog_state_handler(mdv_datasync *datasync,
         return MDV_FAILED;
     }
 
+/* TODO
     mdv_cfstorage *storage = mdv_tablespace_cfstorage(datasync->tablespace, &cfslog_state.uuid);
 
     mdv_node *node = mdv_tracker_node_by_uuid(datasync->tracker, &cfslog_state.peer);
@@ -256,7 +257,7 @@ mdv_errno mdv_datasync_cfslog_state_handler(mdv_datasync *datasync,
     }
     else
         MDV_LOGE("Storage or node not found. (storage: %p, node: %p)", storage, node);
-
+*/
     mdv_rollback(rollbacker);
 
     return MDV_OK;
@@ -298,6 +299,7 @@ mdv_errno mdv_datasync_cfslog_data_handler(mdv_datasync  *datasync,
 
             if (node)
             {
+/* TODO
                 mdv_cfstorage *storage = mdv_tablespace_cfstorage(datasync->tablespace, storage_uuid);
 
                 if (storage)
@@ -309,6 +311,7 @@ mdv_errno mdv_datasync_cfslog_data_handler(mdv_datasync  *datasync,
                 }
                 else
                     MDV_LOGE("Unknown storage: %s", mdv_uuid_to_str(storage_uuid).ptr);
+*/
             }
             else
                 MDV_LOGE("Unknown node: %s", mdv_uuid_to_str(peer_uuid).ptr);
@@ -429,7 +432,7 @@ static void mdv_datasync_main(mdv_datasync *datasync)
         return;
     }
 
-
+/* TODO
     mdv_vector *storages = mdv_tablespace_storages(datasync->tablespace);
 
     if (!storages)
@@ -454,7 +457,7 @@ static void mdv_datasync_main(mdv_datasync *datasync)
             mdv_datasync_job_emit(datasync, *src, routes, strg);
         }
     }
-
+*/
     mdv_rollback(rollbacker);
 }
 
@@ -543,8 +546,10 @@ mdv_errno mdv_datasync_create(mdv_datasync *datasync,
 
     datasync->tablespace = tablespace;
     datasync->tracker = tracker;
-    datasync->jobber = jobber;
+    datasync->jobber = mdv_jobber_retain(jobber);
     datasync->routes = 0;
+
+    mdv_rollbacker_push(rollbacker, mdv_jobber_release, datasync->jobber);
 
     atomic_init(&datasync->active_jobs, 0);
 
@@ -600,6 +605,7 @@ mdv_errno mdv_datasync_create(mdv_datasync *datasync,
 void mdv_datasync_free(mdv_datasync *datasync)
 {
     mdv_datasync_stop(datasync);
+    mdv_jobber_release(datasync->jobber);
     mdv_vector_release(datasync->routes);
     mdv_mutex_free(&datasync->mutex);
     mdv_eventfd_close(datasync->start);

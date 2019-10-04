@@ -59,7 +59,7 @@ typedef mdv_msg_create_table(1) mdv_msg_create_table_base;
 
 
 mdv_message_def(table_info, 4,
-    mdv_growid  id;
+    mdv_gobjid  id;
 );
 
 
@@ -73,13 +73,13 @@ mdv_message_def(topology, 6,
 
 
 mdv_message_def(insert_row, 7,
-    mdv_growid          table;
+    mdv_gobjid          table;
     mdv_row_base const *row;
 );
 
 
 mdv_message_def(row_info, 8,
-    mdv_growid  id;
+    mdv_gobjid  id;
 );
 
 

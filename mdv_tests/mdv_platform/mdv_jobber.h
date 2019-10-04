@@ -64,5 +64,5 @@ MU_TEST(platform_jobber)
 
     mdv_condvar_free(&job.data.cv);
 
-    mdv_jobber_free(jobber);
+    mdv_jobber_release(jobber);
 }

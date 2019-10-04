@@ -20,10 +20,11 @@ typedef mdv_queuefd(mdv_job_base*, MDV_JOBBER_QUEUE_SIZE) mdv_jobber_queue;
 
 struct mdv_jobber
 {
-    mdv_threadpool     *threads;
-    size_t              queue_count;
-    atomic_size_t       idx;
-    mdv_jobber_queue    jobs[1];
+    atomic_uint_fast32_t    rc;
+    mdv_threadpool         *threads;
+    size_t                  queue_count;
+    atomic_size_t           idx;
+    mdv_jobber_queue        jobs[1];
 };
 
 
@@ -74,6 +75,7 @@ mdv_jobber * mdv_jobber_create(mdv_jobber_config const *config)
 
     mdv_rollbacker_push(rollbacker, mdv_free, jobber, "jobber");
 
+    atomic_init(&jobber->rc, 1);
     atomic_init(&jobber->idx, 0);
 
 
@@ -137,29 +139,43 @@ mdv_jobber * mdv_jobber_create(mdv_jobber_config const *config)
 }
 
 
-void mdv_jobber_free(mdv_jobber *jobber)
+static void mdv_jobber_free(mdv_jobber *jobber)
 {
-    if (jobber)
+    mdv_threadpool_stop(jobber->threads);
+    mdv_threadpool_free(jobber->threads);
+
+    for(size_t i = 0; i < jobber->queue_count; ++i)
     {
-        mdv_threadpool_stop(jobber->threads);
-        mdv_threadpool_free(jobber->threads);
-
-        for(size_t i = 0; i < jobber->queue_count; ++i)
+        if (mdv_queuefd_size(jobber->jobs[i]))
         {
-            if (mdv_queuefd_size(jobber->jobs[i]))
+            mdv_job_base *job = 0;
+
+            while(mdv_queuefd_pop(jobber->jobs[i], job))
             {
-                mdv_job_base *job = 0;
-
-                while(mdv_queuefd_pop(jobber->jobs[i], job))
-                {
-                    if (job->finalize)
-                        job->finalize(job);
-                }
+                if (job->finalize)
+                    job->finalize(job);
             }
-            mdv_queuefd_free(jobber->jobs[i]);
         }
+        mdv_queuefd_free(jobber->jobs[i]);
+    }
 
-        mdv_free(jobber, "jobber");
+    mdv_free(jobber, "jobber");
+}
+
+
+mdv_jobber * mdv_jobber_retain(mdv_jobber *jobber)
+{
+    atomic_fetch_add_explicit(&jobber->rc, 1, memory_order_acquire);
+    return jobber;
+}
+
+
+void mdv_jobber_release(mdv_jobber *jobber)
+{
+    if (jobber
+        && atomic_fetch_sub_explicit(&jobber->rc, 1, memory_order_release) == 1)
+    {
+        mdv_jobber_free(jobber);
     }
 }
 

@@ -35,6 +35,9 @@ void mdv_rollbacker_free(mdv_rollbacker *rbr)
 
 bool _mdv_rollbacker_push(mdv_rollbacker *rbr, mdv_rollback_op const *op)
 {
+    if (!rbr)
+        return false;
+
     if (rbr->size >= rbr->capacity)
     {
         MDV_LOGE("Rollback stack is full");
@@ -49,7 +52,7 @@ bool _mdv_rollbacker_push(mdv_rollbacker *rbr, mdv_rollback_op const *op)
 
 void mdv_rollback(mdv_rollbacker *rbr)
 {
-    while(rbr->size)
+    while(rbr && rbr->size)
     {
         rbr->size--;
 

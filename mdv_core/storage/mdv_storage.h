@@ -59,8 +59,10 @@ mdv_storage * mdv_storage_retain(mdv_storage *pstorage);
  * @brief Decrement references counter. Storage is closed and memory is freed if references counter is zero.
  *
  * @param pstorage [in] storage
+ *
+ * @return references counter
  */
-void mdv_storage_release(mdv_storage *pstorage);
+uint32_t mdv_storage_release(mdv_storage *pstorage);
 
 
 /// Transaction descriptor

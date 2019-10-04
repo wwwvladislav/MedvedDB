@@ -96,7 +96,7 @@ static void mdv_committer_main(mdv_committer *committer)
         return;
     }
 
-
+/* TODO
     mdv_vector *storages = mdv_tablespace_storages(committer->tablespace);
 
     if (!storages)
@@ -127,7 +127,7 @@ static void mdv_committer_main(mdv_committer *committer)
                 mdv_committer_job_emit(committer, *src, strg);
         }
     }
-
+*/
     mdv_rollback(rollbacker);
 }
 
@@ -194,11 +194,13 @@ mdv_errno mdv_committer_create(mdv_committer *committer,
                                mdv_tracker *tracker,
                                mdv_jobber *jobber)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
     committer->tablespace = tablespace;
     committer->tracker = tracker;
-    committer->jobber = jobber;
+    committer->jobber = mdv_jobber_retain(jobber);
+
+    mdv_rollbacker_push(rollbacker, mdv_jobber_release, committer->jobber);
 
     atomic_init(&committer->active_jobs, 0);
 
@@ -260,6 +262,7 @@ void mdv_committer_stop(mdv_committer *committer)
 void mdv_committer_free(mdv_committer *committer)
 {
     mdv_committer_stop(committer);
+    mdv_jobber_release(committer->jobber);
     mdv_eventfd_close(committer->start);
     memset(committer, 0, sizeof(*committer));
 }

@@ -10,29 +10,39 @@
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 typedef struct
 {
-    uint32_t    size;
-    void       *ptr;
+    uint32_t    size;       ///< Data size
+    void       *ptr;        ///< Data pointer
 } mdv_data;
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Row ID
+// Object ID
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 typedef struct __attribute__((packed))
 {
-    uint32_t peer;
-    uint64_t id;
-} mdv_rowid;
+    union
+    {
+        uint8_t  u8[12];    ///< representation as u8 array
+
+        struct
+        {
+            uint32_t node;  ///< Node identifier
+            uint64_t id;    ///< Object identifier
+        };
+    };
+} mdv_objid;
+
+mdv_string mdv_objid_to_str(mdv_objid const *objid);
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Global row ID
+// Global obj ID
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-typedef struct __attribute__((packed))
+typedef struct
 {
-    mdv_uuid peer;
-    uint64_t id;
-} mdv_growid;
+    mdv_uuid node;          ///< Peer/node UUID
+    uint64_t id;            ///< Global and unique for node identifier
+} mdv_gobjid;
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

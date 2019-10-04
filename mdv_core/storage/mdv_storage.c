@@ -19,8 +19,8 @@
 
 struct mdv_storage
 {
-    atomic_int  ref_counter;
-    MDB_env    *env;
+    atomic_uint_fast32_t    ref_counter;
+    MDB_env                *env;
 };
 
 /// @endcond
@@ -119,7 +119,7 @@ mdv_storage * mdv_storage_retain(mdv_storage *pstorage)
 }
 
 
-void mdv_storage_release(mdv_storage *pstorage)
+uint32_t mdv_storage_release(mdv_storage *pstorage)
 {
     if (pstorage)
     {

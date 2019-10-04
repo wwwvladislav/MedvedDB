@@ -284,7 +284,7 @@ void mdv_client_close(mdv_client *client)
 }
 
 
-mdv_errno mdv_create_table(mdv_client *client, mdv_table_base const *table, mdv_growid *id)
+mdv_errno mdv_create_table(mdv_client *client, mdv_table_base const *table, mdv_gobjid *id)
 {
     mdv_msg_create_table_base *create_table = (mdv_msg_create_table_base *)table;
 
@@ -399,7 +399,7 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
 }
 
 
-mdv_errno mdv_insert_row(mdv_client *client, mdv_growid const *table_id, mdv_field const *fields, mdv_row_base const *row, mdv_growid *id)
+mdv_errno mdv_insert_row(mdv_client *client, mdv_gobjid const *table_id, mdv_field const *fields, mdv_row_base const *row, mdv_gobjid *id)
 {
     mdv_msg_insert_row row_msg;
 

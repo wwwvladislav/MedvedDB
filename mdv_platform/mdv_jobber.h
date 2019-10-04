@@ -69,11 +69,18 @@ mdv_jobber * mdv_jobber_create(mdv_jobber_config const *config);
 
 
 /**
- * @brief Stop and free job scheduler
- *
- * @param jobber [in] job scheduler
+ * @brief Retains job scheduler.
+ * @details Reference counter is increased by one.
  */
-void mdv_jobber_free(mdv_jobber *jobber);
+mdv_jobber * mdv_jobber_retain(mdv_jobber *jobber);
+
+
+/**
+ * @brief Releases job scheduler.
+ * @details Reference counter is decreased by one.
+ *          When the reference counter reaches zero, the job scheduler is stopped and freed.
+ */
+void mdv_jobber_release(mdv_jobber *jobber);
 
 
 /**

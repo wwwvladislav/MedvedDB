@@ -21,7 +21,7 @@ typedef struct
 
 typedef struct
 {
-    uint64_t    row_id;
+    uint64_t    id;
     struct
     {
         uint32_t size;

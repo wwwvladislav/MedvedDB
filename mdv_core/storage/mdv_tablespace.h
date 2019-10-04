@@ -4,20 +4,21 @@
  * @details Tablespace contains table descriptions, row data and transaction logs.
 */
 #pragma once
-#include "mdv_cfstorage.h"
+#include "mdv_trlog.h"
 #include <mdv_types.h>
 #include <mdv_errno.h>
 #include <mdv_hashmap.h>
 #include <mdv_mutex.h>
 #include <mdv_vector.h>
+#include <mdv_uuid.h>
 
 
 /// DB tables space
 typedef struct
 {
     mdv_mutex   mutex;          ///< Mutex for storages guard
-    mdv_hashmap storages;       ///< storages map (UUID -> mdv_cfstorage)
-    uint32_t    nodes_num;      ///< cluster maximum size
+    mdv_hashmap trlogs;         ///< Transaction logs map (UUID -> mdv_trlog)
+    mdv_uuid    uuid;           ///< Current node UUID
 } mdv_tablespace;
 
 
@@ -25,12 +26,12 @@ typedef struct
  * @brief Open or create tablespace.
  *
  * @param tablespace [out] Pointer to a tablespace structure
- * @param nodes_num [in] Cluster nodes count
+ * @param uuid [in]        Current node UUID
  *
  * @return MDV_OK if wait operation successfully completed
  * @return non zero value if error has occurred
  */
-mdv_errno mdv_tablespace_open(mdv_tablespace *tablespace, uint32_t nodes_num);
+mdv_errno mdv_tablespace_open(mdv_tablespace *tablespace, mdv_uuid const *uuid);
 
 
 /**
@@ -42,17 +43,6 @@ void mdv_tablespace_close(mdv_tablespace *tablespace);
 
 
 /**
- * @brief Searches storage by UUID
- *
- * @param tablespace [in] Pointer to a tablespace
- * @param uuid [in]       Storage UUID
- *
- * @return pointer to a storage
- */
-mdv_cfstorage * mdv_tablespace_cfstorage(mdv_tablespace *tablespace, mdv_uuid const *uuid);
-
-
-/**
  * @brief Insert new record into the transaction log for new table creation.
  *
  * @param tablespace [in] Pointer to a tablespace structure
@@ -61,17 +51,17 @@ mdv_cfstorage * mdv_tablespace_cfstorage(mdv_tablespace *tablespace, mdv_uuid co
  *
  * @return non zero table identifier pointer if operation successfully completed.
  */
-mdv_rowid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base const *table);
+mdv_objid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base const *table);
 
 
 /**
- * @brief Return storages uuids vector.
+ * @brief Return transaction logs uuids vector.
  *
  * @param tablespace [in] Pointer to a tablespace structure
  *
  * @return storages uuids vector.
  */
-mdv_vector * mdv_tablespace_storages(mdv_tablespace *tablespace);
+mdv_vector * mdv_tablespace_trlogs(mdv_tablespace *tablespace);
 
 
 /**

@@ -40,7 +40,7 @@ mdv_vector * mdv_vector_retain(mdv_vector *vector);
 
 
 /**
- * @brief Releases vecror.
+ * @brief Releases vector.
  * @details Reference counter is decreased by one.
  *          When the reference counter reaches zero, the vecror's destructor is called.
  */

@@ -176,7 +176,7 @@ static void mdv_test_scenario(char const *args)
         }
     };
 
-    mdv_growid id;
+    mdv_gobjid id;
 
     mdv_errno err = mdv_create_table(client, (mdv_table_base *)&table, &id);
 
@@ -189,7 +189,7 @@ static void mdv_test_scenario(char const *args)
         MDV_INF("Table '%s' creation failed with error '%s' (%d)\n", table.name.ptr, mdv_strerror(err), err);
     }
 
-    mdv_growid row_id;
+    mdv_gobjid row_id;
 
     int int_value[] = {42, 43};
     bool bool_value = true;

@@ -27,17 +27,20 @@ mdv_storage * mdv_metainf_storage_open(char const *path)
 
 bool mdv_metainf_load(mdv_metainf *metainf, mdv_storage *storage)
 {
-
     mdv_metainf_init(metainf);
 
     // Load metainf
     mdv_transaction transaction = mdv_transaction_start(storage);
+
     if (mdv_transaction_ok(transaction))
     {
         mdv_map map = mdv_map_open(&transaction, MDV_MAP_METAINF, MDV_MAP_INTEGERKEY);
+
         if (mdv_map_ok(map))
             mdv_map_read(&map, &transaction, metainf);
+
         mdv_transaction_abort(&transaction);
+
         mdv_map_close(&map);
     }
 

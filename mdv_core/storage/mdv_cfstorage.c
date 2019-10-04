@@ -86,19 +86,19 @@ mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num)
     mdv_rollbacker_push(rollbacker, mdv_rmdir, path.ptr);
 
 
-    cfstorage->data = mdv_storage_open(path.ptr,
-                                       MDV_STRG_DATA,
-                                       MDV_STRG_DATA_MAPS,
-                                       MDV_STRG_NOSUBDIR);
+//    cfstorage->data = mdv_storage_open(path.ptr,
+//                                       MDV_STRG_DATA,
+//                                       MDV_STRG_DATA_MAPS,
+//                                       MDV_STRG_NOSUBDIR);
 
-    if (!cfstorage->data)
-    {
-        MDV_LOGE("Storage '%s' wasn't created", str_uuid.ptr);
-        mdv_rollback(rollbacker);
-        return 0;
-    }
+//    if (!cfstorage->data)
+//    {
+//        MDV_LOGE("Storage '%s' wasn't created", str_uuid.ptr);
+//        mdv_rollback(rollbacker);
+//        return 0;
+//    }
 
-    mdv_rollbacker_push(rollbacker, mdv_storage_release, cfstorage->data);
+//    mdv_rollbacker_push(rollbacker, mdv_storage_release, cfstorage->data);
 
 
     cfstorage->tr_log = mdv_storage_open(path.ptr,
@@ -116,11 +116,11 @@ mdv_cfstorage * mdv_cfstorage_open(mdv_uuid const *uuid, uint32_t nodes_num)
     mdv_rollbacker_push(rollbacker, mdv_storage_release, cfstorage->tr_log);
 
 
-    cfstorage->applied = mdv_idmap_open(cfstorage->tr_log, MDV_MAP_APPLIED_POS, nodes_num);
+    cfstorage->applied = mdv_idmap_open(cfstorage->tr_log, MDV_MAP_APPLIED, nodes_num);
 
     if (!cfstorage->applied)
     {
-        MDV_LOGE("Map '%s' initialization failed", MDV_MAP_APPLIED_POS);
+        MDV_LOGE("Map '%s' initialization failed", MDV_MAP_APPLIED);
         mdv_rollback(rollbacker);
         return 0;
     }
@@ -142,7 +142,7 @@ void mdv_cfstorage_close(mdv_cfstorage *cfstorage)
     if(cfstorage)
     {
         mdv_idmap_free(cfstorage->applied);
-        mdv_storage_release(cfstorage->data);
+//        mdv_storage_release(cfstorage->data);
         mdv_storage_release(cfstorage->tr_log);
         cfstorage->data = 0;
         cfstorage->tr_log = 0;
@@ -262,26 +262,26 @@ bool mdv_cfstorage_log_add(mdv_cfstorage  *cfstorage,
 
     mdv_list_foreach(ops, mdv_cfstorage_op, op)
     {
-        mdv_rowid rowid =
+        mdv_objid objid =
         {
-            .peer = peer_id,
-            .id = op->row_id
+            .node = peer_id,
+            .id = op->id
         };
 
-        mdv_data key = { sizeof rowid, &rowid };
+        mdv_data key = { sizeof objid, &objid };
 
         if (!mdv_cfstorage_is_key_deleted(cfstorage,
                                           &rem_map,
                                           &transaction,
                                           &key))        // Delete op has priority
         {
-            mdv_data k = { sizeof rowid.id, &rowid.id };
+            mdv_data k = { sizeof objid.id, &objid.id };
             mdv_data v = { op->op.size, op->op.ptr };
 
             if (mdv_map_put_unique(&tr_log, &transaction, &k, &v))
             {
                 if (peer_id != MDV_LOCAL_ID)
-                    mdv_cfstorage_top_id_update(cfstorage, peer_id, op->row_id);
+                    mdv_cfstorage_top_id_update(cfstorage, peer_id, op->id);
             }
             else
                 MDV_LOGW("OP insertion failed.");
@@ -400,7 +400,7 @@ static size_t mdv_cfstorage_log_read(mdv_cfstorage *cfstorage,
             mdv_map_foreach_break(entry);
         }
 
-        op->data.row_id = *(uint64_t*)entry.key.ptr;
+        op->data.id = *(uint64_t*)entry.key.ptr;
         op->data.op.size = entry.value.size;
         op->data.op.ptr = (void*)(op + 1);
 
@@ -440,7 +440,7 @@ uint64_t mdv_cfstorage_sync(mdv_cfstorage *cfstorage,
         if (!count)     // No data in TR log
             break;
 
-        sync_pos = mdv_list_back(&ops, mdv_cfstorage_op)->row_id + 1;
+        sync_pos = mdv_list_back(&ops, mdv_cfstorage_op)->id + 1;
 
         ok = fn(arg, peer_src, peer_dst, count, &ops);
 
@@ -485,7 +485,7 @@ bool mdv_cfstorage_log_apply(mdv_cfstorage         *cfstorage,
                 break;
             }
 
-            applied_pos = op->row_id + 1;
+            applied_pos = op->id + 1;
         }
 
         mdv_list_clear(&ops);

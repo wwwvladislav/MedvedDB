@@ -87,11 +87,12 @@ bool mdv_core_create(mdv_core *core)
     }
 
     mdv_metainf_validate(&core->metainf);
+
     mdv_metainf_flush(&core->metainf, core->storage.metainf);
 
 
     // Tablespace
-    if (mdv_tablespace_open(&core->storage.tablespace, MDV_MAX_CLUSTER_SIZE) != MDV_OK)
+    if (mdv_tablespace_open(&core->storage.tablespace, &core->metainf.uuid.value) != MDV_OK)
     {
         MDV_LOGE("DB tables space creation failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
         mdv_rollback(rollbacker);
@@ -127,7 +128,7 @@ bool mdv_core_create(mdv_core *core)
         return false;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_jobber_free, &core->jobber);
+    mdv_rollbacker_push(rollbacker, mdv_jobber_release, core->jobber);
 
 
     // Data synchronizer
@@ -183,7 +184,7 @@ void mdv_core_free(mdv_core *core)
     mdv_datasync_stop(&core->datasync);
     mdv_committer_stop(&core->committer);
     mdv_cluster_free(&core->cluster);
-    mdv_jobber_free(core->jobber);
+    mdv_jobber_release(core->jobber);
     mdv_datasync_free(&core->datasync);
     mdv_committer_free(&core->committer);
     mdv_storage_release(core->storage.metainf);

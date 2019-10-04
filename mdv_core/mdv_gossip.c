@@ -149,7 +149,7 @@ mdv_errno mdv_gossip_linkstate(mdv_core            *core,
                                char const          *dst_listen,
                                bool                 connected)
 {
-    mdv_tracker *tracker = &core->cluster.tracker;
+    mdv_tracker *tracker = core->tracker;
     mdv_errno err = MDV_OK;
 
     mdv_tracker_linkstate(tracker, src_peer, dst_peer, connected);
@@ -212,7 +212,7 @@ static int mdv_gossip_ids_cmp(const void *a, const void *b)
 
 static void mdv_gossip_node_track(mdv_core *core, mdv_toponode const *toponode)
 {
-    mdv_tracker *tracker = &core->cluster.tracker;
+    mdv_tracker *tracker = core->tracker;
 
     size_t const addr_len = strlen(toponode->addr);
     size_t const node_size = offsetof(mdv_node, addr) + addr_len + 1;
@@ -241,7 +241,7 @@ static void mdv_gossip_linkstate_track(mdv_core           *core,
                                        mdv_toponode const *dst,
                                        bool                connected)
 {
-    mdv_tracker *tracker = &core->cluster.tracker;
+    mdv_tracker *tracker = core->tracker;
 
     mdv_gossip_node_track(core, src);
     mdv_gossip_node_track(core, dst);
@@ -252,7 +252,7 @@ static void mdv_gossip_linkstate_track(mdv_core           *core,
 
 mdv_errno mdv_gossip_linkstate_handler(mdv_core *core, mdv_msg const *msg)
 {
-    mdv_tracker *tracker = &core->cluster.tracker;
+    mdv_tracker *tracker = core->tracker;
 
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(8);
 

@@ -4,11 +4,11 @@
  */
 
 #pragma once
-#include "mdv_tracker.h"
 #include "mdv_chaman.h"
 #include "mdv_dispatcher.h"
 #include "mdv_hashmap.h"
 #include "mdv_msg.h"
+#include "mdv_tracker.h"
 #include <stdatomic.h>
 
 
@@ -92,7 +92,6 @@ typedef struct
 typedef struct mdv_cluster
 {
     mdv_uuid                uuid;           ///< Current cluster node UUID
-    mdv_tracker            *tracker;        ///< Topology tracker
     mdv_hashmap             conctx_cfgs;    ///< Connection contexts configurations
     mdv_chaman             *chaman;         ///< Channels manager
     void                   *userdata;       ///< Userdata which is provided as argument to connection context initialization function

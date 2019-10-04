@@ -323,6 +323,8 @@ static void mdv_tracker_free(mdv_tracker *tracker)
     mdv_mutex_free(&tracker->nodes_mutex);
 
     memset(tracker, 0, sizeof *tracker);
+
+    mdv_free(tracker, "tracker");
 }
 
 

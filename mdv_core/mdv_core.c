@@ -51,7 +51,7 @@ static bool mdv_core_cluster_create(mdv_core *core)
     }
 
     // Load cluster nodes
-    if (mdv_nodes_load(core->storage.metainf, &core->cluster.tracker) != MDV_OK)
+    if (mdv_nodes_load(core->storage.metainf, core->tracker) != MDV_OK)
     {
         MDV_LOGE("Nodes loading failed");
         mdv_cluster_free(&core->cluster);
@@ -64,7 +64,7 @@ static bool mdv_core_cluster_create(mdv_core *core)
 
 bool mdv_core_create(mdv_core *core)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(6);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(7);
 
     // DB meta information storage
     core->storage.metainf = mdv_metainf_storage_open(MDV_CONFIG.storage.path.ptr);
@@ -131,10 +131,23 @@ bool mdv_core_create(mdv_core *core)
     mdv_rollbacker_push(rollbacker, mdv_jobber_release, core->jobber);
 
 
+    // Topology tracker
+    core->tracker = mdv_tracker_create(&core->metainf.uuid.value);
+
+    if (!core->tracker)
+    {
+        MDV_LOGE("Topology tracker creation failed");
+        mdv_rollback(rollbacker);
+        return false;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_tracker_release, core->tracker);
+
+
     // Data synchronizer
     if (mdv_datasync_create(&core->datasync,
                             &core->storage.tablespace,
-                            &core->cluster.tracker,
+                            core->tracker,
                             core->jobber) != MDV_OK)
     {
         MDV_LOGE("Data synchronizer creation failed");
@@ -148,7 +161,7 @@ bool mdv_core_create(mdv_core *core)
     // Data committer
     if (mdv_committer_create(&core->committer,
                              &core->storage.tablespace,
-                             &core->cluster.tracker,
+                             core->tracker,
                              core->jobber) != MDV_OK)
     {
         MDV_LOGE("Data committer creation failed");
@@ -187,6 +200,7 @@ void mdv_core_free(mdv_core *core)
     mdv_jobber_release(core->jobber);
     mdv_datasync_free(&core->datasync);
     mdv_committer_free(&core->committer);
+    mdv_tracker_release(core->tracker);
     mdv_storage_release(core->storage.metainf);
     mdv_tablespace_close(&core->storage.tablespace);
 }

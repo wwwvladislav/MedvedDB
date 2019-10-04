@@ -166,7 +166,7 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
 
     mdv_user    *user    = arg;
     mdv_core    *core    = user->core;
-    mdv_tracker *tracker = &core->cluster.tracker;
+    mdv_tracker *tracker = core->tracker;
 
     binn binn_msg;
 
@@ -231,7 +231,7 @@ static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
 
     mdv_user    *user   = arg;
     mdv_core    *core   = user->core;
-    mdv_tracker *tracker = &core->cluster.tracker;
+    mdv_tracker *tracker = core->tracker;
 
     mdv_topology *topology = mdv_topology_extract(tracker);
 

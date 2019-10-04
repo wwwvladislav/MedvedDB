@@ -153,7 +153,7 @@ static mdv_errno mdv_peer_linkstate_handler(mdv_msg const *msg, void *arg)
 static void mdv_peer_toposync_node_add(mdv_peer *peer, mdv_uuid const *uuid, char const *addr)
 {
     mdv_core *core = peer->core;
-    mdv_tracker *tracker = &core->cluster.tracker;
+    mdv_tracker *tracker = core->tracker;
 
     size_t const addr_len = strlen(addr);
     size_t const node_size = offsetof(mdv_node, addr) + addr_len + 1;
@@ -190,7 +190,7 @@ static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
 {
     mdv_peer *peer = arg;
     mdv_core *core = peer->core;
-    mdv_tracker *tracker = &core->cluster.tracker;
+    mdv_tracker *tracker = core->tracker;
 
     MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
@@ -270,7 +270,7 @@ static mdv_errno mdv_peer_topodiff_handler(mdv_msg const *msg, void *arg)
 {
     mdv_peer *peer = arg;
     mdv_core *core = peer->core;
-    mdv_tracker *tracker = &core->cluster.tracker;
+    mdv_tracker *tracker = core->tracker;
 
     MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
@@ -400,7 +400,7 @@ static mdv_errno mdv_peer_hello(mdv_peer *peer)
 static mdv_errno mdv_peer_toposync(mdv_peer *peer)
 {
     mdv_core *core = peer->core;
-    mdv_tracker *tracker = &core->cluster.tracker;
+    mdv_tracker *tracker = core->tracker;
 
     mdv_topology *topology = mdv_topology_extract(tracker);
 
@@ -549,7 +549,7 @@ void mdv_peer_free(void *ctx, mdv_conctx *conctx)
 static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid const *uuid, uint32_t *id)
 {
     mdv_core *core = peer->core;
-    mdv_tracker *tracker = &core->cluster.tracker;
+    mdv_tracker *tracker = core->tracker;
 
     size_t const addr_len = strlen(addr);
     size_t const node_size = offsetof(mdv_node, addr) + addr_len + 1;
@@ -607,7 +607,7 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid c
 static void mdv_peer_disconnected(mdv_peer *peer, mdv_uuid const *uuid)
 {
     mdv_core *core = peer->core;
-    mdv_tracker *tracker = &core->cluster.tracker;
+    mdv_tracker *tracker = core->tracker;
 
     // Save peer connection state in memory
     mdv_tracker_peer_disconnected(tracker, uuid);

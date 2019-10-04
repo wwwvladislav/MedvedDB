@@ -95,7 +95,7 @@ static mdv_gossip_peers * mdv_gossip_peers_get(mdv_tracker *tracker, bool add_se
         if (add_self)
         {
             mdv_gossip_peer *peer = &peers_set.data->peers[peers_set.data->size++];
-            peer->uid = mdv_hash_murmur2a(&tracker->uuid, sizeof(tracker->uuid), 0);
+            peer->uid = mdv_hash_murmur2a(mdv_tracker_uuid(tracker), sizeof(mdv_uuid), 0);
             peer->lid = MDV_LOCAL_ID;
         }
 

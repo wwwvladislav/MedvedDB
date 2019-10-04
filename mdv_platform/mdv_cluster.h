@@ -92,7 +92,7 @@ typedef struct
 typedef struct mdv_cluster
 {
     mdv_uuid                uuid;           ///< Current cluster node UUID
-    mdv_tracker             tracker;        ///< Topology tracker
+    mdv_tracker            *tracker;        ///< Topology tracker
     mdv_hashmap             conctx_cfgs;    ///< Connection contexts configurations
     mdv_chaman             *chaman;         ///< Channels manager
     void                   *userdata;       ///< Userdata which is provided as argument to connection context initialization function

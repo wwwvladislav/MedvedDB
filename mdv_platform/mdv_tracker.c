@@ -4,6 +4,7 @@
 #include "mdv_rollbacker.h"
 #include "mdv_algorithm.h"
 #include <string.h>
+#include <stdatomic.h>
 
 
 /// Node identifier
@@ -20,6 +21,24 @@ typedef struct
     mdv_uuid   uuid;    ///< Global unique identifier
     mdv_node  *node;    ///< Cluster node information
 } mdv_peer_id;
+
+
+
+/// Nodes and network topology tracker
+struct mdv_tracker
+{
+    atomic_uint_fast32_t    rc;             ///< References counter
+    mdv_uuid                uuid;           ///< Global unique identifier for current node (i.e. self UUID)
+    atomic_uint_fast32_t    max_id;         ///< Maximum node identifier
+
+    mdv_mutex               nodes_mutex;    ///< nodes guard mutex
+    mdv_hashmap             nodes;          ///< Nodes map (UUID -> mdv_node)
+    mdv_hashmap             ids;            ///< Node identifiers (id -> mdv_node *)
+    mdv_hashmap             peers;          ///< Peers (i.e. connected neighbours. UUID -> mdv_node *)
+
+    mdv_hashmap             links;          ///< Links (id -> id's vector)
+    mdv_mutex               links_mutex;    ///< Links guard mutex
+};
 
 
 static mdv_node * mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node);
@@ -174,16 +193,39 @@ static mdv_node * mdv_tracker_find(mdv_tracker *tracker, mdv_uuid const *uuid)
 
 static uint32_t mdv_tracker_new_id(mdv_tracker *tracker)
 {
-    return ++tracker->max_id;
+    return atomic_fetch_add_explicit(&tracker->max_id, 1, memory_order_relaxed) + 1;
 }
 
 
-mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
+static void mdv_tracker_id_maximize(mdv_tracker *tracker, uint32_t id)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(6);
+    for(uint64_t top_id = atomic_load(&tracker->max_id); id > top_id;)
+    {
+        if(atomic_compare_exchange_weak(&tracker->max_id, &top_id, id))
+            break;
+    }
+}
 
-    tracker->uuid   = *uuid;
-    tracker->max_id = 0;
+
+mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(7);
+
+    mdv_tracker *tracker = mdv_alloc(sizeof(mdv_tracker), "tracker");
+
+    if (!tracker)
+    {
+        MDV_LOGE("No memory for tracker");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_free, tracker, "tracker");
+
+    atomic_init(&tracker->rc, 1);
+    atomic_init(&tracker->max_id, 0);
+
+    tracker->uuid = *uuid;
 
     if (!mdv_hashmap_init(tracker->nodes,
                           mdv_node,
@@ -194,7 +236,7 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
     {
         MDV_LOGE("There is no memory for nodes");
         mdv_rollback(rollbacker);
-        return MDV_NO_MEM;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tracker->nodes);
@@ -204,7 +246,7 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
     {
         MDV_LOGE("Nodes storage mutex not created");
         mdv_rollback(rollbacker);
-        return MDV_FAILED;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tracker->nodes_mutex);
@@ -219,7 +261,7 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
     {
         MDV_LOGE("There is no memory for nodes");
         mdv_rollback(rollbacker);
-        return MDV_NO_MEM;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tracker->ids);
@@ -234,7 +276,7 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
     {
         MDV_LOGE("There is no memory for peers");
         mdv_rollback(rollbacker);
-        return MDV_NO_MEM;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tracker->peers);
@@ -249,7 +291,7 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
     {
         MDV_LOGE("There is no memory for links");
         mdv_rollback(rollbacker);
-        return MDV_NO_MEM;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tracker->links);
@@ -259,31 +301,51 @@ mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid)
     {
         MDV_LOGE("links storage mutex not created");
         mdv_rollback(rollbacker);
-        return MDV_FAILED;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tracker->links_mutex);
 
     mdv_rollbacker_free(rollbacker);
 
-    return MDV_OK;
+    return tracker;
 }
 
 
-void mdv_tracker_free(mdv_tracker *tracker)
+static void mdv_tracker_free(mdv_tracker *tracker)
 {
-    if (tracker)
+    mdv_hashmap_free(tracker->links);
+    mdv_mutex_free(&tracker->links_mutex);
+
+    mdv_hashmap_free(tracker->ids);
+    mdv_hashmap_free(tracker->peers);
+    mdv_hashmap_free(tracker->nodes);
+    mdv_mutex_free(&tracker->nodes_mutex);
+
+    memset(tracker, 0, sizeof *tracker);
+}
+
+
+mdv_tracker * mdv_tracker_retain(mdv_tracker *tracker)
+{
+    atomic_fetch_add_explicit(&tracker->rc, 1, memory_order_acquire);
+    return tracker;
+}
+
+
+void mdv_tracker_release(mdv_tracker *tracker)
+{
+    if (tracker
+        && atomic_fetch_sub_explicit(&tracker->rc, 1, memory_order_release) == 1)
     {
-        mdv_hashmap_free(tracker->links);
-        mdv_mutex_free(&tracker->links_mutex);
-
-        mdv_hashmap_free(tracker->ids);
-        mdv_hashmap_free(tracker->peers);
-        mdv_hashmap_free(tracker->nodes);
-        mdv_mutex_free(&tracker->nodes_mutex);
-
-        memset(tracker, 0, sizeof *tracker);
+        mdv_tracker_free(tracker);
     }
+}
+
+
+mdv_uuid const * mdv_tracker_uuid(mdv_tracker *tracker)
+{
+    return &tracker->uuid;
 }
 
 
@@ -371,8 +433,8 @@ bool mdv_tracker_append(mdv_tracker *tracker, mdv_node *new_node, bool is_new)
         {
             if (is_new)
                 new_node->id = mdv_tracker_new_id(tracker);
-            else if (tracker->max_id < new_node->id)
-                tracker->max_id = new_node->id;
+            else
+                mdv_tracker_id_maximize(tracker, new_node->id);
 
             mdv_tracker_insert(tracker, new_node);
 
@@ -605,7 +667,7 @@ mdv_node * mdv_tracker_node_by_uuid(mdv_tracker *tracker, mdv_uuid const *uuid)
 
 mdv_vector * mdv_tracker_nodes(mdv_tracker *tracker)
 {
-    mdv_vector *ids = mdv_vector_create(tracker->max_id, sizeof(uint32_t), &mdv_default_allocator);
+    mdv_vector *ids = mdv_vector_create(atomic_load(&tracker->max_id), sizeof(uint32_t), &mdv_default_allocator);
 
     if (!ids)
     {

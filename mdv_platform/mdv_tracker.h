@@ -40,39 +40,39 @@ typedef struct
 
 
 /// Nodes and network topology tracker
-typedef struct mdv_tracker
-{
-    mdv_uuid             uuid;          ///< Global unique identifier for current node (i.e. self UUID)
-    volatile uint32_t    max_id;        ///< Maximum node identifier
-
-    mdv_mutex            nodes_mutex;   ///< nodes guard mutex
-    mdv_hashmap          nodes;         ///< Nodes map (UUID -> mdv_node)
-    mdv_hashmap          ids;           ///< Node identifiers (id -> mdv_node *)
-    mdv_hashmap          peers;         ///< Peers (i.e. connected neighbours. UUID -> mdv_node *)
-
-    mdv_hashmap          links;         ///< Links (id -> id's vector)
-    mdv_mutex            links_mutex;   ///< Links guard mutex
-} mdv_tracker;
+typedef struct mdv_tracker mdv_tracker;
 
 
 /**
  * @brief Create new topology tracker
  *
- * @param tracker [in] [out]    Topology tracker to be initialized
  * @param uid [in]              Global unique identifier for current node
  *
- * @return On success, return MDV_OK
- * @return On error, return nonzero error code
+ * @return On success, return non-null pointer to tracker
+ * @return On error, return NULL
  */
-mdv_errno mdv_tracker_create(mdv_tracker *tracker, mdv_uuid const *uuid);
+mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid);
 
 
 /**
- * @brief   Free a topology tracker
- *
- * @param tracker [in] Topology tracker
+ * @brief Retains topology tracker.
+ * @details Reference counter is increased by one.
  */
-void mdv_tracker_free(mdv_tracker *tracker);
+mdv_tracker * mdv_tracker_retain(mdv_tracker *tracker);
+
+
+/**
+ * @brief Releases topology tracker.
+ * @details Reference counter is decreased by one.
+ *          When the reference counter reaches zero, the topology tracker is freed.
+ */
+void mdv_tracker_release(mdv_tracker *tracker);
+
+
+/**
+ * @brief Returns UUID for current node
+ */
+mdv_uuid const * mdv_tracker_uuid(mdv_tracker *tracker);
 
 
 /**

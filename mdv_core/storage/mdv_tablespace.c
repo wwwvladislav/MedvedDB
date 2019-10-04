@@ -2,8 +2,8 @@
 #include "../mdv_config.h"
 #include <mdv_serialization.h>
 #include <mdv_alloc.h>
-#include <mdv_tracker.h>
 #include <mdv_rollbacker.h>
+#include <mdv_tracker.h>
 #include <stddef.h>
 
 

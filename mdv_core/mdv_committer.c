@@ -194,12 +194,13 @@ mdv_errno mdv_committer_create(mdv_committer *committer,
                                mdv_tracker *tracker,
                                mdv_jobber *jobber)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     committer->tablespace = tablespace;
-    committer->tracker = tracker;
+    committer->tracker = mdv_tracker_retain(tracker);
     committer->jobber = mdv_jobber_retain(jobber);
 
+    mdv_rollbacker_push(rollbacker, mdv_tracker_release, committer->tracker);
     mdv_rollbacker_push(rollbacker, mdv_jobber_release, committer->jobber);
 
     atomic_init(&committer->active_jobs, 0);
@@ -263,6 +264,7 @@ void mdv_committer_free(mdv_committer *committer)
 {
     mdv_committer_stop(committer);
     mdv_jobber_release(committer->jobber);
+    mdv_tracker_release(committer->tracker);
     mdv_eventfd_close(committer->start);
     memset(committer, 0, sizeof(*committer));
 }

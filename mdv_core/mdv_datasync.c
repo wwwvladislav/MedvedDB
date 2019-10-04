@@ -542,13 +542,14 @@ mdv_errno mdv_datasync_create(mdv_datasync *datasync,
                               mdv_tracker *tracker,
                               mdv_jobber *jobber)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
 
     datasync->tablespace = tablespace;
-    datasync->tracker = tracker;
+    datasync->tracker = mdv_tracker_retain(tracker);
     datasync->jobber = mdv_jobber_retain(jobber);
     datasync->routes = 0;
 
+    mdv_rollbacker_push(rollbacker, mdv_tracker_release, datasync->tracker);
     mdv_rollbacker_push(rollbacker, mdv_jobber_release, datasync->jobber);
 
     atomic_init(&datasync->active_jobs, 0);
@@ -606,6 +607,7 @@ void mdv_datasync_free(mdv_datasync *datasync)
 {
     mdv_datasync_stop(datasync);
     mdv_jobber_release(datasync->jobber);
+    mdv_tracker_release(datasync->tracker);
     mdv_vector_release(datasync->routes);
     mdv_mutex_free(&datasync->mutex);
     mdv_eventfd_close(datasync->start);

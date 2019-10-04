@@ -78,7 +78,7 @@ static void mdv_add_current_node(mdv_tracker *tracker)
     mdv_node *node = (mdv_node *)buff;
 
     node->size      = size;
-    node->uuid      = tracker->uuid;
+    node->uuid      = *mdv_tracker_uuid(tracker);
     node->userdata  = 0;
     node->id        = MDV_LOCAL_ID;
 

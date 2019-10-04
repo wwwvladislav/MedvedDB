@@ -196,13 +196,12 @@ mdv_errno mdv_cluster_create(mdv_cluster *cluster, mdv_cluster_config const *clu
 {
     cluster->uuid     = cluster_config->uuid;
     cluster->userdata = cluster_config->conctx.userdata;
+    cluster->tracker  = mdv_tracker_create(&cluster->uuid);
 
-    mdv_errno err = mdv_tracker_create(&cluster->tracker, &cluster->uuid);
-
-    if (err != MDV_OK)
+    if (!cluster->tracker)
     {
-        MDV_LOGE("Cluster manager creation failed with error %d", err);
-        return err;
+        MDV_LOGE("Cluster manager creation failed");
+        return MDV_FAILED;
     }
 
     mdv_chaman_config const config =
@@ -231,7 +230,7 @@ mdv_errno mdv_cluster_create(mdv_cluster *cluster, mdv_cluster_config const *clu
     if (!mdv_hashmap_init(cluster->conctx_cfgs, mdv_conctx_config, type, cluster_config->conctx.size, mdv_hash_u8, mdv_cmp_u8))
     {
         MDV_LOGE("Cluster manager creation failed.");
-        mdv_tracker_free(&cluster->tracker);
+        mdv_tracker_release(cluster->tracker);
         return MDV_FAILED;
     }
 
@@ -245,12 +244,12 @@ mdv_errno mdv_cluster_create(mdv_cluster *cluster, mdv_cluster_config const *clu
     if (!cluster->chaman)
     {
         MDV_LOGE("Cluster manager creation failed. Chaman not created.");
-        mdv_tracker_free(&cluster->tracker);
+        mdv_tracker_release(cluster->tracker);
         mdv_hashmap_free(cluster->conctx_cfgs);
         return MDV_FAILED;
     }
 
-    return err;
+    return MDV_OK;
 }
 
 
@@ -259,7 +258,7 @@ void mdv_cluster_free(mdv_cluster *cluster)
     if(cluster)
     {
         mdv_chaman_free(cluster->chaman);
-        mdv_tracker_free(&cluster->tracker);
+        mdv_tracker_release(cluster->tracker);
         mdv_hashmap_free(cluster->conctx_cfgs);
     }
 }

@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <linenoise.h>
 #include <ctype.h>
+#include <inttypes.h>
 
 
 static char const *MDV_HISTORY      = "history.txt";
@@ -182,7 +183,7 @@ static void mdv_test_scenario(char const *args)
 
     if (err == MDV_OK)
     {
-        MDV_INF("New table '%s' with ID '%llu' successfully created\n", table.name.ptr, id.id);
+        MDV_INF("New table '%s' with ID '%" PRIu64 "' successfully created\n", table.name.ptr, id.id);
     }
     else
     {
@@ -191,10 +192,11 @@ static void mdv_test_scenario(char const *args)
 
     mdv_gobjid row_id;
 
-    int int_value[] = {42, 43};
+    int int_value[] = { 42, 43 };
     bool bool_value = true;
 
-    mdv_row(3) row = {
+    mdv_row(3) row =
+    {
         .size = 3,
         .fields =
         {
@@ -208,7 +210,7 @@ static void mdv_test_scenario(char const *args)
 
 //    if (err == MDV_OK)
 //    {
-//        MDV_INF("New row with ID '%llu' successfully inserted\n",  row_id.id);
+//        MDV_INF("New row with ID '" PRIu64 "' successfully inserted\n",  row_id.id);
 //    }
 //    else
 //    {

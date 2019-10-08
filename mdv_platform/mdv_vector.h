@@ -33,6 +33,18 @@ mdv_vector * mdv_vector_create(size_t capacity, size_t item_size, mdv_allocator 
 
 
 /**
+ * @brief Creates copy of vector with given capacity
+ *
+ * @param vector [in]   Vector
+ * @param capacity [in] New vector capacity
+ *
+ * @return On success, returns non zero pointer to the vector
+ * @return On error, return NULL pointer
+ */
+mdv_vector * mdv_vector_clone(mdv_vector *vector, size_t capacity);
+
+
+/**
  * @brief Retains vector.
  * @details Reference counter is increased by one.
  */
@@ -107,3 +119,27 @@ void mdv_vector_clear(mdv_vector *vector);
  * @brief Returns a reference to the element at specified location pos, with bounds checking.
  */
 void * mdv_vector_at(mdv_vector *vector, size_t pos);
+
+
+/**
+ * @brief Searches specified item in vector
+ *
+ * @param vector [in]   vector
+ * @param item [in]     item for search
+ * @param equ [in]      predicate to compare two items
+ *
+ * @return pointer to the element
+ */
+void * mdv_vector_find(mdv_vector *vector,
+                       void const *item,
+                       bool (*equ)(void const *, void const *));
+
+
+/**
+ * @brief Erases the specified elements from the container.
+ *
+ * @param vector [in]   vector
+ * @param item [in]     item for erase
+ */
+void mdv_vector_erase(mdv_vector *vector, void const *item);
+

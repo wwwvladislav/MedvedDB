@@ -182,13 +182,11 @@ void mdv_jobber_release(mdv_jobber *jobber)
 
 mdv_errno mdv_jobber_push(mdv_jobber *jobber, mdv_job_base *job)
 {
-    size_t idx;
+    size_t idx = atomic_load_explicit(&jobber->idx, memory_order_relaxed);
 
-    do
-    {
-        idx = atomic_load_explicit(&jobber->idx, memory_order_relaxed);
-    }
-    while (!atomic_compare_exchange_weak(&jobber->idx, &idx, (idx + 1) % jobber->queue_count));
+    while (!atomic_compare_exchange_weak(&jobber->idx,
+                                         &idx,
+                                         (idx + 1) % jobber->queue_count));
 
     idx = (idx + 1) % jobber->queue_count;
 

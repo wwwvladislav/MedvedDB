@@ -48,6 +48,26 @@ mdv_vector * mdv_vector_create(size_t capacity, size_t item_size, mdv_allocator 
 }
 
 
+mdv_vector * mdv_vector_clone(mdv_vector *vector, size_t capacity)
+{
+    if (capacity < vector->size)
+        capacity = vector->size;
+
+    mdv_vector *new_vector = mdv_vector_create(capacity, vector->item_size, vector->allocator);
+
+    if (!new_vector)
+        return 0;
+
+    memcpy(new_vector->data,
+           vector->data,
+           vector->item_size * vector->size);
+
+    new_vector->size = vector->size;
+
+    return new_vector;
+}
+
+
 mdv_vector * mdv_vector_retain(mdv_vector *vector)
 {
     if (vector == mdv_empty_vector)
@@ -117,4 +137,48 @@ void * mdv_vector_at(mdv_vector *vector, size_t pos)
     if (pos >= vector->size)
         return 0;
     return vector->data + pos * vector->item_size;
+}
+
+
+void * mdv_vector_find(mdv_vector *vector,
+                       void const *item,
+                       bool (*equ)(void const *, void const *))
+{
+    for(size_t i = 0; i < vector->size; ++i)
+    {
+        void *ptr = vector->data + vector->item_size * i;
+        if(equ(ptr, item))
+            return ptr;
+    }
+    return 0;
+}
+
+
+void mdv_vector_erase(mdv_vector *vector, void const *item)
+{
+    uint8_t const *end = vector->data + vector->item_size * vector->size;
+
+    if ((uint8_t const *)item >= vector->data
+        && (uint8_t const *)item < end)
+    {
+        size_t const idx = ((uint8_t const *)item - vector->data) / vector->item_size;
+
+        if (vector->data + idx * vector->item_size == (uint8_t const *)item)
+        {
+            for(uint8_t *dst = vector->data + idx * vector->item_size,
+                        *src = dst + vector->item_size;
+                        src < end;
+                        dst = src,
+                        src += vector->item_size)
+            {
+                memcpy(dst, src, vector->item_size);
+            }
+
+            vector->size--;
+        }
+        else
+            MDV_LOGE("Invalid pointer is erased from vector");
+    }
+    else
+        MDV_LOGE("Vector bounds violation");
 }

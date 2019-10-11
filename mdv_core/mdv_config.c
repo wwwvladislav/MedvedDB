@@ -39,15 +39,16 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         MDV_CFG_CHECK(config->storage.path);
         MDV_LOGI("Storage path: %s", config->storage.path.ptr);
     }
-    else if (MDV_CFG_MATCH("storage", "workers"))
+
+    else if (MDV_CFG_MATCH("ebus", "workers"))
     {
-        config->storage.workers = atoi(value);
-        MDV_LOGI("Storage workers: %u", config->storage.workers);
+        config->ebus.workers = atoi(value);
+        MDV_LOGI("Ebus workers: %u", config->ebus.workers);
     }
-    else if (MDV_CFG_MATCH("storage", "worker_queues"))
+    else if (MDV_CFG_MATCH("ebus", "queues"))
     {
-        config->storage.worker_queues = atoi(value);
-        MDV_LOGI("Storage worker queues: %u", config->storage.worker_queues);
+        config->ebus.queues = atoi(value);
+        MDV_LOGI("Ebus queues: %u", config->ebus.queues);
     }
 
     else if (MDV_CFG_MATCH("log", "level"))
@@ -129,8 +130,9 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.connection.keep_interval     = 5;
 
     MDV_CONFIG.storage.path                 = mdv_str_static("./data");
-    MDV_CONFIG.storage.workers              = 4;
-    MDV_CONFIG.storage.worker_queues        = 4;
+
+    MDV_CONFIG.ebus.workers                 = 4;
+    MDV_CONFIG.ebus.queues                  = 4;
 
     MDV_CONFIG.datasync.batch_size          = 256;
 

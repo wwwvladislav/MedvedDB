@@ -41,9 +41,13 @@ typedef struct
     struct
     {
         mdv_string path;            ///< Directory where the database is placed
-        uint32_t   workers;         ///< Number of thread pool workers for DB update
-        uint32_t   worker_queues;   ///< Number of queues for worker threads
     } storage;                      ///< Storage settings
+
+    struct
+    {
+        uint32_t   workers;         ///< Number of thread pool workers for events processing
+        uint32_t   queues;          ///< Number of event queues
+    } ebus;
 
     struct
     {

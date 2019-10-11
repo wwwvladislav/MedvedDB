@@ -107,7 +107,7 @@ bool mdv_core_create(mdv_core *core)
     {
         .threadpool =
         {
-            .size = MDV_CONFIG.storage.workers,
+            .size = MDV_CONFIG.ebus.workers,
             .thread_attrs =
             {
                 .stack_size = MDV_THREAD_STACK_SIZE
@@ -115,7 +115,7 @@ bool mdv_core_create(mdv_core *core)
         },
         .queue =
         {
-            .count = MDV_CONFIG.storage.worker_queues
+            .count = MDV_CONFIG.ebus.queues
         }
     };
 

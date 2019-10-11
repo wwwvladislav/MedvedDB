@@ -15,8 +15,7 @@ struct mdv_vector
 };
 
 
-static mdv_vector empty_vector = {};
-mdv_vector *mdv_empty_vector = &empty_vector;
+mdv_vector mdv_empty_vector = {};
 
 
 mdv_vector * mdv_vector_create(size_t capacity, size_t item_size, mdv_allocator const *allocator)
@@ -48,7 +47,7 @@ mdv_vector * mdv_vector_create(size_t capacity, size_t item_size, mdv_allocator 
 }
 
 
-mdv_vector * mdv_vector_clone(mdv_vector *vector, size_t capacity)
+mdv_vector * mdv_vector_clone(mdv_vector const *vector, size_t capacity)
 {
     if (capacity < vector->size)
         capacity = vector->size;
@@ -70,7 +69,7 @@ mdv_vector * mdv_vector_clone(mdv_vector *vector, size_t capacity)
 
 mdv_vector * mdv_vector_retain(mdv_vector *vector)
 {
-    if (vector == mdv_empty_vector)
+    if (vector == &mdv_empty_vector)
         return vector;
     atomic_fetch_add_explicit(&vector->rc, 1, memory_order_acquire);
     return vector;
@@ -80,7 +79,7 @@ mdv_vector * mdv_vector_retain(mdv_vector *vector)
 void mdv_vector_release(mdv_vector *vector)
 {
     if (vector
-        && vector != mdv_empty_vector
+        && vector != &mdv_empty_vector
         && atomic_fetch_sub_explicit(&vector->rc, 1, memory_order_release) == 1)
     {
         vector->allocator->free(vector->data, "vector.data");
@@ -95,13 +94,13 @@ void * mdv_vector_data(mdv_vector *vector)
 }
 
 
-size_t mdv_vector_size(mdv_vector *vector)
+size_t mdv_vector_size(mdv_vector const *vector)
 {
     return vector->size;
 }
 
 
-size_t mdv_vector_capacity(mdv_vector *vector)
+size_t mdv_vector_capacity(mdv_vector const *vector)
 {
     return vector->capacity;
 }

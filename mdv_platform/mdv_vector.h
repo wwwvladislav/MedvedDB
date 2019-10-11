@@ -16,7 +16,7 @@
 typedef struct mdv_vector mdv_vector;
 
 
-mdv_vector *mdv_empty_vector;
+extern mdv_vector mdv_empty_vector;
 
 
 /**
@@ -41,7 +41,7 @@ mdv_vector * mdv_vector_create(size_t capacity, size_t item_size, mdv_allocator 
  * @return On success, returns non zero pointer to the vector
  * @return On error, return NULL pointer
  */
-mdv_vector * mdv_vector_clone(mdv_vector *vector, size_t capacity);
+mdv_vector * mdv_vector_clone(mdv_vector const *vector, size_t capacity);
 
 
 /**
@@ -68,13 +68,13 @@ void * mdv_vector_data(mdv_vector *vector);
 /**
  * @brief Return vector size
  */
-size_t mdv_vector_size(mdv_vector *vector);
+size_t mdv_vector_size(mdv_vector const *vector);
 
 
 /**
  * @brief Return vector capacity
  */
-size_t mdv_vector_capacity(mdv_vector *vector);
+size_t mdv_vector_capacity(mdv_vector const *vector);
 
 
 /**

@@ -233,7 +233,7 @@ static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
     mdv_core    *core   = user->core;
     mdv_tracker *tracker = core->tracker;
 
-    mdv_topology *topology = mdv_topology_extract(tracker);
+    mdv_topology *topology = mdv_tracker_topology(tracker, false);
 
     if (topology)
     {

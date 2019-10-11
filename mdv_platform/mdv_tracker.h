@@ -9,6 +9,7 @@
 #include "mdv_hashmap.h"
 #include "mdv_mutex.h"
 #include "mdv_vector.h"
+#include "mdv_topology.h"
 
 
 enum
@@ -226,3 +227,14 @@ mdv_node * mdv_tracker_node_by_uuid(mdv_tracker *tracker, mdv_uuid const *uuid);
  */
 mdv_vector * mdv_tracker_nodes(mdv_tracker *tracker);
 
+
+/**
+ * @brief Extract network topology from tracker
+ * @details In result topology links are sorted in ascending order.
+ *
+ * @param tracker [in]          Topology tracker
+ * @param extract_addrs [in]    Nodes addresses should be copied
+ *
+ * @return On success return non NULL pointer to a network topology.
+ */
+mdv_topology * mdv_tracker_topology(mdv_tracker *tracker, bool extract_addrs);

@@ -65,7 +65,7 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @return 0 if hash map is not initialized
  */
 #define mdv_hashmap_init(hm, type, key_field, capacity, hash_fn, key_cmp_fn)    \
-    _mdv_hashmap_init(&(hm),                                                      \
+    _mdv_hashmap_init(&(hm),                                                    \
                       capacity,                                                 \
                       offsetof(type, key_field),                                \
                       sizeof(((type*)0)->key_field),                            \

@@ -46,8 +46,8 @@ typedef struct
 } mdv_topology_delta;
 
 
-/// Nodes and topology tracker
-struct mdv_tracker;
+extern mdv_topology empty_topology;
+extern mdv_topology_delta empty_topology_delta;
 
 
 /**
@@ -61,17 +61,6 @@ struct mdv_tracker;
  * @return an integer greater than zero if a is greater then b
  */
 int mdv_link_cmp(mdv_topolink const *a, mdv_topolink const *b);
-
-
-/**
- * @brief Extract network topology from tracker
- * @details In result topology links are sorted in ascending order.
- *
- * @param tracker [in]  Topology tracker
- *
- * @return On success return non NULL pointer to a network topology.
- */
-mdv_topology * mdv_topology_extract(struct mdv_tracker *tracker);
 
 
 /**

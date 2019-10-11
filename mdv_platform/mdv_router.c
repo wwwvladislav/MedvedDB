@@ -160,7 +160,7 @@ mdv_vector * mdv_routes_find(mdv_tracker *tracker)
     size_t const links_count = mdv_tracker_links_count(tracker);
 
     if (!links_count)
-        return mdv_empty_vector;
+        return &mdv_empty_vector;
 
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
@@ -254,5 +254,5 @@ mdv_vector * mdv_routes_find(mdv_tracker *tracker)
 
     mdv_rollback(rollbacker);
 
-    return mdv_empty_vector;
+    return &mdv_empty_vector;
 }

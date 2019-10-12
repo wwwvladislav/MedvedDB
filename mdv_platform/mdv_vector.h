@@ -78,7 +78,7 @@ size_t mdv_vector_capacity(mdv_vector const *vector);
 
 
 /**
- * @brief Appends the given element value to the end of the container
+ * @brief Appends the given element to the end of the container
  *
  * @param vector [in]   Vector
  * @param item [in]     item to be append
@@ -87,6 +87,19 @@ size_t mdv_vector_capacity(mdv_vector const *vector);
  * @return On error, return NULL pointer
  */
 void * mdv_vector_push_back(mdv_vector *vector, void const *item);
+
+
+/**
+ * @brief Appends the given elements to the end of the container
+ *
+ * @param vector [in]   Vector
+ * @param items [in]    items to be append
+ * @param count [in]    items count
+ *
+ * @return On success, returns non zero pointer to the first inserted value
+ * @return On error, return NULL pointer
+ */
+void * mdv_vector_append(mdv_vector *vector, void const *items, size_t count);
 
 
 /**

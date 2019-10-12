@@ -787,7 +787,7 @@ static size_t mdv_topology_size_by_node_ids(mdv_hashmap const *node_ids, size_t 
 }
 
 
-mdv_topology * mdv_tracker_topology(mdv_tracker *tracker, bool extract_addrs)
+mdv_topology * mdv_tracker_topology(mdv_tracker *tracker)
 {
     size_t const links_count = mdv_tracker_links_count(tracker);
 

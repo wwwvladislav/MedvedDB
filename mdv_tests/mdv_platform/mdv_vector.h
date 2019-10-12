@@ -43,5 +43,11 @@ MU_TEST(platform_vector)
     mu_check(mdv_vector_size(v) == 1);
     mu_check(*(int*)mdv_vector_at(v, 0) == 0);
 
+    int arr1[] = { 1, 2, 3, 4, 5 };
+    mu_check(mdv_vector_append(v, arr1, sizeof arr1 / sizeof *arr1));
+
+    for(int i = 0; i < 6; ++i)
+        mu_check(*(int*)mdv_vector_at(v, i) == i);
+
     mdv_vector_release(v);
 }

@@ -233,8 +233,7 @@ mdv_vector * mdv_tracker_nodes(mdv_tracker *tracker);
  * @details In result topology links are sorted in ascending order.
  *
  * @param tracker [in]          Topology tracker
- * @param extract_addrs [in]    Nodes addresses should be copied
  *
  * @return On success return non NULL pointer to a network topology.
  */
-mdv_topology * mdv_tracker_topology(mdv_tracker *tracker, bool extract_addrs);
+mdv_topology * mdv_tracker_topology(mdv_tracker *tracker);

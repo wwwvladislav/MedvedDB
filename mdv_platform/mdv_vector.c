@@ -125,6 +125,31 @@ void * mdv_vector_push_back(mdv_vector *vector, void const *item)
 }
 
 
+void * mdv_vector_append(mdv_vector *vector, void const *items, size_t count)
+{
+    if (vector->size + count >= vector->capacity)
+    {
+        size_t new_capacity = vector->capacity;
+
+        while(vector->size + count >= new_capacity)
+            new_capacity *= 2;
+
+        if (!vector->allocator->realloc((void**)&vector->data, new_capacity, "vector.data"))
+            return 0;
+
+        vector->capacity = new_capacity;
+    }
+
+    void *ptr = vector->data + vector->size * vector->item_size;
+
+    memcpy(ptr, items, vector->item_size * count);
+
+    vector->size += count;
+
+    return ptr;
+}
+
+
 void mdv_vector_clear(mdv_vector *vector)
 {
     vector->size = 0;

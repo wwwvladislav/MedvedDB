@@ -218,7 +218,7 @@ static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
 
     mdv_rollbacker_push(rollbacker, mdv_p2p_toposync_free, &req);
 
-    mdv_topology *topology = mdv_tracker_topology(tracker, true);
+    mdv_topology *topology = mdv_tracker_topology(tracker);
 
     if (!topology)
     {
@@ -402,7 +402,7 @@ static mdv_errno mdv_peer_toposync(mdv_peer *peer)
     mdv_core *core = peer->core;
     mdv_tracker *tracker = core->tracker;
 
-    mdv_topology *topology = mdv_tracker_topology(tracker, true);
+    mdv_topology *topology = mdv_tracker_topology(tracker);
 
     if (!topology)
     {

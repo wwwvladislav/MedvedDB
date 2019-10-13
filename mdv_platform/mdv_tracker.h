@@ -229,6 +229,16 @@ mdv_vector * mdv_tracker_nodes(mdv_tracker *tracker);
 
 
 /**
+ * @brief Return links vector
+ *
+ * @param tracker [in]  Topology tracker
+ *
+ * @return links vector (vector<mdv_tracker_link>)
+ */
+mdv_vector * mdv_tracker_links(mdv_tracker *tracker);
+
+
+/**
  * @brief Extract network topology from tracker
  * @details In result topology links are sorted in ascending order.
  *

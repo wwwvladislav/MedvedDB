@@ -8,6 +8,7 @@
  */
 #pragma once
 #include "mdv_uuid.h"
+#include "mdv_vector.h"
 
 
 /// Node description
@@ -21,21 +22,13 @@ typedef struct
 /// Link description
 typedef struct
 {
-    mdv_toponode   *node[2];            ///< Linked nodes
-    uint32_t        weight;             ///< Link weight. Bigger is better.
+    uint32_t    node[2];                ///< Linked nodes indices
+    uint32_t    weight;                 ///< Link weight. Bigger is better.
 } mdv_topolink;
 
 
 /// Topology description
-typedef struct
-{
-    size_t          size;               ///< topology data structure size
-    size_t          nodes_count;        ///< Nodes count
-    size_t          links_count;        ///< Links count
-
-    mdv_toponode    *nodes;             ///< Nodes array
-    mdv_topolink    *links;             ///< Links array
-} mdv_topology;
+typedef struct mdv_topology mdv_topology;
 
 
 /// Topologies difference
@@ -46,8 +39,8 @@ typedef struct
 } mdv_topology_delta;
 
 
-extern mdv_topology empty_topology;
-extern mdv_topology_delta empty_topology_delta;
+extern mdv_topology mdv_empty_topology;
+extern mdv_topology_delta mdv_empty_topology_delta;
 
 
 /**
@@ -64,11 +57,48 @@ int mdv_link_cmp(mdv_topolink const *a, mdv_topolink const *b);
 
 
 /**
- * @brief Free the network topology
+ * @brief Creates new network topology
  *
- * @param topology [in] network topology
+ * @param nodes [in]        Nodes array (vector<mdv_toponode>)
+ * @param links [in]        Links array (vector<mdv_topolink>)
+ * @param extradata [in]    Additional data
+ *
+ * @return if there is no errors returns non-zero topology pointer
  */
-void mdv_topology_free(mdv_topology *topology);
+mdv_topology * mdv_topology_create(mdv_vector *nodes, mdv_vector *links, mdv_vector *extradata);
+
+
+/**
+ * @brief Retains topology.
+ * @details Reference counter is increased by one.
+ */
+mdv_topology * mdv_topology_retain(mdv_topology *topology);
+
+
+/**
+ * @brief Releases topology.
+ * @details Reference counter is decreased by one.
+ *          When the reference counter reaches zero, the topology's destructor is called.
+ */
+uint32_t mdv_topology_release(mdv_topology *topology);
+
+
+/**
+ * @brief Returns topology nodes
+ */
+mdv_vector * mdv_topology_nodes(mdv_topology *topology);
+
+
+/**
+ * @brief Returns topology links
+ */
+mdv_vector * mdv_topology_links(mdv_topology *topology);
+
+
+/**
+ * @brief Returns topology extradata vector
+ */
+mdv_vector * mdv_topology_extradata(mdv_topology *topology);
 
 
 /**
@@ -80,7 +110,7 @@ void mdv_topology_free(mdv_topology *topology);
  *
  * @return topologies difference
  */
-mdv_topology_delta * mdv_topology_diff(mdv_topology const *a, mdv_topology const *b);
+mdv_topology_delta * mdv_topology_diff(mdv_topology *a, mdv_topology *b);
 
 
 /**

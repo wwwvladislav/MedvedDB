@@ -20,7 +20,7 @@ mdv_row_base *   mdv_unbinn_row(binn const *obj, mdv_field const *fields);
  * @return On success returns true.
  * @return On error returns false.
  */
-bool mdv_topology_serialize(mdv_topology const *topology, binn *obj);
+bool mdv_topology_serialize(mdv_topology *topology, binn *obj);
 
 
 /**

@@ -72,6 +72,12 @@ size_t mdv_vector_size(mdv_vector const *vector);
 
 
 /**
+ * @brief Resizes the vector so that it contains n elements.
+ */
+bool mdv_vector_resize(mdv_vector *vector, size_t n);
+
+
+/**
  * @brief Return vector capacity
  */
 size_t mdv_vector_capacity(mdv_vector const *vector);

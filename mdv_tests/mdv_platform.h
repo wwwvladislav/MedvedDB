@@ -20,6 +20,7 @@
 #include "mdv_platform/mdv_algorithm.h"
 #include "mdv_platform/mdv_topology.h"
 #include "mdv_platform/mdv_mst.h"
+#include "mdv_platform/mdv_bitset.h"
 
 
 MU_TEST_SUITE(platform)
@@ -33,6 +34,7 @@ MU_TEST_SUITE(platform)
     MU_RUN_TEST(platform_list);
     MU_RUN_TEST(platform_string);
     MU_RUN_TEST(platform_bloom);
+    MU_RUN_TEST(platform_bitset);
     MU_RUN_TEST(platform_socket);
     MU_RUN_TEST(platform_eventfd);
     MU_RUN_TEST(platform_condvar);

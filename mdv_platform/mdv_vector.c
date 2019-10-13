@@ -127,11 +127,11 @@ void * mdv_vector_push_back(mdv_vector *vector, void const *item)
 
 void * mdv_vector_append(mdv_vector *vector, void const *items, size_t count)
 {
-    if (vector->size + count >= vector->capacity)
+    if (vector->size + count > vector->capacity)
     {
         size_t new_capacity = vector->capacity;
 
-        while(vector->size + count >= new_capacity)
+        while(vector->size + count > new_capacity)
             new_capacity *= 2;
 
         if (!vector->allocator->realloc((void**)&vector->data, new_capacity, "vector.data"))
@@ -147,6 +147,46 @@ void * mdv_vector_append(mdv_vector *vector, void const *items, size_t count)
     vector->size += count;
 
     return ptr;
+}
+
+
+bool mdv_vector_resize(mdv_vector *vector, size_t n)
+{
+    if (n <= vector->size)
+    {
+        vector->size = n;
+
+        return true;
+    }
+
+    if (n <= vector->capacity)
+    {
+        void *end = vector->data + vector->size * vector->item_size;
+
+        memset(end, 0, (n - vector->size) * vector->item_size);
+
+        vector->size = n;
+
+        return true;
+    }
+
+    size_t new_capacity = vector->capacity;
+
+    while(n > new_capacity)
+        new_capacity *= 2;
+
+    if (!vector->allocator->realloc((void**)&vector->data, new_capacity, "vector.data"))
+        return false;
+
+    vector->capacity = new_capacity;
+
+    void *end = vector->data + vector->size * vector->item_size;
+
+    memset(end, 0, (n - vector->size) * vector->item_size);
+
+    vector->size = n;
+
+    return true;
 }
 
 

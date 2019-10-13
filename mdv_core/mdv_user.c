@@ -244,7 +244,7 @@ static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
 
         mdv_errno err = mdv_user_topology_reply(user, msg->hdr.number, &msg_topology);
 
-        mdv_topology_free(topology);
+        mdv_topology_release(topology);
 
         return err;
     }

@@ -146,15 +146,23 @@ static void mdv_show_topology(char const *args)
 
         MDV_OUT("graph topology {\n");
 
-        for (size_t i = 0; i < topology->links_count; ++i)
+        mdv_vector *toponodes = mdv_topology_nodes(topology);
+        mdv_vector *topolinks = mdv_topology_links(topology);
+
+        mdv_vector_foreach(topolinks, mdv_topolink, link)
         {
-            MDV_OUT("  \"%s\" -- ", mdv_uuid_to_str(&topology->links[i].node[0]->uuid).ptr);
-            MDV_OUT("\"%s\"\n", mdv_uuid_to_str(&topology->links[i].node[1]->uuid).ptr);
+            mdv_toponode const *src_node = mdv_vector_at(toponodes, link->node[0]);
+            mdv_toponode const *dst_node = mdv_vector_at(toponodes, link->node[1]);
+            MDV_OUT("  \"%s\" -- ", mdv_uuid_to_str(&src_node->uuid).ptr);
+            MDV_OUT("\"%s\"\n", mdv_uuid_to_str(&dst_node->uuid).ptr);
         }
 
         MDV_OUT("}\n");
 
-        mdv_topology_free(topology);
+        mdv_vector_release(toponodes);
+        mdv_vector_release(topolinks);
+
+        mdv_topology_release(topology);
     }
     else
         MDV_INF("Topology request failed with error '%s' (%d)\n", mdv_strerror(err), err);

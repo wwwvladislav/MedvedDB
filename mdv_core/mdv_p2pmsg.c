@@ -291,7 +291,7 @@ bool mdv_unbinn_p2p_toposync(binn const *obj, mdv_msg_p2p_toposync *msg)
 
 void mdv_p2p_toposync_free(mdv_msg_p2p_toposync *msg)
 {
-    mdv_topology_free(msg->topology);
+    mdv_topology_release(msg->topology);
     msg->topology = 0;
 }
 
@@ -311,7 +311,7 @@ bool mdv_unbinn_p2p_topodiff(binn const *obj, mdv_msg_p2p_topodiff *msg)
 
 void mdv_p2p_topodiff_free(mdv_msg_p2p_topodiff *msg)
 {
-    mdv_topology_free(msg->topology);
+    mdv_topology_release(msg->topology);
     msg->topology = 0;
 }
 

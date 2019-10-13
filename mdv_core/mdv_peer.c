@@ -227,7 +227,7 @@ static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
         return MDV_FAILED;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_topology_free, topology);
+    mdv_rollbacker_push(rollbacker, mdv_topology_release, topology);
 
     // Topologies difference calculation
     mdv_topology_delta *delta = mdv_topology_diff(topology, req.topology);
@@ -248,17 +248,31 @@ static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
 
     mdv_errno err = mdv_peer_topodiff_reply(peer, msg->hdr.number, &topodiff);
 
-    if (delta->ba && delta->ba->links_count)
+    mdv_vector *ba_links = mdv_topology_links(delta->ba);
+
+    if (delta->ba && !mdv_vector_empty(ba_links))
     {
         // Two isolated segments joined
         // TODO: Broadcast delta->ba to own segment.
 
-        for(size_t i = 0; i < delta->ba->nodes_count; ++i)
-            mdv_peer_toposync_node_add(peer, &delta->ba->nodes[i].uuid, delta->ba->nodes[i].addr);
+        mdv_vector *ba_nodes = mdv_topology_nodes(delta->ba);
 
-        for(size_t i = 0; i < delta->ba->links_count; ++i)
-            mdv_tracker_linkstate(tracker, &delta->ba->links[i].node[0]->uuid, &delta->ba->links[i].node[1]->uuid, true);
+        mdv_vector_foreach(ba_nodes, mdv_toponode, node)
+        {
+            mdv_peer_toposync_node_add(peer, &node->uuid, node->addr);
+        }
+
+        mdv_vector_foreach(ba_links, mdv_topolink, link)
+        {
+            mdv_toponode const *src_node = mdv_vector_at(ba_nodes, link->node[0]);
+            mdv_toponode const *dst_node = mdv_vector_at(ba_nodes, link->node[1]);
+            mdv_tracker_linkstate(tracker, &src_node->uuid, &dst_node->uuid, true);
+        }
+
+        mdv_vector_release(ba_nodes);
     }
+
+    mdv_vector_release(ba_links);
 
     mdv_rollback(rollbacker);
 
@@ -298,17 +312,29 @@ static mdv_errno mdv_peer_topodiff_handler(mdv_msg const *msg, void *arg)
 
     mdv_rollbacker_push(rollbacker, mdv_p2p_topodiff_free, &req);
 
-    mdv_topology const *topology = req.topology;
+    mdv_topology *topology = req.topology;
 
     if (topology)
     {
         // TODO: Broadcast topology to own segment if segment was isolated.
 
-        for(size_t i = 0; i < topology->nodes_count; ++i)
-            mdv_peer_toposync_node_add(peer, &topology->nodes[i].uuid, topology->nodes[i].addr);
+        mdv_vector *toponodes = mdv_topology_nodes(topology);
+        mdv_vector *topolinks = mdv_topology_links(topology);
 
-        for(size_t i = 0; i < topology->links_count; ++i)
-            mdv_tracker_linkstate(tracker, &topology->links[i].node[0]->uuid, &topology->links[i].node[1]->uuid, true);
+        mdv_vector_foreach(toponodes, mdv_toponode, node)
+        {
+            mdv_peer_toposync_node_add(peer, &node->uuid, node->addr);
+        }
+
+        mdv_vector_foreach(topolinks, mdv_topolink, link)
+        {
+            mdv_toponode const *src_node = mdv_vector_at(toponodes, link->node[0]);
+            mdv_toponode const *dst_node = mdv_vector_at(toponodes, link->node[1]);
+            mdv_tracker_linkstate(tracker, &src_node->uuid, &dst_node->uuid, true);
+        }
+
+        mdv_vector_release(toponodes);
+        mdv_vector_release(topolinks);
     }
 
     mdv_rollback(rollbacker);
@@ -420,7 +446,7 @@ static mdv_errno mdv_peer_toposync(mdv_peer *peer)
     if (!mdv_binn_p2p_toposync(&toposync, &obj))
     {
         MDV_LOGE("Topology synchronization request failed");
-        mdv_topology_free(topology);
+        mdv_topology_release(topology);
         return MDV_FAILED;
     }
 
@@ -438,7 +464,7 @@ static mdv_errno mdv_peer_toposync(mdv_peer *peer)
 
     binn_free(&obj);
 
-    mdv_topology_free(topology);
+    mdv_topology_release(topology);
 
     return err;
 }

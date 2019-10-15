@@ -322,6 +322,8 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology *a, mdv_topology *b)
     delta->ba = ba_topology;
 
     mdv_rollback(rollbacker);
+
+    return delta;
 }
 
 
@@ -347,6 +349,8 @@ mdv_topology * mdv_topology_create(mdv_vector *nodes,
         MDV_LOGE("No memory for network topology");
         return 0;
     }
+
+    atomic_init(&topology->rc, 1);
 
     topology->nodes = mdv_vector_retain(nodes);
     topology->links = mdv_vector_retain(links);

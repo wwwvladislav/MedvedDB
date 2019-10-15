@@ -619,7 +619,7 @@ mdv_errno mdv_datasync_update_routes(mdv_datasync *datasync)
 {
     if (!mdv_datasync_is_active(datasync))
         return MDV_FAILED;
-
+/* TODO
     mdv_vector *routes = mdv_routes_find(datasync->tracker);
 
     if (!routes)
@@ -645,7 +645,7 @@ mdv_errno mdv_datasync_update_routes(mdv_datasync *datasync)
 
         return MDV_OK;
     }
-
+*/
     return MDV_FAILED;
 }
 

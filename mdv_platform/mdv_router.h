@@ -8,16 +8,15 @@
  * @copyright Copyright (c) 2019, Vladislav Volkov
  */
 #pragma once
-#include "mdv_tracker.h"
-#include "mdv_vector.h"
+#include "mdv_topology.h"
 
 
 /**
- * @brief Find best routes
+ * @brief Find best routes for specified source node
  *
- * @param routes [out]  routes
- * @param tracker [in]  Network topology tracker
+ * @param topology [in] Network topology
+ * @param src [in]      Source node uuid (is used for next hop searching)
  *
- * @return Vector of peers identifiers.
+ * @return Vector of peers identifiers (vector<uuid>).
  */
-mdv_vector * mdv_routes_find(mdv_tracker *tracker);
+mdv_vector * mdv_routes_find(mdv_topology *topology, mdv_uuid const *src);

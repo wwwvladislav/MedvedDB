@@ -19,6 +19,7 @@
 #include "mdv_platform/mdv_ebus.h"
 #include "mdv_platform/mdv_algorithm.h"
 #include "mdv_platform/mdv_topology.h"
+#include "mdv_platform/mdv_router.h"
 #include "mdv_platform/mdv_mst.h"
 #include "mdv_platform/mdv_bitset.h"
 
@@ -46,5 +47,6 @@ MU_TEST_SUITE(platform)
     MU_RUN_TEST(platform_ebus);
     MU_RUN_TEST(platform_algorithm);
     MU_RUN_TEST(platform_topology);
+    MU_RUN_TEST(platform_router);
     MU_RUN_TEST(platform_mst);
 }

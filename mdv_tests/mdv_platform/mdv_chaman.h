@@ -33,8 +33,10 @@ static void * mdv_channel_create(mdv_descriptor fd, mdv_string const *addr, void
 }
 
 
-static mdv_errno mdv_channel_recv(void *channel)
+static mdv_errno mdv_channel_recv(void *userdata, void *channel)
 {
+    (void)userdata;
+
     mdv_descriptor fd = channel;
 
     static _Thread_local char buffer[1024];
@@ -55,8 +57,9 @@ static mdv_errno mdv_channel_recv(void *channel)
 }
 
 
-static void mdv_channel_close(void *channel)
+static void mdv_channel_close(void *userdata, void *channel)
 {
+    (void)userdata;
     (void)channel;
 
     ++mdv_close_count;

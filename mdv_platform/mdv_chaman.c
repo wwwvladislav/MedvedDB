@@ -137,7 +137,8 @@ static void mdv_fd_close(mdv_descriptor fd, void *data)
         case MDV_CT_PEER:
         {
             mdv_peer_context *peer_context = data;
-            peer_context->chaman->config.channel.close(peer_context->peer);
+            peer_context->chaman->config.channel.close(peer_context->chaman->config.userdata,
+                                                       peer_context->peer);
             mdv_socket_close(fd);
             break;
         }
@@ -200,7 +201,7 @@ static void mdv_chaman_recv_handler(uint32_t events, mdv_threadpool_task_base *t
     mdv_chaman *chaman = task->context.chaman;
     mdv_threadpool *threadpool = chaman->threadpool;
 
-    mdv_errno err = chaman->config.channel.recv(task->context.peer);
+    mdv_errno err = chaman->config.channel.recv(chaman->config.userdata, task->context.peer);
 
     if ((events & MDV_EPOLLERR) == 0 && (err == MDV_EAGAIN || err == MDV_OK))
     {
@@ -211,7 +212,7 @@ static void mdv_chaman_recv_handler(uint32_t events, mdv_threadpool_task_base *t
     else
     {
         MDV_LOGI("Peer %p disconnected", fd);
-        chaman->config.channel.close(task->context.peer);
+        chaman->config.channel.close(chaman->config.userdata, task->context.peer);
         mdv_threadpool_remove(threadpool, fd);
         mdv_socket_close(fd);
     }
@@ -248,7 +249,7 @@ static void mdv_chaman_new_connection(mdv_chaman *chaman, mdv_descriptor sock, m
         else
             MDV_LOGE("Connection with '%s' registration failed", str_addr.ptr);
         if (task.context.peer)
-            chaman->config.channel.close(task.context.peer);
+            chaman->config.channel.close(chaman->config.userdata, task.context.peer);
         mdv_socket_close(sock);
     }
     else

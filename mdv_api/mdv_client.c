@@ -1,14 +1,17 @@
 #include "mdv_client.h"
 #include "mdv_messages.h"
-#include "mdv_user.h"
+#include "mdv_channel.h"
 #include <mdv_version.h>
 #include <mdv_alloc.h>
 #include <mdv_binn.h>
 #include <mdv_log.h>
 #include <mdv_msg.h>
-#include <mdv_condvar.h>
 #include <mdv_rollbacker.h>
 #include <mdv_ctypes.h>
+#include <mdv_chaman.h>
+#include <mdv_socket.h>
+#include <mdv_mutex.h>
+#include <mdv_threads.h>
 #include <signal.h>
 
 
@@ -64,14 +67,128 @@ static void mdv_client_finalize()
 /// Client descriptor
 struct mdv_client
 {
-    mdv_cluster         cluster;            ///< Cluster manager
-    mdv_condvar         connected;          ///< Connection status
+    mdv_chaman         *chaman;             ///< Channels manager
+    mdv_mutex           mutex;              ///< Mutex for user guard
+    mdv_channel        *channel;            ///< Connection context
     uint32_t            response_timeout;   ///< Temeout for responses (in milliseconds)
-    mdv_user_data       userdata;           ///< Data which passed to mdv_user_init() as userdata
 };
 
 
 /// @endcond
+
+
+static mdv_channel * mdv_client_channel_retain(mdv_client *client)
+{
+    mdv_channel *channel = 0;
+
+    if (mdv_mutex_lock(&client->mutex) == MDV_OK)
+    {
+        if (client->channel)
+            channel = mdv_channel_retain(client->channel);
+        mdv_mutex_unlock(&client->mutex);
+    }
+
+    return channel;
+}
+
+
+static bool mdv_client_channel_set(mdv_client *client, mdv_channel *channel)
+{
+    bool ret = false;
+
+    if (mdv_mutex_lock(&client->mutex) == MDV_OK)
+    {
+        mdv_channel_release(client->channel);
+        client->channel = channel;
+        ret = true;
+        mdv_mutex_unlock(&client->mutex);
+    }
+
+    return ret;
+}
+
+
+static mdv_errno mdv_client_send(mdv_client *client, mdv_msg *req, mdv_msg *resp, size_t timeout)
+{
+    mdv_channel *channel = mdv_client_channel_retain(client);
+
+    if (!channel)
+        return MDV_FAILED;
+
+    mdv_errno err = mdv_channel_send(channel, req, resp, timeout);
+
+    mdv_channel_release(channel);
+
+    return err;
+}
+
+
+static mdv_errno mdv_client_conctx_select(mdv_descriptor fd, uint8_t *type)
+{
+    uint8_t tag;
+    size_t len = sizeof tag;
+
+    mdv_errno err = mdv_read(fd, &tag, &len);
+
+    if (err == MDV_OK)
+        *type = tag;
+    else
+        MDV_LOGE("Channel selection failed with error %d", err);
+
+    return err;
+}
+
+
+static void * mdv_client_conctx_create(mdv_descriptor    fd,
+                                       mdv_string const *addr,
+                                       void             *userdata,
+                                       uint8_t           type,
+                                       mdv_channel_dir   dir)
+{
+    (void)addr;
+
+    mdv_client *client = userdata;
+
+    mdv_errno err = mdv_write_all(fd, &type, sizeof type);
+
+    if (err != MDV_OK)
+    {
+        MDV_LOGE("Channel tag was not sent");
+        mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+        return 0;
+    }
+
+    mdv_channel *channel = mdv_channel_create(fd);
+
+    if (!channel)
+    {
+        MDV_LOGE("Connection failed");
+        return 0;
+    }
+
+    if (!mdv_client_channel_set(client, channel))
+    {
+        mdv_channel_release(channel);
+        channel = 0;
+    }
+
+    return channel;
+}
+
+
+static mdv_errno mdv_client_conctx_recv(void *userdata, void *ctx)
+{
+    (void)userdata;
+    return mdv_channel_recv((mdv_channel *)ctx);
+}
+
+
+static void mdv_client_conctx_closed(void *userdata, void *ctx)
+{
+    mdv_client *client = userdata;
+    mdv_client_channel_set(client, 0);
+    // mdv_user_release((mdv_user *)ctx);
+}
 
 
 static mdv_errno mdv_client_table_info_handler(mdv_msg const *msg, mdv_msg_table_info *table_info)
@@ -166,6 +283,8 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
 
     mdv_client_init();
 
+    mdv_rollbacker_push(rollbacker, mdv_client_finalize);
+
     // Allocate memory for client
 
     mdv_client *client = mdv_alloc(sizeof(mdv_client), "client");
@@ -174,7 +293,6 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
     {
         MDV_LOGE("No memory for new client");
         mdv_rollback(rollbacker);
-        mdv_client_finalize();
         return 0;
     }
 
@@ -184,36 +302,30 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
 
     client->response_timeout = config->connection.response_timeout * 1000;
 
-    // Create conditional variable for connection status waiting
+    // Mutex
+    mdv_errno err = mdv_mutex_create(&client->mutex);
 
-    if (mdv_condvar_create(&client->connected) != MDV_OK)
+    if (err != MDV_OK)
     {
-        MDV_LOGE("Conditional variable not created");
+        MDV_LOGE("Mutexcreation failed");
         mdv_rollback(rollbacker);
-        mdv_client_finalize();
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_condvar_free, &client->connected);
+    mdv_rollbacker_push(rollbacker, mdv_mutex_free, &client->mutex);
 
-    client->userdata.user = 0;
-    client->userdata.connected = &client->connected;
-
-    // Cluster manager
-
-    mdv_conctx_config const conctx_configs[] =
+    // Channels manager
+    mdv_chaman_config const chaman_config =
     {
-        { MDV_CLI_USER, sizeof(mdv_user), &mdv_user_init, &mdv_user_free },
-    };
-
-    mdv_cluster_config const cluster_config =
-    {
-        .uuid = {},
         .channel =
         {
             .keepidle   = config->connection.keepidle,
             .keepcnt    = config->connection.keepcnt,
-            .keepintvl  = config->connection.keepintvl
+            .keepintvl  = config->connection.keepintvl,
+            .select     = mdv_client_conctx_select,
+            .create     = mdv_client_conctx_create,
+            .recv       = mdv_client_conctx_recv,
+            .close      = mdv_client_conctx_closed
         },
         .threadpool =
         {
@@ -223,48 +335,51 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
                 .stack_size = MDV_THREAD_STACK_SIZE
             }
         },
-        .conctx =
-        {
-            .userdata = &client->userdata,
-            .size     = sizeof conctx_configs / sizeof *conctx_configs,
-            .configs  = conctx_configs
-        }
+        .userdata = client
     };
 
-    if (mdv_cluster_create(&client->cluster, &cluster_config) != MDV_OK)
+    client->chaman = mdv_chaman_create(&chaman_config);
+
+    if (!client->chaman)
     {
-        MDV_LOGE("Cluster manager creation failed");
+        MDV_LOGE("Channels manager creation failed");
         mdv_rollback(rollbacker);
-        mdv_client_finalize();
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_cluster_free, &client->cluster);
-
+    mdv_rollbacker_push(rollbacker, mdv_chaman_free, client->chaman);
 
     // Connect to server
-
-    mdv_errno err = mdv_cluster_connect(&client->cluster, mdv_str((char*)config->db.addr), MDV_CLI_USER);
+    err = mdv_chaman_connect(client->chaman, mdv_str((char*)config->db.addr), MDV_CLI_USER);
 
     if (err != MDV_OK)
     {
         MDV_LOGE("Connection to '%s' failed with error: %s (%d)", config->db.addr, mdv_strerror(err), err);
         mdv_rollback(rollbacker);
-        mdv_client_finalize();
         return 0;
     }
 
     // Wait connection
+    mdv_channel *channel = mdv_client_channel_retain(client);
 
-    err = mdv_condvar_timedwait(&client->connected, config->connection.timeout * 1000);
+    for(uint32_t tiemout = 0;
+        !channel && tiemout < client->response_timeout;
+        channel = mdv_client_channel_retain(client))
+    {
+        tiemout += 100;
+        mdv_sleep(100);
+    }
 
-    if (err != MDV_OK)
+    if (!channel
+       || mdv_channel_wait_connection(channel, client->response_timeout) != MDV_OK)
     {
         MDV_LOGE("Connection to '%s' failed", config->db.addr);
+        mdv_channel_release(channel);
         mdv_rollback(rollbacker);
-        mdv_client_finalize();
         return 0;
     }
+
+    mdv_channel_release(channel);
 
     mdv_rollbacker_free(rollbacker);
 
@@ -276,8 +391,9 @@ void mdv_client_close(mdv_client *client)
 {
     if (client)
     {
-        mdv_cluster_free(&client->cluster);
-        mdv_condvar_free(&client->connected);
+        mdv_chaman_free(client->chaman);
+        mdv_channel_release(client->channel);
+        mdv_mutex_free(&client->mutex);
         mdv_free(client, "client");
         mdv_client_finalize();
     }
@@ -305,7 +421,7 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_base const *table, mdv_
 
     mdv_msg resp;
 
-    mdv_errno err = mdv_user_send(client->userdata.user, &req, &resp, client->response_timeout);
+    mdv_errno err = mdv_client_send(client, &req, &resp, client->response_timeout);
 
     binn_free(&create_table_msg);
 
@@ -365,7 +481,7 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
 
     mdv_msg resp;
 
-    mdv_errno err = mdv_user_send(client->userdata.user, &req, &resp, client->response_timeout);
+    mdv_errno err = mdv_client_send(client, &req, &resp, client->response_timeout);
 
     binn_free(&binn_msg);
 
@@ -424,7 +540,7 @@ mdv_errno mdv_insert_row(mdv_client *client, mdv_gobjid const *table_id, mdv_fie
 
     mdv_msg resp;
 
-    mdv_errno err = mdv_user_send(client->userdata.user, &req, &resp, client->response_timeout);
+    mdv_errno err = mdv_client_send(client, &req, &resp, client->response_timeout);
 
     binn_free(&insert_row_msg);
 

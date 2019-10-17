@@ -119,8 +119,9 @@ static void * mdv_cluster_conctx_create(mdv_descriptor fd, mdv_string const *add
  * @return On success, return MDV_OK
  * @return On error, return non zero value
  */
-static mdv_errno mdv_cluster_conctx_recv(void *ctx)
+static mdv_errno mdv_cluster_conctx_recv(void *userdata, void *ctx)
 {
+    (void)userdata;
     mdv_conctx *conctx = ctx;
 
     mdv_errno err = mdv_dispatcher_read(conctx->dispatcher);
@@ -144,8 +145,9 @@ static mdv_errno mdv_cluster_conctx_recv(void *ctx)
  *
  * @param conctx [in] connection context
  */
-static void mdv_cluster_conctx_closed(void *ctx)
+static void mdv_cluster_conctx_closed(void *userdata, void *ctx)
 {
+    (void)userdata;
     mdv_cluster_conctx_release((mdv_conctx *)ctx);
 }
 

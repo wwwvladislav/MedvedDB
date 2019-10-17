@@ -297,11 +297,16 @@ mdv_ebus * mdv_ebus_retain(mdv_ebus *ebus)
 
 uint32_t mdv_ebus_release(mdv_ebus *ebus)
 {
-    if (ebus
-        && atomic_fetch_sub_explicit(&ebus->rc, 1, memory_order_release) == 1)
+    uint32_t rc = 0;
+
+    if (ebus)
     {
-        mdv_ebus_free(ebus);
+        rc = atomic_fetch_sub_explicit(&ebus->rc, 1, memory_order_release) - 1;
+        if (!rc)
+            mdv_ebus_free(ebus);
     }
+
+    return rc;
 }
 
 

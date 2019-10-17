@@ -7,7 +7,6 @@
 #include <mdv_types.h>
 #include <mdv_topology.h>
 #include <mdv_errno.h>
-#include "../mdv_tests/mdv_platform/mdv_list.h"
 
 
 /// Client configuration. All options are mandatory.
@@ -82,6 +81,7 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_base const *table, mdv_
  */
 mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology);
 
+
 // todo - wee need to think about query validation and how we can t fetch info about table and its fields
 //typedef struct
 //{
@@ -97,6 +97,7 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology);
 // * @return
 // */
 //mdv_errno ndv_get_table_info(mdv_client *client, char const * name, mdv_list * info);
+
 
 /**
  * @brief Insert row to given table

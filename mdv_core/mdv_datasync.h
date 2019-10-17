@@ -10,7 +10,6 @@
  */
 #pragma once
 #include <mdv_router.h>
-#include <mdv_tracker.h>
 #include <mdv_mutex.h>
 #include <mdv_jobber.h>
 #include <mdv_threads.h>
@@ -19,6 +18,7 @@
 #include <mdv_errno.h>
 #include <stdatomic.h>
 #include "storage/mdv_tablespace.h"
+#include "mdv_tracker.h"
 
 
 /// Data synchronizer configuration

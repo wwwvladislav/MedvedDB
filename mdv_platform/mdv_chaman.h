@@ -34,11 +34,11 @@ typedef void * (*mdv_channel_create_fn)(mdv_descriptor fd,
 
 
 /// Data receiving handler
-typedef mdv_errno (*mdv_channel_recv_fn)(void *channel);
+typedef mdv_errno (*mdv_channel_recv_fn)(void *userdata, void *channel);
 
 
 /// Connection closing handler
-typedef void (*mdv_channel_close_fn)(void *channel);
+typedef void (*mdv_channel_close_fn)(void *userdata, void *channel);
 
 
 /// Channels manager configuration. All options are mandatory.

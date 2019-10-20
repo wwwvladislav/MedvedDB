@@ -1,0 +1,247 @@
+#include "mdv_conman.h"
+#include "mdv_user.h"
+#include "mdv_peer.h"
+#include "mdv_conctx.h"
+#include <mdv_chaman.h>
+#include <mdv_log.h>
+#include <mdv_alloc.h>
+#include <mdv_socket.h>
+#include <mdv_ctypes.h>
+#include <mdv_rollbacker.h>
+
+
+/// Connections manager
+struct mdv_conman
+{
+    mdv_uuid                uuid;           ///< Current cluster node UUID
+    mdv_chaman             *chaman;         ///< Channels manager
+};
+
+
+/**
+ * @brief Select connection context
+ *
+ * @param fd [in]       file descriptor
+ * @param type [out]    connection context type
+ *
+ * @return On success, return MDV_OK
+ * @return On error, return non zero value
+ */
+static mdv_errno mdv_conman_ctx_select(mdv_descriptor fd, uint8_t *type)
+{
+    uint8_t tag;
+    size_t len = sizeof tag;
+
+    mdv_errno err = mdv_read(fd, &tag, &len);
+
+    if (err == MDV_OK)
+        *type = tag;
+    else
+        MDV_LOGE("Channel selection failed with error %d", err);
+
+    return err;
+}
+
+
+/**
+ * @brief Create connection context
+ *
+ * @param config [in]   Connection context configuration
+ * @param type [in]     Client type (MDV_CLI_USER or MDV_CLI_PEER)
+ * @param dir [in]      Channel direction (MDV_CHIN or MDV_CHOUT)
+ *
+ * @return On success, return new connection context
+ * @return On error, return NULL pointer
+ */
+static void * mdv_conman_ctx_create(mdv_descriptor fd,
+                                    mdv_string const *addr,
+                                    void *userdata,
+                                    uint8_t type,
+                                    mdv_channel_dir dir)
+{
+    (void)addr;
+
+    mdv_conman *conman = userdata;
+
+    if (dir == MDV_CHOUT)
+    {
+        mdv_errno err = mdv_write_all(fd, &type, sizeof type);
+
+        if (err != MDV_OK)
+        {
+            MDV_LOGE("Channel tag was not sent");
+            mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+            return 0;
+        }
+    }
+
+    void *conctx = 0;
+
+    switch(type)
+    {
+        case MDV_CTX_USER:
+            conctx = mdv_user_create(fd);
+            break;
+
+        case MDV_CTX_PEER:
+            conctx = mdv_peer_create(&conman->uuid, dir, fd);
+            break;
+
+        default:
+            MDV_LOGE("Unknown connection context type");
+            break;
+    }
+
+    if (!conctx)
+        mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+
+    return conctx;
+}
+
+
+/**
+ * @brief Read incoming data
+ *
+ * @param conctx [in] connection context
+ *
+ * @return On success, return MDV_OK
+ * @return On error, return non zero value
+ */
+static mdv_errno mdv_conman_ctx_recv(void *userdata, void *ctx)
+{
+    (void)userdata;
+
+    mdv_conctx *conctx = ctx;
+
+    mdv_errno err = MDV_FAILED;
+    mdv_descriptor fd = 0;
+
+    switch(conctx->type)
+    {
+        case MDV_CTX_USER:
+            fd = mdv_user_fd((mdv_user*)conctx);
+            err = mdv_user_recv((mdv_user*)conctx);
+            break;
+
+        case MDV_CTX_PEER:
+            fd = mdv_peer_fd((mdv_peer*)conctx);
+            err = mdv_peer_recv((mdv_peer*)conctx);
+            break;
+
+        default:
+            MDV_LOGE("Unknown connection context type");
+            break;
+    }
+
+    switch(err)
+    {
+        case MDV_OK:
+        case MDV_EAGAIN:
+            break;
+
+        default:
+            mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
+    }
+
+    return err;
+}
+
+
+/**
+ * @brief Free allocated by connection context resources
+ *
+ * @param conctx [in] connection context
+ */
+static void mdv_conman_ctx_closed(void *userdata, void *ctx)
+{
+    (void)userdata;
+    mdv_conctx *conctx = ctx;
+    conctx->vptr->release(conctx);
+}
+
+
+mdv_conman * mdv_conman_create(mdv_conman_config const *conman_config)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
+
+    mdv_conman *conman = mdv_alloc(sizeof(mdv_conman), "conman");
+
+    if (!conman)
+    {
+        MDV_LOGE("No memory for connections manager");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_free, conman, "conman");
+
+    conman->uuid     = conman_config->uuid;
+
+    mdv_chaman_config const config =
+    {
+        .channel =
+        {
+            .keepidle   = conman_config->channel.keepidle,
+            .keepcnt    = conman_config->channel.keepcnt,
+            .keepintvl  = conman_config->channel.keepintvl,
+            .select     = mdv_conman_ctx_select,
+            .create     = mdv_conman_ctx_create,
+            .recv       = mdv_conman_ctx_recv,
+            .close      = mdv_conman_ctx_closed
+        },
+        .threadpool =
+        {
+            .size = conman_config->threadpool.size,
+            .thread_attrs =
+            {
+                .stack_size = conman_config->threadpool.thread_attrs.stack_size
+            }
+        },
+        .userdata = conman
+    };
+
+    conman->chaman = mdv_chaman_create(&config);
+
+    if (!conman->chaman)
+    {
+        MDV_LOGE("Cluster manager creation failed. Chaman not created.");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_free(rollbacker);
+
+    return conman;
+}
+
+
+void mdv_conman_free(mdv_conman *conman)
+{
+    if(conman)
+    {
+        mdv_chaman_free(conman->chaman);
+        mdv_free(conman, "conman");
+    }
+}
+
+
+mdv_errno mdv_conman_bind(mdv_conman *conman, mdv_string const addr)
+{
+    mdv_errno err = mdv_chaman_listen(conman->chaman, addr);
+
+    if (err != MDV_OK)
+        MDV_LOGE("Listener failed with error: %s (%d)", mdv_strerror(err), err);
+
+    return err;
+}
+
+
+mdv_errno mdv_conman_connect(mdv_conman *conman, mdv_string const addr, uint8_t type)
+{
+    mdv_errno err = mdv_chaman_connect(conman->chaman, addr, type);
+
+    if (err != MDV_OK)
+        MDV_LOGE("Connection failed with error: %s (%d)", mdv_strerror(err), err);
+
+    return err;
+}

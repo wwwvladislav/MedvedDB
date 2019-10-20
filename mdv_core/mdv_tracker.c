@@ -368,10 +368,6 @@ mdv_errno mdv_tracker_peer_connected(mdv_tracker *tracker, mdv_node *new_node)
 
             if (!node->connected)
             {
-                node->accepted  = new_node->accepted;
-                node->active    = 1;
-                node->userdata  = new_node->userdata;
-
                 if (strcmp(new_node->addr, node->addr) != 0)
                 {
                     // Node address changed
@@ -393,7 +389,6 @@ mdv_errno mdv_tracker_peer_connected(mdv_tracker *tracker, mdv_node *new_node)
         else
         {
             new_node->id = mdv_tracker_new_id(tracker);
-            new_node->active = 1;
             err = mdv_tracker_insert(tracker, new_node) ? MDV_OK : MDV_FAILED;
         }
 
@@ -413,9 +408,6 @@ void mdv_tracker_peer_disconnected(mdv_tracker *tracker, mdv_uuid const *uuid)
         if (node)
         {
             node->connected = 0;
-            node->accepted  = 0;
-            node->active    = 0;
-            node->userdata  = 0;
             mdv_tracker_erase_peer(tracker, uuid);
         }
 

@@ -8,7 +8,7 @@
 #include "mdv_peer.h"
 #include "mdv_p2pmsg.h"
 #include "mdv_config.h"
-#include "storage/async/mdv_nodes.h"
+#include "mdv_tracker.h"
 
 
 typedef struct mdv_gossip_peers_set
@@ -130,8 +130,10 @@ static mdv_errno mdv_gossip_linkstate_post(mdv_tracker *tracker, mdv_gossip_peer
             .payload = binn_ptr(&obj)
         };
 
+        /* TODO
         for (uint32_t i = 0; i < peers->size; ++i)
             mdv_tracker_peers_call(tracker, peers->peers[i].lid, &message, &mdv_peer_node_post);
+        */
 
         binn_free(&obj);
     }
@@ -149,6 +151,7 @@ mdv_errno mdv_gossip_linkstate(mdv_core            *core,
                                char const          *dst_listen,
                                bool                 connected)
 {
+/* TODO
     mdv_tracker *tracker = core->tracker;
     mdv_errno err = MDV_OK;
 
@@ -199,6 +202,8 @@ mdv_errno mdv_gossip_linkstate(mdv_core            *core,
     }
 
     return err;
+*/
+    return MDV_FAILED;
 }
 
 
@@ -212,6 +217,7 @@ static int mdv_gossip_ids_cmp(const void *a, const void *b)
 
 static void mdv_gossip_node_track(mdv_core *core, mdv_toponode const *toponode)
 {
+/* TODO
     mdv_tracker *tracker = core->tracker;
 
     size_t const addr_len = strlen(toponode->addr);
@@ -233,6 +239,7 @@ static void mdv_gossip_node_track(mdv_core *core, mdv_toponode const *toponode)
 
     if (err == MDV_OK)
         mdv_nodes_store_async(core->jobber, core->storage.metainf, node);
+*/
 }
 
 
@@ -241,17 +248,20 @@ static void mdv_gossip_linkstate_track(mdv_core           *core,
                                        mdv_toponode const *dst,
                                        bool                connected)
 {
+/* TODO
     mdv_tracker *tracker = core->tracker;
 
     mdv_gossip_node_track(core, src);
     mdv_gossip_node_track(core, dst);
 
     mdv_tracker_linkstate(tracker, &src->uuid, &dst->uuid, connected);
+*/
 }
 
 
 mdv_errno mdv_gossip_linkstate_handler(mdv_core *core, mdv_msg const *msg)
 {
+/*
     mdv_tracker *tracker = core->tracker;
 
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(8);
@@ -387,5 +397,7 @@ mdv_errno mdv_gossip_linkstate_handler(mdv_core *core, mdv_msg const *msg)
     mdv_rollback(rollbacker);
 
     return err;
+*/
+    return MDV_FAILED;
 }
 

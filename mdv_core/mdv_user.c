@@ -1,15 +1,22 @@
 #include "mdv_user.h"
+#include "mdv_config.h"
+#include "mdv_conctx.h"
 #include <mdv_messages.h>
 #include <mdv_version.h>
-#include <mdv_timerfd.h>
 #include <mdv_alloc.h>
 #include <mdv_log.h>
-#include <mdv_socket.h>
-#include <mdv_time.h>
-#include <mdv_topology.h>
-#include <stddef.h>
-#include <string.h>
-#include <assert.h>
+#include <mdv_dispatcher.h>
+#include <mdv_rollbacker.h>
+#include <mdv_ctypes.h>
+#include <stdatomic.h>
+
+
+struct mdv_user
+{
+    mdv_conctx              base;           ///< connection context base type
+    atomic_uint             rc;             ///< References counter
+    mdv_dispatcher         *dispatcher;     ///< Messages dispatcher
+};
 
 
 static mdv_errno mdv_user_reply(mdv_user *user, mdv_msg const *msg);
@@ -163,7 +170,7 @@ static mdv_errno mdv_user_wave_handler(mdv_msg const *msg, void *arg)
 static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
 {
     MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
-
+/* TODO
     mdv_user    *user    = arg;
     mdv_core    *core    = user->core;
     mdv_tracker *tracker = core->tracker;
@@ -222,13 +229,15 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
     mdv_free(create_table, "msg_create_table");
 
     return err;
+*/
+    return MDV_FAILED;
 }
 
 
 static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
 {
     MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
-
+/* TODO
     mdv_user    *user   = arg;
     mdv_core    *core   = user->core;
     mdv_tracker *tracker = core->tracker;
@@ -256,17 +265,49 @@ static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
     };
 
     return mdv_user_status_reply(user, msg->hdr.number, &status);
+*/
+    return MDV_FAILED;
 }
 
 
-mdv_errno mdv_user_init(void *ctx, mdv_conctx *conctx, void *userdata)
+mdv_user * mdv_user_create(mdv_descriptor fd)
 {
-    mdv_user *user = ctx;
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
-    user->core      = userdata;
-    user->conctx    = conctx;
+    mdv_user *user = mdv_alloc(sizeof(mdv_user), "userctx");
 
-    MDV_LOGD("User context %p initialize", user);
+    if (!user)
+    {
+        MDV_LOGE("No memory for user connection context");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_free, user, "userctx");
+
+    MDV_LOGD("User %p initialization", user);
+
+    static mdv_iconctx iconctx =
+    {
+        .retain = (mdv_conctx * (*)(mdv_conctx *)) mdv_user_retain,
+        .release = (uint32_t (*)(mdv_conctx *))    mdv_user_release
+    };
+
+    atomic_init(&user->rc, 1);
+
+    user->base.type = MDV_CTX_USER;
+    user->base.vptr = &iconctx;
+
+    user->dispatcher = mdv_dispatcher_create(fd);
+
+    if (!user->dispatcher)
+    {
+        MDV_LOGE("User connection context creation failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_dispatcher_free, user->dispatcher);
 
     mdv_dispatcher_handler const handlers[] =
     {
@@ -277,16 +318,67 @@ mdv_errno mdv_user_init(void *ctx, mdv_conctx *conctx, void *userdata)
 
     for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)
     {
-        if (mdv_dispatcher_reg(conctx->dispatcher, handlers + i) != MDV_OK)
+        if (mdv_dispatcher_reg(user->dispatcher, handlers + i) != MDV_OK)
         {
             MDV_LOGE("Messages dispatcher handler not registered");
-            return MDV_FAILED;
+            mdv_rollback(rollbacker);
+            return 0;
         }
     }
 
-    MDV_LOGD("User context %p initialized", user);
+    MDV_LOGD("User %p initialized", user);
 
-    return MDV_OK;
+    mdv_rollbacker_free(rollbacker);
+
+    return user;
+}
+
+
+static void mdv_user_free(mdv_user *user)
+{
+    if(user)
+    {
+        mdv_dispatcher_free(user->dispatcher);
+        mdv_free(user, "userctx");
+        MDV_LOGD("User %p freed", user);
+    }
+}
+
+
+mdv_user * mdv_user_retain(mdv_user *user)
+{
+    if (user)
+    {
+        uint32_t rc = atomic_load_explicit(&user->rc, memory_order_relaxed);
+
+        if (!rc)
+            return 0;
+
+        while(!atomic_compare_exchange_weak(&user->rc, &rc, rc + 1))
+        {
+            if (!rc)
+                return 0;
+        }
+    }
+
+    return user;
+
+}
+
+
+uint32_t mdv_user_release(mdv_user *user)
+{
+    if (user)
+    {
+        uint32_t rc = atomic_fetch_sub_explicit(&user->rc, 1, memory_order_relaxed) - 1;
+
+        if (!rc)
+            mdv_user_free(user);
+
+        return rc;
+    }
+
+    return 0;
 }
 
 
@@ -296,12 +388,12 @@ mdv_errno mdv_user_send(mdv_user *user, mdv_msg *req, mdv_msg *resp, size_t time
 
     mdv_errno err = MDV_CLOSED;
 
-    mdv_conctx *conctx = mdv_cluster_conctx_retain(user->conctx);
+    user = mdv_user_retain(user);
 
-    if (conctx)
+    if (user)
     {
-        err = mdv_dispatcher_send(user->conctx->dispatcher, req, resp, timeout);
-        mdv_cluster_conctx_release(conctx);
+        err = mdv_dispatcher_send(user->dispatcher, req, resp, timeout);
+        mdv_user_release(user);
     }
 
     return err;
@@ -314,12 +406,12 @@ mdv_errno mdv_user_post(mdv_user *user, mdv_msg *msg)
 
     mdv_errno err = MDV_CLOSED;
 
-    mdv_conctx *conctx = mdv_cluster_conctx_retain(user->conctx);
+    user = mdv_user_retain(user);
 
-    if (conctx)
+    if (user)
     {
-        err = mdv_dispatcher_post(user->conctx->dispatcher, msg);
-        mdv_cluster_conctx_release(conctx);
+        err = mdv_dispatcher_post(user->dispatcher, msg);
+        mdv_user_release(user);
     }
 
     return err;
@@ -329,14 +421,18 @@ mdv_errno mdv_user_post(mdv_user *user, mdv_msg *msg)
 static mdv_errno mdv_user_reply(mdv_user *user, mdv_msg const *msg)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(msg->hdr.id));
-    return mdv_dispatcher_reply(user->conctx->dispatcher, msg);
+    return mdv_dispatcher_reply(user->dispatcher, msg);
 }
 
 
-void mdv_user_free(void *ctx, mdv_conctx *conctx)
+mdv_errno mdv_user_recv(mdv_user *user)
 {
-    (void)conctx;
-    mdv_user *user = ctx;
-    MDV_LOGD("User context %p freed", user);
+    return mdv_dispatcher_read(user->dispatcher);
+}
+
+
+mdv_descriptor mdv_user_fd(mdv_user *user)
+{
+    return mdv_dispatcher_fd(user->dispatcher);
 }
 

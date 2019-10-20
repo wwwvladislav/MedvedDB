@@ -63,7 +63,7 @@ static mdv_errno mdv_datasync_cfslog_sync(mdv_datasync   *datasync,
         {
             if (peer_src == *dst)
                 continue;
-            mdv_tracker_peers_call(tracker, *dst, &message, &mdv_peer_node_post);
+            // TODO: mdv_tracker_peers_call(tracker, *dst, &message, &mdv_peer_node_post);
         }
 
         binn_free(&obj);
@@ -96,7 +96,7 @@ static mdv_errno mdv_datasync_cfslog_state(mdv_datasync                   *datas
             .payload = binn_ptr(&obj)
         };
 
-        mdv_tracker_peers_call(tracker, peer_id, &message, &mdv_peer_node_post);
+        // TODO: mdv_tracker_peers_call(tracker, peer_id, &message, &mdv_peer_node_post);
 
         binn_free(&obj);
     }
@@ -194,7 +194,7 @@ static bool mdv_datasync_cfs(void           *arg,
             .payload = binn_ptr(&obj)
         };
 
-        mdv_tracker_peers_call(ctx->datasync->tracker, peer_dst, &message, &mdv_peer_node_post);
+        // TODO: mdv_tracker_peers_call(ctx->datasync->tracker, peer_dst, &message, &mdv_peer_node_post);
 
         binn_free(&obj);
     }

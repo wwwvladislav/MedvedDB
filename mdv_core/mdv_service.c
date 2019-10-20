@@ -39,7 +39,9 @@ bool mdv_service_create(mdv_service *svc, char const *cfg_file_path)
     mdv_binn_set_allocator();
 
     // Create core
-    if (!mdv_core_create(&svc->core))
+    svc->core = mdv_core_create();
+
+    if (!svc->core)
     {
         MDV_LOGE("Core creation failed");
         return false;
@@ -53,15 +55,15 @@ bool mdv_service_create(mdv_service *svc, char const *cfg_file_path)
 
 void mdv_service_free(mdv_service *svc)
 {
-    mdv_core_free(&svc->core);
+    mdv_core_free(svc->core);
 }
 
 
 bool mdv_service_start(mdv_service *svc)
 {
-    svc->is_started = mdv_core_listen(&svc->core);
+    svc->is_started = mdv_core_listen(svc->core);
 
-    mdv_core_connect(&svc->core);
+    mdv_core_connect(svc->core);
 
     while(svc->is_started)
     {

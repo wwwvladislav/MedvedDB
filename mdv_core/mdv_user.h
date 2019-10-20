@@ -3,33 +3,40 @@
  * @brief Users connections processing logic.
  */
 #pragma once
-#include <mdv_uuid.h>
 #include <mdv_def.h>
+#include <mdv_chaman.h>
 #include <mdv_msg.h>
-#include <mdv_string.h>
-#include <mdv_limits.h>
-#include "mdv_cluster.h"
-#include "mdv_core.h"
 
 
-/// User context used for storing different type of information about connection (it should be cast to mdv_conctx)
-typedef struct mdv_user
-{
-    mdv_core        *core;                  ///< core
-    mdv_conctx      *conctx;                ///< connection context
-} mdv_user;
+/// User context used for storing different type of information
+/// about connection (it should be cast to mdv_conctx)
+typedef struct mdv_user mdv_user;
+
 
 /**
- * @brief Initialize user
+ * @brief Creates user connection context
  *
- * @param ctx [in]      user context
- * @param conctx [in]   connection context
- * @param userdata [in] pointer to mdv_tablespace
+ * @param fd [in]   channel descriptor
  *
  * @return On success, return pointer to new user connection context
  * @return On error, return NULL pointer
  */
-mdv_errno mdv_user_init(void *ctx, mdv_conctx *conctx, void *userdata);
+mdv_user * mdv_user_create(mdv_descriptor fd);
+
+
+/**
+ * @brief Retains user connection context.
+ * @details Reference counter is increased by one.
+ */
+mdv_user * mdv_user_retain(mdv_user *user);
+
+
+/**
+ * @brief Retains user connection context.
+ * @details Reference counter is decreased by one.
+ *          When the reference counter reaches zero, the  user's connection context destructor is called.
+ */
+uint32_t mdv_user_release(mdv_user *user);
 
 
 /**
@@ -60,9 +67,19 @@ mdv_errno mdv_user_post(mdv_user *user, mdv_msg *msg);
 
 
 /**
- * @brief Free message
+ * @brief Reads incomming messages
  *
- * @param ctx [in]     user context
- * @param conctx [in]  connection context
+ * @param user [in]     user context
+ *
+ * @return On success returns MDV_OK
+ * @return On error return nonzero error code.
  */
-void mdv_user_free(void *ctx, mdv_conctx *conctx);
+mdv_errno mdv_user_recv(mdv_user *user);
+
+
+/**
+ * @brief Returns user channel descriptor
+ *
+ * @param user [in]     user context
+ */
+mdv_descriptor mdv_user_fd(mdv_user *user);

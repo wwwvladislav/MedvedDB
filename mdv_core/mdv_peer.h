@@ -6,40 +6,49 @@
 #pragma once
 #include <mdv_uuid.h>
 #include <mdv_def.h>
+#include <mdv_chaman.h>
 #include <mdv_msg.h>
-#include <mdv_string.h>
-#include <mdv_limits.h>
-#include "mdv_cluster.h"
-#include "mdv_core.h"
 
 
-/// Peer context used for storing different type of information about active peer (it should be cast to mdv_conctx)
-typedef struct mdv_peer
-{
-    mdv_core           *core;                       ///< core
-    mdv_conctx         *conctx;                     ///< connection context
-    uint32_t            peer_id;                    ///< peer local numeric id
-    mdv_uuid            peer_uuid;                  ///< peer global uuid
-} mdv_peer;
+/// Peer context used for storing different type of information
+/// about active peer (it should be cast to mdv_conctx)
+typedef struct mdv_peer mdv_peer;
 
 
 /**
- * @brief Initialize peer
+ * @brief Creates peer connection context
  *
- * @param ctx [in]      peer context
- * @param conctx [in]   connection context
- * @param userdata [in] pointer to mdv_tablespace
+ * @param uuid [in]     current node uuid
+ * @param dir [in]      channel direction
+ * @param fd [in]       channel descriptor
  *
  * @return On success, return pointer to new peer context
  * @return On error, return NULL pointer
  */
-mdv_errno mdv_peer_init(void *ctx, mdv_conctx *conctx, void *userdata);
+mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
+                           mdv_channel_dir dir,
+                           mdv_descriptor fd);
+
+
+/**
+ * @brief Retains peer connection context.
+ * @details Reference counter is increased by one.
+ */
+mdv_peer * mdv_peer_retain(mdv_peer *peer);
+
+
+/**
+ * @brief Retains peer connection context.
+ * @details Reference counter is decreased by one.
+ *          When the reference counter reaches zero, the  peer's connection context destructor is called.
+ */
+uint32_t mdv_peer_release(mdv_peer *peer);
 
 
 /**
  * @brief Send message and wait response.
  *
- * @param peer [in]     peer node
+ * @param peer [in]     peer connection context
  * @param req [in]      request to be sent
  * @param resp [out]    received response
  * @param timeout [in]  timeout for response wait (in milliseconds)
@@ -54,7 +63,7 @@ mdv_errno mdv_peer_send(mdv_peer *peer, mdv_msg *req, mdv_msg *resp, size_t time
 /**
  * @brief Send message but response isn't required.
  *
- * @param peer [in]     peer node
+ * @param peer [in]     peer connection context
  * @param msg [in]      message to be sent
  *
  * @return On success returns MDV_OK
@@ -64,21 +73,19 @@ mdv_errno mdv_peer_post(mdv_peer *peer, mdv_msg *msg);
 
 
 /**
- * @brief Send message but response isn't required.
+ * @brief Reads incomming messages
  *
- * @param peer [in]     peer node
- * @param msg [in]      message to be sent
+ * @param peer [in]     peer connection context
  *
  * @return On success returns MDV_OK
  * @return On error return nonzero error code.
  */
-mdv_errno mdv_peer_node_post(mdv_node *peer, void *msg);
+mdv_errno mdv_peer_recv(mdv_peer *peer);
 
 
 /**
- * @brief Peer context freeing function
+ * @brief Returns peer channel descriptor
  *
- * @param ctx [in]     user context
- * @param conctx [in]  connection context
+ * @param peer [in]     peer connection context
  */
-void mdv_peer_free(void *ctx, mdv_conctx *conctx);
+mdv_descriptor mdv_peer_fd(mdv_peer *peer);

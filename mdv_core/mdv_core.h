@@ -9,42 +9,17 @@
  *
  */
 #pragma once
-#include <mdv_jobber.h>
-#include "mdv_tracker.h"
-#include "mdv_datasync.h"
-#include "mdv_committer.h"
-#include "mdv_cluster.h"
-#include "storage/mdv_metainf.h"
-#include "storage/mdv_tablespace.h"
+#include <mdv_def.h>
 
 
 /// Core component for cluster nodes management and storage accessing.
-typedef struct mdv_core
-{
-    mdv_jobber     *jobber;             ///< Jobs scheduler
-    mdv_tracker    *tracker;            ///< Network topology tracker
-    mdv_cluster     cluster;            ///< Cluster manager
-    mdv_metainf     metainf;            ///< Metainformation (DB version, node UUID etc.)
-    mdv_datasync    datasync;           ///< Data synchronizer
-    mdv_committer   committer;          ///< Data committer
-
-    struct
-    {
-        mdv_storage    *metainf;        ///< Metainformation storage
-        mdv_tablespace  tablespace;     ///< Tables storage
-    } storage;                          ///< Storages
-} mdv_core;
+typedef struct mdv_core mdv_core;
 
 
 /**
  * @brief Create new core.
- *
- * @param core [out] Pointer to a core to be initialized.
- *
- * @return true if core successfully created
- * @return false if error is occurred
  */
-bool mdv_core_create(mdv_core *core);
+mdv_core * mdv_core_create();
 
 
 /**

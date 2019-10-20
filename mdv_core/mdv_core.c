@@ -4,22 +4,39 @@
 #include "mdv_config.h"
 #include "mdv_p2pmsg.h"
 #include "mdv_gossip.h"
-#include "storage/async/mdv_nodes.h"
+#include "mdv_datasync.h"
+#include "mdv_committer.h"
+#include "mdv_conman.h"
+#include "mdv_tracker.h"
+#include "storage/mdv_metainf.h"
+#include "storage/mdv_tablespace.h"
 #include <mdv_log.h>
 #include <mdv_messages.h>
 #include <mdv_ctypes.h>
 #include <mdv_rollbacker.h>
+#include <mdv_jobber.h>
 
 
-static bool mdv_core_cluster_create(mdv_core *core)
+struct mdv_core
 {
-    mdv_conctx_config const conctx_configs[] =
-    {
-        { MDV_CLI_USER, sizeof(mdv_user), &mdv_user_init, &mdv_user_free },
-        { MDV_CLI_PEER, sizeof(mdv_peer), &mdv_peer_init, &mdv_peer_free }
-    };
+    mdv_jobber     *jobber;             ///< Jobs scheduler
+    mdv_tracker    *tracker;            ///< Network topology tracker
+    mdv_conman     *conman;             ///< Connections manager
+    mdv_metainf     metainf;            ///< Metainformation (DB version, node UUID etc.)
+    mdv_datasync    datasync;           ///< Data synchronizer
+    mdv_committer   committer;          ///< Data committer
 
-    mdv_cluster_config const cluster_config =
+    struct
+    {
+        mdv_storage    *metainf;        ///< Metainformation storage
+        mdv_tablespace  tablespace;     ///< Tables storage
+    } storage;                          ///< Storages
+};
+
+
+static bool mdv_core_conman_create(mdv_core *core)
+{
+    mdv_conman_config const conman_config =
     {
         .uuid = core->metainf.uuid.value,
         .channel =
@@ -36,15 +53,11 @@ static bool mdv_core_cluster_create(mdv_core *core)
                 .stack_size = MDV_THREAD_STACK_SIZE
             }
         },
-        .conctx =
-        {
-            .userdata = core,
-            .size     = sizeof conctx_configs / sizeof *conctx_configs,
-            .configs  = conctx_configs
-        }
     };
 
-    if (mdv_cluster_create(&core->cluster, &cluster_config) != MDV_OK)
+    core->conman = mdv_conman_create(&conman_config);
+
+    if (!core->conman)
     {
         MDV_LOGE("Cluster manager creation failed");
         return false;
@@ -54,7 +67,7 @@ static bool mdv_core_cluster_create(mdv_core *core)
     if (mdv_nodes_load(core->storage.metainf, core->tracker) != MDV_OK)
     {
         MDV_LOGE("Nodes loading failed");
-        mdv_cluster_free(&core->cluster);
+        mdv_conman_free(core->conman);
         return false;
     }
 
@@ -62,9 +75,21 @@ static bool mdv_core_cluster_create(mdv_core *core)
 }
 
 
-bool mdv_core_create(mdv_core *core)
+mdv_core * mdv_core_create()
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(7);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(8);
+
+    mdv_core *core = mdv_alloc(sizeof(mdv_core), "core");
+
+    if (!core)
+    {
+        MDV_LOGE("New memory for core");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_free, core, "core");
+
 
     // DB meta information storage
     core->storage.metainf = mdv_metainf_storage_open(MDV_CONFIG.storage.path.ptr);
@@ -73,7 +98,7 @@ bool mdv_core_create(mdv_core *core)
     {
         MDV_LOGE("Service initialization failed. Can't create metainf storage '%s'", MDV_CONFIG.storage.path.ptr);
         mdv_rollback(rollbacker);
-        return false;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_storage_release, core->storage.metainf);
@@ -83,7 +108,7 @@ bool mdv_core_create(mdv_core *core)
     {
         MDV_LOGE("DB meta information loading failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
         mdv_rollback(rollbacker);
-        return false;
+        return 0;
     }
 
     mdv_metainf_validate(&core->metainf);
@@ -96,7 +121,7 @@ bool mdv_core_create(mdv_core *core)
     {
         MDV_LOGE("DB tables space creation failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
         mdv_rollback(rollbacker);
-        return false;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_tablespace_close, &core->storage.tablespace);
@@ -125,7 +150,7 @@ bool mdv_core_create(mdv_core *core)
     {
         MDV_LOGE("Jobs scheduler creation failed");
         mdv_rollback(rollbacker);
-        return false;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_jobber_release, core->jobber);
@@ -138,7 +163,7 @@ bool mdv_core_create(mdv_core *core)
     {
         MDV_LOGE("Topology tracker creation failed");
         mdv_rollback(rollbacker);
-        return false;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_tracker_release, core->tracker);
@@ -152,7 +177,7 @@ bool mdv_core_create(mdv_core *core)
     {
         MDV_LOGE("Data synchronizer creation failed");
         mdv_rollback(rollbacker);
-        return false;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_datasync_free, &core->datasync);
@@ -166,20 +191,20 @@ bool mdv_core_create(mdv_core *core)
     {
         MDV_LOGE("Data committer creation failed");
         mdv_rollback(rollbacker);
-        return false;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_committer_free, &core->committer);
 
 
-    // Cluster manager
-    if (!mdv_core_cluster_create(core))
+    // Connections manager
+    if (!mdv_core_conman_create(core))
     {
         mdv_rollback(rollbacker);
-        return false;
+        return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_cluster_free, &core->cluster);
+    mdv_rollbacker_push(rollbacker, mdv_conman_free, core->conman);
 
 
     MDV_LOGI("Storage version: %u", core->metainf.version.value);
@@ -188,27 +213,31 @@ bool mdv_core_create(mdv_core *core)
 
     mdv_rollbacker_free(rollbacker);
 
-    return true;
+    return core;
 }
 
 
 void mdv_core_free(mdv_core *core)
 {
-    mdv_datasync_stop(&core->datasync);
-    mdv_committer_stop(&core->committer);
-    mdv_cluster_free(&core->cluster);
-    mdv_jobber_release(core->jobber);
-    mdv_datasync_free(&core->datasync);
-    mdv_committer_free(&core->committer);
-    mdv_tracker_release(core->tracker);
-    mdv_storage_release(core->storage.metainf);
-    mdv_tablespace_close(&core->storage.tablespace);
+    if (core)
+    {
+        mdv_datasync_stop(&core->datasync);
+        mdv_committer_stop(&core->committer);
+        mdv_conman_free(core->conman);
+        mdv_jobber_release(core->jobber);
+        mdv_datasync_free(&core->datasync);
+        mdv_committer_free(&core->committer);
+        mdv_tracker_release(core->tracker);
+        mdv_storage_release(core->storage.metainf);
+        mdv_tablespace_close(&core->storage.tablespace);
+        mdv_free(core, "core");
+    }
 }
 
 
 bool mdv_core_listen(mdv_core *core)
 {
-    return mdv_cluster_bind(&core->cluster, MDV_CONFIG.server.listen) == MDV_OK;
+    return mdv_conman_bind(core->conman, MDV_CONFIG.server.listen) == MDV_OK;
 }
 
 
@@ -216,7 +245,9 @@ void mdv_core_connect(mdv_core *core)
 {
     for(uint32_t i = 0; i < MDV_CONFIG.cluster.size; ++i)
     {
-        mdv_cluster_connect(&core->cluster, mdv_str((char*)MDV_CONFIG.cluster.nodes[i]), MDV_CLI_PEER);
+        mdv_conman_connect(core->conman,
+                           mdv_str((char*)MDV_CONFIG.cluster.nodes[i]),
+                           MDV_CTX_PEER);
     }
 }
 

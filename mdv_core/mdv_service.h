@@ -5,7 +5,7 @@
 /// Service
 typedef struct
 {
-    mdv_core        core;               ///< Core component for cluster nodes management and storage accessing.
+    mdv_core       *core;               ///< Core component for cluster nodes management and storage accessing.
     volatile bool   is_started;         ///< Flag indicates that the service is working
 } mdv_service;
 

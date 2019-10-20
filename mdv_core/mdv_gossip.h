@@ -10,6 +10,7 @@
  */
 #pragma once
 #include <mdv_msg.h>
+#include <mdv_uuid.h>
 #include "mdv_core.h"
 
 

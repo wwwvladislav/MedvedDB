@@ -79,7 +79,6 @@ static void mdv_add_current_node(mdv_tracker *tracker)
 
     node->size      = size;
     node->uuid      = *mdv_tracker_uuid(tracker);
-    node->userdata  = 0;
     node->id        = MDV_LOCAL_ID;
 
     memcpy(node->addr, MDV_CONFIG.server.listen.ptr, MDV_CONFIG.server.listen.size);

@@ -64,13 +64,14 @@ static bool mdv_core_conman_create(mdv_core *core)
     }
 
     // Load cluster nodes
+/*
     if (mdv_nodes_load(core->storage.metainf, core->tracker) != MDV_OK)
     {
         MDV_LOGE("Nodes loading failed");
         mdv_conman_free(core->conman);
         return false;
     }
-
+*/
     return true;
 }
 
@@ -157,7 +158,8 @@ mdv_core * mdv_core_create()
 
 
     // Topology tracker
-    core->tracker = mdv_tracker_create(&core->metainf.uuid.value);
+    core->tracker = mdv_tracker_create(&core->metainf.uuid.value,
+                                       core->storage.metainf);
 
     if (!core->tracker)
     {

@@ -15,7 +15,7 @@
 /// Graph node
 typedef struct
 {
-    void *data;     ///< Data associated with node
+    void *data;                 ///< Data associated with node
 } mdv_mstnode;
 
 

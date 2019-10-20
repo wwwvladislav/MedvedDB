@@ -1,11 +1,9 @@
 #include "mdv_nodes.h"
 #include "mdv_storages.h"
-#include "../mdv_config.h"
 #include <mdv_log.h>
 #include <mdv_rollbacker.h>
 #include <mdv_binn.h>
 #include <mdv_limits.h>
-#include <stdbool.h>
 #include <string.h>
 
 
@@ -30,7 +28,7 @@ static bool mdv_binn_node(mdv_node const *node, binn *obj)
 }
 
 
-static mdv_node * mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid)
+static mdv_node const * mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid)
 {
     char *addr = 0;
     uint32_t id;
@@ -57,7 +55,6 @@ static mdv_node * mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid)
 
     memset(node, 0, sizeof *node);
 
-    node->size      = offsetof(mdv_node, addr) + addr_len + 1;
     node->uuid      = *uuid;
     node->id        = id;
 
@@ -67,32 +64,11 @@ static mdv_node * mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid)
 }
 
 
-static void mdv_add_current_node(mdv_tracker *tracker)
-{
-    size_t const size = offsetof(mdv_node, addr) + MDV_CONFIG.server.listen.size + 1;
-
-    char buff[size];
-
-    memset(buff, 0, size);
-
-    mdv_node *node = (mdv_node *)buff;
-
-    node->size      = size;
-    node->uuid      = *mdv_tracker_uuid(tracker);
-    node->id        = MDV_LOCAL_ID;
-
-    memcpy(node->addr, MDV_CONFIG.server.listen.ptr, MDV_CONFIG.server.listen.size);
-
-    mdv_tracker_append(tracker, node, false);
-}
-
-
-mdv_errno mdv_nodes_load(mdv_storage *storage, mdv_tracker *tracker)
+mdv_errno mdv_nodes_foreach(mdv_storage *storage,
+                            void *arg,
+                            void (*fn)(void *arg, mdv_node const *node))
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
-
-    // Add current node
-    mdv_add_current_node(tracker);
 
     // Start transaction
     mdv_transaction transaction = mdv_transaction_start(storage);
@@ -130,12 +106,12 @@ mdv_errno mdv_nodes_load(mdv_storage *storage, mdv_tracker *tracker)
             continue;
         }
 
-        mdv_node *node = mdv_unbinn_node(&obj, uuid);
+        mdv_node const *node = mdv_unbinn_node(&obj, uuid);
 
         if (node)
         {
             MDV_LOGI("Node: [%u] %s, %s", node->id, mdv_uuid_to_str(&node->uuid).ptr, node->addr);
-            mdv_tracker_append(tracker, node, false);
+            fn(arg, node);
         }
         else
             MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(uuid).ptr);
@@ -231,4 +207,29 @@ mdv_errno mdv_nodes_store(mdv_storage *storage, mdv_node const *node)
     mdv_rollbacker_free(rollbacker);
 
     return MDV_OK;
+}
+
+
+mdv_node const * mdv_nodes_current(mdv_uuid const *uuid, char const *addr)
+{
+    size_t const addr_len = strlen(addr);
+
+    if (addr_len >= MDV_ADDR_LEN_MAX)
+    {
+        MDV_LOGE("Invalid address");
+        return 0;
+    }
+
+    static _Thread_local char buff[offsetof(mdv_node, addr) + MDV_ADDR_LEN_MAX + 1];
+
+    mdv_node *node = (mdv_node *)buff;
+
+    memset(node, 0, sizeof *node);
+
+    node->uuid      = *uuid;
+    node->id        = MDV_LOCAL_ID;
+
+    memcpy(node->addr, addr, addr_len + 1);
+
+    return node;
 }

@@ -80,6 +80,7 @@ static int mdv_gossip_peer_cmp(const void *p1, const void *p2)
 
 static mdv_gossip_peers * mdv_gossip_peers_get(mdv_tracker *tracker, bool add_self)
 {
+/*
     size_t const peers_count = mdv_tracker_peers_count(tracker) + 16;
 
     mdv_gossip_peers_set peers_set =
@@ -104,6 +105,8 @@ static mdv_gossip_peers * mdv_gossip_peers_get(mdv_tracker *tracker, bool add_se
     }
 
     return peers_set.data;
+*/
+    return 0;
 }
 
 

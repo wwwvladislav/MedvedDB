@@ -241,51 +241,11 @@ static mdv_errno mdv_tracker_node_registered(void *arg, mdv_event *event)
 }
 
 
-static const struct
-{
-    mdv_event_type type;
-    mdv_event_handler handler;
-}
-mdv_tracker_handlers[] =
+static const mdv_event_handler_type mdv_tracker_handlers[] =
 {
     { MDV_EVT_NODE_UP, mdv_tracker_node_up },
     { MDV_EVT_NODE_REGISTERED, mdv_tracker_node_registered }
 };
-
-
-static mdv_errno mdv_tracker_subscribe(mdv_tracker *tracker)
-{
-    for(size_t i = 0; i < sizeof mdv_tracker_handlers / sizeof *mdv_tracker_handlers; ++i)
-    {
-        mdv_errno err = mdv_ebus_subscribe(tracker->ebus,
-                                           mdv_tracker_handlers[i].type,
-                                           tracker,
-                                           mdv_tracker_handlers[i].handler);
-
-        if (err != MDV_OK)
-        {
-            for(; i > 0; --i)
-                mdv_ebus_unsubscribe(tracker->ebus,
-                                     mdv_tracker_handlers[i - 1].type,
-                                     tracker,
-                                     mdv_tracker_handlers[i - 1].handler);
-
-            return err;
-        }
-    }
-
-    return MDV_OK;
-}
-
-
-static void mdv_tracker_unsubscribe(mdv_tracker *tracker)
-{
-    for(size_t i = 0; i < sizeof mdv_tracker_handlers / sizeof *mdv_tracker_handlers; ++i)
-        mdv_ebus_unsubscribe(tracker->ebus,
-                             mdv_tracker_handlers[i].type,
-                             tracker,
-                             mdv_tracker_handlers[i].handler);
-}
 
 
 mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid,
@@ -387,7 +347,10 @@ mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid,
         return 0;
     }
 
-    if (mdv_tracker_subscribe(tracker) != MDV_OK)
+    if (mdv_ebus_subscribe_all(tracker->ebus,
+                               tracker,
+                               mdv_tracker_handlers,
+                               sizeof mdv_tracker_handlers / sizeof *mdv_tracker_handlers) != MDV_OK)
     {
         MDV_LOGE("Ebus subscription failed");
         mdv_rollback(rollbacker);
@@ -402,7 +365,10 @@ mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid,
 
 static void mdv_tracker_free(mdv_tracker *tracker)
 {
-    mdv_tracker_unsubscribe(tracker);
+    mdv_ebus_unsubscribe_all(tracker->ebus,
+                             tracker,
+                             mdv_tracker_handlers,
+                             sizeof mdv_tracker_handlers / sizeof *mdv_tracker_handlers);
 
     mdv_hashmap_free(tracker->links);
     mdv_mutex_free(&tracker->links_mutex);

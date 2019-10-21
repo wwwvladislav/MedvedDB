@@ -60,6 +60,14 @@ struct mdv_event
 typedef mdv_errno (*mdv_event_handler)(void *arg, mdv_event *event);
 
 
+/// Event handler for specific type
+typedef struct
+{
+    mdv_event_type      type;               ///< Event type
+    mdv_event_handler   handler;            ///< Event handler
+} mdv_event_handler_type;
+
+
 /**
  * @brief Creates new event given size
  *
@@ -114,7 +122,24 @@ mdv_errno mdv_ebus_subscribe(mdv_ebus *ebus,
 
 
 /**
- * @brief Unregister event handler registered by mdv_ebus_subscribe()
+ * @brief Registers several event handlers
+ *
+ * @param ebus [in]     Event bus
+ * @param arg [in]      This argument is passed as argument to event handler
+ * @param handlers [in] Event handlers
+ * @param count [in]    Event handlers count
+ *
+ * @return On success returns MDV_OK
+ * @return On error return nonzero error code.
+ */
+mdv_errno mdv_ebus_subscribe_all(mdv_ebus *ebus,
+                                 void *arg,
+                                 mdv_event_handler_type const *handlers,
+                                 size_t count);
+
+
+/**
+ * @brief Unregisters event handler registered by mdv_ebus_subscribe()
  *
  * @param ebus [in]     Event bus
  * @param type [in]     Event type
@@ -125,6 +150,20 @@ void mdv_ebus_unsubscribe(mdv_ebus *ebus,
                           mdv_event_type type,
                           void *arg,
                           mdv_event_handler handler);
+
+
+/**
+ * @brief Unregisters several event handlers
+ *
+ * @param ebus [in]     Event bus
+ * @param arg [in]      This argument is passed as argument to event handler
+ * @param handlers [in] Event handlers
+ * @param count [in]    Event handlers count
+ */
+void mdv_ebus_unsubscribe_all(mdv_ebus *ebus,
+                              void *arg,
+                              mdv_event_handler_type const *handlers,
+                              size_t count);
 
 
 /// Modes for event publishing.

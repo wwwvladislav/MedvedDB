@@ -363,7 +363,7 @@ uint32_t mdv_ebus_release(mdv_ebus *ebus)
 }
 
 
-static mdv_event_handlers * mdv_ebus_shandlers_unsafe(mdv_ebus *ebus, mdv_event_type type)
+static mdv_event_handlers * mdv_ebus_handlers_unsafe(mdv_ebus *ebus, mdv_event_type type)
 {
     mdv_event_handlers *handlers = mdv_hashmap_find(ebus->handlers, type);
 
@@ -395,6 +395,90 @@ static mdv_event_handlers * mdv_ebus_shandlers_unsafe(mdv_ebus *ebus, mdv_event_
 }
 
 
+static mdv_errno mdv_ebus_subscribe_unsafe(mdv_ebus *ebus,
+                                           mdv_event_type type,
+                                           void *arg,
+                                           mdv_event_handler handler)
+{
+    mdv_errno err = MDV_OK;
+
+    mdv_event_handlers *handlers = mdv_ebus_handlers_unsafe(ebus, type);
+
+    if (handlers)
+    {
+        mdv_ebus_subscriber subscriber =
+        {
+            .arg = arg,
+            .handler = handler
+        };
+
+        if (!mdv_vector_find(handlers->subscribers, &subscriber, mdv_ebus_subscriber_equ))
+        {
+            mdv_vector *subscribers = mdv_vector_clone(handlers->subscribers,
+                                            mdv_vector_size(handlers->subscribers) + 1);
+
+            if (subscribers)
+            {
+                mdv_vector_push_back(subscribers, &subscriber);
+                mdv_vector_release(handlers->subscribers);
+                handlers->subscribers = subscribers;
+            }
+            else
+                err = MDV_NO_MEM;
+        }
+    }
+    else
+        err = MDV_NO_MEM;
+
+    return err;
+}
+
+
+static mdv_errno mdv_ebus_unsubscribe_unsafe(mdv_ebus *ebus,
+                                             mdv_event_type type,
+                                             void *arg,
+                                             mdv_event_handler handler)
+{
+    mdv_errno err = MDV_OK;
+
+    mdv_event_handlers *handlers = mdv_hashmap_find(ebus->handlers, type);
+
+    if (handlers)
+    {
+        mdv_ebus_subscriber const subscriber =
+        {
+            .arg = arg,
+            .handler = handler
+        };
+
+        mdv_ebus_subscriber const *registered_subscriber =
+                                mdv_vector_find(handlers->subscribers,
+                                                &subscriber,
+                                                mdv_ebus_subscriber_equ);
+
+        if (registered_subscriber)
+        {
+            mdv_vector *subscribers = mdv_vector_clone(handlers->subscribers,
+                                            mdv_vector_size(handlers->subscribers));
+
+            if (subscribers)
+            {
+                size_t const idx = registered_subscriber
+                                    - (mdv_ebus_subscriber const *)
+                                            mdv_vector_data(handlers->subscribers);
+                mdv_vector_erase(subscribers, mdv_vector_at(subscribers, idx));
+                mdv_vector_release(handlers->subscribers);
+                handlers->subscribers = subscribers;
+            }
+            else
+                err = MDV_NO_MEM;
+        }
+    }
+
+    return err;
+}
+
+
 mdv_errno mdv_ebus_subscribe(mdv_ebus *ebus,
                              mdv_event_type type,
                              void *arg,
@@ -404,33 +488,44 @@ mdv_errno mdv_ebus_subscribe(mdv_ebus *ebus,
 
     if (err == MDV_OK)
     {
-        mdv_event_handlers *handlers = mdv_ebus_shandlers_unsafe(ebus, type);
+        err = mdv_ebus_subscribe_unsafe(ebus, type, arg, handler);
+        mdv_mutex_unlock(&ebus->mutex);
+    }
 
-        if (handlers)
+    if (err != MDV_OK)
+        MDV_LOGE("Event subscriber registration failed with error %d", err);
+
+    return err;
+}
+
+
+mdv_errno mdv_ebus_subscribe_all(mdv_ebus *ebus,
+                                 void *arg,
+                                 mdv_event_handler_type const *handlers,
+                                 size_t count)
+{
+    mdv_errno err = mdv_mutex_lock(&ebus->mutex);
+
+    if (err == MDV_OK)
+    {
+        for(size_t i = 0; i < count; ++i)
         {
-            mdv_ebus_subscriber subscriber =
-            {
-                .arg = arg,
-                .handler = handler
-            };
+            err = mdv_ebus_subscribe_unsafe(ebus,
+                                            handlers[i].type,
+                                            arg,
+                                            handlers[i].handler);
 
-            if (!mdv_vector_find(handlers->subscribers, &subscriber, mdv_ebus_subscriber_equ))
+            if (err != MDV_OK)
             {
-                mdv_vector *subscribers = mdv_vector_clone(handlers->subscribers,
-                                                mdv_vector_size(handlers->subscribers) + 1);
+                for(; i > 0; --i)
+                    mdv_ebus_unsubscribe_unsafe(ebus,
+                                                handlers[i - 1].type,
+                                                arg,
+                                                handlers[i - 1].handler);
 
-                if (subscribers)
-                {
-                    mdv_vector_push_back(subscribers, &subscriber);
-                    mdv_vector_release(handlers->subscribers);
-                    handlers->subscribers = subscribers;
-                }
-                else
-                    err = MDV_NO_MEM;
+                break;
             }
         }
-        else
-            err = MDV_NO_MEM;
 
         mdv_mutex_unlock(&ebus->mutex);
     }
@@ -451,39 +546,29 @@ void mdv_ebus_unsubscribe(mdv_ebus *ebus,
 
     if (err == MDV_OK)
     {
-        mdv_event_handlers *handlers = mdv_hashmap_find(ebus->handlers, type);
+        err = mdv_ebus_unsubscribe_unsafe(ebus, type, arg, handler);
+        mdv_mutex_unlock(&ebus->mutex);
+    }
 
-        if (handlers)
-        {
-            mdv_ebus_subscriber const subscriber =
-            {
-                .arg = arg,
-                .handler = handler
-            };
+    if (err != MDV_OK)
+        MDV_LOGE("Event subscriber unregistration failed with error %d", err);
+}
 
-            mdv_ebus_subscriber const *registered_subscriber =
-                                    mdv_vector_find(handlers->subscribers,
-                                                    &subscriber,
-                                                    mdv_ebus_subscriber_equ);
 
-            if (registered_subscriber)
-            {
-                mdv_vector *subscribers = mdv_vector_clone(handlers->subscribers,
-                                                mdv_vector_size(handlers->subscribers));
+void mdv_ebus_unsubscribe_all(mdv_ebus *ebus,
+                              void *arg,
+                              mdv_event_handler_type const *handlers,
+                              size_t count)
+{
+    mdv_errno err = mdv_mutex_lock(&ebus->mutex);
 
-                if (subscribers)
-                {
-                    size_t const idx = registered_subscriber
-                                        - (mdv_ebus_subscriber const *)
-                                                mdv_vector_data(handlers->subscribers);
-                    mdv_vector_erase(subscribers, mdv_vector_at(subscribers, idx));
-                    mdv_vector_release(handlers->subscribers);
-                    handlers->subscribers = subscribers;
-                }
-                else
-                    err = MDV_NO_MEM;
-            }
-        }
+    if (err == MDV_OK)
+    {
+        for(size_t i = 0; i < count; ++i)
+            mdv_ebus_unsubscribe_unsafe(ebus,
+                                        handlers[i].type,
+                                        arg,
+                                        handlers[i].handler);
 
         mdv_mutex_unlock(&ebus->mutex);
     }

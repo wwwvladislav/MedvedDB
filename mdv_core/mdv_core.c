@@ -10,15 +10,18 @@
 #include "mdv_tracker.h"
 #include "storage/mdv_metainf.h"
 #include "storage/mdv_tablespace.h"
+#include "event/mdv_types.h"
 #include <mdv_log.h>
 #include <mdv_messages.h>
 #include <mdv_ctypes.h>
 #include <mdv_rollbacker.h>
 #include <mdv_jobber.h>
+#include <mdv_ebus.h>
 
 
 struct mdv_core
 {
+    mdv_ebus       *ebus;               ///< Events bus
     mdv_jobber     *jobber;             ///< Jobs scheduler
     mdv_tracker    *tracker;            ///< Network topology tracker
     mdv_conman     *conman;             ///< Connections manager
@@ -29,56 +32,14 @@ struct mdv_core
     struct
     {
         mdv_storage    *metainf;        ///< Metainformation storage
-        mdv_tablespace  tablespace;     ///< Tables storage
+        mdv_tablespace *tablespace;     ///< Tables storage
     } storage;                          ///< Storages
 };
 
 
-static bool mdv_core_conman_create(mdv_core *core)
-{
-    mdv_conman_config const conman_config =
-    {
-        .uuid = core->metainf.uuid.value,
-        .channel =
-        {
-            .keepidle  = MDV_CONFIG.connection.keep_idle,
-            .keepcnt   = MDV_CONFIG.connection.keep_count,
-            .keepintvl = MDV_CONFIG.connection.keep_interval
-        },
-        .threadpool =
-        {
-            .size = MDV_CONFIG.server.workers,
-            .thread_attrs =
-            {
-                .stack_size = MDV_THREAD_STACK_SIZE
-            }
-        },
-    };
-
-    core->conman = mdv_conman_create(&conman_config);
-
-    if (!core->conman)
-    {
-        MDV_LOGE("Cluster manager creation failed");
-        return false;
-    }
-
-    // Load cluster nodes
-/*
-    if (mdv_nodes_load(core->storage.metainf, core->tracker) != MDV_OK)
-    {
-        MDV_LOGE("Nodes loading failed");
-        mdv_conman_free(core->conman);
-        return false;
-    }
-*/
-    return true;
-}
-
-
 mdv_core * mdv_core_create()
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(8);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(9);
 
     mdv_core *core = mdv_alloc(sizeof(mdv_core), "core");
 
@@ -116,16 +77,47 @@ mdv_core * mdv_core_create()
 
     mdv_metainf_flush(&core->metainf, core->storage.metainf);
 
+    // Events bus
+    mdv_ebus_config const ebus_config =
+    {
+        .threadpool =
+        {
+            .size = MDV_CONFIG.ebus.workers,
+            .thread_attrs =
+            {
+                .stack_size = MDV_THREAD_STACK_SIZE
+            }
+        },
+        .event =
+        {
+            .queues_count = MDV_CONFIG.ebus.queues,
+            .max_id = MDV_EVT_COUNT
+        }
+    };
+
+    core->ebus = mdv_ebus_create(&ebus_config);
+
+    if (!core->ebus)
+    {
+        MDV_LOGE("Events bus creation failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_ebus_release, core->ebus);
+
 
     // Tablespace
-    if (mdv_tablespace_open(&core->storage.tablespace, &core->metainf.uuid.value) != MDV_OK)
+    core->storage.tablespace = mdv_tablespace_open(&core->metainf.uuid.value);
+
+    if (!core->storage.tablespace)
     {
         MDV_LOGE("DB tables space creation failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
         mdv_rollback(rollbacker);
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_tablespace_close, &core->storage.tablespace);
+    mdv_rollbacker_push(rollbacker, mdv_tablespace_close, core->storage.tablespace);
 
 
     // Jobs scheduler
@@ -159,7 +151,8 @@ mdv_core * mdv_core_create()
 
     // Topology tracker
     core->tracker = mdv_tracker_create(&core->metainf.uuid.value,
-                                       core->storage.metainf);
+                                       core->storage.metainf,
+                                       core->ebus);
 
     if (!core->tracker)
     {
@@ -173,8 +166,7 @@ mdv_core * mdv_core_create()
 
     // Data synchronizer
     if (mdv_datasync_create(&core->datasync,
-                            &core->storage.tablespace,
-                            core->tracker,
+                            core->storage.tablespace,
                             core->jobber) != MDV_OK)
     {
         MDV_LOGE("Data synchronizer creation failed");
@@ -187,7 +179,7 @@ mdv_core * mdv_core_create()
 
     // Data committer
     if (mdv_committer_create(&core->committer,
-                             &core->storage.tablespace,
+                             core->storage.tablespace,
                              core->tracker,
                              core->jobber) != MDV_OK)
     {
@@ -200,8 +192,30 @@ mdv_core * mdv_core_create()
 
 
     // Connections manager
-    if (!mdv_core_conman_create(core))
+    mdv_conman_config const conman_config =
     {
+        .uuid = core->metainf.uuid.value,
+        .channel =
+        {
+            .keepidle  = MDV_CONFIG.connection.keep_idle,
+            .keepcnt   = MDV_CONFIG.connection.keep_count,
+            .keepintvl = MDV_CONFIG.connection.keep_interval
+        },
+        .threadpool =
+        {
+            .size = MDV_CONFIG.server.workers,
+            .thread_attrs =
+            {
+                .stack_size = MDV_THREAD_STACK_SIZE
+            }
+        },
+    };
+
+    core->conman = mdv_conman_create(&conman_config, core->ebus);
+
+    if (!core->conman)
+    {
+        MDV_LOGE("Cluster manager creation failed");
         mdv_rollback(rollbacker);
         return 0;
     }
@@ -231,7 +245,8 @@ void mdv_core_free(mdv_core *core)
         mdv_committer_free(&core->committer);
         mdv_tracker_release(core->tracker);
         mdv_storage_release(core->storage.metainf);
-        mdv_tablespace_close(&core->storage.tablespace);
+        mdv_tablespace_close(core->storage.tablespace);
+        mdv_ebus_release(core->ebus);
         mdv_free(core, "core");
     }
 }

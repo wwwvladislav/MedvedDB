@@ -6,6 +6,7 @@
 #include <mdv_def.h>
 #include <mdv_uuid.h>
 #include <mdv_vector.h>
+#include <mdv_ebus.h>
 #include "mdv_node.h"
 #include "storage/mdv_storage.h"
 
@@ -27,11 +28,14 @@ typedef struct mdv_tracker mdv_tracker;
  *
  * @param uuid [in]     Global unique identifier for current node
  * @param storage [in]  Nodes storage
+ * @param ebus [in]     Events bus
  *
  * @return On success, return non-null pointer to tracker
  * @return On error, return NULL
  */
-mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid, mdv_storage *storage);
+mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid,
+                                 mdv_storage *storage,
+                                 mdv_ebus *ebus);
 
 
 /**
@@ -53,18 +57,6 @@ void mdv_tracker_release(mdv_tracker *tracker);
  * @brief Returns UUID for current node
  */
 mdv_uuid const * mdv_tracker_uuid(mdv_tracker *tracker);
-
-
-/**
- * @brief Register node connection
- *
- * @param tracker [in]          Topology tracker
- * @param new_node [in] [out]   node information
- *
- * @return On success, return MDV_OK and node->id is initialized by local unique numeric identifier
- * @return On error, return nonzero error code
- */
-mdv_errno mdv_tracker_register(mdv_tracker *tracker, mdv_node *new_node);
 
 
 /**

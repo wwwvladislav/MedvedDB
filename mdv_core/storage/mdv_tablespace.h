@@ -7,31 +7,22 @@
 #include "mdv_trlog.h"
 #include <mdv_types.h>
 #include <mdv_errno.h>
-#include <mdv_hashmap.h>
-#include <mdv_mutex.h>
 #include <mdv_vector.h>
 #include <mdv_uuid.h>
 
 
 /// DB tables space
-typedef struct
-{
-    mdv_mutex   mutex;          ///< Mutex for storages guard
-    mdv_hashmap trlogs;         ///< Transaction logs map (UUID -> mdv_trlog)
-    mdv_uuid    uuid;           ///< Current node UUID
-} mdv_tablespace;
+typedef struct mdv_tablespace mdv_tablespace;
 
 
 /**
  * @brief Open or create tablespace.
  *
- * @param tablespace [out] Pointer to a tablespace structure
  * @param uuid [in]        Current node UUID
  *
- * @return MDV_OK if wait operation successfully completed
- * @return non zero value if error has occurred
+ * @return pointer to a tablespace
  */
-mdv_errno mdv_tablespace_open(mdv_tablespace *tablespace, mdv_uuid const *uuid);
+mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid);
 
 
 /**

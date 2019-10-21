@@ -4,7 +4,18 @@
 #include <mdv_serialization.h>
 #include <mdv_alloc.h>
 #include <mdv_rollbacker.h>
+#include <mdv_hashmap.h>
+#include <mdv_mutex.h>
 #include <stddef.h>
+
+
+/// DB tables space
+struct mdv_tablespace
+{
+    mdv_mutex   mutex;          ///< Mutex for storages guard
+    mdv_hashmap trlogs;         ///< Transaction logs map (UUID -> mdv_trlog)
+    mdv_uuid    uuid;           ///< Current node UUID
+};
 
 
 /// Transaction log storage reference
@@ -65,9 +76,20 @@ static mdv_trlog * mdv_tablespace_trlog(mdv_tablespace *tablespace, mdv_uuid con
 }
 
 
-mdv_errno mdv_tablespace_open(mdv_tablespace *tablespace, mdv_uuid const *uuid)
+mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
+
+    mdv_tablespace *tablespace = mdv_alloc(sizeof(mdv_tablespace), "tablespace");
+
+    if (!tablespace)
+    {
+        MDV_LOGE("No memory for new tablespace");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_free, tablespace, "tablespace");
 
     tablespace->uuid = *uuid;
 
@@ -76,7 +98,7 @@ mdv_errno mdv_tablespace_open(mdv_tablespace *tablespace, mdv_uuid const *uuid)
     if (err != MDV_OK)
     {
         mdv_rollback(rollbacker);
-        return err;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tablespace->mutex);
@@ -89,27 +111,32 @@ mdv_errno mdv_tablespace_open(mdv_tablespace *tablespace, mdv_uuid const *uuid)
                           mdv_uuid_cmp))
     {
         mdv_rollback(rollbacker);
-        return MDV_NO_MEM;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tablespace->trlogs);
 
     mdv_rollbacker_free(rollbacker);
 
-    return MDV_OK;
+    return tablespace;
 }
 
 
 void mdv_tablespace_close(mdv_tablespace *tablespace)
 {
-    mdv_hashmap_foreach(tablespace->trlogs, mdv_trlog_ref, ref)
+    if (tablespace)
     {
-        mdv_trlog_release(ref->trlog);
+        mdv_hashmap_foreach(tablespace->trlogs, mdv_trlog_ref, ref)
+        {
+            mdv_trlog_release(ref->trlog);
+        }
+
+        mdv_hashmap_free(tablespace->trlogs);
+
+        mdv_mutex_free(&tablespace->mutex);
+
+        mdv_free(tablespace, "tablespace");
     }
-
-    mdv_hashmap_free(tablespace->trlogs);
-
-    mdv_mutex_free(&tablespace->mutex);
 }
 
 

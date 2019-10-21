@@ -8,6 +8,7 @@
 #include <mdv_def.h>
 #include <mdv_chaman.h>
 #include <mdv_msg.h>
+#include <mdv_ebus.h>
 
 
 /// Peer context used for storing different type of information
@@ -21,13 +22,15 @@ typedef struct mdv_peer mdv_peer;
  * @param uuid [in]     current node uuid
  * @param dir [in]      channel direction
  * @param fd [in]       channel descriptor
+ * @param ebus [in]     events bus
  *
  * @return On success, return pointer to new peer context
  * @return On error, return NULL pointer
  */
 mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
                            mdv_channel_dir dir,
-                           mdv_descriptor fd);
+                           mdv_descriptor fd,
+                           mdv_ebus *ebus);
 
 
 /**

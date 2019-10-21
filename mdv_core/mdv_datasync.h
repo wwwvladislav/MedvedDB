@@ -18,7 +18,6 @@
 #include <mdv_errno.h>
 #include <stdatomic.h>
 #include "storage/mdv_tablespace.h"
-#include "mdv_tracker.h"
 
 
 /// Data synchronizer configuration
@@ -34,7 +33,6 @@ typedef struct
     mdv_mutex       mutex;          ///< Mutex for routes guard
     mdv_vector     *routes;         ///< Routes for data synchronization
     mdv_tablespace *tablespace;     ///< DB tables space
-    mdv_tracker    *tracker;        ///< Nodes and network topology tracker
     mdv_jobber     *jobber;         ///< Jobs scheduler
     mdv_descriptor  start;          ///< Signal for synchronization starting
     mdv_thread      thread;         ///< Synchronization thread
@@ -48,7 +46,6 @@ typedef struct
  *
  * @param datasync [out]    Data synchronizer for initialization
  * @param tablespace [in]   Storage
- * @param tracker [in]      Nodes and network topology tracker
  * @param jobber [in]       Jobs scheduler
  *
  * @return MDV_OK on success
@@ -56,7 +53,6 @@ typedef struct
  */
 mdv_errno mdv_datasync_create(mdv_datasync *datasync,
                               mdv_tablespace *tablespace,
-                              mdv_tracker *tracker,
                               mdv_jobber *jobber);
 
 

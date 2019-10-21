@@ -32,6 +32,7 @@ static mdv_errno mdv_datasync_cfslog_sync(mdv_datasync   *datasync,
                                           uint32_t        peer_src,
                                           mdv_vector     *routes)
 {
+/*
     mdv_tracker *tracker = datasync->tracker;
 
     mdv_node const *node_src = mdv_tracker_node_by_id(tracker, peer_src);
@@ -70,7 +71,7 @@ static mdv_errno mdv_datasync_cfslog_sync(mdv_datasync   *datasync,
     }
     else
         return MDV_FAILED;
-
+*/
     return MDV_OK;
 }
 
@@ -80,8 +81,6 @@ static mdv_errno mdv_datasync_cfslog_state(mdv_datasync                   *datas
                                            uint32_t                        peer_id,
                                            mdv_msg_p2p_cfslog_state const *cfslog_state)
 {
-    mdv_tracker *tracker = datasync->tracker;
-
     binn obj;
 
     if (mdv_binn_p2p_cfslog_state(cfslog_state, &obj))
@@ -295,11 +294,12 @@ mdv_errno mdv_datasync_cfslog_data_handler(mdv_datasync  *datasync,
             && peer_uuid
             && ops_count)
         {
+/* TODO
             mdv_node const *node = mdv_tracker_node_by_uuid(datasync->tracker, peer_uuid);
 
             if (node)
             {
-/* TODO
+
                 mdv_cfstorage *storage = mdv_tablespace_cfstorage(datasync->tablespace, storage_uuid);
 
                 if (storage)
@@ -311,10 +311,10 @@ mdv_errno mdv_datasync_cfslog_data_handler(mdv_datasync  *datasync,
                 }
                 else
                     MDV_LOGE("Unknown storage: %s", mdv_uuid_to_str(storage_uuid).ptr);
-*/
             }
             else
                 MDV_LOGE("Unknown node: %s", mdv_uuid_to_str(peer_uuid).ptr);
+*/
         }
         else
             MDV_LOGE("Missing data in sync message");
@@ -398,7 +398,7 @@ static void mdv_datasync_main(mdv_datasync *datasync)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
-
+/*
     mdv_vector *src_peers = mdv_tracker_nodes(datasync->tracker);
 
     if (!src_peers)
@@ -414,7 +414,7 @@ static void mdv_datasync_main(mdv_datasync *datasync)
         mdv_rollback(rollbacker);
         return;
     }
-
+*/
 
     mdv_vector *routes = mdv_datasync_routes(datasync);
 
@@ -539,17 +539,14 @@ void mdv_datasync_stop(mdv_datasync *datasync)
 
 mdv_errno mdv_datasync_create(mdv_datasync *datasync,
                               mdv_tablespace *tablespace,
-                              mdv_tracker *tracker,
                               mdv_jobber *jobber)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     datasync->tablespace = tablespace;
-    datasync->tracker = mdv_tracker_retain(tracker);
     datasync->jobber = mdv_jobber_retain(jobber);
     datasync->routes = 0;
 
-    mdv_rollbacker_push(rollbacker, mdv_tracker_release, datasync->tracker);
     mdv_rollbacker_push(rollbacker, mdv_jobber_release, datasync->jobber);
 
     atomic_init(&datasync->active_jobs, 0);
@@ -607,7 +604,6 @@ void mdv_datasync_free(mdv_datasync *datasync)
 {
     mdv_datasync_stop(datasync);
     mdv_jobber_release(datasync->jobber);
-    mdv_tracker_release(datasync->tracker);
     mdv_vector_release(datasync->routes);
     mdv_mutex_free(&datasync->mutex);
     mdv_eventfd_close(datasync->start);

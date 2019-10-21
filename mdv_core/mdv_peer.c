@@ -2,6 +2,7 @@
 #include "mdv_p2pmsg.h"
 #include "mdv_config.h"
 #include "mdv_conctx.h"
+#include "event/mdv_node.h"
 #include <mdv_version.h>
 #include <mdv_alloc.h>
 #include <mdv_log.h>
@@ -18,12 +19,14 @@ struct mdv_peer
     mdv_channel_dir         dir;            ///< Channel direction
     mdv_uuid                uuid;           ///< current node uuid
     mdv_uuid                peer_uuid;      ///< peer global uuid
+    uint32_t                peer_id;        ///< peer local unique identifier
     mdv_dispatcher         *dispatcher;     ///< Messages dispatcher
+    mdv_ebus               *ebus;           ///< Events bus
 };
 
 
 static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid const *uuid, uint32_t *id);
-static void      mdv_peer_disconnected(mdv_peer *peer, mdv_uuid const *uuid);
+static void      mdv_peer_disconnected(mdv_peer *peer);
 
 
 static mdv_errno mdv_peer_reply(mdv_peer *peer, mdv_msg const *msg);
@@ -126,12 +129,11 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
         err = mdv_peer_hello_reply(peer, msg->hdr.number, &hello);
     }
 
-/* TODO
     if (err == MDV_OK)
         err = mdv_peer_connected(peer, req.listen, &req.uuid, &peer->peer_id);
     else
         MDV_LOGE("Peer reply failed with error '%s' (%d)", mdv_strerror(err), err);
-*/
+
     binn_free(&binn_msg);
 
     if (err != MDV_OK)
@@ -497,9 +499,10 @@ static mdv_errno mdv_peer_toposync(mdv_peer *peer)
 
 mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
                            mdv_channel_dir dir,
-                           mdv_descriptor fd)
+                           mdv_descriptor fd,
+                           mdv_ebus *ebus)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
     mdv_peer *peer = mdv_alloc(sizeof(mdv_peer), "peerctx");
 
@@ -527,6 +530,11 @@ mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
 
     peer->dir = dir;
     peer->uuid = *uuid;
+    peer->peer_id = 0;
+
+    peer->ebus = mdv_ebus_retain(ebus);
+
+    mdv_rollbacker_push(rollbacker, mdv_ebus_release, peer->ebus);
 
     peer->dispatcher = mdv_dispatcher_create(fd);
 
@@ -582,8 +590,9 @@ static void mdv_peer_free(mdv_peer *peer)
 {
     if(peer)
     {
-        mdv_peer_disconnected(peer, &peer->peer_uuid);
+        mdv_peer_disconnected(peer);
         mdv_dispatcher_free(peer->dispatcher);
+        mdv_ebus_release(peer->ebus);
         mdv_free(peer, "peerctx");
         MDV_LOGD("Peer %p freed", peer);
     }
@@ -676,6 +685,20 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer,
                                     mdv_uuid const *uuid,
                                     uint32_t *id)
 {
+    mdv_evt_node_up *event = mdv_evt_node_up_create(uuid, addr);
+
+    if (!event)
+        return MDV_NO_MEM;
+
+    mdv_errno err = mdv_ebus_publish(peer->ebus, &event->base, MDV_EVT_SYNC);
+
+    if (err == MDV_OK)
+        *id = event->node.id;
+
+    mdv_evt_node_up_release(event);
+
+    return err;
+
 /* TODO
     mdv_core *core = peer->core;
     mdv_tracker *tracker = core->tracker;
@@ -728,12 +751,20 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer,
 
     return err;
 */
-    return MDV_OK;
 }
 
 
-static void mdv_peer_disconnected(mdv_peer *peer, mdv_uuid const *uuid)
+static void mdv_peer_disconnected(mdv_peer *peer)
 {
+    mdv_evt_node_down *event = mdv_evt_node_down_create(&peer->peer_uuid);
+
+    if (event)
+    {
+        mdv_ebus_publish(peer->ebus, &event->base, MDV_EVT_DEFAULT);
+        mdv_evt_node_down_release(event);
+    }
+
+
 /* TODO
     mdv_core *core = peer->core;
     mdv_tracker *tracker = core->tracker;

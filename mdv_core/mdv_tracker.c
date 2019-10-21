@@ -1,5 +1,7 @@
 #include "mdv_tracker.h"
 #include "storage/mdv_nodes.h"
+#include "event/mdv_types.h"
+#include "event/mdv_node.h"
 #include "mdv_config.h"
 #include <mdv_limits.h>
 #include <mdv_log.h>
@@ -27,6 +29,7 @@ struct mdv_tracker
     mdv_uuid                uuid;           ///< Global unique identifier for current node (i.e. self UUID)
     atomic_uint_fast32_t    max_id;         ///< Maximum node identifier
     mdv_storage            *storage;        ///< Nodes storage
+    mdv_ebus               *ebus;           ///< Events bus
 
     mdv_mutex               nodes_mutex;    ///< nodes guard mutex
     mdv_hashmap             nodes;          ///< Nodes map (UUID -> mdv_node)
@@ -40,6 +43,18 @@ struct mdv_tracker
 static mdv_node * mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node);
 static mdv_node * mdv_tracker_find(mdv_tracker *tracker, mdv_uuid const *uuid);
 static void       mdv_tracker_erase(mdv_tracker *tracker, mdv_node const *node);
+
+
+/**
+ * @brief Register node connection
+ *
+ * @param tracker [in]          Topology tracker
+ * @param new_node [in] [out]   node information
+ *
+ * @return On success, return MDV_OK and node->id is initialized by local unique numeric identifier
+ * @return On error, return nonzero error code
+ */
+static mdv_errno mdv_tracker_register(mdv_tracker *tracker, mdv_node *new_node);
 
 
 static size_t mdv_u32_hash(uint32_t const *id)
@@ -185,9 +200,99 @@ static mdv_errno mdv_tracker_load(mdv_tracker *tracker)
 }
 
 
-mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid, mdv_storage *storage)
+static mdv_errno mdv_tracker_node_up(void *arg, mdv_event *event)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(7);
+    mdv_tracker *tracker = arg;
+    mdv_evt_node_up *evt = (mdv_evt_node_up *)event;
+
+    switch (mdv_tracker_register(tracker, &evt->node))
+    {
+        case MDV_OK:
+        case MDV_EEXIST:
+            break;
+
+        default:
+            MDV_LOGE("Node registration failed");
+            return MDV_FAILED;
+    }
+
+    mdv_evt_node_registered *reg = mdv_evt_node_registered_create(&evt->node);
+
+    mdv_errno err = MDV_FAILED;
+
+    if (reg)
+    {
+        err = mdv_ebus_publish(tracker->ebus, &reg->base, MDV_EVT_DEFAULT);
+        mdv_evt_node_registered_release(reg);
+    }
+
+    return err;
+}
+
+
+static mdv_errno mdv_tracker_node_registered(void *arg, mdv_event *event)
+{
+    mdv_tracker *tracker = arg;
+    mdv_evt_node_registered *evt = (mdv_evt_node_registered *)event;
+
+    // TODO
+
+    return MDV_OK;
+}
+
+
+static const struct
+{
+    mdv_event_type type;
+    mdv_event_handler handler;
+}
+mdv_tracker_handlers[] =
+{
+    { MDV_EVT_NODE_UP, mdv_tracker_node_up },
+    { MDV_EVT_NODE_REGISTERED, mdv_tracker_node_registered }
+};
+
+
+static mdv_errno mdv_tracker_subscribe(mdv_tracker *tracker)
+{
+    for(size_t i = 0; i < sizeof mdv_tracker_handlers / sizeof *mdv_tracker_handlers; ++i)
+    {
+        mdv_errno err = mdv_ebus_subscribe(tracker->ebus,
+                                           mdv_tracker_handlers[i].type,
+                                           tracker,
+                                           mdv_tracker_handlers[i].handler);
+
+        if (err != MDV_OK)
+        {
+            for(; i > 0; --i)
+                mdv_ebus_unsubscribe(tracker->ebus,
+                                     mdv_tracker_handlers[i - 1].type,
+                                     tracker,
+                                     mdv_tracker_handlers[i - 1].handler);
+
+            return err;
+        }
+    }
+
+    return MDV_OK;
+}
+
+
+static void mdv_tracker_unsubscribe(mdv_tracker *tracker)
+{
+    for(size_t i = 0; i < sizeof mdv_tracker_handlers / sizeof *mdv_tracker_handlers; ++i)
+        mdv_ebus_unsubscribe(tracker->ebus,
+                             mdv_tracker_handlers[i].type,
+                             tracker,
+                             mdv_tracker_handlers[i].handler);
+}
+
+
+mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid,
+                                 mdv_storage *storage,
+                                 mdv_ebus *ebus)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(8);
 
     mdv_tracker *tracker = mdv_alloc(sizeof(mdv_tracker), "tracker");
 
@@ -206,8 +311,10 @@ mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid, mdv_storage *storage)
     tracker->uuid = *uuid;
 
     tracker->storage = mdv_storage_retain(storage);
+    tracker->ebus = mdv_ebus_retain(ebus);
 
     mdv_rollbacker_push(rollbacker, mdv_storage_release, tracker->storage);
+    mdv_rollbacker_push(rollbacker, mdv_ebus_release, tracker->ebus);
 
     if (!mdv_hashmap_init(tracker->nodes,
                           mdv_node,
@@ -280,6 +387,13 @@ mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid, mdv_storage *storage)
         return 0;
     }
 
+    if (mdv_tracker_subscribe(tracker) != MDV_OK)
+    {
+        MDV_LOGE("Ebus subscription failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
     mdv_rollbacker_free(rollbacker);
 
     return tracker;
@@ -288,6 +402,8 @@ mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid, mdv_storage *storage)
 
 static void mdv_tracker_free(mdv_tracker *tracker)
 {
+    mdv_tracker_unsubscribe(tracker);
+
     mdv_hashmap_free(tracker->links);
     mdv_mutex_free(&tracker->links_mutex);
 
@@ -296,6 +412,7 @@ static void mdv_tracker_free(mdv_tracker *tracker)
     mdv_mutex_free(&tracker->nodes_mutex);
 
     mdv_storage_release(tracker->storage);
+    mdv_ebus_release(tracker->ebus);
 
     memset(tracker, 0, sizeof *tracker);
 
@@ -326,7 +443,7 @@ mdv_uuid const * mdv_tracker_uuid(mdv_tracker *tracker)
 }
 
 
-mdv_errno mdv_tracker_register(mdv_tracker *tracker, mdv_node *new_node)
+static mdv_errno mdv_tracker_register(mdv_tracker *tracker, mdv_node *new_node)
 {
     mdv_errno err = mdv_mutex_lock(&tracker->nodes_mutex);
 

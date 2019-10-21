@@ -29,11 +29,12 @@ static uint32_t mdv_event_test_release(mdv_event *base)
 }
 
 
-static void mdv_event_test_handler(void *arg, mdv_event const *event)
+static mdv_errno mdv_event_test_handler(void *arg, mdv_event *event)
 {
     atomic_int *counter = arg;
     atomic_fetch_add(counter, 1);
     (void)event;
+    return MDV_OK;
 }
 
 

@@ -6,7 +6,6 @@
 #include "mdv_alloc.h"
 #include "mdv_log.h"
 #include "mdv_mutex.h"
-#include <stdatomic.h>
 
 
 /// @cond Doxygen_Suppress
@@ -88,16 +87,24 @@ static mdv_vector * mdv_ebus_evt_subscribers(mdv_ebus *ebus, mdv_event_type type
 }
 
 
-static void mdv_ebus_event_process(mdv_ebus *ebus, mdv_event const *event)
+static mdv_errno mdv_ebus_event_process(mdv_ebus *ebus, mdv_event *event)
 {
+    mdv_errno err = MDV_OK;
+
     mdv_vector *subscribers = mdv_ebus_evt_subscribers(ebus, event->type);
 
     if (subscribers)
     {
         mdv_vector_foreach(subscribers, mdv_ebus_subscriber, sbr)
-            sbr->handler(sbr->arg, event);
+        {
+            mdv_errno res = sbr->handler(sbr->arg, event);
+            if (err == MDV_OK)
+                err = res;
+        }
         mdv_vector_release(subscribers);
     }
+
+    return err;
 }
 
 
@@ -132,6 +139,52 @@ static size_t mdv_u32_hash(uint32_t const *v)
 static int mdv_u32_keys_cmp(uint32_t const *a, uint32_t const *b)
 {
     return (int)*a - *b;
+}
+
+
+static mdv_event * mdv_event_retain(mdv_event *event)
+{
+    atomic_fetch_add_explicit(&event->rc, 1, memory_order_acquire);
+    return event;
+}
+
+
+static uint32_t mdv_event_release(mdv_event *event)
+{
+    uint32_t rc = 0;
+
+    if (event)
+    {
+        rc = atomic_fetch_sub_explicit(&event->rc, 1, memory_order_release) - 1;
+        if (!rc)
+            mdv_free(event, "event");
+    }
+
+    return rc;
+}
+
+
+mdv_event * mdv_event_create(mdv_event_type type, size_t size)
+{
+    mdv_event *event = mdv_alloc(size, "event");
+
+    if (!event)
+    {
+        MDV_LOGE("No memory for new event.");
+        return 0;
+    }
+
+    static mdv_ievent vtbl =
+    {
+        .retain = mdv_event_retain,
+        .release = mdv_event_release
+    };
+
+    event->vptr = &vtbl;
+    event->type = type;
+    atomic_init(&event->rc, 1);
+
+    return event;
 }
 
 
@@ -452,8 +505,7 @@ mdv_errno mdv_ebus_publish(mdv_ebus *ebus,
 
     if(flags & MDV_EVT_SYNC)
     {
-        mdv_ebus_event_process(ebus, event);
-        return MDV_OK;
+        return mdv_ebus_event_process(ebus, event);
     }
     else if(flags & MDV_EVT_UNIQUE)
     {

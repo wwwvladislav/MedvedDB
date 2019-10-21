@@ -7,6 +7,7 @@
 #include <mdv_def.h>
 #include <mdv_uuid.h>
 #include <mdv_threadpool.h>
+#include <mdv_ebus.h>
 
 
 /// Connections manager
@@ -33,11 +34,12 @@ typedef struct
  * @brief Create connections manager
  *
  * @param conman_config [in]    connections manager configuration
+ * @param ebus [in]             events bus
  *
  * @return On success, returns nonsero pointer to new connections manager
  * @return On error, return nonzero error code
  */
-mdv_conman * mdv_conman_create(mdv_conman_config const *conman_config);
+mdv_conman * mdv_conman_create(mdv_conman_config const *conman_config, mdv_ebus *ebus);
 
 
 /**

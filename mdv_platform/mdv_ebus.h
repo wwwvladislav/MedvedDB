@@ -11,6 +11,7 @@
 #pragma once
 #include "mdv_def.h"
 #include "mdv_threadpool.h"
+#include <stdatomic.h>
 
 
 /// Event bus configuration
@@ -49,13 +50,25 @@ typedef struct
 /// Event
 struct mdv_event
 {
-    mdv_ievent     *vptr;                   ///< Virtual method table
-    mdv_event_type  type;                   ///< Event type
+    mdv_ievent             *vptr;           ///< Virtual methods table
+    mdv_event_type          type;           ///< Event type
+    atomic_uint_fast32_t    rc;             ///< References counter
 };
 
 
 /// Event handler type
-typedef void (*mdv_event_handler)(void *arg, mdv_event const *event);
+typedef mdv_errno (*mdv_event_handler)(void *arg, mdv_event *event);
+
+
+/**
+ * @brief Creates new event given size
+ *
+ * @param size [in] event type
+ * @param size [in] event size in bytes
+ *
+ * @return new dynamically allocated event
+ */
+mdv_event * mdv_event_create(mdv_event_type type, size_t size);
 
 
 /**

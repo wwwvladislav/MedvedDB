@@ -13,8 +13,9 @@
 /// Connections manager
 struct mdv_conman
 {
-    mdv_uuid                uuid;           ///< Current cluster node UUID
-    mdv_chaman             *chaman;         ///< Channels manager
+    mdv_uuid         uuid;          ///< Current cluster node UUID
+    mdv_chaman      *chaman;        ///< Channels manager
+    mdv_ebus        *ebus;          ///< Events bus
 };
 
 
@@ -84,7 +85,7 @@ static void * mdv_conman_ctx_create(mdv_descriptor fd,
             break;
 
         case MDV_CTX_PEER:
-            conctx = mdv_peer_create(&conman->uuid, dir, fd);
+            conctx = mdv_peer_create(&conman->uuid, dir, fd, conman->ebus);
             break;
 
         default:
@@ -160,7 +161,7 @@ static void mdv_conman_ctx_closed(void *userdata, void *ctx)
 }
 
 
-mdv_conman * mdv_conman_create(mdv_conman_config const *conman_config)
+mdv_conman * mdv_conman_create(mdv_conman_config const *conman_config, mdv_ebus *ebus)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
@@ -211,6 +212,8 @@ mdv_conman * mdv_conman_create(mdv_conman_config const *conman_config)
 
     mdv_rollbacker_free(rollbacker);
 
+    conman->ebus = mdv_ebus_retain(ebus);
+
     return conman;
 }
 
@@ -220,6 +223,7 @@ void mdv_conman_free(mdv_conman *conman)
     if(conman)
     {
         mdv_chaman_free(conman->chaman);
+        mdv_ebus_release(conman->ebus);
         mdv_free(conman, "conman");
     }
 }

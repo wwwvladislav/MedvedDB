@@ -32,7 +32,7 @@ mdv_bitset * mdv_bitset_create(size_t size, mdv_allocator const *allocator)
     bitset->allocator = allocator;
     bitset->size = size;
 
-    memset(bitset->bits, 0, sizeof(mdv_bitset_capacity(size) / CHAR_BIT));
+    memset(bitset->bits, 0, mdv_bitset_capacity(size) / CHAR_BIT);
 
     return bitset;
 }

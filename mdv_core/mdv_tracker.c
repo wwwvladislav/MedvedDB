@@ -36,10 +36,10 @@ struct mdv_tracker
     mdv_ebus               *ebus;           ///< Events bus
 
     mdv_mutex               nodes_mutex;    ///< nodes guard mutex
-    mdv_hashmap             nodes;          ///< Nodes map (UUID -> mdv_node)
-    mdv_hashmap             ids;            ///< Node identifiers (id -> mdv_node *)
+    mdv_hashmap            *nodes;          ///< Nodes map (UUID -> mdv_node)
+    mdv_hashmap            *ids;            ///< Node identifiers (id -> mdv_node *)
 
-    mdv_hashmap             links;          ///< Links (id -> id's vector)
+    mdv_hashmap            *links;          ///< Links (id -> id's vector)
     mdv_mutex               links_mutex;    ///< Links guard mutex
 };
 
@@ -164,20 +164,20 @@ static int mdv_tracker_link_cmp(mdv_tracker_link const *link1, mdv_tracker_link 
 
 static mdv_node * mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node)
 {
-    mdv_list_entry(mdv_node) *entry = (void*)_mdv_hashmap_insert(&tracker->nodes, node, mdv_node_size(node));
+    mdv_node *entry = mdv_hashmap_insert(tracker->nodes, node, mdv_node_size(node));
 
     if (entry)
     {
         mdv_node_id const nid =
         {
             .id = node->id,
-            .node = &entry->data
+            .node = entry
         };
 
-        if (mdv_hashmap_insert(tracker->ids, nid))
-            return &entry->data;
+        if (mdv_hashmap_insert(tracker->ids, &nid, sizeof nid))
+            return entry;
 
-        mdv_hashmap_erase(tracker->nodes, node->uuid);
+        mdv_hashmap_erase(tracker->nodes, &node->uuid);
         MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(&node->uuid).ptr);
     }
     else
@@ -189,14 +189,14 @@ static mdv_node * mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node)
 
 static void mdv_tracker_erase(mdv_tracker *tracker, mdv_node const *node)
 {
-    mdv_hashmap_erase(tracker->ids, node->id);
-    mdv_hashmap_erase(tracker->nodes, node->uuid);
+    mdv_hashmap_erase(tracker->ids, &node->id);
+    mdv_hashmap_erase(tracker->nodes, &node->uuid);
 }
 
 
 static mdv_node * mdv_tracker_find(mdv_tracker *tracker, mdv_uuid const *uuid)
 {
-    return mdv_hashmap_find(tracker->nodes, *uuid);
+    return mdv_hashmap_find(tracker->nodes, uuid);
 }
 
 
@@ -437,19 +437,19 @@ mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid,
     mdv_rollbacker_push(rollbacker, mdv_storage_release, tracker->storage);
     mdv_rollbacker_push(rollbacker, mdv_ebus_release, tracker->ebus);
 
-    if (!mdv_hashmap_init(tracker->nodes,
-                          mdv_node,
-                          uuid,
-                          256,
-                          mdv_uuid_hash,
-                          mdv_uuid_cmp))
+    tracker->nodes = mdv_hashmap_create(mdv_node,
+                                        uuid,
+                                        256,
+                                        mdv_uuid_hash,
+                                        mdv_uuid_cmp);
+    if (!tracker->nodes)
     {
         MDV_LOGE("There is no memory for nodes");
         mdv_rollback(rollbacker);
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tracker->nodes);
+    mdv_rollbacker_push(rollbacker, mdv_hashmap_release, tracker->nodes);
 
 
     if (mdv_mutex_create(&tracker->nodes_mutex) != MDV_OK)
@@ -462,34 +462,36 @@ mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid,
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tracker->nodes_mutex);
 
 
-    if (!mdv_hashmap_init(tracker->ids,
-                          mdv_node_id,
-                          id,
-                          256,
-                          mdv_u32_hash,
-                          mdv_u32_keys_cmp))
+    tracker->ids = mdv_hashmap_create(mdv_node_id,
+                                      id,
+                                      256,
+                                      mdv_u32_hash,
+                                      mdv_u32_keys_cmp);
+
+    if (!tracker->ids)
     {
         MDV_LOGE("There is no memory for nodes");
         mdv_rollback(rollbacker);
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tracker->ids);
+    mdv_rollbacker_push(rollbacker, mdv_hashmap_release, tracker->ids);
 
 
-    if (!mdv_hashmap_init(tracker->links,
-                          mdv_tracker_link,
-                          id,
-                          256,
-                          mdv_tracker_link_hash,
-                          mdv_tracker_link_cmp))
+    tracker->links = mdv_hashmap_create(mdv_tracker_link,
+                                        id,
+                                        256,
+                                        mdv_tracker_link_hash,
+                                        mdv_tracker_link_cmp);
+
+    if (!tracker->links)
     {
         MDV_LOGE("There is no memory for links");
         mdv_rollback(rollbacker);
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tracker->links);
+    mdv_rollbacker_push(rollbacker, mdv_hashmap_release, tracker->links);
 
 
     if (mdv_mutex_create(&tracker->links_mutex) != MDV_OK)
@@ -531,11 +533,11 @@ static void mdv_tracker_free(mdv_tracker *tracker)
                              mdv_tracker_handlers,
                              sizeof mdv_tracker_handlers / sizeof *mdv_tracker_handlers);
 
-    mdv_hashmap_free(tracker->links);
+    mdv_hashmap_release(tracker->links);
     mdv_mutex_free(&tracker->links_mutex);
 
-    mdv_hashmap_free(tracker->ids);
-    mdv_hashmap_free(tracker->nodes);
+    mdv_hashmap_release(tracker->ids);
+    mdv_hashmap_release(tracker->nodes);
     mdv_mutex_free(&tracker->nodes_mutex);
 
     mdv_storage_release(tracker->storage);
@@ -627,7 +629,7 @@ static mdv_errno mdv_tracker_linkstate2(mdv_tracker            *tracker,
     {
         if (connected)
         {
-            err = mdv_hashmap_insert(tracker->links, *link)
+            err = mdv_hashmap_insert(tracker->links, link, sizeof(*link))
                     ? MDV_OK
                     : MDV_NO_MEM;
         }
@@ -734,7 +736,7 @@ mdv_node * mdv_tracker_node_by_id(mdv_tracker *tracker, uint32_t id)
 
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
-        mdv_node_id *node_id = mdv_hashmap_find(tracker->ids, id);
+        mdv_node_id *node_id = mdv_hashmap_find(tracker->ids, &id);
 
         if (node_id)
         {
@@ -764,7 +766,7 @@ mdv_node * mdv_tracker_node_by_uuid(mdv_tracker *tracker, mdv_uuid const *uuid)
 
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
-        mdv_node *node = mdv_hashmap_find(tracker->nodes, *uuid);
+        mdv_node *node = mdv_hashmap_find(tracker->nodes, uuid);
 
         if (node)
         {
@@ -860,7 +862,7 @@ static mdv_topology_node const * mdv_topology_node_register(mdv_tracker *tracker
                                                             mdv_hashmap *unique_nodes,
                                                             uint32_t     id)
 {
-    mdv_topology_node const *toponode = mdv_hashmap_find(*unique_nodes, id);
+    mdv_topology_node const *toponode = mdv_hashmap_find(unique_nodes, &id);
 
     if (!toponode)
     {
@@ -884,15 +886,13 @@ static mdv_topology_node const * mdv_topology_node_register(mdv_tracker *tracker
 
         memcpy(new_toponode->addr, node->addr, addr_size);
 
-        mdv_list_entry_base *entry = _mdv_hashmap_insert(unique_nodes, new_toponode, size);
+        toponode = mdv_hashmap_insert(unique_nodes, new_toponode, size);
 
-        if (!entry)
+        if (!toponode)
         {
             MDV_LOGE("No memory for node id");
             return 0;
         }
-
-        toponode = (void*)entry->data;
     }
 
     return toponode;
@@ -903,7 +903,7 @@ static size_t mdv_topology_extra_size(mdv_hashmap const *unique_nodes)
 {
     size_t size = 0;
 
-    mdv_hashmap_foreach(*unique_nodes, mdv_topology_node, node)
+    mdv_hashmap_foreach(unique_nodes, mdv_topology_node, node)
     {
         size += strlen(node->addr) + 1;
     }
@@ -933,26 +933,25 @@ static mdv_topology * mdv_tracker_topology(mdv_tracker *tracker)
 
     mdv_rollbacker_push(rollbacker, mdv_vector_release, links);
 
-    mdv_hashmap unique_nodes;
+    mdv_hashmap *unique_nodes = mdv_hashmap_create(mdv_topology_node,
+                                                   id,
+                                                   64,
+                                                   mdv_u32_hash,
+                                                   mdv_u32_keys_cmp);
 
-    if (!mdv_hashmap_init(unique_nodes,
-                          mdv_topology_node,
-                          id,
-                          64,
-                          mdv_u32_hash,
-                          mdv_u32_keys_cmp))
+    if (!unique_nodes)
     {
         MDV_LOGE("No memory for network topology");
         mdv_rollback(rollbacker);
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &unique_nodes);
+    mdv_rollbacker_push(rollbacker, mdv_hashmap_release, unique_nodes);
 
     mdv_vector_foreach(links, mdv_tracker_link, link)
     {
-        mdv_topology_node const *id0 = mdv_topology_node_register(tracker, &unique_nodes, link->id[0]);
-        mdv_topology_node const *id1 = mdv_topology_node_register(tracker, &unique_nodes, link->id[1]);
+        mdv_topology_node const *id0 = mdv_topology_node_register(tracker, unique_nodes, link->id[0]);
+        mdv_topology_node const *id1 = mdv_topology_node_register(tracker, unique_nodes, link->id[1]);
 
         if (!id0 || !id1)
         {
@@ -988,7 +987,7 @@ static mdv_topology * mdv_tracker_topology(mdv_tracker *tracker)
 
     mdv_rollbacker_push(rollbacker, mdv_vector_release, topolinks);
 
-    mdv_vector *extradata = mdv_vector_create(mdv_topology_extra_size(&unique_nodes),
+    mdv_vector *extradata = mdv_vector_create(mdv_topology_extra_size(unique_nodes),
                                               sizeof(char),
                                               &mdv_default_allocator);
 
@@ -1020,8 +1019,8 @@ static mdv_topology * mdv_tracker_topology(mdv_tracker *tracker)
 
     mdv_vector_foreach(links, mdv_tracker_link, link)
     {
-        mdv_topology_node const *n0 = mdv_hashmap_find(unique_nodes, link->id[0]);
-        mdv_topology_node const *n1 = mdv_hashmap_find(unique_nodes, link->id[1]);
+        mdv_topology_node const *n0 = mdv_hashmap_find(unique_nodes, &link->id[0]);
+        mdv_topology_node const *n1 = mdv_hashmap_find(unique_nodes, &link->id[1]);
 
         mdv_topolink const topolink =
         {
@@ -1045,7 +1044,7 @@ static mdv_topology * mdv_tracker_topology(mdv_tracker *tracker)
     mdv_vector_release(topolinks);
     mdv_vector_release(extradata);
 
-    mdv_hashmap_free(unique_nodes);
+    mdv_hashmap_release(unique_nodes);
     mdv_vector_release(links);
 
     mdv_rollbacker_free(rollbacker);

@@ -39,7 +39,7 @@ struct mdv_ebus
     atomic_uint_fast32_t    rc;             ///< Event bus references counter
     uint32_t                events_count;   ///< Event types count
     mdv_mutex               mutex;          ///< Mutex for event handlers guard
-    mdv_hashmap             handlers;       ///< Event handlers (hashmap<mdv_event_handlers>)
+    mdv_hashmap            *handlers;       ///< Event handlers (hashmap<mdv_event_handlers>)
     mdv_threadpool         *threads;        ///< Thread pool
     atomic_size_t           idx;            ///< Counter is used for queue selection during the event publishing
     size_t                  size;           ///< Event queues count
@@ -75,7 +75,7 @@ static mdv_vector * mdv_ebus_evt_subscribers(mdv_ebus *ebus, mdv_event_type type
 
     if (mdv_mutex_lock(&ebus->mutex) == MDV_OK)
     {
-        mdv_event_handlers *handlers = mdv_hashmap_find(ebus->handlers, type);
+        mdv_event_handlers *handlers = mdv_hashmap_find(ebus->handlers, &type);
 
         if (handlers)
             subscribers = mdv_vector_retain(handlers->subscribers);
@@ -231,19 +231,20 @@ mdv_ebus * mdv_ebus_create(mdv_ebus_config const *config)
 
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &ebus->mutex);
 
-    if (!mdv_hashmap_init(ebus->handlers,
-                          mdv_event_handlers,
-                          type,
-                          ebus->size,
-                          mdv_u32_hash,
-                          mdv_u32_keys_cmp))
+    ebus->handlers = mdv_hashmap_create(mdv_event_handlers,
+                                        type,
+                                        ebus->size,
+                                        mdv_u32_hash,
+                                        mdv_u32_keys_cmp);
+
+    if (!ebus->handlers)
     {
         MDV_LOGE("No memory for events bus handlers");
         mdv_rollback(rollbacker);
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &ebus->handlers);
+    mdv_rollbacker_push(rollbacker, mdv_hashmap_release, ebus->handlers);
 
     ebus->threads = mdv_threadpool_create(&config->threadpool);
 
@@ -333,7 +334,7 @@ static void mdv_ebus_free(mdv_ebus *ebus)
         mdv_vector_release(entry->subscribers);
     }
 
-    mdv_hashmap_free(ebus->handlers);
+    mdv_hashmap_release(ebus->handlers);
 
     mdv_mutex_free(&ebus->mutex);
 
@@ -365,7 +366,7 @@ uint32_t mdv_ebus_release(mdv_ebus *ebus)
 
 static mdv_event_handlers * mdv_ebus_handlers_unsafe(mdv_ebus *ebus, mdv_event_type type)
 {
-    mdv_event_handlers *handlers = mdv_hashmap_find(ebus->handlers, type);
+    mdv_event_handlers *handlers = mdv_hashmap_find(ebus->handlers, &type);
 
     if (!handlers)
     {
@@ -379,11 +380,9 @@ static mdv_event_handlers * mdv_ebus_handlers_unsafe(mdv_ebus *ebus, mdv_event_t
             return 0;
         else
         {
-            mdv_list_entry(mdv_event_handlers) *entry = (void*)mdv_hashmap_insert(ebus->handlers, new_handlers);
+            handlers = mdv_hashmap_insert(ebus->handlers, &new_handlers, sizeof new_handlers);
 
-            if (entry)
-                handlers = &entry->data;
-            else
+            if (!handlers)
             {
                 mdv_vector_release(new_handlers.subscribers);
                 return 0;
@@ -441,7 +440,7 @@ static mdv_errno mdv_ebus_unsubscribe_unsafe(mdv_ebus *ebus,
 {
     mdv_errno err = MDV_OK;
 
-    mdv_event_handlers *handlers = mdv_hashmap_find(ebus->handlers, type);
+    mdv_event_handlers *handlers = mdv_hashmap_find(ebus->handlers, &type);
 
     if (handlers)
     {

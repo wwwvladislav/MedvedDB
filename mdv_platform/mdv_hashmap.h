@@ -19,33 +19,19 @@ typedef int (*mdv_key_cmp_fn)(void const *, void const *);
 
 
 /// Hash map
-typedef struct mdv_hashmap
-{
-    size_t               capacity;                          ///< Hash map capacity
-    size_t               size;                              ///< Items number stored in hash map
-    uint32_t             key_offset;                        ///< key offset inside hash map value
-    uint32_t             key_size;                          ///< key size
-    mdv_hashmap_bucket  *buckets;                           ///< pointer to hash table
-    mdv_hash_fn          hash_fn;                           ///< Hash function
-    mdv_key_cmp_fn       key_cmp_fn;                        ///< Keys comparison function (used if hash collision happens)
-} mdv_hashmap;
+typedef struct mdv_hashmap mdv_hashmap;
 
 
 /// @cond Doxygen_Suppress
 
 
-int                   _mdv_hashmap_init(mdv_hashmap   *hm,
-                                        size_t         capacity,
-                                        uint32_t       key_offset,
-                                        uint32_t       key_size,
-                                        mdv_hash_fn    hash_fn,
-                                        mdv_key_cmp_fn key_cmp_fn);
-void                  _mdv_hashmap_free(mdv_hashmap *hm);
-void                  _mdv_hashmap_clear(mdv_hashmap *hm);
-int                   _mdv_hashmap_resize(mdv_hashmap *hm, size_t capacity);
-mdv_list_entry_base * _mdv_hashmap_insert(mdv_hashmap *hm, void const *item, size_t size);
-void *                _mdv_hashmap_find(mdv_hashmap const *hm, void const *key);
-int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
+mdv_hashmap * _mdv_hashmap_create(size_t         capacity,
+                                  uint32_t       key_offset,
+                                  uint32_t       key_size,
+                                  mdv_hash_fn    hash_fn,
+                                  mdv_key_cmp_fn key_cmp_fn);
+
+
 /// @endcond
 
 
@@ -61,25 +47,30 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @param hash_fn [in]    hash function
  * @param key_cmp_fn [in] Keys comparison function
   *
- * @return 1 if hash map is initialized
- * @return 0 if hash map is not initialized
+ * @return pointer to new hashmap or NULL
  */
-#define mdv_hashmap_init(hm, type, key_field, capacity, hash_fn, key_cmp_fn)    \
-    _mdv_hashmap_init(&(hm),                                                    \
-                      capacity,                                                 \
-                      offsetof(type, key_field),                                \
-                      sizeof(((type*)0)->key_field),                            \
-                      (mdv_hash_fn)&hash_fn,                                    \
-                      (mdv_key_cmp_fn)&key_cmp_fn)
+#define mdv_hashmap_create(type, key_field, capacity, hash_fn, key_cmp_fn)  \
+    _mdv_hashmap_create(capacity,                                           \
+                        offsetof(type, key_field),                          \
+                        sizeof(((type*)0)->key_field),                      \
+                        (mdv_hash_fn)&hash_fn,                              \
+                        (mdv_key_cmp_fn)&key_cmp_fn)
+
 
 
 /**
- * @brief Free hash map.
- *
- * @param hm [in] Hash map allocated by mdv_hashmap()
+ * @brief Retains hashmap.
+ * @details Reference counter is increased by one.
  */
-#define mdv_hashmap_free(hm)                                    \
-    _mdv_hashmap_free(&(hm))
+mdv_hashmap * mdv_hashmap_retain(mdv_hashmap *hm);
+
+
+/**
+ * @brief Releases hashmap.
+ * @details Reference counter is decreased by one.
+ *          When the reference counter reaches zero, the hashmap's destructor is called.
+ */
+uint32_t mdv_hashmap_release(mdv_hashmap *hm);
 
 
 /**
@@ -87,8 +78,7 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  *
  * @param hm [in] Hash map allocated by mdv_hashmap()
  */
-#define mdv_hashmap_clear(hm)                                    \
-    _mdv_hashmap_clear(&(hm))
+void mdv_hashmap_clear(mdv_hashmap *hm);
 
 
 /**
@@ -98,7 +88,27 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  *
  * @return hash map size
  */
-#define mdv_hashmap_size(hm) ((hm).size)
+size_t mdv_hashmap_size(mdv_hashmap const *hm);
+
+
+/**
+ * @brief Return hash map capacity
+ *
+ * @param hm [in]         hash map
+ *
+ * @return hash map capacity
+ */
+size_t mdv_hashmap_capacity(mdv_hashmap const *hm);
+
+
+/**
+ * @brief Return hash map buckets
+ *
+ * @param hm [in]         hash map
+ *
+ * @return hash map buckets
+ */
+mdv_hashmap_bucket * mdv_hashmap_buckets(mdv_hashmap const *hm);
 
 
 /**
@@ -110,8 +120,7 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @return 1 if hash map resized
  * @return 0 if hash map wasn't resized
  */
-#define mdv_hashmap_resize(hm, capacity)                        \
-    _mdv_hashmap_resize(&(hm), capacity)
+bool mdv_hashmap_resize(mdv_hashmap *hm, size_t capacity);
 
 
 /**
@@ -123,8 +132,7 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @return nonzero pointer to new entry if item is inserted
  * @return 0 if no memory
  */
-#define mdv_hashmap_insert(hm, item)                            \
-    _mdv_hashmap_insert(&(hm), &(item), sizeof(item))
+void * mdv_hashmap_insert(mdv_hashmap *hm, void const *item, size_t size);
 
 
 /**
@@ -136,8 +144,7 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @return On success, returns pointer to found entry
  * @return NULL if no entry found
  */
-#define mdv_hashmap_find(hm, key)                               \
-    _mdv_hashmap_find(&(hm), &(key))
+void * mdv_hashmap_find(mdv_hashmap const *hm, void const *key);
 
 
 /**
@@ -146,11 +153,10 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  * @param hm [in]           hash map allocated by mdv_hashmap()
  * @param key [in]          key
  *
- * @return 1 if hash item was removed
- * @return 0 if hash map wasn't removed
+ * @return true if hash item was removed
+ * @return false if hash map wasn't removed
  */
-#define mdv_hashmap_erase(hm, key)                              \
-    _mdv_hashmap_erase(&(hm), &(key))
+bool mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
 
 
 /**
@@ -168,6 +174,6 @@ int                   _mdv_hashmap_erase(mdv_hashmap *hm, void const *key);
  *   }
  * @endcode
  */
-#define mdv_hashmap_foreach(hm, type, entry)                        \
-    for(size_t hm_idx__ = 0; hm_idx__ < (hm).capacity; ++hm_idx__)  \
-        mdv_list_foreach((hm).buckets + hm_idx__, type, entry)
+#define mdv_hashmap_foreach(hm, type, entry)                                    \
+    for(size_t hm_idx__ = 0; hm_idx__ < mdv_hashmap_capacity(hm); ++hm_idx__)   \
+        mdv_list_foreach(mdv_hashmap_buckets(hm) + hm_idx__, type, entry)

@@ -12,9 +12,9 @@
 /// DB tables space
 struct mdv_tablespace
 {
-    mdv_mutex   mutex;          ///< Mutex for storages guard
-    mdv_hashmap trlogs;         ///< Transaction logs map (UUID -> mdv_trlog)
-    mdv_uuid    uuid;           ///< Current node UUID
+    mdv_mutex    mutex;         ///< Mutex for storages guard
+    mdv_hashmap *trlogs;        ///< Transaction logs map (UUID -> mdv_trlog)
+    mdv_uuid     uuid;          ///< Current node UUID
 };
 
 
@@ -41,7 +41,7 @@ static mdv_trlog * mdv_tablespace_trlog(mdv_tablespace *tablespace, mdv_uuid con
 
     if (mdv_mutex_lock(&tablespace->mutex) == MDV_OK)
     {
-        ref = mdv_hashmap_find(tablespace->trlogs, *uuid);
+        ref = mdv_hashmap_find(tablespace->trlogs, uuid);
         mdv_mutex_unlock(&tablespace->mutex);
     }
 
@@ -59,7 +59,7 @@ static mdv_trlog * mdv_tablespace_trlog(mdv_tablespace *tablespace, mdv_uuid con
 
     if (mdv_mutex_lock(&tablespace->mutex) == MDV_OK)
     {
-        if (!mdv_hashmap_insert(tablespace->trlogs, new_ref))
+        if (!mdv_hashmap_insert(tablespace->trlogs, &new_ref, sizeof new_ref))
         {
             mdv_trlog_release(new_ref.trlog);
             new_ref.trlog = 0;
@@ -103,18 +103,19 @@ mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid)
 
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tablespace->mutex);
 
-    if (!mdv_hashmap_init(tablespace->trlogs,
-                          mdv_trlog_ref,
-                          uuid,
-                          64,
-                          mdv_uuid_hash,
-                          mdv_uuid_cmp))
+    tablespace->trlogs = mdv_hashmap_create(mdv_trlog_ref,
+                                            uuid,
+                                            64,
+                                            mdv_uuid_hash,
+                                            mdv_uuid_cmp);
+
+    if (!tablespace->trlogs)
     {
         mdv_rollback(rollbacker);
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, _mdv_hashmap_free, &tablespace->trlogs);
+    mdv_rollbacker_push(rollbacker, mdv_hashmap_release, tablespace->trlogs);
 
     mdv_rollbacker_free(rollbacker);
 
@@ -131,7 +132,7 @@ void mdv_tablespace_close(mdv_tablespace *tablespace)
             mdv_trlog_release(ref->trlog);
         }
 
-        mdv_hashmap_free(tablespace->trlogs);
+        mdv_hashmap_release(tablespace->trlogs);
 
         mdv_mutex_free(&tablespace->mutex);
 

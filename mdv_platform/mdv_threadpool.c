@@ -27,7 +27,7 @@ struct mdv_threadpool
     mdv_descriptor          epollfd;        ///< epoll file descriptor
     mdv_thread             *threads;        ///< threads array
     mdv_mutex               tasks_mtx;      ///< mutex for tasks protection
-    mdv_hashmap             tasks;          ///< file descriptors and handlers
+    mdv_hashmap            *tasks;          ///< file descriptors and handlers
     uint8_t                 data_space[1];  ///< data space
 };
 
@@ -140,12 +140,13 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tp->tasks_mtx);
 
 
-    if (!_mdv_hashmap_init(&tp->tasks,
-                           256,
-                           offsetof(mdv_threadpool_task_base, fd),
-                           sizeof(mdv_descriptor),
-                           (mdv_hash_fn)&mdv_descriptor_hash,
-                           (mdv_key_cmp_fn)&mdv_descriptor_cmp))
+    tp->tasks = mdv_hashmap_create(mdv_threadpool_task_base,
+                                   fd,
+                                   256,
+                                   mdv_descriptor_hash,
+                                   mdv_descriptor_cmp);
+
+    if (!tp->tasks)
     {
         MDV_LOGE("threadpool_create failed");
         mdv_rollback(rollbacker);
@@ -211,7 +212,7 @@ void mdv_threadpool_free(mdv_threadpool *threadpool)
     {
         mdv_epoll_close(threadpool->epollfd);
         mdv_eventfd_close(threadpool->stopfd);
-        mdv_hashmap_free(threadpool->tasks);
+        mdv_hashmap_release(threadpool->tasks);
         mdv_mutex_free(&threadpool->tasks_mtx);
         mdv_free(threadpool, "threadpool");
     }
@@ -227,19 +228,19 @@ mdv_threadpool_task_base * mdv_threadpool_add(mdv_threadpool *threadpool, uint32
         size_t const size = offsetof(mdv_threadpool_task_base, context)
                             + task->context_size;
 
-        mdv_list_entry_base *entry = _mdv_hashmap_insert(&threadpool->tasks, task, size);
+        mdv_threadpool_task_base *entry = mdv_hashmap_insert(threadpool->tasks, task, size);
 
         if (entry)
         {
-            mdv_epoll_event evt = { events, entry->data };
+            mdv_epoll_event evt = { events, entry };
 
             mdv_errno err = mdv_epoll_add(threadpool->epollfd, task->fd, evt);
 
             if (err == MDV_OK)
-                ret = (mdv_threadpool_task_base *)entry->data;
+                ret = entry;
             else
             {
-                mdv_hashmap_erase(threadpool->tasks, task->fd);
+                mdv_hashmap_erase(threadpool->tasks, &task->fd);
                 MDV_LOGE("Threadpool task registration failed with error '%s' (%d)", mdv_strerror(err), err);
             }
         }
@@ -278,7 +279,7 @@ mdv_errno mdv_threadpool_remove(mdv_threadpool *threadpool, mdv_descriptor fd)
 
         if (err == MDV_OK)
         {
-            mdv_hashmap_erase(threadpool->tasks, fd);
+            mdv_hashmap_erase(threadpool->tasks, &fd);
         }
         else
             MDV_LOGE("Threadpool task removing failed with error '%s' (%d)", mdv_strerror(err), err);

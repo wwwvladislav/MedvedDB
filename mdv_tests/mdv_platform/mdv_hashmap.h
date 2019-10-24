@@ -22,17 +22,17 @@ MU_TEST(platform_hashmap)
         int key;
     } map_entry;
 
-    mdv_hashmap map;
+    mdv_hashmap *map = mdv_hashmap_create(map_entry, key, 5, int_hash, int_keys_cmp);
 
-    mu_check(mdv_hashmap_init(map, map_entry, key, 5, int_hash, int_keys_cmp));
+    mu_check(map);
 
     map_entry entry = {};
 
-    mu_check(mdv_hashmap_insert(map, entry)); entry.key++; entry.val++;
-    mu_check(mdv_hashmap_insert(map, entry)); entry.key++; entry.val++;
-    mu_check(mdv_hashmap_insert(map, entry)); entry.key++; entry.val++;
-    mu_check(mdv_hashmap_insert(map, entry)); entry.key++; entry.val++;
-    mu_check(mdv_hashmap_insert(map, entry)); entry.key++; entry.val++;
+    mu_check(mdv_hashmap_insert(map, &entry, sizeof entry)); entry.key++; entry.val++;
+    mu_check(mdv_hashmap_insert(map, &entry, sizeof entry)); entry.key++; entry.val++;
+    mu_check(mdv_hashmap_insert(map, &entry, sizeof entry)); entry.key++; entry.val++;
+    mu_check(mdv_hashmap_insert(map, &entry, sizeof entry)); entry.key++; entry.val++;
+    mu_check(mdv_hashmap_insert(map, &entry, sizeof entry)); entry.key++; entry.val++;
 
     int s = 0;
 
@@ -44,22 +44,22 @@ MU_TEST(platform_hashmap)
 
     mu_check(s == 5);
 
-    mu_check(mdv_hashmap_insert(map, entry)); entry.val = 42;
-    mu_check(mdv_hashmap_insert(map, entry));
+    mu_check(mdv_hashmap_insert(map, &entry, sizeof entry)); entry.val = 42;
+    mu_check(mdv_hashmap_insert(map, &entry, sizeof entry));
 
     mu_check(mdv_hashmap_size(map) == 6);
 
     int key = 5;
 
-    map_entry * e = mdv_hashmap_find(map, key);
+    map_entry * e = mdv_hashmap_find(map, &key);
 
     mu_check(e && e->val == 42);
 
-    mu_check(mdv_hashmap_erase(map, key));
+    mu_check(mdv_hashmap_erase(map, &key));
 
-    mu_check(mdv_hashmap_find(map, key) == 0);
+    mu_check(mdv_hashmap_find(map, &key) == 0);
 
     mu_check(mdv_hashmap_size(map) == 5);
 
-    mdv_hashmap_free(map);
+    mdv_hashmap_release(map);
 }

@@ -142,28 +142,6 @@ static int mdv_u32_keys_cmp(uint32_t const *a, uint32_t const *b)
 }
 
 
-static mdv_event * mdv_event_retain(mdv_event *event)
-{
-    atomic_fetch_add_explicit(&event->rc, 1, memory_order_acquire);
-    return event;
-}
-
-
-static uint32_t mdv_event_release(mdv_event *event)
-{
-    uint32_t rc = 0;
-
-    if (event)
-    {
-        rc = atomic_fetch_sub_explicit(&event->rc, 1, memory_order_release) - 1;
-        if (!rc)
-            mdv_free(event, "event");
-    }
-
-    return rc;
-}
-
-
 mdv_event * mdv_event_create(mdv_event_type type, size_t size)
 {
     mdv_event *event = mdv_alloc(size, "event");
@@ -185,6 +163,28 @@ mdv_event * mdv_event_create(mdv_event_type type, size_t size)
     atomic_init(&event->rc, 1);
 
     return event;
+}
+
+
+mdv_event * mdv_event_retain(mdv_event *event)
+{
+    atomic_fetch_add_explicit(&event->rc, 1, memory_order_acquire);
+    return event;
+}
+
+
+uint32_t mdv_event_release(mdv_event *event)
+{
+    uint32_t rc = 0;
+
+    if (event)
+    {
+        rc = atomic_fetch_sub_explicit(&event->rc, 1, memory_order_release) - 1;
+        if (!rc)
+            mdv_free(event, "event");
+    }
+
+    return rc;
 }
 
 

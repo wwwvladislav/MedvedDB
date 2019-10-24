@@ -3,7 +3,6 @@
 #include "mdv_peer.h"
 #include "mdv_config.h"
 #include "mdv_p2pmsg.h"
-#include "mdv_gossip.h"
 #include "mdv_datasync.h"
 #include "mdv_committer.h"
 #include "mdv_conman.h"

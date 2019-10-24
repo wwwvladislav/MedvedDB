@@ -60,38 +60,6 @@ mdv_uuid const * mdv_tracker_uuid(mdv_tracker *tracker);
 
 
 /**
- * @brief Link state tracking between two peers.
- *
- * @param tracker [in]          Topology tracker
- * @param peer_1 [in]           First peer UUID
- * @param peer_2 [in]           Second peer UUID
- * @param connected [in]        Connection status
- *
- * @return On success, return MDV_OK
- * @return On error, return nonzero error code
- */
-mdv_errno mdv_tracker_linkstate(mdv_tracker     *tracker,
-                                mdv_uuid const  *peer_1,
-                                mdv_uuid const  *peer_2,
-                                bool             connected);
-
-
-/**
- * @brief Link state tracking between two peers.
- *
- * @param tracker [in]          Topology tracker
- * @param link [in]             Link between two nodes
- * @param connected [in]        Connection status
- *
- * @return On success, return MDV_OK
- * @return On error, return nonzero error code
- */
-mdv_errno mdv_tracker_linkstate2(mdv_tracker            *tracker,
-                                 mdv_tracker_link const *link,
-                                 bool                    connected);
-
-
-/**
  * @brief Return links count in network topology.
  *
  * @param tracker [in]          Topology tracker
@@ -154,13 +122,3 @@ mdv_vector * mdv_tracker_nodes(mdv_tracker *tracker);
  */
 mdv_vector * mdv_tracker_links(mdv_tracker *tracker);
 
-
-/**
- * @brief Extract network topology from tracker
- * @details In result topology links are sorted in ascending order.
- *
- * @param tracker [in]          Topology tracker
- *
- * @return On success return non NULL pointer to a network topology.
- */
-//mdv_topology * mdv_tracker_topology(mdv_tracker *tracker);

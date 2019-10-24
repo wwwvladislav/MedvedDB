@@ -39,11 +39,15 @@ typedef struct mdv_event mdv_event;
 typedef uint32_t mdv_event_type;
 
 
+typedef mdv_event * (*mdv_event_retain_fn)(mdv_event *);
+typedef uint32_t (*mdv_event_release_fn)(mdv_event *);
+
+
 /// Interface for events
 typedef struct
 {
-    mdv_event * (*retain)(mdv_event *);     ///< Function for event retain
-    uint32_t (*release)(mdv_event *);       ///< Function for event release
+    mdv_event_retain_fn  retain;        ///< Function for event retain
+    mdv_event_release_fn release;       ///< Function for event release
 } mdv_ievent;
 
 
@@ -77,6 +81,22 @@ typedef struct
  * @return new dynamically allocated event
  */
 mdv_event * mdv_event_create(mdv_event_type type, size_t size);
+
+
+/**
+ * @brief Retains an event.
+ * @details Reference counter is increased by one.
+ */
+mdv_event * mdv_event_retain(mdv_event *event);
+
+
+
+/**
+ * @brief Releases an event.
+ * @details Reference counter is decreased by one.
+ *          When the reference counter reaches zero, the event is freed.
+ */
+uint32_t mdv_event_release(mdv_event *event);
 
 
 /**

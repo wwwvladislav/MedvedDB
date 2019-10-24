@@ -2,7 +2,10 @@
 #include "mdv_p2pmsg.h"
 #include "mdv_config.h"
 #include "mdv_conctx.h"
+#include "event/mdv_types.h"
 #include "event/mdv_node.h"
+#include "event/mdv_link.h"
+#include "event/mdv_topology.h"
 #include <mdv_version.h>
 #include <mdv_alloc.h>
 #include <mdv_log.h>
@@ -497,6 +500,35 @@ static mdv_errno mdv_peer_toposync(mdv_peer *peer)
 }
 
 
+static mdv_errno mdv_peer_evt_link_state_broadcast(void *arg, mdv_event *event)
+{
+    mdv_peer *peer = arg;
+    mdv_evt_link_state_broadcast *link_state = (mdv_evt_link_state_broadcast *)event;
+
+    // TODO
+
+    return MDV_NO_IMPL;
+}
+
+
+static mdv_errno mdv_peer_evt_topology_sync(void *arg, mdv_event *event)
+{
+    mdv_peer *peer = arg;
+    mdv_evt_topology_sync *toposync = (mdv_evt_topology_sync *)event;
+
+    // TODO
+
+    return MDV_NO_IMPL;
+}
+
+
+static const mdv_event_handler_type mdv_peer_handlers[] =
+{
+    { MDV_EVT_LINK_STATE_BROADCAST, mdv_peer_evt_link_state_broadcast },
+    { MDV_EVT_TOPOLOGY_SYNC, mdv_peer_evt_topology_sync },
+};
+
+
 mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
                            mdv_channel_dir dir,
                            mdv_descriptor fd,
@@ -568,11 +600,25 @@ mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
         }
     }
 
+    if (mdv_ebus_subscribe_all(peer->ebus,
+                               peer,
+                               mdv_peer_handlers,
+                               sizeof mdv_peer_handlers / sizeof *mdv_peer_handlers) != MDV_OK)
+    {
+        MDV_LOGE("Ebus subscription failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
     if (dir == MDV_CHOUT)
     {
         if (mdv_peer_hello(peer) != MDV_OK)
         {
             MDV_LOGD("Peer handshake message failed");
+            mdv_ebus_unsubscribe_all(peer->ebus,
+                                     peer,
+                                     mdv_peer_handlers,
+                                     sizeof mdv_peer_handlers / sizeof *mdv_peer_handlers);
             mdv_rollback(rollbacker);
             return 0;
         }
@@ -590,6 +636,10 @@ static void mdv_peer_free(mdv_peer *peer)
 {
     if(peer)
     {
+        mdv_ebus_unsubscribe_all(peer->ebus,
+                                 peer,
+                                 mdv_peer_handlers,
+                                 sizeof mdv_peer_handlers / sizeof *mdv_peer_handlers);
         mdv_peer_disconnected(peer);
         mdv_dispatcher_free(peer->dispatcher);
         mdv_ebus_release(peer->ebus);
@@ -685,19 +735,36 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer,
                                     mdv_uuid const *uuid,
                                     uint32_t *id)
 {
-    mdv_evt_node_up *event = mdv_evt_node_up_create(uuid, addr);
+    {
+        mdv_evt_node_up *event = mdv_evt_node_up_create(uuid, addr);
 
-    if (!event)
-        return MDV_NO_MEM;
+        if (!event)
+            return MDV_NO_MEM;
 
-    mdv_errno err = mdv_ebus_publish(peer->ebus, &event->base, MDV_EVT_SYNC);
+        mdv_errno err = mdv_ebus_publish(peer->ebus, &event->base, MDV_EVT_SYNC);
 
-    if (err == MDV_OK)
-        *id = event->node.id;
+        if (err == MDV_OK)
+            *id = event->node.id;
 
-    mdv_evt_node_up_release(event);
+        mdv_evt_node_up_release(event);
 
-    return err;
+        if (err != MDV_OK)
+            return err;
+    }
+
+    {
+        mdv_evt_link_state *event = peer->dir == MDV_CHIN
+                ? mdv_evt_link_state_create(&peer->uuid, &peer->peer_uuid, &peer->uuid, true)
+                : mdv_evt_link_state_create(&peer->uuid, &peer->uuid, &peer->peer_uuid, true);
+
+        if (event)
+        {
+            mdv_ebus_publish(peer->ebus, &event->base, MDV_EVT_DEFAULT);
+            mdv_evt_link_state_release(event);
+        }
+    }
+
+    return MDV_OK;
 
 /* TODO
     mdv_core *core = peer->core;
@@ -756,33 +823,13 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer,
 
 static void mdv_peer_disconnected(mdv_peer *peer)
 {
-    mdv_evt_node_down *event = mdv_evt_node_down_create(&peer->peer_uuid);
+    mdv_evt_link_state *event = mdv_evt_link_state_create(&peer->uuid, &peer->uuid, &peer->peer_uuid, false);
 
     if (event)
     {
         mdv_ebus_publish(peer->ebus, &event->base, MDV_EVT_DEFAULT);
-        mdv_evt_node_down_release(event);
+        mdv_evt_link_state_release(event);
     }
-
-
-/* TODO
-    mdv_core *core = peer->core;
-    mdv_tracker *tracker = core->tracker;
-
-    // Save peer connection state in memory
-    mdv_tracker_peer_disconnected(tracker, uuid);
-
-    // Update routing table
-    mdv_datasync_update_routes(&core->datasync);
-
-    mdv_node *node = mdv_tracker_node_by_id(tracker, peer->peer_id);
-
-    // Link-state broadcasting to all network
-    mdv_gossip_linkstate(core,
-                        &core->metainf.uuid.value, MDV_CONFIG.server.listen.ptr,
-                        uuid, node ? node->addr : "UNKNOWN",
-                        false);
-*/
 }
 
 

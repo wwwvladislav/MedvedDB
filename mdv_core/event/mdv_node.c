@@ -35,34 +35,6 @@ uint32_t mdv_evt_node_up_release(mdv_evt_node_up *evt)
 }
 
 
-mdv_evt_node_down * mdv_evt_node_down_create(mdv_uuid const *uuid)
-{
-    mdv_evt_node_down *event = (mdv_evt_node_down*)
-                                mdv_event_create(
-                                    MDV_EVT_NODE_DOWN,
-                                    sizeof(mdv_evt_node_down));
-
-    if (event)
-    {
-        event->uuid = *uuid;
-    }
-
-    return event;
-}
-
-
-mdv_evt_node_down * mdv_evt_node_down_retain(mdv_evt_node_down *evt)
-{
-    return (mdv_evt_node_down*)evt->base.vptr->retain(&evt->base);
-}
-
-
-uint32_t mdv_evt_node_down_release(mdv_evt_node_down *evt)
-{
-    return evt->base.vptr->release(&evt->base);
-}
-
-
 mdv_evt_node_registered * mdv_evt_node_registered_create(mdv_node const *node)
 {
     size_t const addr_len = strlen(node->addr);

@@ -27,17 +27,6 @@ uint32_t          mdv_evt_node_up_release(mdv_evt_node_up *evt);
 typedef struct
 {
     mdv_event   base;
-    mdv_uuid    uuid;
-} mdv_evt_node_down;
-
-mdv_evt_node_down * mdv_evt_node_down_create(mdv_uuid const *uuid);
-mdv_evt_node_down * mdv_evt_node_down_retain(mdv_evt_node_down *evt);
-uint32_t            mdv_evt_node_down_release(mdv_evt_node_down *evt);
-
-
-typedef struct
-{
-    mdv_event   base;
     mdv_node    node;
 } mdv_evt_node_registered;
 

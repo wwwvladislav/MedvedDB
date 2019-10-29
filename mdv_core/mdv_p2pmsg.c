@@ -15,6 +15,7 @@ char const * mdv_p2p_msg_name(uint32_t id)
         case mdv_message_id(p2p_cfslog_sync):   return "P2P CFSLOG SYNC";
         case mdv_message_id(p2p_cfslog_state):  return "P2P CFSLOG STATE";
         case mdv_message_id(p2p_cfslog_data):   return "P2P CFSLOG DATA";
+        case mdv_message_id(p2p_broadcast):     return "P2P BROADCAST";
     }
 
     return "P2P UNKOWN";
@@ -99,32 +100,11 @@ bool mdv_unbinn_p2p_status(binn const *obj, mdv_msg_p2p_status *msg)
 
 bool mdv_binn_p2p_linkstate(mdv_msg_p2p_linkstate const *msg, binn *obj)
 {
-    binn peers;
-
-    if (!binn_create_list(&peers))
-    {
-        MDV_LOGE("binn_p2p_linkstate failed");
-        return false;
-    }
-
-    for(uint32_t i = 0; i < msg->peers_count; ++i)
-    {
-        if (!binn_list_add_uint32(&peers, msg->peers[i]))
-        {
-            binn_free(&peers);
-            MDV_LOGE("binn_p2p_linkstate failed");
-            return false;
-        }
-    }
-
     if (!binn_create_object(obj))
     {
         MDV_LOGE("binn_p2p_linkstate failed");
-        binn_free(&peers);
         return false;
     }
-
-    uint8_t const flags = msg->connected;
 
     if (0
         || !binn_object_set_uint64(obj, "U1", msg->src.uuid.u64[0])
@@ -133,146 +113,42 @@ bool mdv_binn_p2p_linkstate(mdv_msg_p2p_linkstate const *msg, binn *obj)
         || !binn_object_set_uint64(obj, "U4", msg->dst.uuid.u64[1])
         || !binn_object_set_str(obj,    "A1", (char*)msg->src.addr)
         || !binn_object_set_str(obj,    "A2", (char*)msg->dst.addr)
-        || !binn_object_set_uint8(obj,  "F", flags)
-        || !binn_object_set_uint32(obj, "S", msg->peers_count)
-        || !binn_object_set_list(obj,   "P", &peers))
+        || !binn_object_set_bool(obj,   "F",  msg->connected))
     {
         binn_free(obj);
-        binn_free(&peers);
         MDV_LOGE("binn_p2p_linkstate failed");
         return false;
     }
-
-    binn_free(&peers);
 
     return true;
 }
 
 
-mdv_toponode * mdv_unbinn_p2p_linkstate_src(binn const *obj)
+bool mdv_unbinn_p2p_linkstate(binn const *obj, mdv_msg_p2p_linkstate *msg)
 {
-    static _Thread_local mdv_toponode toponode;
+    char *src_addr = 0,
+         *dst_addr = 0;
 
-    char *addr = 0;
+    BOOL connected = 0;
 
     if (0
-        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&toponode.uuid.u64[0])
-        || !binn_object_get_uint64((void*)obj, "U2", (uint64 *)&toponode.uuid.u64[1])
-        || !binn_object_get_str((void*)obj, "A1", &addr))
-    {
-        MDV_LOGE("p2p_linkstate_src_peer failed");
-        return 0;
-    }
-
-    toponode.addr = addr;
-
-    return &toponode;
-}
-
-
-mdv_toponode * mdv_unbinn_p2p_linkstate_dst(binn const *obj)
-{
-    static _Thread_local mdv_toponode toponode;
-
-    char *addr = 0;
-
-    if (0
-        || !binn_object_get_uint64((void*)obj, "U3", (uint64 *)&toponode.uuid.u64[0])
-        || !binn_object_get_uint64((void*)obj, "U4", (uint64 *)&toponode.uuid.u64[1])
-        || !binn_object_get_str((void*)obj, "A2", &addr))
-    {
-        MDV_LOGE("p2p_linkstate_dst_peer failed");
-        return 0;
-    }
-
-    toponode.addr = addr;
-
-    return &toponode;
-}
-
-
-char const * mdv_unbinn_p2p_linkstate_src_listen(binn const *obj)
-{
-    char *listen = 0;
-
-    if (!binn_object_get_str((void*)obj, "L", &listen))
-    {
-        MDV_LOGE("unbinn_p2p_linkstate_src_listen failed");
-        return 0;
-    }
-
-    return listen;
-}
-
-
-bool * mdv_unbinn_p2p_linkstate_connected(binn const *obj)
-{
-    uint8_t flags = 0;
-
-    if (!binn_object_get_uint8((void*)obj, "F", (unsigned char*)&flags))
-    {
-        MDV_LOGE("p2p_linkstate_connected failed");
-        return 0;
-    }
-
-    static _Thread_local bool connected;
-
-    connected = flags & 1;
-
-    return &connected;
-}
-
-
-uint32_t * mdv_unbinn_p2p_linkstate_peers_count(binn const *obj)
-{
-    static _Thread_local uint32_t peers_count;
-
-    if (!binn_object_get_uint32((void*)obj, "S", &peers_count))
-    {
-        MDV_LOGE("p2p_linkstate_peers_count failed");
-        return 0;
-    }
-
-    return &peers_count;
-}
-
-
-bool mdv_unbinn_p2p_linkstate_peers(binn const *obj, uint32_t *peers, uint32_t peers_count)
-{
-    binn *binn_peers = 0;
-
-    if (!binn_object_get_list((void*)obj, "P", (void**)&binn_peers))
+        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&msg->src.uuid.u64[0])
+        || !binn_object_get_uint64((void*)obj, "U2", (uint64 *)&msg->src.uuid.u64[1])
+        || !binn_object_get_uint64((void*)obj, "U3", (uint64 *)&msg->dst.uuid.u64[0])
+        || !binn_object_get_uint64((void*)obj, "U4", (uint64 *)&msg->dst.uuid.u64[1])
+        || !binn_object_get_str((void*)obj,    "A1", &src_addr)
+        || !binn_object_get_str((void*)obj,    "A2", &dst_addr)
+        || !binn_object_get_bool((void*)obj,   "F2", &connected))
     {
         MDV_LOGE("unbinn_p2p_linkstate failed");
         return false;
     }
 
-    binn_iter iter = {};
-    binn value = {};
-    size_t i = 0;
+    msg->src.addr = src_addr;
+    msg->dst.addr = dst_addr;
+    msg->connected = !!connected;
 
-    binn_list_foreach(binn_peers, value)
-    {
-        if (i > peers_count)
-        {
-            MDV_LOGE("unbinn_p2p_linkstate failed");
-            return false;
-        }
-
-        int64 v = 0;
-
-        if (!binn_get_int64(&value, &v))
-        {
-            MDV_LOGE("unbinn_p2p_linkstate failed");
-            return false;
-        }
-
-        peers[i] = (uint32_t)v;
-
-        ++i;
-    }
-
-    return i == peers_count;
+    return true;
 }
 
 
@@ -574,3 +450,111 @@ bool mdv_unbinn_p2p_cfslog_data_rows(binn const *obj, mdv_list *rows)
 
     return ret;
 }
+
+
+bool mdv_binn_p2p_broadcast(mdv_msg_p2p_broadcast const *msg, binn *obj)
+{
+    binn notified;
+
+    if (!binn_create_list(&notified))
+    {
+        MDV_LOGE("binn_p2p_broadcast failed");
+        return false;
+    }
+
+    mdv_vector_foreach(msg->notified, mdv_uuid, entry)
+    {
+        binn uuid;
+        uint8_t tmp[64];
+
+        if (!binn_create(&uuid, BINN_OBJECT, sizeof tmp, tmp))
+        {
+            MDV_LOGE("binn_p2p_broadcast failed");
+            binn_free(&notified);
+            return false;
+        }
+
+        if (0
+            || !binn_object_set_uint64(&uuid, "U1", entry->u64[0])
+            || !binn_object_set_uint64(&uuid, "U2", entry->u64[1])
+            || !binn_list_add_object(&notified, &uuid))
+        {
+            MDV_LOGE("binn_p2p_broadcast failed");
+            binn_free(&uuid);
+            binn_free(&notified);
+            return false;
+        }
+
+        binn_free(&uuid);
+    }
+
+    if (!binn_create_object(obj))
+    {
+        MDV_LOGE("binn_p2p_broadcast failed");
+        binn_free(&notified);
+        return false;
+    }
+
+    if (0
+        || !binn_object_set_blob(obj, "D", msg->data, (int)msg->size)
+        || !binn_object_set_list(obj, "N", &notified))
+    {
+        MDV_LOGE("binn_p2p_broadcast failed");
+        binn_free(obj);
+        binn_free(&notified);
+        return false;
+    }
+
+    binn_free(&notified);
+
+    return true;
+}
+
+
+bool mdv_unbinn_p2p_broadcast(binn const *obj, mdv_msg_p2p_broadcast *msg)
+{
+    int size = 0;
+
+    binn *notified = 0;
+
+    if (0
+        || !binn_object_get_blob((void*)obj, "D", &msg->data, &size)
+        || !binn_object_get_list((void*)obj, "N", (void**)&notified))
+    {
+        MDV_LOGE("unbinn_p2p_broadcast failed");
+        return false;
+    }
+
+    if (size < 0)
+    {
+        MDV_LOGE("unbinn_p2p_broadcast failed");
+        return false;
+    }
+
+    msg->size = size;
+
+    binn_iter iter = {};
+    binn value = {};
+
+    binn_list_foreach(notified, value)
+    {
+        mdv_uuid uuid;
+
+        if (0
+            || !binn_object_get_uint64((void*)&value, "U1", (uint64*)&uuid.u64[0])
+            || !binn_object_get_uint64((void*)&value, "U2", (uint64*)&uuid.u64[1]))
+        {
+            MDV_LOGE("unbinn_p2p_broadcast failed");
+            return false;
+        }
+
+        if (!mdv_vector_push_back(msg->notified, &uuid))
+        {
+            MDV_LOGE("unbinn_p2p_broadcast failed");
+            return false;
+        }
+    }
+
+    return true;
+}
+

@@ -10,15 +10,15 @@
  */
 #pragma once
 #include <mdv_ebus.h>
-#include <mdv_vector.h>
+#include <mdv_hashmap.h>
 
 
 typedef struct
 {
     mdv_event    base;
-    mdv_vector  *routes;
+    mdv_hashmap *routes;
 } mdv_evt_routes_changed;
 
-mdv_evt_routes_changed * mdv_evt_routes_changed_create(mdv_vector *routes);
+mdv_evt_routes_changed * mdv_evt_routes_changed_create(mdv_hashmap *routes);
 mdv_evt_routes_changed * mdv_evt_routes_changed_retain(mdv_evt_routes_changed *evt);
 uint32_t                 mdv_evt_routes_changed_release(mdv_evt_routes_changed *evt);

@@ -3,7 +3,6 @@
 #include "mdv_config.h"
 #include "mdv_conctx.h"
 #include "event/mdv_types.h"
-#include "event/mdv_node.h"
 #include "event/mdv_link.h"
 #include "event/mdv_topology.h"
 #include <mdv_version.h>
@@ -22,6 +21,7 @@ struct mdv_peer
     mdv_channel_dir         dir;            ///< Channel direction
     mdv_uuid                uuid;           ///< current node uuid
     mdv_uuid                peer_uuid;      ///< peer global uuid
+    char                   *peer_addr;      ///< peer address
     uint32_t                peer_id;        ///< peer local unique identifier
     mdv_dispatcher         *dispatcher;     ///< Messages dispatcher
     mdv_ebus               *ebus;           ///< Events bus
@@ -29,6 +29,7 @@ struct mdv_peer
 
 
 static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid const *uuid, uint32_t *id);
+
 static void      mdv_peer_disconnected(mdv_peer *peer);
 
 
@@ -87,6 +88,16 @@ static mdv_errno mdv_peer_topodiff_reply(mdv_peer *peer, uint16_t id, mdv_msg_p2
 }
 
 
+static char * mdv_string_dup(char const *str, char const *name)
+{
+    size_t len = strlen(str);
+    char *dup_str = mdv_alloc(len + 1, name);
+    if (dup_str)
+        memcpy(dup_str, str, len + 1);
+    return dup_str;
+}
+
+
 static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 {
     mdv_peer *peer = arg;
@@ -117,6 +128,17 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
     }
 
     peer->peer_uuid = req.uuid;
+
+    mdv_free(peer->peer_addr, "peer_addr");
+
+    peer->peer_addr = mdv_string_dup(req.listen, "peer_addr");
+
+    if (!peer->peer_addr)
+    {
+        MDV_LOGE("No memory for peer address");
+        binn_free(&binn_msg);
+        return MDV_FAILED;
+    }
 
     mdv_errno err = MDV_OK;
 
@@ -152,15 +174,32 @@ static mdv_errno mdv_peer_linkstate_handler(mdv_msg const *msg, void *arg)
 
     MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
-/* TODO
-    mdv_errno err = mdv_gossip_linkstate_handler(core, msg);
+    binn binn_msg;
 
-    // Update routing table
-    if (err == MDV_OK)
-        mdv_datasync_update_routes(&core->datasync);
+    if(!binn_load(msg->payload, &binn_msg))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
+        return MDV_FAILED;
+    }
 
-    return err;
-*/
+    mdv_msg_p2p_linkstate req;
+
+    if (!mdv_unbinn_p2p_linkstate(&binn_msg, &req))
+    {
+        binn_free(&binn_msg);
+        return MDV_FAILED;
+    }
+
+    mdv_evt_link_state *event = mdv_evt_link_state_create(&peer->peer_uuid, &req.src, &req.dst, req.connected);
+
+    if (event)
+    {
+        mdv_ebus_publish(peer->ebus, &event->base, MDV_EVT_DEFAULT);
+        mdv_evt_link_state_release(event);
+    }
+
+    binn_free(&binn_msg);
+
     return MDV_OK;
 }
 
@@ -202,14 +241,11 @@ static void mdv_peer_toposync_node_add(mdv_peer *peer, mdv_uuid const *uuid, cha
 
 static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
 {
-/* TODO
     mdv_peer *peer = arg;
-    mdv_core *core = peer->core;
-    mdv_tracker *tracker = core->tracker;
 
     MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
     binn binn_msg;
 
@@ -233,6 +269,19 @@ static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
 
     mdv_rollbacker_push(rollbacker, mdv_p2p_toposync_free, &req);
 
+    mdv_evt_topology *event = mdv_evt_topology_create(&peer->peer_uuid, req.topology);
+
+    if (event)
+    {
+        mdv_ebus_publish(peer->ebus, &event->base, MDV_EVT_DEFAULT);
+        mdv_evt_topology_release(event);
+    }
+
+    mdv_rollback(rollbacker);
+
+    return MDV_OK;
+
+/* TODO
     mdv_topology *topology = mdv_tracker_topology(tracker);
 
     if (!topology)
@@ -293,7 +342,6 @@ static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
 
     return err;
 */
-    return MDV_FAILED;
 }
 
 
@@ -448,22 +496,38 @@ static mdv_errno mdv_peer_hello(mdv_peer *peer)
 
 
 /**
+ * @brief Post link state message
+ */
+static mdv_errno mdv_peer_link_state(mdv_peer *peer, mdv_msg_p2p_linkstate const *msg)
+{
+    binn obj;
+
+    if (!mdv_binn_p2p_linkstate(msg, &obj))
+        return MDV_FAILED;
+
+    mdv_msg message =
+    {
+        .hdr =
+        {
+            .id = mdv_message_id(p2p_linkstate),
+            .size = binn_size(&obj)
+        },
+        .payload = binn_ptr(&obj)
+    };
+
+    mdv_errno err = mdv_peer_post(peer, &message);
+
+    binn_free(&obj);
+
+    return err;
+}
+
+
+/**
  * @brief Post topology synchronization message
  */
-static mdv_errno mdv_peer_toposync(mdv_peer *peer)
+static mdv_errno mdv_peer_toposync(mdv_peer *peer, mdv_topology *topology)
 {
-/* TODO
-    mdv_core *core = peer->core;
-    mdv_tracker *tracker = core->tracker;
-
-    mdv_topology *topology = mdv_tracker_topology(tracker);
-
-    if (!topology)
-    {
-        MDV_LOGE("Topology synchronization request failed");
-        return MDV_FAILED;
-    }
-
     mdv_msg_p2p_toposync const toposync =
     {
         .topology = topology
@@ -474,7 +538,6 @@ static mdv_errno mdv_peer_toposync(mdv_peer *peer)
     if (!mdv_binn_p2p_toposync(&toposync, &obj))
     {
         MDV_LOGE("Topology synchronization request failed");
-        mdv_topology_release(topology);
         return MDV_FAILED;
     }
 
@@ -492,11 +555,7 @@ static mdv_errno mdv_peer_toposync(mdv_peer *peer)
 
     binn_free(&obj);
 
-    mdv_topology_release(topology);
-
     return err;
-*/
-    return MDV_OK;
 }
 
 
@@ -505,9 +564,22 @@ static mdv_errno mdv_peer_evt_link_state_broadcast(void *arg, mdv_event *event)
     mdv_peer *peer = arg;
     mdv_evt_link_state_broadcast *link_state = (mdv_evt_link_state_broadcast *)event;
 
-    // TODO
+    // Ignore event source
+    if(mdv_uuid_cmp(&peer->peer_uuid, &link_state->from) == 0)
+        return MDV_OK;
 
-    return MDV_NO_IMPL;
+    // Ignore peer which is not involved in routing
+    if(!mdv_hashmap_find(link_state->routes, &peer->peer_uuid))
+        return MDV_OK;
+
+    mdv_msg_p2p_linkstate const msg =
+    {
+        .src = link_state->src,
+        .dst = link_state->dst,
+        .connected = link_state->connected
+    };
+
+    return mdv_peer_link_state(peer, &msg);
 }
 
 
@@ -516,16 +588,22 @@ static mdv_errno mdv_peer_evt_topology_sync(void *arg, mdv_event *event)
     mdv_peer *peer = arg;
     mdv_evt_topology_sync *toposync = (mdv_evt_topology_sync *)event;
 
-    // TODO
+    // Ignore event source
+    if(mdv_uuid_cmp(&peer->peer_uuid, &toposync->from) == 0)
+        return MDV_OK;
 
-    return MDV_NO_IMPL;
+    // Ignore peer which is not involved in routing
+    if(!mdv_hashmap_find(toposync->routes, &peer->peer_uuid))
+        return MDV_OK;
+
+    return mdv_peer_toposync(peer, toposync->topology);
 }
 
 
 static const mdv_event_handler_type mdv_peer_handlers[] =
 {
     { MDV_EVT_LINK_STATE_BROADCAST, mdv_peer_evt_link_state_broadcast },
-    { MDV_EVT_TOPOLOGY_SYNC, mdv_peer_evt_topology_sync },
+    { MDV_EVT_TOPOLOGY_SYNC,        mdv_peer_evt_topology_sync },
 };
 
 
@@ -563,6 +641,7 @@ mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
     peer->dir = dir;
     peer->uuid = *uuid;
     peer->peer_id = 0;
+    peer->peer_addr = 0;
 
     peer->ebus = mdv_ebus_retain(ebus);
 
@@ -643,6 +722,7 @@ static void mdv_peer_free(mdv_peer *peer)
         mdv_peer_disconnected(peer);
         mdv_dispatcher_free(peer->dispatcher);
         mdv_ebus_release(peer->ebus);
+        mdv_free(peer->peer_addr, "peer_addr");
         mdv_free(peer, "peerctx");
         MDV_LOGD("Peer %p freed", peer);
     }
@@ -735,33 +815,26 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer,
                                     mdv_uuid const *uuid,
                                     uint32_t *id)
 {
+    mdv_toponode const remote =
     {
-        mdv_evt_node_up *event = mdv_evt_node_up_create(uuid, addr);
+        .uuid = *uuid,
+        .addr = addr
+    };
 
-        if (!event)
-            return MDV_NO_MEM;
-
-        mdv_errno err = mdv_ebus_publish(peer->ebus, &event->base, MDV_EVT_SYNC);
-
-        if (err == MDV_OK)
-            *id = event->node.id;
-
-        mdv_evt_node_up_release(event);
-
-        if (err != MDV_OK)
-            return err;
-    }
-
+    mdv_toponode const current =
     {
-        mdv_evt_link_state *event = peer->dir == MDV_CHIN
-                ? mdv_evt_link_state_create(&peer->uuid, &peer->peer_uuid, &peer->uuid, true)
-                : mdv_evt_link_state_create(&peer->uuid, &peer->uuid, &peer->peer_uuid, true);
+        .uuid = peer->uuid,
+        .addr = MDV_CONFIG.server.listen.ptr
+    };
 
-        if (event)
-        {
-            mdv_ebus_publish(peer->ebus, &event->base, MDV_EVT_DEFAULT);
-            mdv_evt_link_state_release(event);
-        }
+    mdv_evt_link_state *event = peer->dir == MDV_CHIN
+            ? mdv_evt_link_state_create(&peer->uuid, &remote, &current, true)
+            : mdv_evt_link_state_create(&peer->uuid, &current, &remote, true);
+
+    if (event)
+    {
+        mdv_ebus_publish(peer->ebus, &event->base, MDV_EVT_DEFAULT);
+        mdv_evt_link_state_release(event);
     }
 
     return MDV_OK;
@@ -823,7 +896,19 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer,
 
 static void mdv_peer_disconnected(mdv_peer *peer)
 {
-    mdv_evt_link_state *event = mdv_evt_link_state_create(&peer->uuid, &peer->uuid, &peer->peer_uuid, false);
+    mdv_toponode const remote =
+    {
+        .uuid = peer->peer_uuid,
+        .addr = peer->peer_addr
+    };
+
+    mdv_toponode const current =
+    {
+        .uuid = peer->uuid,
+        .addr = MDV_CONFIG.server.listen.ptr
+    };
+
+    mdv_evt_link_state *event = mdv_evt_link_state_create(&peer->uuid, &current, &remote, false);
 
     if (event)
     {

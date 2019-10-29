@@ -31,16 +31,7 @@ typedef struct
 typedef struct mdv_topology mdv_topology;
 
 
-/// Topologies difference
-typedef struct
-{
-    mdv_topology *ab;                   ///< {a} - {b}
-    mdv_topology *ba;                   ///< {b} - {a}
-} mdv_topology_delta;
-
-
 extern mdv_topology mdv_empty_topology;
-extern mdv_topology_delta mdv_empty_topology_delta;
 
 
 /**
@@ -102,7 +93,7 @@ mdv_vector * mdv_topology_extradata(mdv_topology *topology);
 
 
 /**
- * @brief Topologies difference calculation (i.e. {a} - {b} and {b} - {a})
+ * @brief Topologies difference calculation (i.e. {a} - {b})
  * @details Links should be sorted in ascending order.
  *
  * @param a [in] first topology
@@ -110,12 +101,5 @@ mdv_vector * mdv_topology_extradata(mdv_topology *topology);
  *
  * @return topologies difference
  */
-mdv_topology_delta * mdv_topology_diff(mdv_topology *a, mdv_topology *b);
+mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_topology *b);
 
-
-/**
- * @brief Free the network topologies difference
- *
- * @param delta [in] topologies difference
- */
-void mdv_topology_delta_free(mdv_topology_delta *delta);

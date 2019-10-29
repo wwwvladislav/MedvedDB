@@ -9,6 +9,14 @@
  */
 #pragma once
 #include "mdv_topology.h"
+#include "mdv_hashmap.h"
+
+
+/// Next hop information
+typedef struct
+{
+    mdv_uuid uuid;  ///< Next hop uuid
+} mdv_route;
 
 
 /**
@@ -19,4 +27,4 @@
  *
  * @return Vector of peers identifiers (vector<uuid>).
  */
-mdv_vector * mdv_routes_find(mdv_topology *topology, mdv_uuid const *src);
+mdv_hashmap * mdv_routes_find(mdv_topology *topology, mdv_uuid const *src);

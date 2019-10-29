@@ -34,8 +34,8 @@ typedef struct mdv_tracker mdv_tracker;
  * @return On error, return NULL
  */
 mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid,
-                                 mdv_storage *storage,
-                                 mdv_ebus *ebus);
+                                 mdv_storage    *storage,
+                                 mdv_ebus       *ebus);
 
 
 /**

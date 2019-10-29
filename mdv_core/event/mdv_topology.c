@@ -3,36 +3,38 @@
 #include <mdv_log.h>
 
 
-mdv_evt_topology_changed * mdv_evt_topology_changed_create(mdv_topology *topology)
+mdv_evt_topology * mdv_evt_topology_create(mdv_uuid const *from,
+                                           mdv_topology   *topology)
 {
     static mdv_ievent vtbl =
     {
-        .retain = (mdv_event_retain_fn)mdv_evt_topology_changed_retain,
-        .release = (mdv_event_release_fn)mdv_evt_topology_changed_release
+        .retain = (mdv_event_retain_fn)mdv_evt_topology_retain,
+        .release = (mdv_event_release_fn)mdv_evt_topology_release
     };
 
-    mdv_evt_topology_changed *event = (mdv_evt_topology_changed*)
+    mdv_evt_topology *event = (mdv_evt_topology*)
                                 mdv_event_create(
-                                    MDV_EVT_TOPOLOGY_CHANGED,
-                                    sizeof(mdv_evt_topology_changed));
+                                    MDV_EVT_TOPOLOGY,
+                                    sizeof(mdv_evt_topology));
 
     if (event)
     {
         event->base.vptr = &vtbl;
-        event->topology = mdv_topology_retain(topology);
+        event->from      = *from;
+        event->topology  = mdv_topology_retain(topology);
     }
 
     return event;
 }
 
 
-mdv_evt_topology_changed * mdv_evt_topology_changed_retain(mdv_evt_topology_changed *evt)
+mdv_evt_topology * mdv_evt_topology_retain(mdv_evt_topology *evt)
 {
-    return (mdv_evt_topology_changed*)mdv_event_retain(&evt->base);
+    return (mdv_evt_topology*)mdv_event_retain(&evt->base);
 }
 
 
-uint32_t mdv_evt_topology_changed_release(mdv_evt_topology_changed *evt)
+uint32_t mdv_evt_topology_release(mdv_evt_topology *evt)
 {
     mdv_topology *topology = evt->topology;
 
@@ -45,7 +47,9 @@ uint32_t mdv_evt_topology_changed_release(mdv_evt_topology_changed *evt)
 }
 
 
-mdv_evt_topology_sync * mdv_evt_topology_sync_create(mdv_topology *topology, mdv_uuid const *dst)
+mdv_evt_topology_sync * mdv_evt_topology_sync_create(mdv_uuid const *from,
+                                                     mdv_topology   *topology,
+                                                     mdv_hashmap    *routes)
 {
     static mdv_ievent vtbl =
     {
@@ -61,8 +65,9 @@ mdv_evt_topology_sync * mdv_evt_topology_sync_create(mdv_topology *topology, mdv
     if (event)
     {
         event->base.vptr = &vtbl;
-        event->dst = *dst;
-        event->topology = mdv_topology_retain(topology);
+        event->from      = *from;
+        event->topology  = mdv_topology_retain(topology);
+        event->routes    = mdv_hashmap_retain(routes);
     }
 
     return event;
@@ -78,11 +83,15 @@ mdv_evt_topology_sync * mdv_evt_topology_sync_retain(mdv_evt_topology_sync *evt)
 uint32_t mdv_evt_topology_sync_release(mdv_evt_topology_sync *evt)
 {
     mdv_topology *topology = evt->topology;
+    mdv_hashmap  *routes   = evt->routes;
 
     uint32_t rc = mdv_event_release(&evt->base);
 
     if (!rc)
+    {
         mdv_topology_release(topology);
+        mdv_hashmap_release(routes);
+    }
 
     return rc;
 }

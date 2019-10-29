@@ -112,19 +112,21 @@ static void mdv_topology_test_1()
     mdv_topology *b = mdv_test_topology_create(nodes,   sizeof(nodes) / sizeof *nodes,
                                                b_links, sizeof b_links / sizeof *b_links);
 
-    mdv_topology_delta *delta = mdv_topology_diff(a, b);
+    mdv_topology *ab_delta = mdv_topology_diff(a, b);
+    mdv_topology *ba_delta = mdv_topology_diff(b, a);
 
-    mdv_topology_check(delta->ab,
+    mdv_topology_check(ab_delta,
                        ab_nodes, sizeof ab_nodes / sizeof *ab_nodes,
                        ab_links, sizeof ab_links / sizeof *ab_links);
-    mdv_topology_check(delta->ba,
+    mdv_topology_check(ba_delta,
                        ba_nodes, sizeof ba_nodes / sizeof *ba_nodes,
                        ba_links, sizeof ba_links / sizeof *ba_links);
 
     mdv_topology_release(a);
     mdv_topology_release(b);
 
-    mdv_topology_delta_free(delta);
+    mdv_topology_release(ab_delta);
+    mdv_topology_release(ba_delta);
 }
 
 
@@ -174,19 +176,21 @@ static void mdv_topology_test_2()
     mdv_topology *b = mdv_test_topology_create(nodes,   sizeof(nodes) / sizeof *nodes,
                                                b_links, sizeof b_links / sizeof *b_links);
 
-    mdv_topology_delta *delta = mdv_topology_diff(a, b);
+    mdv_topology *ab_delta = mdv_topology_diff(a, b);
+    mdv_topology *ba_delta = mdv_topology_diff(b, a);
 
-    mdv_topology_check(delta->ab,
+    mdv_topology_check(ab_delta,
                        ab_nodes, sizeof ab_nodes / sizeof *ab_nodes,
                        ab_links, sizeof ab_links / sizeof *ab_links);
-    mdv_topology_check(delta->ba,
+    mdv_topology_check(ba_delta,
                        0, 0,
                        0, 0);
 
     mdv_topology_release(a);
     mdv_topology_release(b);
 
-    mdv_topology_delta_free(delta);
+    mdv_topology_release(ab_delta);
+    mdv_topology_release(ba_delta);
 }
 
 
@@ -216,19 +220,21 @@ static void mdv_topology_test_3()
     mdv_topology *b = mdv_test_topology_create(nodes, sizeof(nodes) / sizeof *nodes,
                                                links, sizeof links / sizeof *links);
 
-    mdv_topology_delta *delta = mdv_topology_diff(a, b);
+    mdv_topology *ab_delta = mdv_topology_diff(a, b);
+    mdv_topology *ba_delta = mdv_topology_diff(b, a);
 
-    mdv_topology_check(delta->ab,
+    mdv_topology_check(ab_delta,
                        0, 0,
                        0, 0);
-    mdv_topology_check(delta->ba,
+    mdv_topology_check(ba_delta,
                        0, 0,
                        0, 0);
 
     mdv_topology_release(a);
     mdv_topology_release(b);
 
-    mdv_topology_delta_free(delta);
+    mdv_topology_release(ab_delta);
+    mdv_topology_release(ba_delta);
 }
 
 

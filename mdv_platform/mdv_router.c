@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 
-mdv_vector * mdv_routes_find(mdv_topology *topology, mdv_uuid const *src)
+mdv_hashmap * mdv_routes_find(mdv_topology *topology, mdv_uuid const *src)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
@@ -17,7 +17,11 @@ mdv_vector * mdv_routes_find(mdv_topology *topology, mdv_uuid const *src)
     if (mdv_vector_empty(topolinks))
     {
         mdv_rollback(rollbacker);
-        return &mdv_empty_vector;
+        return mdv_hashmap_create(mdv_route,
+                                  uuid,
+                                  0,
+                                  mdv_uuid_hash,
+                                  mdv_uuid_cmp);
     }
 
     mdv_vector *toponodes = mdv_topology_nodes(topology);
@@ -73,7 +77,12 @@ mdv_vector * mdv_routes_find(mdv_topology *topology, mdv_uuid const *src)
 
     if (mst_size)
     {
-        mdv_vector *routes = mdv_vector_create(mst_size, sizeof(mdv_uuid), &mdv_default_allocator);
+        mdv_hashmap *routes = mdv_hashmap_create(
+                                        mdv_route,
+                                        uuid,
+                                        mst_size * 5 / 3,
+                                        mdv_uuid_hash,
+                                        mdv_uuid_cmp);
 
         if (!routes)
         {
@@ -90,9 +99,29 @@ mdv_vector * mdv_routes_find(mdv_topology *topology, mdv_uuid const *src)
                 mdv_toponode const *rnode = mst_links[i].dst->data;
 
                 if (mdv_uuid_cmp(src, &lnode->uuid) == 0)
-                    mdv_vector_push_back(routes, &rnode->uuid);
+                {
+                    mdv_route const route = { rnode->uuid };
+
+                    if (!mdv_hashmap_insert(routes, &route, sizeof route))
+                    {
+                        mdv_hashmap_release(routes);
+                        MDV_LOGE("No memory for routes");
+                        mdv_rollback(rollbacker);
+                        return 0;
+                    }
+                }
                 else if (mdv_uuid_cmp(src, &rnode->uuid) == 0)
-                    mdv_vector_push_back(routes, &lnode->uuid);
+                {
+                    mdv_route const route = { lnode->uuid };
+
+                    if (!mdv_hashmap_insert(routes, &route, sizeof route))
+                    {
+                        mdv_hashmap_release(routes);
+                        MDV_LOGE("No memory for routes");
+                        mdv_rollback(rollbacker);
+                        return 0;
+                    }
+                }
             }
         }
 
@@ -103,5 +132,9 @@ mdv_vector * mdv_routes_find(mdv_topology *topology, mdv_uuid const *src)
 
     mdv_rollback(rollbacker);
 
-    return &mdv_empty_vector;
+    return mdv_hashmap_create(mdv_route,
+                                uuid,
+                                0,
+                                mdv_uuid_hash,
+                                mdv_uuid_cmp);
 }

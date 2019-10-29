@@ -468,6 +468,8 @@ static mdv_errno mdv_ebus_unsubscribe_unsafe(mdv_ebus *ebus,
                 mdv_vector_erase(subscribers, mdv_vector_at(subscribers, idx));
                 mdv_vector_release(handlers->subscribers);
                 handlers->subscribers = subscribers;
+
+                // TODO: Wait running handlers
             }
             else
                 err = MDV_NO_MEM;

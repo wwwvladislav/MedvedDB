@@ -45,16 +45,22 @@ mdv_hashmap * _mdv_hashmap_create(size_t         capacity,
     hm->key_size    = key_size;
     hm->hash_fn     = hash_fn;
     hm->key_cmp_fn  = key_cmp_fn;
-    hm->buckets     = mdv_alloc(capacity * sizeof(mdv_hashmap_bucket), "hashmap.buckets");
 
-    if (!hm->buckets)
+    if (capacity)
     {
-        MDV_LOGE("No memory for new hash map (capacity: %zu)", capacity);
-        mdv_free(hm, "hashmap");
-        return 0;
-    }
+        hm->buckets = mdv_alloc(capacity * sizeof(mdv_hashmap_bucket), "hashmap.buckets");
 
-    memset(hm->buckets, 0, capacity * sizeof(mdv_hashmap_bucket));
+        if (!hm->buckets)
+        {
+            MDV_LOGE("No memory for new hash map (capacity: %zu)", capacity);
+            mdv_free(hm, "hashmap");
+            return 0;
+        }
+
+        memset(hm->buckets, 0, capacity * sizeof(mdv_hashmap_bucket));
+    }
+    else
+        hm->buckets = 0;
 
     return hm;
 }
@@ -211,6 +217,9 @@ void * mdv_hashmap_insert(mdv_hashmap *hm, void const *item, size_t size)
 
 void * mdv_hashmap_find(mdv_hashmap const *hm, void const *key)
 {
+    if (!hm->capacity)
+        return 0;
+
     size_t const bucket_idx = hm->hash_fn(key) % hm->capacity;
 
     mdv_hashmap_bucket * bucket = hm->buckets + bucket_idx;
@@ -227,6 +236,9 @@ void * mdv_hashmap_find(mdv_hashmap const *hm, void const *key)
 
 bool mdv_hashmap_erase(mdv_hashmap *hm, void const *key)
 {
+    if (!hm->capacity)
+        return false;
+
     size_t const bucket_idx = hm->hash_fn(key) % hm->capacity;
 
     mdv_hashmap_bucket * bucket = hm->buckets + bucket_idx;

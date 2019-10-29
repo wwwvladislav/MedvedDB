@@ -2,7 +2,7 @@
 #include "mdv_types.h"
 
 
-mdv_evt_routes_changed * mdv_evt_routes_changed_create(mdv_vector *routes)
+mdv_evt_routes_changed * mdv_evt_routes_changed_create(mdv_hashmap *routes)
 {
     static mdv_ievent vtbl =
     {
@@ -18,7 +18,7 @@ mdv_evt_routes_changed * mdv_evt_routes_changed_create(mdv_vector *routes)
     if (event)
     {
         event->base.vptr = &vtbl;
-        event->routes = mdv_vector_retain(routes);
+        event->routes = mdv_hashmap_retain(routes);
     }
 
     return event;
@@ -33,12 +33,12 @@ mdv_evt_routes_changed * mdv_evt_routes_changed_retain(mdv_evt_routes_changed *e
 
 uint32_t mdv_evt_routes_changed_release(mdv_evt_routes_changed *evt)
 {
-    mdv_vector *routes = evt->routes;
+    mdv_hashmap *routes = evt->routes;
 
     uint32_t rc = mdv_event_release(&evt->base);
 
     if (!rc)
-        mdv_vector_release(routes);
+        mdv_hashmap_release(routes);
 
     return rc;
 }

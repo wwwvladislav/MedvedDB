@@ -26,13 +26,6 @@ mdv_topology mdv_empty_topology =
 };
 
 
-mdv_topology_delta mdv_empty_topology_delta =
-{
-    .ab = &mdv_empty_topology,
-    .ba = &mdv_empty_topology
-};
-
-
 int mdv_link_cmp(mdv_topolink const *a, mdv_topolink const *b)
 {
     if (a->node[0] < b->node[0])
@@ -139,96 +132,159 @@ mdv_vector * mdv_topology_nodes_extradata(mdv_vector *toponodes, size_t extrasiz
 }
 
 
-mdv_topology_delta * mdv_topology_diff(mdv_topology *a, mdv_topology *b)
+typedef struct
+{
+    mdv_uuid const *node[2];
+} mdv_utopolink;
+
+
+static mdv_utopolink mdv_uuids_sort(mdv_uuid const *node[2])
+{
+    mdv_utopolink res;
+
+    if (mdv_uuid_cmp(node[0], node[1]) <= 0)
+    {
+        res.node[0] = node[0];
+        res.node[1] = node[1];
+    }
+    else
+    {
+        res.node[0] = node[1];
+        res.node[1] = node[0];
+    }
+
+    return res;
+}
+
+
+static int mdv_utopolink_cmp(mdv_uuid const *a[2], mdv_uuid const *b[2])
+{
+    mdv_utopolink aa = mdv_uuids_sort(a);
+    mdv_utopolink bb = mdv_uuids_sort(b);
+
+    int const cmp1 = mdv_uuid_cmp(aa.node[0], bb.node[0]);
+
+    if (cmp1 < 0)
+        return -1;
+    else if (cmp1 > 0)
+        return 1;
+
+    int const cmp2 = mdv_uuid_cmp(aa.node[1], bb.node[1]);
+
+    if (cmp2 < 0)
+        return -1;
+    else if (cmp2 > 0)
+        return 1;
+
+    return 0;
+}
+
+
+static size_t mdv_utopolink_hash(mdv_uuid const *a[2])
+{
+    mdv_utopolink aa = mdv_uuids_sort(a);
+    return mdv_uuid_hash(aa.node[0]) * 37
+            + mdv_uuid_hash(aa.node[1]);
+}
+
+
+mdv_hashmap * mdv_topology_links_map(mdv_topology *topology)
+{
+    mdv_hashmap *blinks = mdv_hashmap_create(
+                                mdv_utopolink,
+                                node,
+                                mdv_vector_size(topology->links) * 5 / 3,
+                                mdv_utopolink_hash,
+                                mdv_utopolink_cmp);
+
+    if (!blinks)
+    {
+        MDV_LOGE("No memory for links");
+        return 0;
+    }
+
+    mdv_vector_foreach(topology->links, mdv_topolink, link)
+    {
+        mdv_utopolink const l =
+        {
+            .node =
+            {
+                (mdv_uuid*)mdv_vector_at(topology->nodes, link->node[0]),
+                (mdv_uuid*)mdv_vector_at(topology->nodes, link->node[1]),
+            }
+        };
+
+        if (!mdv_hashmap_insert(blinks, &l, sizeof l))
+        {
+            MDV_LOGE("No memory for links");
+            mdv_hashmap_release(blinks);
+            return 0;
+        }
+    }
+
+    return blinks;
+}
+
+
+mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_topology *b)
 {
     if (mdv_vector_empty(a->links)
         && mdv_vector_empty(b->links))
-        return &mdv_empty_topology_delta;
-    // optimizations begin
-    // These lines required for extra memory allocations avoiding.
-    // We can remove this optimization if we want more simpler logic.
+        return &mdv_empty_topology;
     else if (mdv_vector_empty(a->links))
-    {
-        mdv_topology_delta *delta = mdv_alloc(sizeof(mdv_topology_delta), "topology_delta");
-
-        if (!delta)
-        {
-            MDV_LOGE("no memory for network topology delta");
-            return 0;
-        }
-
-        delta->ab = &mdv_empty_topology;
-        delta->ba = mdv_topology_retain(b);
-
-        return delta;
-    }
+        return &mdv_empty_topology;
     else if (mdv_vector_empty(b->links))
+        return mdv_topology_retain(a);
+
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+
+    mdv_hashmap *blinks = mdv_topology_links_map(b);
+
+    if (!blinks)
     {
-        mdv_topology_delta *delta = mdv_alloc(sizeof(mdv_topology_delta), "topology_delta");
-
-        if (!delta)
-        {
-            MDV_LOGE("no memory for network topology delta");
-            return 0;
-        }
-
-        delta->ab = mdv_topology_retain(a);
-        delta->ba = &mdv_empty_topology;
-
-        return delta;
+        MDV_LOGE("No memory for network topology delta");
+        mdv_rollback(rollbacker);
+        return 0;
     }
-    // optimizations end
 
-    mdv_vector *ab_links = mdv_vector_clone(a->links, mdv_vector_size(a->links));
+    mdv_rollbacker_push(rollbacker, mdv_hashmap_release, blinks);
+
+    mdv_vector *ab_links = mdv_vector_create(mdv_vector_size(a->links),
+                                             sizeof(mdv_topolink),
+                                             &mdv_default_allocator);
 
     if (!ab_links)
     {
         MDV_LOGE("no memory for network topology delta");
+        mdv_rollback(rollbacker);
         return 0;
     }
-
-    mdv_vector *ba_links = mdv_vector_clone(b->links, mdv_vector_size(b->links));
-
-    if (!ba_links)
-    {
-        MDV_LOGE("no memory for network topology delta");
-        mdv_vector_release(ab_links);
-        return 0;
-    }
-
-    // {a} - {b} calculation
-    uint32_t const ab_size = mdv_exclude(mdv_vector_data(ab_links), sizeof(mdv_topolink), mdv_vector_size(ab_links),
-                                         mdv_vector_data(b->links), sizeof(mdv_topolink), mdv_vector_size(b->links),
-                                         (int (*)(const void *a, const void *b))&mdv_link_cmp);
-
-    if (ab_size)
-        mdv_vector_resize(ab_links, ab_size);
-    else
-    {
-        mdv_vector_release(ab_links);
-        ab_links = &mdv_empty_vector;
-    }
-
-    // {b} - {a} calculation
-    uint32_t const ba_size = mdv_exclude(mdv_vector_data(ba_links), sizeof(mdv_topolink), mdv_vector_size(ba_links),
-                                         mdv_vector_data(a->links), sizeof(mdv_topolink), mdv_vector_size(a->links),
-                                         (int (*)(const void *a, const void *b))&mdv_link_cmp);
-
-    if (ba_size)
-        mdv_vector_resize(ba_links, ba_size);
-    else
-    {
-        mdv_vector_release(ba_links);
-        ba_links = &mdv_empty_vector;
-    }
-
-    if (!ab_size && !ba_size)
-        return &mdv_empty_topology_delta;
-
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(8);
 
     mdv_rollbacker_push(rollbacker, mdv_vector_release, ab_links);
-    mdv_rollbacker_push(rollbacker, mdv_vector_release, ba_links);
+
+    // {a} - {b} calculation
+    mdv_vector_foreach(a->links, mdv_topolink, link)
+    {
+        mdv_utopolink const l =
+        {
+            .node =
+            {
+                (mdv_uuid*)mdv_vector_at(a->nodes, link->node[0]),
+                (mdv_uuid*)mdv_vector_at(a->nodes, link->node[1]),
+            }
+        };
+
+        if (!mdv_hashmap_find(blinks, &l.node))
+            mdv_vector_push_back(ab_links, link);
+    }
+
+    uint32_t const ab_size = mdv_vector_size(ab_links);
+
+    if (!ab_size)
+    {
+        mdv_rollback(rollbacker);
+        return &mdv_empty_topology;
+    }
 
     // {a} - {b} nodes
     size_t ab_extrasize;
@@ -243,19 +299,6 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology *a, mdv_topology *b)
 
     mdv_rollbacker_push(rollbacker, mdv_vector_release, ab_nodes);
 
-    // {b} - {a} nodes
-    size_t ba_extrasize;
-    mdv_vector *ba_nodes = mdv_topology_linked_nodes(ba_links, b->nodes, &ba_extrasize);
-
-    if (!ba_nodes)
-    {
-        MDV_LOGE("no memory for network topology delta");
-        mdv_rollback(rollbacker);
-        return 0;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_vector_release, ba_nodes);
-
     // {a} - {b} nodes extra data
     mdv_vector *ab_extradata = mdv_topology_nodes_extradata(ab_nodes, ab_extrasize);
 
@@ -268,23 +311,8 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology *a, mdv_topology *b)
 
     mdv_rollbacker_push(rollbacker, mdv_vector_release, ab_extradata);
 
-    // {b} - {a} nodes extra data
-    mdv_vector *ba_extradata = mdv_topology_nodes_extradata(ba_nodes, ba_extrasize);
-
-    if (!ba_extradata)
-    {
-        MDV_LOGE("no memory for network topology delta");
-        mdv_rollback(rollbacker);
-        return 0;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_vector_release, ba_extradata);
-
     // {a} - {b} topology
-    mdv_topology *ab_topology = &mdv_empty_topology;
-
-    if (ab_size)
-        ab_topology = mdv_topology_create(ab_nodes, ab_links, ab_extradata);
+    mdv_topology *ab_topology = mdv_topology_create(ab_nodes, ab_links, ab_extradata);
 
     if (!ab_topology)
     {
@@ -293,48 +321,9 @@ mdv_topology_delta * mdv_topology_diff(mdv_topology *a, mdv_topology *b)
         return 0;
     }
 
-    // {b} - {a} topology
-    mdv_topology *ba_topology = &mdv_empty_topology;
-
-    if (ba_size)
-        ba_topology = mdv_topology_create(ba_nodes, ba_links, ba_extradata);
-
-    if (!ba_topology)
-    {
-        MDV_LOGE("no memory for network topology delta");
-        mdv_topology_release(ab_topology);
-        mdv_rollback(rollbacker);
-        return 0;
-    }
-
-    mdv_topology_delta *delta = mdv_alloc(sizeof(mdv_topology_delta), "topology_delta");
-
-    if (!delta)
-    {
-        MDV_LOGE("no memory for network topology delta");
-        mdv_topology_release(ab_topology);
-        mdv_topology_release(ba_topology);
-        mdv_rollback(rollbacker);
-        return 0;
-    }
-
-    delta->ab = ab_topology;
-    delta->ba = ba_topology;
-
     mdv_rollback(rollbacker);
 
-    return delta;
-}
-
-
-void mdv_topology_delta_free(mdv_topology_delta *delta)
-{
-    if (delta && delta != &mdv_empty_topology_delta)
-    {
-        mdv_topology_release(delta->ab);
-        mdv_topology_release(delta->ba);
-        mdv_free(delta, "topology_delta");
-    }
+    return ab_topology;
 }
 
 
@@ -355,11 +344,6 @@ mdv_topology * mdv_topology_create(mdv_vector *nodes,
     topology->nodes = mdv_vector_retain(nodes);
     topology->links = mdv_vector_retain(links);
     topology->extradata = mdv_vector_retain(extradata);
-
-    qsort(mdv_vector_data(links),
-          mdv_vector_size(links),
-          sizeof(mdv_topolink),
-          (int (*)(const void *, const void *))&mdv_link_cmp);
 
     return topology;
 }

@@ -533,9 +533,8 @@ bool mdv_topology_serialize(mdv_topology *topology, binn *obj)
     mdv_vector_foreach(toponodes, mdv_toponode, toponode)
     {
         binn node;
-        uint8_t tmp[64];
 
-        if (!binn_create(&node, BINN_OBJECT, sizeof tmp, tmp))
+        if (!binn_create_object(&node))
         {
             MDV_LOGE("binn_topology failed");
             mdv_rollback(rollbacker);

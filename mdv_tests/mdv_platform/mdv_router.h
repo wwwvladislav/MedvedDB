@@ -99,18 +99,16 @@ MU_TEST(platform_router)
 
     for(size_t i = 0; i < sizeof nodes / sizeof *nodes; ++i)
     {
-        mdv_vector *mstroutes = mdv_routes_find(topology, &nodes[i].uuid);
+        mdv_hashmap *mstroutes = mdv_routes_find(topology, &nodes[i].uuid);
 
         uint32_t j = 0;
 
         for(uint32_t n = routes[i][j]; n != 0xff; n = routes[i][++j])
-            mu_check(mdv_uuid_cmp(
-                        mdv_vector_at(mstroutes, j),
-                        &nodes[routes[i][j]].uuid) == 0);
+            mu_check(mdv_hashmap_find(mstroutes, &nodes[routes[i][j]].uuid));
 
-        mu_check(mdv_vector_size(mstroutes) == j);
+        mu_check(mdv_hashmap_size(mstroutes) == j);
 
-        mdv_vector_release(mstroutes);
+        mdv_hashmap_release(mstroutes);
     }
 
     mdv_topology_release(topology);

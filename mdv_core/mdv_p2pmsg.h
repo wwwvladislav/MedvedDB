@@ -2,7 +2,7 @@
 #include <mdv_messages.h>
 #include <mdv_topology.h>
 #include <mdv_list.h>
-#include <mdv_vector.h>
+#include <mdv_hashmap.h>
 
 
 /*
@@ -82,9 +82,10 @@ mdv_message_def(p2p_cfslog_data, 1000 + 7,
 
 
 mdv_message_def(p2p_broadcast, 1000 + 8,
-    uint32_t    size;               ///< Data size for broadcasing
-    void       *data;               ///< Data for broadcasing
-    mdv_vector *notified;           ///< Notified nodes UUIDs
+    uint16_t     msg_id;            ///< Message identifier
+    uint32_t     size;              ///< Data size for broadcasing
+    void        *data;              ///< Data for broadcasing
+    mdv_hashmap *notified;          ///< Notified nodes UUIDs
 );
 
 

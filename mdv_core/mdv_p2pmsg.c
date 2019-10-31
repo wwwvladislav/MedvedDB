@@ -462,7 +462,7 @@ bool mdv_binn_p2p_broadcast(mdv_msg_p2p_broadcast const *msg, binn *obj)
         return false;
     }
 
-    mdv_vector_foreach(msg->notified, mdv_uuid, entry)
+    mdv_hashmap_foreach(msg->notified, mdv_uuid, entry)
     {
         binn uuid;
         uint8_t tmp[64];
@@ -496,8 +496,9 @@ bool mdv_binn_p2p_broadcast(mdv_msg_p2p_broadcast const *msg, binn *obj)
     }
 
     if (0
-        || !binn_object_set_blob(obj, "D", msg->data, (int)msg->size)
-        || !binn_object_set_list(obj, "N", &notified))
+        || !binn_object_set_uint16(obj, "M", msg->msg_id)
+        || !binn_object_set_blob(obj,   "D", msg->data, (int)msg->size)
+        || !binn_object_set_list(obj,   "N", &notified))
     {
         MDV_LOGE("binn_p2p_broadcast failed");
         binn_free(obj);
@@ -518,8 +519,9 @@ bool mdv_unbinn_p2p_broadcast(binn const *obj, mdv_msg_p2p_broadcast *msg)
     binn *notified = 0;
 
     if (0
-        || !binn_object_get_blob((void*)obj, "D", &msg->data, &size)
-        || !binn_object_get_list((void*)obj, "N", (void**)&notified))
+        || !binn_object_get_uint16((void*)obj, "M", &msg->msg_id)
+        || !binn_object_get_blob((void*)obj,   "D", &msg->data, &size)
+        || !binn_object_get_list((void*)obj,   "N", (void**)&notified))
     {
         MDV_LOGE("unbinn_p2p_broadcast failed");
         return false;
@@ -548,7 +550,7 @@ bool mdv_unbinn_p2p_broadcast(binn const *obj, mdv_msg_p2p_broadcast *msg)
             return false;
         }
 
-        if (!mdv_vector_push_back(msg->notified, &uuid))
+        if (!mdv_hashmap_insert(msg->notified, &uuid, sizeof uuid))
         {
             MDV_LOGE("unbinn_p2p_broadcast failed");
             return false;

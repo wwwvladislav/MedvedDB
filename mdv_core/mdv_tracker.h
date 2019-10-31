@@ -24,7 +24,7 @@ typedef struct mdv_tracker mdv_tracker;
 
 
 /**
- * @brief Create new topology tracker
+ * @brief Creates new topology tracker
  *
  * @param uuid [in]     Global unique identifier for current node
  * @param storage [in]  Nodes storage

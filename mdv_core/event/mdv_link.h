@@ -32,22 +32,3 @@ mdv_evt_link_state * mdv_evt_link_state_create(
 mdv_evt_link_state * mdv_evt_link_state_retain(mdv_evt_link_state *evt);
 uint32_t             mdv_evt_link_state_release(mdv_evt_link_state *evt);
 
-
-typedef struct
-{
-    mdv_event       base;
-    mdv_hashmap    *routes;     ///< Routes for broadcasting
-    mdv_uuid        from;       ///< Node UUID from which the event was received
-    mdv_toponode    src;        ///< First node
-    mdv_toponode    dst;        ///< Second node
-    bool            connected;  ///< Link state
-} mdv_evt_link_state_broadcast;
-
-mdv_evt_link_state_broadcast * mdv_evt_link_state_broadcast_create(
-                                                mdv_hashmap        *routes,
-                                                mdv_uuid const     *from,
-                                                mdv_toponode const *src,
-                                                mdv_toponode const *dst,
-                                                bool                connected);
-mdv_evt_link_state_broadcast * mdv_evt_link_state_broadcast_retain(mdv_evt_link_state_broadcast *evt);
-uint32_t                       mdv_evt_link_state_broadcast_release(mdv_evt_link_state_broadcast *evt);

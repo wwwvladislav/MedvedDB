@@ -9,6 +9,7 @@
 #pragma once
 #include "mdv_uuid.h"
 #include "mdv_vector.h"
+#include "mdv_hashmap.h"
 
 
 /// Node description
@@ -103,3 +104,13 @@ mdv_vector * mdv_topology_extradata(mdv_topology *topology);
  */
 mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_topology *b);
 
+
+/**
+ * @brief Returns neighbours UUIDs for given node.
+ *
+ * @param topology [in] network topology
+ * @param node [in]     node uuid
+ *
+ * @return neighbours UUIDs for given node.
+ */
+mdv_hashmap * mdv_topology_peers(mdv_topology *topology, mdv_uuid const *node);

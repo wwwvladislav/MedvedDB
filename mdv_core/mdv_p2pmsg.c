@@ -533,6 +533,19 @@ bool mdv_unbinn_p2p_broadcast(binn const *obj, mdv_msg_p2p_broadcast *msg)
         return false;
     }
 
+    msg->notified = _mdv_hashmap_create(
+                                1,
+                                0,
+                                sizeof(mdv_uuid),
+                                (mdv_hash_fn)mdv_uuid_hash,
+                                (mdv_key_cmp_fn)mdv_uuid_cmp);
+
+    if (!msg->notified)
+    {
+        MDV_LOGE("unbinn_p2p_broadcast failed. No memory.");
+        return false;
+    }
+
     msg->size = size;
 
     binn_iter iter = {};
@@ -559,4 +572,5 @@ bool mdv_unbinn_p2p_broadcast(binn const *obj, mdv_msg_p2p_broadcast *msg)
 
     return true;
 }
+
 

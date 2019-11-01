@@ -10,6 +10,7 @@
  */
 #pragma once
 #include <mdv_ebus.h>
+#include <mdv_uuid.h>
 
 
 ///< Message broadcaster
@@ -20,11 +21,12 @@ typedef struct mdv_broadcaster mdv_broadcaster;
  * @brief Creates new message broadcaster
  *
  * @param ebus [in]     Events bus
+ * @param uuid [in]     Current node UUID
  *
  * @return On success, return non-null pointer to message broadcaster
  * @return On error, return NULL
  */
-mdv_broadcaster * mdv_broadcaster_create(mdv_ebus *ebus);
+mdv_broadcaster * mdv_broadcaster_create(mdv_ebus *ebus, mdv_uuid const *uuid);
 
 
 /**

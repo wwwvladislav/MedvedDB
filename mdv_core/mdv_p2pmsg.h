@@ -6,20 +6,20 @@
 
 
 /*
-    P1                                  P2
-    |                                   |
-    | HELLO >>>>>                       |   Handshake
-    |                       <<<<< HELLO |
-    |                                   |
-    |                                   |
-    | TOPOLOGY SYNC >>>>>               |   Network topology synchronization. Send topology.
-    |               <<<<< TOPOLOGY DIFF |
-    |                                   |
-    |                                   |
-    | CFSLOG SYNC >>>>>                 |   Storage synchronization request.
-    |       <<<<< CFSLOG STATE / STATUS |   Last transaction log record identifier.
-    | CFSLOG DATA >>>>>                 |   Transaction log records.
-    |                      <<<<< STATUS |
+    P1                                    P2
+    |                                     |
+    | HELLO >>>>>                         |   Handshake
+    |                         <<<<< HELLO |
+    |                                     |
+    |                                     |
+    | TOPOLOGY SYNC >>>>>                 |   Network topology synchronization. Send topology.
+    |       <<<<< BROADCAST TOPOLOGY DIFF |
+    |                                     |
+    |                                     |
+    | CFSLOG SYNC >>>>>                   |   Storage synchronization request.
+    |         <<<<< CFSLOG STATE / STATUS |   Last transaction log record identifier.
+    | CFSLOG DATA >>>>>                   |   Transaction log records.
+    |                        <<<<< STATUS |
  */
 
 

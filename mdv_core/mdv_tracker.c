@@ -1,9 +1,11 @@
 #include "mdv_tracker.h"
+#include "mdv_p2pmsg.h"
 #include "storage/mdv_nodes.h"
 #include "event/mdv_types.h"
 #include "event/mdv_link.h"
 #include "event/mdv_topology.h"
 #include "event/mdv_routes.h"
+#include "event/mdv_broadcast.h"
 #include "mdv_config.h"
 #include <mdv_limits.h>
 #include <mdv_log.h>
@@ -300,47 +302,19 @@ static mdv_errno mdv_tracker_evt_link_state(void *arg, mdv_event *event)
         MDV_LOGE("Routes calculation failed");
     }
 
-    bool const is_current_node_connected =
-        mdv_uuid_cmp(&tracker->uuid, &link_state->from) == 0;
-
     bool const is_current_node_connection_initiated =
         mdv_uuid_cmp(&tracker->uuid, &link_state->from) == 0
         && mdv_uuid_cmp(&tracker->uuid, &link_state->src.uuid) == 0;
 
-#if 0
-
-1          5
-| \      / |
-|  3 -> 4  |
-| /      \ |
-2          6
-
-    3      - connect ->       4
-hello         ->
-              <-            hello
-linkstate                  linkstate
-topo sync     ->  <-       topo sync
-
-use gossip and 2p set for active links set
-session id - should be unique link identifier
-
-1 -> 3 - 4
-|   /
-|  /
-| /
-2
-
-#endif
-
-    if (is_current_node_connected && routes)
+    if (is_current_node_connection_initiated && topology)
     {
         if (link_state->connected)
         {
             // Topology synchronization
             mdv_evt_topology_sync *evt = mdv_evt_topology_sync_create(
-                                                &link_state->from,
-                                                topology,
-                                                routes);
+                                                &tracker->uuid,
+                                                &link_state->dst.uuid,
+                                                topology);
 
             if (evt)
             {
@@ -360,6 +334,7 @@ session id - should be unique link identifier
         }
         else
         {
+/*
             // Link state broadcasting
             mdv_evt_link_state_broadcast *evt = mdv_evt_link_state_broadcast_create(
                                                     routes,
@@ -383,6 +358,7 @@ session id - should be unique link identifier
                 err = MDV_FAILED;
                 MDV_LOGE("Link state broadcasting failed");
             }
+*/
         }
     }
 
@@ -393,11 +369,154 @@ session id - should be unique link identifier
 }
 
 
+static mdv_errno mdv_tracker_topology_broadcast(
+                                mdv_tracker    *tracker,
+                                mdv_uuid const *segment_gw,
+                                bool            current_segment,
+                                mdv_topology   *diff,
+                                mdv_hashmap    *peers)
+{
+    mdv_hashmap *dst = _mdv_hashmap_create(
+                                1,
+                                0,
+                                sizeof(mdv_uuid),
+                                (mdv_hash_fn)mdv_uuid_hash,
+                                (mdv_key_cmp_fn)mdv_uuid_cmp);
+
+    if (!dst)
+    {
+        MDV_LOGE("Topology broadcasting request failed. No memory.");
+        return MDV_NO_MEM;
+    }
+
+    if(current_segment)
+    {
+        mdv_hashmap_foreach(peers, mdv_uuid, uuid)
+        {
+            if (mdv_uuid_cmp(uuid, segment_gw) == 0)
+            {
+                if (!mdv_hashmap_insert(dst, uuid, sizeof *uuid))
+                {
+                    MDV_LOGE("Topology broadcasting request failed. No memory.");
+                    mdv_hashmap_release(dst);
+                    return MDV_NO_MEM;
+                }
+            }
+        }
+    }
+    else
+    {
+        if (!mdv_hashmap_insert(dst, segment_gw, sizeof *segment_gw))
+        {
+            MDV_LOGE("Topology broadcasting request failed. No memory.");
+            mdv_hashmap_release(dst);
+            return MDV_NO_MEM;
+        }
+    }
+
+    mdv_msg_p2p_topodiff const topodiff = { diff };
+
+    binn obj;
+
+    mdv_errno err = MDV_FAILED;
+
+    if (mdv_binn_p2p_topodiff(&topodiff, &obj))
+    {
+        mdv_evt_broadcast_post *evt = mdv_evt_broadcast_post_create(
+                                                        mdv_message_id(p2p_topodiff),
+                                                        binn_size(&obj),
+                                                        binn_ptr(&obj),
+                                                        peers,
+                                                        dst);
+
+        if (evt)
+        {
+            err = mdv_ebus_publish(tracker->ebus, &evt->base, MDV_EVT_DEFAULT);
+            mdv_evt_broadcast_post_release(evt);
+        }
+
+        binn_free(&obj);
+    }
+
+    if (err != MDV_OK)
+        MDV_LOGE("Topology broadcasting request failed");
+
+    mdv_hashmap_release(dst);
+
+    return err;
+}
+
+
+static mdv_errno mdv_tracker_evt_topology_sync(void *arg, mdv_event *event)
+{
+    mdv_tracker *tracker = arg;
+    mdv_evt_topology_sync *evt = (mdv_evt_topology_sync *)event;
+
+    if(mdv_uuid_cmp(&tracker->uuid, &evt->to) != 0)
+        return MDV_OK;
+
+    mdv_topology *topology = mdv_tracker_topology(tracker);
+
+    if (!topology)
+    {
+        MDV_LOGE("Topology calculation failed");
+        return MDV_FAILED;
+    }
+
+    mdv_hashmap *peers = mdv_topology_peers(topology, &tracker->uuid);
+
+    if (!peers)
+    {
+        MDV_LOGE("No memory for peers map");
+        mdv_topology_release(topology);
+        return MDV_FAILED;
+    }
+
+    mdv_errno ret = MDV_OK;
+
+    // Topologies difference synchronization
+    {
+        // Network segment of current node
+        mdv_topology *diff = mdv_topology_diff(evt->topology, topology);
+
+        if (diff && diff != &mdv_empty_topology)
+        {
+            mdv_errno err = mdv_tracker_topology_broadcast(tracker, &evt->from, true, diff, peers);
+
+            if (err != MDV_OK)
+                ret = err;
+
+            mdv_topology_release(diff);
+        }
+    }
+
+    {
+        // Network segment of remote peer
+        mdv_topology *diff = mdv_topology_diff(topology, evt->topology);
+
+        if (diff && diff != &mdv_empty_topology)
+        {
+            mdv_errno err = mdv_tracker_topology_broadcast(tracker, &evt->from, false, diff, peers);
+
+            if (err != MDV_OK)
+                ret = err;
+
+            mdv_topology_release(diff);
+        }
+    }
+
+    mdv_hashmap_release(peers);
+    mdv_topology_release(topology);
+
+    return ret;
+}
+
+
 static mdv_errno mdv_tracker_evt_topology(void *arg, mdv_event *event)
 {
     mdv_tracker *tracker = arg;
     mdv_evt_topology *evt = (mdv_evt_topology *)event;
-
+/*
     mdv_topology *topology = mdv_tracker_topology(tracker);
 
     if (!topology)
@@ -408,27 +527,20 @@ static mdv_errno mdv_tracker_evt_topology(void *arg, mdv_event *event)
 
     mdv_hashmap *routes = mdv_routes_find(topology, &tracker->uuid);
 
-    // Topologies difference calculation
-    mdv_topology *diff = mdv_topology_diff(topology, evt->topology);
-
-    if (diff)
-    {
-        // TODO
-
-        mdv_topology_release(diff);
-    }
 
     mdv_hashmap_release(routes);
     mdv_topology_release(topology);
-
+*/
     return MDV_OK;
 }
 
 
+
 static const mdv_event_handler_type mdv_tracker_handlers[] =
 {
-    { MDV_EVT_LINK_STATE, mdv_tracker_evt_link_state },
-    { MDV_EVT_TOPOLOGY,   mdv_tracker_evt_topology }
+    { MDV_EVT_LINK_STATE,       mdv_tracker_evt_link_state },
+    { MDV_EVT_TOPOLOGY_SYNC,    mdv_tracker_evt_topology_sync },
+    { MDV_EVT_TOPOLOGY,         mdv_tracker_evt_topology },
 };
 
 

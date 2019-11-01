@@ -10,14 +10,15 @@
 struct mdv_broadcaster
 {
     atomic_uint_fast32_t    rc;             ///< References counter
+    mdv_uuid                uuid;           ///< Current node uuid
     mdv_ebus               *ebus;           ///< Events bus
 };
 
 
-static mdv_errno mdv_broadcaster_evt_handler(void *arg, mdv_event *event)
+static mdv_errno mdv_broadcaster_evt_broadcast(void *arg, mdv_event *event)
 {
     mdv_broadcaster *broadcaster = arg;
-    mdv_evt_broadcast *broadcast = (mdv_evt_broadcast *)event;
+    mdv_evt_broadcast *evt = (mdv_evt_broadcast *)event;
 
     mdv_errno err = MDV_FAILED;
 
@@ -27,11 +28,11 @@ static mdv_errno mdv_broadcaster_evt_handler(void *arg, mdv_event *event)
 
 static const mdv_event_handler_type mdv_broadcaster_handlers[] =
 {
-    { MDV_EVT_BROADCAST, mdv_broadcaster_evt_handler },
+    { MDV_EVT_BROADCAST, mdv_broadcaster_evt_broadcast },
 };
 
 
-mdv_broadcaster * mdv_broadcaster_create(mdv_ebus *ebus)
+mdv_broadcaster * mdv_broadcaster_create(mdv_ebus *ebus, mdv_uuid const *uuid)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
@@ -48,6 +49,7 @@ mdv_broadcaster * mdv_broadcaster_create(mdv_ebus *ebus)
 
     atomic_init(&broadcaster->rc, 1);
 
+    broadcaster->uuid = *uuid;
     broadcaster->ebus = mdv_ebus_retain(ebus);
 
     mdv_rollbacker_push(rollbacker, mdv_ebus_release, broadcaster->ebus);

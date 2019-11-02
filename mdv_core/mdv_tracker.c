@@ -535,12 +535,36 @@ static mdv_errno mdv_tracker_evt_topology(void *arg, mdv_event *event)
 }
 
 
+static mdv_errno mdv_tracker_evt_broadcast(void *arg, mdv_event *event)
+{
+    mdv_tracker *tracker = arg;
+    mdv_evt_broadcast *evt = (mdv_evt_broadcast *)event;
+
+    mdv_errno err = MDV_FAILED;
+
+    switch(evt->msg_id)
+    {
+        case mdv_message_id(p2p_topodiff):
+        {
+            // TODO
+            break;
+        }
+
+        default:
+            MDV_LOGE("Unsupported event type was broadcasted");
+            break;
+    }
+
+    return err;
+}
+
 
 static const mdv_event_handler_type mdv_tracker_handlers[] =
 {
     { MDV_EVT_LINK_STATE,       mdv_tracker_evt_link_state },
     { MDV_EVT_TOPOLOGY_SYNC,    mdv_tracker_evt_topology_sync },
     { MDV_EVT_TOPOLOGY,         mdv_tracker_evt_topology },
+    { MDV_EVT_BROADCAST,        mdv_tracker_evt_broadcast },
 };
 
 

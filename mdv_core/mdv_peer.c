@@ -446,19 +446,19 @@ static mdv_errno mdv_peer_broadcast_handler(mdv_msg const *msg, void *arg)
 
     mdv_rollbacker_push(rollbacker, mdv_hashmap_release, req.notified);
 
-    // TODO
-/*
-    mdv_evt_topology_sync *event = mdv_evt_topology_sync_create(
+    mdv_evt_broadcast *event = mdv_evt_broadcast_create(
                                             &peer->peer_uuid,
-                                            &peer->uuid,
-                                            req.topology);
+                                            req.msg_id,
+                                            req.size,
+                                            req.data,
+                                            req.notified);
 
     if (event)
     {
         mdv_ebus_publish(peer->ebus, &event->base, MDV_EVT_DEFAULT);
-        mdv_evt_topology_sync_release(event);
+        mdv_evt_broadcast_release(event);
     }
-*/
+
     mdv_rollback(rollbacker);
 
     return MDV_OK;

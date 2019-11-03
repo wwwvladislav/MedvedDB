@@ -434,6 +434,11 @@ static mdv_errno mdv_tracker_topology_broadcast(
             err = mdv_ebus_publish(tracker->ebus, &evt->base, MDV_EVT_DEFAULT);
             mdv_evt_broadcast_post_release(evt);
         }
+        else
+        {
+            err = MDV_NO_MEM;
+            MDV_LOGE("No memory for broadcast message");
+        }
 
         binn_free(&obj);
     }
@@ -512,29 +517,6 @@ static mdv_errno mdv_tracker_evt_topology_sync(void *arg, mdv_event *event)
 }
 
 
-static mdv_errno mdv_tracker_evt_topology(void *arg, mdv_event *event)
-{
-    mdv_tracker *tracker = arg;
-    mdv_evt_topology *evt = (mdv_evt_topology *)event;
-/*
-    mdv_topology *topology = mdv_tracker_topology(tracker);
-
-    if (!topology)
-    {
-        MDV_LOGE("Topology calculation failed");
-        return MDV_FAILED;
-    }
-
-    mdv_hashmap *routes = mdv_routes_find(topology, &tracker->uuid);
-
-
-    mdv_hashmap_release(routes);
-    mdv_topology_release(topology);
-*/
-    return MDV_OK;
-}
-
-
 static mdv_errno mdv_tracker_evt_broadcast(void *arg, mdv_event *event)
 {
     mdv_tracker *tracker = arg;
@@ -555,6 +537,65 @@ static mdv_errno mdv_tracker_evt_broadcast(void *arg, mdv_event *event)
             break;
     }
 
+    mdv_topology *topology = mdv_tracker_topology(tracker);
+
+    if (!topology)
+    {
+        MDV_LOGE("Topology calculation failed");
+        return MDV_FAILED;
+    }
+
+    mdv_hashmap *peers = mdv_topology_peers(topology, &tracker->uuid);
+
+    if (peers)
+    {
+        mdv_hashmap_foreach(evt->notified, mdv_uuid, entry)
+            mdv_hashmap_erase(peers, entry);
+
+        if (mdv_hashmap_size(peers))
+        {
+            mdv_hashmap_foreach(peers, mdv_uuid, entry)
+            {
+                if (!mdv_hashmap_insert(evt->notified, entry, sizeof *entry))
+                {
+                    MDV_LOGE("No memory for notified peers");
+                    err = MDV_NO_MEM;
+                    break;
+                }
+            }
+
+            if (err == MDV_OK)
+            {
+                mdv_evt_broadcast_post *broadcast_post = mdv_evt_broadcast_post_create(
+                                                evt->msg_id,
+                                                evt->size,
+                                                evt->data,
+                                                evt->notified,
+                                                peers);
+
+                if (broadcast_post)
+                {
+                    err = mdv_ebus_publish(tracker->ebus, &broadcast_post->base, MDV_EVT_DEFAULT);
+                    mdv_evt_broadcast_post_release(broadcast_post);
+                }
+                else
+                {
+                    err = MDV_NO_MEM;
+                    MDV_LOGE("No memory for broadcast message");
+                }
+            }
+        }
+
+        mdv_hashmap_release(peers);
+    }
+    else
+    {
+        MDV_LOGE("Peers searching failed");
+        err = MDV_FAILED;
+    }
+
+    mdv_topology_release(topology);
+
     return err;
 }
 
@@ -563,7 +604,6 @@ static const mdv_event_handler_type mdv_tracker_handlers[] =
 {
     { MDV_EVT_LINK_STATE,       mdv_tracker_evt_link_state },
     { MDV_EVT_TOPOLOGY_SYNC,    mdv_tracker_evt_topology_sync },
-    { MDV_EVT_TOPOLOGY,         mdv_tracker_evt_topology },
     { MDV_EVT_BROADCAST,        mdv_tracker_evt_broadcast },
 };
 

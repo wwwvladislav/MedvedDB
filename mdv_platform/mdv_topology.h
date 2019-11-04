@@ -97,12 +97,15 @@ mdv_vector * mdv_topology_extradata(mdv_topology *topology);
  * @brief Topologies difference calculation (i.e. {a} - {b})
  * @details Links should be sorted in ascending order.
  *
- * @param a [in] first topology
- * @param b [in] second topology
+ * @param a [in]        first topology
+ * @param nodea [in]    uuid node where the first topology was obtained
+ * @param b [in]        second topology
+ * @param nodeb [in]    uuid node where the second topology was obtained
  *
  * @return topologies difference
  */
-mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_topology *b);
+mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_uuid const *nodea,
+                                 mdv_topology *b, mdv_uuid const *nodeb);
 
 
 /**
@@ -114,3 +117,4 @@ mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_topology *b);
  * @return neighbours UUIDs for given node.
  */
 mdv_hashmap * mdv_topology_peers(mdv_topology *topology, mdv_uuid const *node);
+

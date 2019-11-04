@@ -45,7 +45,9 @@ static mdv_vector * mdv_topology_linked_nodes(mdv_vector *topolinks, mdv_vector 
     *extrasize = 0;
 
     if (mdv_vector_empty(topolinks))
-        return &mdv_empty_vector;
+        return mdv_vector_create(1,
+                                 sizeof(mdv_toponode),
+                                 &mdv_default_allocator);
 
     uint32_t *node_idxs = mdv_stalloc(sizeof(uint32_t) * mdv_vector_size(toponodes), "node_idxs");
 
@@ -72,7 +74,7 @@ static mdv_vector * mdv_topology_linked_nodes(mdv_vector *topolinks, mdv_vector 
     }
 
     mdv_vector *linked_nodes = mdv_vector_create(
-                                    nodes_count,
+                                    nodes_count + 1,
                                     sizeof(mdv_toponode),
                                     &mdv_default_allocator);
 
@@ -104,6 +106,57 @@ static mdv_vector * mdv_topology_linked_nodes(mdv_vector *topolinks, mdv_vector 
     mdv_stfree(node_idxs, "node_idxs");
 
     return linked_nodes;
+}
+
+
+static bool mdv_toponode_equ(void const *a, void const *b)
+{
+    mdv_toponode const *lnode = a;
+    mdv_toponode const *rnode = b;
+    return mdv_uuid_cmp(&lnode->uuid, &rnode->uuid) == 0;
+}
+
+
+static bool mdv_topology_linked_node_append(mdv_vector *topolinks,
+                                            mdv_vector *toponodes,
+                                            size_t *extrasize,
+                                            mdv_toponode const *lnodes[2],
+                                            uint32_t lweight)
+{
+    uint32_t lnode_idx = 0;
+    uint32_t rnode_idx = 0;
+
+    mdv_toponode const *lnode = mdv_vector_find(toponodes, lnodes[0], mdv_toponode_equ);
+    if (lnode)
+        lnode_idx = lnode - (mdv_toponode const *)mdv_vector_data(toponodes);
+
+    mdv_toponode const *rnode = mdv_vector_find(toponodes, lnodes[1], mdv_toponode_equ);
+    if (rnode)
+        rnode_idx = rnode - (mdv_toponode const *)mdv_vector_data(toponodes);
+
+    if(!lnode)
+    {
+        lnode_idx = mdv_vector_size(toponodes);
+        if (!mdv_vector_push_back(toponodes, lnodes[0]))
+            return false;
+        *extrasize += strlen(lnodes[0]->addr) + 1;
+    }
+
+    if(!rnode)
+    {
+        rnode_idx = mdv_vector_size(toponodes);
+        if (!mdv_vector_push_back(toponodes, lnodes[1]))
+            return false;
+        *extrasize += strlen(lnodes[1]->addr) + 1;
+    }
+
+    mdv_topolink const link =
+    {
+        .node = { lnode_idx, rnode_idx },
+        .weight = lweight
+    };
+
+    return mdv_vector_push_back(topolinks, &link);
 }
 
 
@@ -229,15 +282,16 @@ mdv_hashmap * mdv_topology_links_map(mdv_topology *topology)
 }
 
 
-mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_topology *b)
+mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_uuid const *nodea,
+                                 mdv_topology *b, mdv_uuid const *nodeb)
 {
-    if (mdv_vector_empty(a->links)
-        && mdv_vector_empty(b->links))
+    if (mdv_vector_empty(a->links))     // a -> { b, ... }
         return &mdv_empty_topology;
-    else if (mdv_vector_empty(a->links))
-        return &mdv_empty_topology;
-    else if (mdv_vector_empty(b->links))
+
+    if (mdv_vector_empty(b->links))     // { a, ... } -> b
         return mdv_topology_retain(a);
+
+    // { a, ... } -> { b, ... }
 
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
@@ -252,7 +306,7 @@ mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_topology *b)
 
     mdv_rollbacker_push(rollbacker, mdv_hashmap_release, blinks);
 
-    mdv_vector *ab_links = mdv_vector_create(mdv_vector_size(a->links),
+    mdv_vector *ab_links = mdv_vector_create(mdv_vector_size(a->links) + 1,
                                              sizeof(mdv_topolink),
                                              &mdv_default_allocator);
 
@@ -264,6 +318,8 @@ mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_topology *b)
     }
 
     mdv_rollbacker_push(rollbacker, mdv_vector_release, ab_links);
+
+    bool ab_link_added = false;
 
     // {a} - {b} calculation
     mdv_vector_foreach(a->links, mdv_topolink, link)
@@ -280,13 +336,45 @@ mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_topology *b)
             }
         };
 
+        if (!ab_link_added)
+        {
+            if ((mdv_uuid_cmp(nodea, &lnode->uuid) == 0 && mdv_uuid_cmp(nodeb, &rnode->uuid) == 0) ||
+                (mdv_uuid_cmp(nodea, &rnode->uuid) == 0 && mdv_uuid_cmp(nodeb, &lnode->uuid) == 0))
+            {
+                mdv_vector_push_back(ab_links, link);
+                ab_link_added = true;
+                continue;
+            }
+        }
+
         if (!mdv_hashmap_find(blinks, &l.node))
             mdv_vector_push_back(ab_links, link);
     }
 
+    mdv_toponode const *lnodes[2] = { 0, 0 };
+    uint32_t lweight = 0;
+
+    if (!ab_link_added)
+    {
+        mdv_vector_foreach(b->links, mdv_topolink, link)
+        {
+            mdv_toponode const *lnode = mdv_vector_at(b->nodes, link->node[0]);
+            mdv_toponode const *rnode = mdv_vector_at(b->nodes, link->node[1]);
+
+            if ((mdv_uuid_cmp(nodea, &lnode->uuid) == 0 && mdv_uuid_cmp(nodeb, &rnode->uuid) == 0) ||
+                (mdv_uuid_cmp(nodea, &rnode->uuid) == 0 && mdv_uuid_cmp(nodeb, &lnode->uuid) == 0))
+            {
+                lnodes[0] = lnode;
+                lnodes[1] = rnode;
+                lweight = link->weight;
+                break;
+            }
+        }
+    }
+
     uint32_t const ab_size = mdv_vector_size(ab_links);
 
-    if (!ab_size)
+    if (!ab_size && !lnodes[0])
     {
         mdv_rollback(rollbacker);
         return &mdv_empty_topology;
@@ -294,6 +382,7 @@ mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_topology *b)
 
     // {a} - {b} nodes
     size_t ab_extrasize;
+
     mdv_vector *ab_nodes = mdv_topology_linked_nodes(ab_links, a->nodes, &ab_extrasize);
 
     if (!ab_nodes)
@@ -304,6 +393,14 @@ mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_topology *b)
     }
 
     mdv_rollbacker_push(rollbacker, mdv_vector_release, ab_nodes);
+
+    if (!ab_link_added
+        && !mdv_topology_linked_node_append(ab_links, ab_nodes, &ab_extrasize, lnodes, lweight))
+    {
+        MDV_LOGE("no memory for network topology delta");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
 
     // {a} - {b} nodes extra data
     mdv_vector *ab_extradata = mdv_topology_nodes_extradata(ab_nodes, ab_extrasize);

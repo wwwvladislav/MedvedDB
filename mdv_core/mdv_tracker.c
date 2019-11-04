@@ -393,7 +393,7 @@ static mdv_errno mdv_tracker_topology_broadcast(
     {
         mdv_hashmap_foreach(peers, mdv_uuid, uuid)
         {
-            if (mdv_uuid_cmp(uuid, segment_gw) == 0)
+            if (mdv_uuid_cmp(uuid, segment_gw) != 0)
             {
                 if (!mdv_hashmap_insert(dst, uuid, sizeof *uuid))
                 {
@@ -482,7 +482,8 @@ static mdv_errno mdv_tracker_evt_topology_sync(void *arg, mdv_event *event)
     // Topologies difference synchronization
     {
         // Network segment of current node
-        mdv_topology *diff = mdv_topology_diff(evt->topology, topology);
+        mdv_topology *diff = mdv_topology_diff(evt->topology, &evt->from,
+                                               topology,      &evt->to);
 
         if (diff && diff != &mdv_empty_topology)
         {
@@ -497,7 +498,8 @@ static mdv_errno mdv_tracker_evt_topology_sync(void *arg, mdv_event *event)
 
     {
         // Network segment of remote peer
-        mdv_topology *diff = mdv_topology_diff(topology, evt->topology);
+        mdv_topology *diff = mdv_topology_diff(topology,      &evt->to,
+                                               evt->topology, &evt->from);
 
         if (diff && diff != &mdv_empty_topology)
         {

@@ -532,7 +532,7 @@ static mdv_errno mdv_tracker_evt_broadcast(void *arg, mdv_event *event)
     mdv_tracker *tracker = arg;
     mdv_evt_broadcast *evt = (mdv_evt_broadcast *)event;
 
-    mdv_errno err = MDV_FAILED;
+    mdv_errno err = MDV_OK;
 
     switch(evt->msg_id)
     {

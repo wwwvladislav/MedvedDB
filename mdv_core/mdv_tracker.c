@@ -477,6 +477,14 @@ static mdv_errno mdv_tracker_evt_topology_sync(void *arg, mdv_event *event)
         return MDV_FAILED;
     }
 
+    if (!mdv_hashmap_insert(peers, &tracker->uuid, sizeof tracker->uuid))
+    {
+        MDV_LOGE("No memory for peers map");
+        mdv_topology_release(topology);
+        mdv_hashmap_release(peers);
+        return MDV_FAILED;
+    }
+
     mdv_errno ret = MDV_OK;
 
     // Topologies difference synchronization

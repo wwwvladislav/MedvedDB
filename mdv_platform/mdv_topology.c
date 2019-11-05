@@ -524,14 +524,24 @@ mdv_hashmap * mdv_topology_peers(mdv_topology *topology, mdv_uuid const *node)
             mdv_toponode const *lnode = mdv_vector_at(topology->nodes, link->node[0]);
             mdv_toponode const *rnode = mdv_vector_at(topology->nodes, link->node[1]);
 
-            if (!mdv_hashmap_insert(peers, &lnode->uuid, sizeof(mdv_uuid))
-                || !mdv_hashmap_insert(peers, &rnode->uuid, sizeof(mdv_uuid)))
+            if (mdv_uuid_cmp(node, &lnode->uuid) == 0)
             {
-                MDV_LOGE("No memory for peers");
-                mdv_hashmap_release(peers);
-                return 0;
+                if (!mdv_hashmap_insert(peers, &rnode->uuid, sizeof(mdv_uuid)))
+                {
+                    MDV_LOGE("No memory for peers");
+                    mdv_hashmap_release(peers);
+                    return 0;
+                }
             }
-
+            else if (mdv_uuid_cmp(node, &rnode->uuid) == 0)
+            {
+                if (!mdv_hashmap_insert(peers, &lnode->uuid, sizeof(mdv_uuid)))
+                {
+                    MDV_LOGE("No memory for peers");
+                    mdv_hashmap_release(peers);
+                    return 0;
+                }
+            }
         }
     }
 

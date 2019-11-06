@@ -54,11 +54,11 @@ static mdv_errno mdv_conman_ctx_select(mdv_descriptor fd, uint8_t *type)
  * @return On success, return new connection context
  * @return On error, return NULL pointer
  */
-static void * mdv_conman_ctx_create(mdv_descriptor fd,
+static void * mdv_conman_ctx_create(mdv_descriptor    fd,
                                     mdv_string const *addr,
-                                    void *userdata,
-                                    uint8_t type,
-                                    mdv_channel_dir dir)
+                                    void             *userdata,
+                                    uint8_t           type,
+                                    mdv_channel_dir   dir)
 {
     (void)addr;
 
@@ -81,7 +81,7 @@ static void * mdv_conman_ctx_create(mdv_descriptor fd,
     switch(type)
     {
         case MDV_CTX_USER:
-            conctx = mdv_user_create(fd);
+            conctx = mdv_user_create(fd, conman->ebus, );
             break;
 
         case MDV_CTX_PEER:

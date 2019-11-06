@@ -3,8 +3,7 @@
 #include <mdv_log.h>
 
 
-mdv_evt_topology * mdv_evt_topology_create(mdv_uuid const *from,
-                                           mdv_topology   *topology)
+mdv_evt_topology * mdv_evt_topology_create(mdv_topology *topology)
 {
     static mdv_ievent vtbl =
     {
@@ -20,7 +19,6 @@ mdv_evt_topology * mdv_evt_topology_create(mdv_uuid const *from,
     if (event)
     {
         event->base.vptr = &vtbl;
-        event->from      = *from;
         event->topology  = mdv_topology_retain(topology);
     }
 

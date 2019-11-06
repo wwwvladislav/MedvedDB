@@ -6,6 +6,8 @@
 #include <mdv_def.h>
 #include <mdv_chaman.h>
 #include <mdv_msg.h>
+#include <mdv_ebus.h>
+#include <mdv_topology.h>
 
 
 /// User context used for storing different type of information
@@ -16,12 +18,14 @@ typedef struct mdv_user mdv_user;
 /**
  * @brief Creates user connection context
  *
- * @param fd [in]   channel descriptor
+ * @param fd [in]       channel descriptor
+ * @param ebus [in]     events bus
+ * @param topology [in] current topology
  *
  * @return On success, return pointer to new user connection context
  * @return On error, return NULL pointer
  */
-mdv_user * mdv_user_create(mdv_descriptor fd);
+mdv_user * mdv_user_create(mdv_descriptor fd, mdv_ebus *ebus, mdv_topology *topology);
 
 
 /**

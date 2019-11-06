@@ -1,6 +1,8 @@
 #include "mdv_user.h"
 #include "mdv_config.h"
 #include "mdv_conctx.h"
+#include "event/mdv_types.h"
+#include "event/mdv_topology.h"
 #include <mdv_messages.h>
 #include <mdv_version.h>
 #include <mdv_alloc.h>
@@ -8,6 +10,7 @@
 #include <mdv_dispatcher.h>
 #include <mdv_rollbacker.h>
 #include <mdv_ctypes.h>
+#include <mdv_mutex.h>
 #include <stdatomic.h>
 
 
@@ -16,6 +19,9 @@ struct mdv_user
     mdv_conctx              base;           ///< connection context base type
     atomic_uint             rc;             ///< References counter
     mdv_dispatcher         *dispatcher;     ///< Messages dispatcher
+    mdv_ebus               *ebus;           ///< Events bus
+    mdv_mutex               topomutex;      ///< Mutex for topology guard
+    mdv_topology           *topology;       ///< Current network topology
 };
 
 
@@ -270,9 +276,26 @@ static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
 }
 
 
-mdv_user * mdv_user_create(mdv_descriptor fd)
+static mdv_errno mdv_user_evt_topology(void *arg, mdv_event *event)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
+    mdv_user *user = arg;
+    mdv_evt_topology *topo = (mdv_evt_topology *)event;
+
+    // TODO
+
+    return MDV_OK;
+}
+
+
+static const mdv_event_handler_type mdv_user_handlers[] =
+{
+    { MDV_EVT_TOPOLOGY,    mdv_user_evt_topology },
+};
+
+
+mdv_user * mdv_user_create(mdv_descriptor fd, mdv_ebus *ebus, mdv_topology *topology)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     mdv_user *user = mdv_alloc(sizeof(mdv_user), "userctx");
 
@@ -297,6 +320,12 @@ mdv_user * mdv_user_create(mdv_descriptor fd)
 
     user->base.type = MDV_CTX_USER;
     user->base.vptr = &iconctx;
+
+    user->topology = mdv_topology_reatin(topology);
+    mdv_rollbacker_push(rollbacker, mdv_topology_release, topology);
+
+    user->ebus = mdv_ebus_retain(ebus);
+    mdv_rollbacker_push(rollbacker, mdv_ebus_release, user->ebus);
 
     user->dispatcher = mdv_dispatcher_create(fd);
 
@@ -326,6 +355,16 @@ mdv_user * mdv_user_create(mdv_descriptor fd)
         }
     }
 
+    if (mdv_ebus_subscribe_all(user->ebus,
+                               user,
+                               mdv_user_handlers,
+                               sizeof mdv_user_handlers / sizeof *mdv_user_handlers) != MDV_OK)
+    {
+        MDV_LOGE("Ebus subscription failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
     MDV_LOGD("User %p initialized", user);
 
     mdv_rollbacker_free(rollbacker);
@@ -338,7 +377,13 @@ static void mdv_user_free(mdv_user *user)
 {
     if(user)
     {
+        mdv_ebus_unsubscribe_all(user->ebus,
+                                 user,
+                                 mdv_user_handlers,
+                                 sizeof mdv_user_handlers / sizeof *mdv_user_handlers);
         mdv_dispatcher_free(user->dispatcher);
+        mdv_ebus_release(user->ebus);
+        mdv_topology_release(user->topology);
         mdv_free(user, "userctx");
         MDV_LOGD("User %p freed", user);
     }

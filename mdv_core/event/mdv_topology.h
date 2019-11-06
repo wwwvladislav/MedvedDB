@@ -17,12 +17,10 @@
 typedef struct
 {
     mdv_event       base;
-    mdv_uuid        from;       ///< Node UUID from which the event was received
     mdv_topology   *topology;   ///< Network topology
 } mdv_evt_topology;
 
-mdv_evt_topology * mdv_evt_topology_create(mdv_uuid const *from,
-                                           mdv_topology   *topology);
+mdv_evt_topology * mdv_evt_topology_create(mdv_topology *topology);
 mdv_evt_topology * mdv_evt_topology_retain(mdv_evt_topology *evt);
 uint32_t           mdv_evt_topology_release(mdv_evt_topology *evt);
 

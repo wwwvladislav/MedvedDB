@@ -80,19 +80,19 @@ static mdv_topology * mdv_tracker_topology(mdv_tracker *tracker);
 
 /**
  * @brief Link state tracking between two peers.
- *
- * @param tracker [in]          Topology tracker
- * @param peer_1 [in]           First peer UUID
- * @param peer_2 [in]           Second peer UUID
- * @param connected [in]        Connection status
- *
- * @return On success, return MDV_OK
- * @return On error, return nonzero error code
  */
-static mdv_errno mdv_tracker_linkstate(mdv_tracker     *tracker,
-                                       mdv_uuid const  *peer_1,
-                                       mdv_uuid const  *peer_2,
-                                       bool             connected);
+static mdv_errno mdv_tracker_linkstate_add(mdv_tracker     *tracker,
+                                           mdv_uuid const  *peer_1,
+                                           mdv_uuid const  *peer_2,
+                                           bool             connected,
+                                           uint32_t         weight);
+
+
+/**
+ * @brief Topology difference applying between two peers.
+ */
+static mdv_errno mdv_tracker_topodiff_add(mdv_tracker  *tracker,
+                                          mdv_topology *diff);
 
 
 static size_t mdv_u32_hash(uint32_t const *id)
@@ -238,39 +238,37 @@ static mdv_errno mdv_tracker_load(mdv_tracker *tracker)
 }
 
 
-static mdv_errno mdv_tracker_evt_link_state(void *arg, mdv_event *event)
-{
-    mdv_tracker *tracker = arg;
-    mdv_evt_link_state *link_state = (mdv_evt_link_state *)event;
-
-    mdv_errno err;
-
-    err = mdv_tracker_register(tracker, &link_state->src.uuid, link_state->src.addr);
-    if (err != MDV_OK)
-        return err;
-
-    err = mdv_tracker_register(tracker, &link_state->dst.uuid, link_state->dst.addr);
-    if (err != MDV_OK)
-        return err;
-
-    err = mdv_tracker_linkstate(
-                    tracker,
-                    &link_state->src.uuid,
-                    &link_state->dst.uuid,
-                    link_state->connected);
-
-    if (err != MDV_OK)
-    {
-        MDV_LOGE("Link registration failed");
-        return err;
-    }
-
+ static mdv_topology * mdv_tracker_topology_changed(mdv_tracker *tracker)
+ {
     mdv_topology *topology = mdv_tracker_topology(tracker);
 
     if (!topology)
     {
         MDV_LOGE("Topology calculation failed");
-        return MDV_FAILED;
+        return 0;
+    }
+
+    mdv_errno err = MDV_OK;
+
+    // Topology changed
+    {
+        mdv_evt_topology *evt = mdv_evt_topology_create(topology);
+
+        if (evt)
+        {
+            if (mdv_ebus_publish(tracker->ebus, &evt->base, MDV_EVT_DEFAULT) != MDV_OK)
+            {
+                err = MDV_FAILED;
+                MDV_LOGE("Topology notification failed");
+            }
+
+            mdv_evt_topology_release(evt);
+        }
+        else
+        {
+            err = MDV_FAILED;
+            MDV_LOGE("Topology notification failed");
+        }
     }
 
     // Routes changed
@@ -295,12 +293,55 @@ static mdv_errno mdv_tracker_evt_link_state(void *arg, mdv_event *event)
             err = MDV_FAILED;
             MDV_LOGE("Routes notification failed");
         }
+
+        mdv_hashmap_release(routes);
     }
     else
     {
         err = MDV_FAILED;
         MDV_LOGE("Routes calculation failed");
     }
+
+    return topology;
+}
+
+
+static mdv_errno mdv_tracker_evt_link_state(void *arg, mdv_event *event)
+{
+    mdv_tracker *tracker = arg;
+    mdv_evt_link_state *link_state = (mdv_evt_link_state *)event;
+
+    mdv_errno err;
+
+    err = mdv_tracker_register(tracker, &link_state->src.uuid, link_state->src.addr);
+    if (err != MDV_OK)
+        return err;
+
+    err = mdv_tracker_register(tracker, &link_state->dst.uuid, link_state->dst.addr);
+    if (err != MDV_OK)
+        return err;
+
+    err = mdv_tracker_linkstate_add(
+                    tracker,
+                    &link_state->src.uuid,
+                    &link_state->dst.uuid,
+                    link_state->connected,
+                    1);
+
+    if (err != MDV_OK)
+    {
+        MDV_LOGE("Link registration failed");
+        return err;
+    }
+
+    mdv_topology *topology = mdv_tracker_topology_changed(tracker);
+
+    if (!topology)
+    {
+        MDV_LOGE("Topology calculation failed");
+        return MDV_FAILED;
+    }
+
 
     bool const is_current_node_connection_initiated =
         mdv_uuid_cmp(&tracker->uuid, &link_state->from) == 0
@@ -362,7 +403,6 @@ static mdv_errno mdv_tracker_evt_link_state(void *arg, mdv_event *event)
         }
     }
 
-    mdv_hashmap_release(routes);
     mdv_topology_release(topology);
 
     return err;
@@ -534,17 +574,44 @@ static mdv_errno mdv_tracker_evt_broadcast(void *arg, mdv_event *event)
 
     mdv_errno err = MDV_OK;
 
-    switch(evt->msg_id)
+    binn binn_msg;
+
+    if (binn_load(evt->data, &binn_msg))
     {
-        case mdv_message_id(p2p_topodiff):
+        switch(evt->msg_id)
         {
-            // TODO
-            break;
+            case mdv_message_id(p2p_topodiff):
+            {
+                mdv_msg_p2p_topodiff topodiff;
+
+                if (mdv_unbinn_p2p_topodiff(&binn_msg, &topodiff))
+                {
+                    if (mdv_tracker_topodiff_add(tracker, topodiff.topology) == MDV_OK)
+                    {
+                        mdv_topology *topology = mdv_tracker_topology_changed(tracker);
+
+                        if (topology)
+                            mdv_topology_release(topology);
+                        else
+                            MDV_LOGE("Topology calculation failed");
+                    }
+                    else
+                        MDV_LOGE("Network topology difference was not applied");
+
+                    mdv_p2p_topodiff_free(&topodiff);
+                }
+                else
+                    MDV_LOGE("Serialized p2p_topodiff message is invalid");
+
+                break;
+            }
+
+            default:
+                MDV_LOGE("Unsupported event type was broadcasted");
+                break;
         }
 
-        default:
-            MDV_LOGE("Unsupported event type was broadcasted");
-            break;
+        binn_free(&binn_msg);
     }
 
     mdv_topology *topology = mdv_tracker_topology(tracker);
@@ -888,17 +955,18 @@ static mdv_errno mdv_tracker_linkstate2(mdv_tracker            *tracker,
 
 
 // TODO: remove all links from isolated segment
-static mdv_errno mdv_tracker_linkstate(mdv_tracker         *tracker,
-                                       mdv_uuid const      *peer_1,
-                                       mdv_uuid const      *peer_2,
-                                       bool                 connected)
+static mdv_errno mdv_tracker_linkstate_add(mdv_tracker         *tracker,
+                                          mdv_uuid const      *peer_1,
+                                          mdv_uuid const      *peer_2,
+                                          bool                 connected,
+                                          uint32_t             weight)
 {
     mdv_errno err = MDV_FAILED;
 
     mdv_tracker_link link =
     {
         .id = { MDV_LOCAL_ID, MDV_LOCAL_ID },
-        .weight = 1
+        .weight = weight
     };
 
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
@@ -942,6 +1010,59 @@ static mdv_errno mdv_tracker_linkstate(mdv_tracker         *tracker,
         return err;
 
     return mdv_tracker_linkstate2(tracker, &link, connected);
+}
+
+
+static mdv_errno mdv_tracker_topodiff_add(mdv_tracker  *tracker,
+                                          mdv_topology *diff)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+
+    mdv_vector *nodes = mdv_topology_nodes(diff);
+
+    mdv_rollbacker_push(rollbacker, mdv_vector_release, nodes);
+
+    mdv_vector_foreach(nodes, mdv_toponode, toponode)
+    {
+        if (mdv_tracker_register(tracker, &toponode->uuid, toponode->addr) != MDV_OK)
+        {
+            MDV_LOGE("Node registration failed");
+            mdv_rollback(rollbacker);
+            return MDV_FAILED;
+        }
+    }
+
+    mdv_vector *links = mdv_topology_links(diff);
+
+    mdv_rollbacker_push(rollbacker, mdv_vector_release, links);
+
+    mdv_vector_foreach(links, mdv_topolink, topolink)
+    {
+        mdv_toponode const *src = mdv_vector_at(nodes, topolink->node[0]);
+        mdv_toponode const *dst = mdv_vector_at(nodes, topolink->node[1]);
+
+        if (!src || !dst)
+        {
+            MDV_LOGE("Link registration failed");
+            mdv_rollback(rollbacker);
+            return MDV_FAILED;
+        }
+
+        if (mdv_tracker_linkstate_add(tracker,
+                                      &src->uuid,
+                                      &dst->uuid,
+                                      true,
+                                      topolink->weight) != MDV_OK)
+        {
+            MDV_LOGE("Link registration failed");
+            mdv_rollback(rollbacker);
+            return MDV_FAILED;
+        }
+    }
+
+    mdv_rollback(rollbacker);
+
+    return MDV_OK;
 }
 
 

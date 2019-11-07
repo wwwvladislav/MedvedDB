@@ -321,7 +321,7 @@ mdv_user * mdv_user_create(mdv_descriptor fd, mdv_ebus *ebus, mdv_topology *topo
     user->base.type = MDV_CTX_USER;
     user->base.vptr = &iconctx;
 
-    user->topology = mdv_topology_reatin(topology);
+    user->topology = mdv_topology_retain(topology);
     mdv_rollbacker_push(rollbacker, mdv_topology_release, topology);
 
     user->ebus = mdv_ebus_retain(ebus);

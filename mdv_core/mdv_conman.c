@@ -81,7 +81,7 @@ static void * mdv_conman_ctx_create(mdv_descriptor    fd,
     switch(type)
     {
         case MDV_CTX_USER:
-            conctx = mdv_user_create(fd, conman->ebus, );
+            conctx = mdv_user_create(fd, conman->ebus, &mdv_empty_topology);
             break;
 
         case MDV_CTX_PEER:

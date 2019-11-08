@@ -173,8 +173,7 @@ static mdv_errno mdv_conman_evt_topology(void *arg, mdv_event *event)
 {
     mdv_conman *conman = arg;
     mdv_evt_topology *topo = (mdv_evt_topology *)event;
-    return MDV_OK;
-    //return mdv_safeptr_set(conman->topology, topo->topology);
+    return mdv_safeptr_set(conman->topology, topo->topology);
 }
 
 
@@ -241,7 +240,7 @@ mdv_conman * mdv_conman_create(mdv_conman_config const *conman_config, mdv_ebus 
 
     conman->topology = mdv_safeptr_create(&mdv_empty_topology,
                                           (mdv_safeptr_retain_fn)mdv_topology_retain,
-                                          (mdv_safeptr_release_fn)mdv_evt_topology_release);
+                                          (mdv_safeptr_release_fn)mdv_topology_release);
 
     if (!conman->topology)
     {

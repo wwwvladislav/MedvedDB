@@ -63,32 +63,6 @@ static mdv_errno mdv_peer_hello_reply(mdv_peer *peer, uint16_t id, mdv_msg_p2p_h
 }
 
 
-static mdv_errno mdv_peer_topodiff_reply(mdv_peer *peer, uint16_t id, mdv_msg_p2p_topodiff const *msg)
-{
-    binn obj;
-
-    if (!mdv_binn_p2p_topodiff(msg, &obj))
-        return MDV_FAILED;
-
-    mdv_msg const message =
-    {
-        .hdr =
-        {
-            .id     = mdv_message_id(p2p_topodiff),
-            .number = id,
-            .size   = binn_size(&obj)
-        },
-        .payload = binn_ptr(&obj)
-    };
-
-    mdv_errno err = mdv_peer_reply(peer, &message);
-
-    binn_free(&obj);
-
-    return err;
-}
-
-
 static char * mdv_string_dup(char const *str, char const *name)
 {
     size_t len = strlen(str);
@@ -169,77 +143,6 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 }
 
 
-static mdv_errno mdv_peer_linkstate_handler(mdv_msg const *msg, void *arg)
-{
-    mdv_peer *peer = arg;
-
-    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
-
-    binn binn_msg;
-
-    if(!binn_load(msg->payload, &binn_msg))
-    {
-        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
-        return MDV_FAILED;
-    }
-
-    mdv_msg_p2p_linkstate req;
-
-    if (!mdv_unbinn_p2p_linkstate(&binn_msg, &req))
-    {
-        binn_free(&binn_msg);
-        return MDV_FAILED;
-    }
-
-    mdv_evt_link_state *event = mdv_evt_link_state_create(&peer->peer_uuid, &req.src, &req.dst, req.connected);
-
-    if (event)
-    {
-        mdv_ebus_publish(peer->ebus, &event->base, MDV_EVT_DEFAULT);
-        mdv_evt_link_state_release(event);
-    }
-
-    binn_free(&binn_msg);
-
-    return MDV_OK;
-}
-
-
-static void mdv_peer_toposync_node_add(mdv_peer *peer, mdv_uuid const *uuid, char const *addr)
-{
-/*
-    mdv_core *core = peer->core;
-    mdv_tracker *tracker = core->tracker;
-
-    size_t const addr_len = strlen(addr);
-    size_t const node_size = offsetof(mdv_node, addr) + addr_len + 1;
-
-    if (addr_len > MDV_ADDR_LEN_MAX)
-    {
-        MDV_LOGE("Invalid address length: %zu", addr_len);
-        return;
-    }
-
-    char buf[node_size];
-
-    mdv_node *node = (mdv_node *)buf;
-
-    memset(node, 0, sizeof *node);
-
-    node->size      = node_size;
-    node->uuid      = *uuid;
-    node->id        = 0;
-    node->connected = 0;
-
-    memcpy(node->addr, addr, addr_len + 1);
-
-    // Save peer information and connection state in memory
-    if (mdv_tracker_append(tracker, node, true))
-        mdv_nodes_store_async(core->jobber, core->storage.metainf, node);
-*/
-}
-
-
 static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
 {
     mdv_peer *peer = arg;
@@ -283,135 +186,6 @@ static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
 
     mdv_rollback(rollbacker);
 
-    return MDV_OK;
-
-/* TODO
-    mdv_topology *topology = mdv_tracker_topology(tracker);
-
-    if (!topology)
-    {
-        MDV_LOGE("Topology synchronization request processing failed");
-        mdv_rollback(rollbacker);
-        return MDV_FAILED;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_topology_release, topology);
-
-    // Topologies difference calculation
-    mdv_topology_delta *delta = mdv_topology_diff(topology, req.topology);
-
-    if (!delta)
-    {
-        MDV_LOGE("Topology synchronization request processing failed");
-        mdv_rollback(rollbacker);
-        return MDV_FAILED;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_topology_delta_free, delta);
-
-    mdv_msg_p2p_topodiff const topodiff =
-    {
-        .topology = delta->ab
-    };
-
-    mdv_errno err = mdv_peer_topodiff_reply(peer, msg->hdr.number, &topodiff);
-
-    mdv_vector *ba_links = mdv_topology_links(delta->ba);
-
-    if (delta->ba && !mdv_vector_empty(ba_links))
-    {
-        // Two isolated segments joined
-        // TODO: Broadcast delta->ba to own segment.
-
-        mdv_vector *ba_nodes = mdv_topology_nodes(delta->ba);
-
-        mdv_vector_foreach(ba_nodes, mdv_toponode, node)
-        {
-            mdv_peer_toposync_node_add(peer, &node->uuid, node->addr);
-        }
-
-        mdv_vector_foreach(ba_links, mdv_topolink, link)
-        {
-            mdv_toponode const *src_node = mdv_vector_at(ba_nodes, link->node[0]);
-            mdv_toponode const *dst_node = mdv_vector_at(ba_nodes, link->node[1]);
-            mdv_tracker_linkstate(tracker, &src_node->uuid, &dst_node->uuid, true);
-        }
-
-        mdv_vector_release(ba_nodes);
-    }
-
-    mdv_vector_release(ba_links);
-
-    mdv_rollback(rollbacker);
-
-    return err;
-*/
-}
-
-
-static mdv_errno mdv_peer_topodiff_handler(mdv_msg const *msg, void *arg)
-{
-/* TODO
-    mdv_peer *peer = arg;
-    mdv_core *core = peer->core;
-    mdv_tracker *tracker = core->tracker;
-
-    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
-
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
-
-    binn binn_msg;
-
-    if(!binn_load(msg->payload, &binn_msg))
-    {
-        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
-        mdv_rollback(rollbacker);
-        return MDV_FAILED;
-    }
-
-    mdv_rollbacker_push(rollbacker, binn_free, &binn_msg);
-
-    mdv_msg_p2p_topodiff req;
-
-    if (!mdv_unbinn_p2p_topodiff(&binn_msg, &req))
-    {
-        MDV_LOGE("Topology difference processing failed");
-        mdv_rollback(rollbacker);
-        return MDV_FAILED;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_p2p_topodiff_free, &req);
-
-    mdv_topology *topology = req.topology;
-
-    if (topology)
-    {
-        // TODO: Broadcast topology to own segment if segment was isolated.
-
-        mdv_vector *toponodes = mdv_topology_nodes(topology);
-        mdv_vector *topolinks = mdv_topology_links(topology);
-
-        mdv_vector_foreach(toponodes, mdv_toponode, node)
-        {
-            mdv_peer_toposync_node_add(peer, &node->uuid, node->addr);
-        }
-
-        mdv_vector_foreach(topolinks, mdv_topolink, link)
-        {
-            mdv_toponode const *src_node = mdv_vector_at(toponodes, link->node[0]);
-            mdv_toponode const *dst_node = mdv_vector_at(toponodes, link->node[1]);
-            mdv_tracker_linkstate(tracker, &src_node->uuid, &dst_node->uuid, true);
-        }
-
-        mdv_vector_release(toponodes);
-        mdv_vector_release(topolinks);
-    }
-
-    mdv_rollback(rollbacker);
-
-    // Update routing table
-    mdv_datasync_update_routes(&core->datasync);
-*/
     return MDV_OK;
 }
 
@@ -548,34 +322,6 @@ static mdv_errno mdv_peer_hello(mdv_peer *peer)
 
 
 /**
- * @brief Post link state message
- */
-static mdv_errno mdv_peer_link_state(mdv_peer *peer, mdv_msg_p2p_linkstate const *msg)
-{
-    binn obj;
-
-    if (!mdv_binn_p2p_linkstate(msg, &obj))
-        return MDV_FAILED;
-
-    mdv_msg message =
-    {
-        .hdr =
-        {
-            .id = mdv_message_id(p2p_linkstate),
-            .size = binn_size(&obj)
-        },
-        .payload = binn_ptr(&obj)
-    };
-
-    mdv_errno err = mdv_peer_post(peer, &message);
-
-    binn_free(&obj);
-
-    return err;
-}
-
-
-/**
  * @brief Post topology synchronization message
  */
 static mdv_errno mdv_peer_toposync(mdv_peer *peer, mdv_topology *topology)
@@ -675,8 +421,8 @@ static mdv_errno mdv_peer_evt_topology_sync(void *arg, mdv_event *event)
 
 static const mdv_event_handler_type mdv_peer_handlers[] =
 {
-    { MDV_EVT_BROADCAST_POST,   mdv_peer_evt_broadcast_post },
     { MDV_EVT_TOPOLOGY_SYNC,    mdv_peer_evt_topology_sync },
+    { MDV_EVT_BROADCAST_POST,   mdv_peer_evt_broadcast_post },
 };
 
 
@@ -734,9 +480,7 @@ mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
     mdv_dispatcher_handler const handlers[] =
     {
         { mdv_message_id(p2p_hello),        &mdv_peer_hello_handler,        peer },
-        { mdv_message_id(p2p_linkstate),    &mdv_peer_linkstate_handler,    peer },
         { mdv_message_id(p2p_toposync),     &mdv_peer_toposync_handler,     peer },
-        { mdv_message_id(p2p_topodiff),     &mdv_peer_topodiff_handler,     peer },
         { mdv_message_id(p2p_broadcast),    &mdv_peer_broadcast_handler,    peer },
         { mdv_message_id(p2p_cfslog_sync),  &mdv_peer_cfslog_sync_handler,  peer },
         { mdv_message_id(p2p_cfslog_state), &mdv_peer_cfslog_state_handler, peer },
@@ -912,59 +656,6 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer,
     }
 
     return MDV_OK;
-
-/* TODO
-    mdv_core *core = peer->core;
-    mdv_tracker *tracker = core->tracker;
-
-    size_t const addr_len = strlen(addr);
-    size_t const node_size = offsetof(mdv_node, addr) + addr_len + 1;
-
-    char buf[node_size];
-
-    mdv_node *node = (mdv_node *)buf;
-
-    memset(node, 0, sizeof *node);
-
-    node->size      = node_size;
-    node->uuid      = *uuid;
-    node->id        = 0;
-    node->connected = 1;
-
-    memcpy(node->addr, addr, addr_len + 1);
-
-    // Save peer information and connection state in memory
-    mdv_errno err = mdv_tracker_peer_connected(tracker, node);
-
-    // Update routing table
-    if (err == MDV_OK)
-    {
-        mdv_datasync_update_routes(&core->datasync);
-        mdv_datasync_start(&core->datasync);
-    }
-
-    if (peer->conctx->dir == MDV_CHOUT)
-    {
-        // Synchronize network topology
-        mdv_peer_toposync(peer);
-
-        // Link-state broadcasting to all network
-        mdv_gossip_linkstate(core,
-                            &core->metainf.uuid.value, MDV_CONFIG.server.listen.ptr,
-                            &node->uuid, node->addr,
-                            true);
-    }
-    else
-    {
-        // Save peer address in DB
-        mdv_nodes_store_async(core->jobber, core->storage.metainf, node);
-    }
-
-    if (err == MDV_OK)
-        *id = node->id;
-
-    return err;
-*/
 }
 
 

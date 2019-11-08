@@ -11,6 +11,7 @@
 #include <mdv_rollbacker.h>
 #include <mdv_ctypes.h>
 #include <mdv_mutex.h>
+#include <mdv_safeptr.h>
 #include <stdatomic.h>
 
 
@@ -21,7 +22,7 @@ struct mdv_user
     mdv_dispatcher         *dispatcher;     ///< Messages dispatcher
     mdv_ebus               *ebus;           ///< Events bus
     mdv_mutex               topomutex;      ///< Mutex for topology guard
-    mdv_topology           *topology;       ///< Current network topology
+    mdv_safeptr            *topology;       ///< Current network topology
 };
 
 
@@ -243,12 +244,10 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
 static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
 {
     MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
-/* TODO
-    mdv_user    *user   = arg;
-    mdv_core    *core   = user->core;
-    mdv_tracker *tracker = core->tracker;
 
-    mdv_topology *topology = mdv_tracker_topology(tracker);
+    mdv_user    *user   = arg;
+
+    mdv_topology *topology = mdv_safeptr_get(user->topology);
 
     if (topology)
     {
@@ -271,8 +270,6 @@ static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
     };
 
     return mdv_user_status_reply(user, msg->hdr.number, &status);
-*/
-    return MDV_FAILED;
 }
 
 
@@ -280,10 +277,7 @@ static mdv_errno mdv_user_evt_topology(void *arg, mdv_event *event)
 {
     mdv_user *user = arg;
     mdv_evt_topology *topo = (mdv_evt_topology *)event;
-
-    // TODO
-
-    return MDV_OK;
+    return mdv_safeptr_set(user->topology, topo->topology);
 }
 
 
@@ -321,11 +315,21 @@ mdv_user * mdv_user_create(mdv_descriptor fd, mdv_ebus *ebus, mdv_topology *topo
     user->base.type = MDV_CTX_USER;
     user->base.vptr = &iconctx;
 
-    user->topology = mdv_topology_retain(topology);
-    mdv_rollbacker_push(rollbacker, mdv_topology_release, topology);
-
     user->ebus = mdv_ebus_retain(ebus);
     mdv_rollbacker_push(rollbacker, mdv_ebus_release, user->ebus);
+
+    user->topology = mdv_safeptr_create(topology,
+                                        (mdv_safeptr_retain_fn)mdv_topology_retain,
+                                        (mdv_safeptr_release_fn)mdv_topology_release);
+
+    if (!user->topology)
+    {
+        MDV_LOGE("Safe pointer creation failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_safeptr_free, user->topology);
 
     user->dispatcher = mdv_dispatcher_create(fd);
 
@@ -382,8 +386,8 @@ static void mdv_user_free(mdv_user *user)
                                  mdv_user_handlers,
                                  sizeof mdv_user_handlers / sizeof *mdv_user_handlers);
         mdv_dispatcher_free(user->dispatcher);
+        mdv_safeptr_free(user->topology);
         mdv_ebus_release(user->ebus);
-        mdv_topology_release(user->topology);
         mdv_free(user, "userctx");
         MDV_LOGD("User %p freed", user);
     }

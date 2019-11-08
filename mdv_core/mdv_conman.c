@@ -19,7 +19,7 @@ struct mdv_conman
     mdv_uuid         uuid;          ///< Current cluster node UUID
     mdv_chaman      *chaman;        ///< Channels manager
     mdv_ebus        *ebus;          ///< Events bus
-    mdv_safeptr     *topology;      ///< Current topology
+    mdv_safeptr     *topology;      ///< Current network topology
 };
 
 

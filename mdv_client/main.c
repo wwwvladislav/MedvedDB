@@ -185,13 +185,11 @@ static void mdv_test_scenario(char const *args)
         }
     };
 
-    mdv_gobjid id;
-
-    mdv_errno err = mdv_create_table(client, (mdv_table_base *)&table, &id);
+    mdv_errno err = mdv_create_table(client, (mdv_table_base *)&table);
 
     if (err == MDV_OK)
     {
-        MDV_INF("New table '%s' with ID '%" PRIu64 "' successfully created\n", table.name.ptr, id.id);
+        MDV_INF("New table '%s' with ID '%s' successfully created\n", table.name.ptr, mdv_uuid_to_str(&table.id).ptr);
     }
     else
     {

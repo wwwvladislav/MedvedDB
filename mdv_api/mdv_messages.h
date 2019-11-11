@@ -49,17 +49,13 @@ mdv_message_def(hello, 2,
 );
 
 
-mdv_message_id_def(create_table, 3);
-#define mdv_msg_create_table(N)                         \
-    struct mdv_msg_create_table_##N                     \
-    {                                                   \
-        mdv_table(N)    table;                          \
-    }
-typedef mdv_msg_create_table(1) mdv_msg_create_table_base;
+mdv_message_def(create_table, 3,
+    mdv_table_base *table;
+);
 
 
 mdv_message_def(table_info, 4,
-    mdv_gobjid  id;
+    mdv_uuid    id;
 );
 
 
@@ -94,8 +90,9 @@ bool                        mdv_binn_status                 (mdv_msg_status cons
 bool                        mdv_unbinn_status               (binn const *obj, mdv_msg_status *msg);
 
 
-bool                        mdv_binn_create_table           (mdv_msg_create_table_base const *msg, binn *obj);
-mdv_msg_create_table_base * mdv_unbinn_create_table         (binn const *obj);
+bool                        mdv_binn_create_table           (mdv_msg_create_table const *msg, binn *obj);
+bool                        mdv_unbinn_create_table         (binn const *obj, mdv_msg_create_table *msg);
+void                        mdv_create_table_free           (mdv_msg_create_table *msg);
 
 
 bool                        mdv_binn_table_info             (mdv_msg_table_info const *msg, binn *obj);

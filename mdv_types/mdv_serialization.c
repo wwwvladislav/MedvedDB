@@ -174,6 +174,8 @@ bool mdv_binn_table(mdv_table_base const *table, binn *obj)
 
     if (0
         || !binn_object_set_str(obj, "N", table->name.ptr)
+        || !binn_object_set_uint64(obj, "U0", (uint64)table->id.u64[0])
+        || !binn_object_set_uint64(obj, "U1", (uint64)table->id.u64[1])
         || !binn_object_set_uint32(obj, "S", table->size)
         || !binn_object_set_uint32(obj, "B", size))
     {
@@ -229,6 +231,7 @@ mdv_table_base * mdv_unbinn_table(binn const *obj)
     }
 
     mdv_table_base *table = (mdv_table_base *)mdv_alloc(size, "table");
+
     if (!table)
     {
         MDV_LOGE("unbinn_table failed");
@@ -239,6 +242,8 @@ mdv_table_base * mdv_unbinn_table(binn const *obj)
 
     if (0
         || !binn_object_get_str((void*)obj, "N", &name)
+        || !binn_object_get_uint64((void*)obj, "U0", (uint64 *)&table->id.u64[0])
+        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&table->id.u64[1])
         || !binn_object_get_uint32((void*)obj, "S", &table->size))
     {
         MDV_LOGE("unbinn_table failed");

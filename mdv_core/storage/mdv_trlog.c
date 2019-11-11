@@ -217,8 +217,7 @@ bool mdv_trlog_add(mdv_trlog *trlog,
 
 
 bool mdv_trlog_new_op(mdv_trlog *trlog,
-                      mdv_trlog_op const *op,
-                      uint64_t *id)
+                      mdv_trlog_op const *op)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
@@ -248,9 +247,9 @@ bool mdv_trlog_new_op(mdv_trlog *trlog,
 
     mdv_rollbacker_push(rollbacker, mdv_map_close, &tr_log);
 
-    *id = mdv_trlog_new_id(trlog);
+    uint64_t id = mdv_trlog_new_id(trlog);
 
-    mdv_data k = { sizeof *id, id };
+    mdv_data k = { sizeof id, &id };
     mdv_data v = { op->size, (void*)op };
 
     if (!mdv_map_put_unique(&tr_log, &transaction, &k, &v))

@@ -3,6 +3,7 @@
 #include "mdv_conctx.h"
 #include "event/mdv_types.h"
 #include "event/mdv_topology.h"
+#include "event/mdv_table.h"
 #include <mdv_messages.h>
 #include <mdv_version.h>
 #include <mdv_alloc.h>
@@ -188,53 +189,48 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
         return MDV_FAILED;
     }
 
-    mdv_msg_create_table_base *create_table = mdv_unbinn_create_table(&binn_msg);
-
-    binn_free(&binn_msg);
-
-    if (!create_table)
-    {
-        MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_create_table_id));
-        return MDV_FAILED;
-    }
+    mdv_msg_create_table create_table;
 
     mdv_errno err = MDV_FAILED;
 
-/*
-    mdv_objid const *objid = mdv_tablespace_create_table(&user->core->storage.tablespace, (mdv_table_base*)&create_table->table);
-
-    if (objid)
+    if (mdv_unbinn_create_table(&binn_msg, &create_table))
     {
+        mdv_evt_create_table *evt = mdv_evt_create_table_create(&create_table.table);
 
-        mdv_datasync_start(&core->datasync);
-        mdv_committer_start(&core->committer);
-
-        assert(objid->node == MDV_LOCAL_ID);
-
-        mdv_msg_table_info const table_info =
+        if (evt)
         {
-            .id =
-            {
-                .node = user->core->metainf.uuid.value,
-                .id = objid->id
-            }
-        };
+            err = mdv_ebus_publish(user->ebus, &evt->base, MDV_EVT_SYNC);
 
-        err = mdv_user_table_info_reply(user, msg->hdr.number, &table_info);
+            if (err == MDV_OK)
+            {
+                mdv_msg_table_info const table_info =
+                {
+                    .id = evt->table->id
+                };
+
+                err = mdv_user_table_info_reply(user, msg->hdr.number, &table_info);
+            }
+
+            mdv_evt_create_table_release(evt);
+        }
+
+        mdv_create_table_free(&create_table);
     }
     else
-*/
+        MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_create_table_id));
+
+    binn_free(&binn_msg);
+
+    if (err != MDV_OK)
     {
         mdv_msg_status const status =
         {
-            .err = MDV_FAILED,
+            .err = err,
             .message = ""
         };
 
         err = mdv_user_status_reply(user, msg->hdr.number, &status);
     }
-
-    mdv_free(create_table, "msg_create_table");
 
     return err;
 }

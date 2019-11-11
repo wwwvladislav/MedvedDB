@@ -1,6 +1,8 @@
 #include "mdv_tablespace.h"
 #include "../mdv_config.h"
 #include "../mdv_tracker.h"
+#include "../event/mdv_table.h"
+#include "../event/mdv_types.h"
 #include <mdv_serialization.h>
 #include <mdv_alloc.h>
 #include <mdv_rollbacker.h>
@@ -15,6 +17,7 @@ struct mdv_tablespace
     mdv_mutex    mutex;         ///< Mutex for storages guard
     mdv_hashmap *trlogs;        ///< Transaction logs map (UUID -> mdv_trlog)
     mdv_uuid     uuid;          ///< Current node UUID
+    mdv_ebus    *ebus;          ///< Events bus
 };
 
 
@@ -33,6 +36,18 @@ enum
     MDV_OP_TABLE_DROP,          ///< Drop table
     MDV_OP_ROW_INSERT           ///< Insert data into a table
 };
+
+
+/**
+ * @brief Insert new record into the transaction log for new table creation.
+ * @details After the successfully table creation new generated table UUID is saved to table->id.
+ *
+ * @param tablespace [in]   Pointer to a tablespace structure
+ * @param table [in] [out]  Table description
+ *
+ * @return non zero table identifier pointer if operation successfully completed.
+ */
+static bool mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *table);
 
 
 static mdv_trlog * mdv_tablespace_trlog(mdv_tablespace *tablespace, mdv_uuid const *uuid)
@@ -76,9 +91,30 @@ static mdv_trlog * mdv_tablespace_trlog(mdv_tablespace *tablespace, mdv_uuid con
 }
 
 
-mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid)
+static mdv_errno mdv_tablespace_evt_create_table(void *arg, mdv_event *event)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
+    mdv_tablespace       *tablespace   = arg;
+    mdv_evt_create_table *create_table = (mdv_evt_create_table *)event;
+
+    if (mdv_tablespace_create_table(tablespace, create_table->table))
+    {
+        MDV_LOGI("New table '%s' is created", mdv_uuid_to_str(&create_table->table->id).ptr);
+        return MDV_OK;
+    }
+
+    return MDV_FAILED;
+}
+
+
+static const mdv_event_handler_type mdv_tablespace_handlers[] =
+{
+    { MDV_EVT_CREATE_TABLE, mdv_tablespace_evt_create_table },
+};
+
+
+mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid, mdv_ebus *ebus)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     mdv_tablespace *tablespace = mdv_alloc(sizeof(mdv_tablespace), "tablespace");
 
@@ -117,6 +153,20 @@ mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid)
 
     mdv_rollbacker_push(rollbacker, mdv_hashmap_release, tablespace->trlogs);
 
+    tablespace->ebus = mdv_ebus_retain(ebus);
+
+    mdv_rollbacker_push(rollbacker, mdv_ebus_release, tablespace->ebus);
+
+    if (mdv_ebus_subscribe_all(tablespace->ebus,
+                               tablespace,
+                               mdv_tablespace_handlers,
+                               sizeof mdv_tablespace_handlers / sizeof *mdv_tablespace_handlers) != MDV_OK)
+    {
+        MDV_LOGE("Ebus subscription failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
     mdv_rollbacker_free(rollbacker);
 
     return tablespace;
@@ -127,6 +177,13 @@ void mdv_tablespace_close(mdv_tablespace *tablespace)
 {
     if (tablespace)
     {
+        mdv_ebus_unsubscribe_all(tablespace->ebus,
+                                 tablespace,
+                                 mdv_tablespace_handlers,
+                                 sizeof mdv_tablespace_handlers / sizeof *mdv_tablespace_handlers);
+
+        mdv_ebus_release(tablespace->ebus);
+
         mdv_hashmap_foreach(tablespace->trlogs, mdv_trlog_ref, ref)
         {
             mdv_trlog_release(ref->trlog);
@@ -141,7 +198,7 @@ void mdv_tablespace_close(mdv_tablespace *tablespace)
 }
 
 
-mdv_objid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base const *table)
+static bool mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *table)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
@@ -150,17 +207,19 @@ mdv_objid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_ta
     if (!trlog)
     {
         mdv_rollback(rollbacker);
-        return 0;
+        return false;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_trlog_release, trlog);
+
+    table->id = mdv_uuid_generate();
 
     binn obj;
 
     if (!mdv_binn_table(table, &obj))
     {
         mdv_rollback(rollbacker);
-        return 0;
+        return false;
     }
 
     mdv_rollbacker_push(rollbacker, binn_free, &obj);
@@ -175,7 +234,7 @@ mdv_objid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_ta
     if (!op)
     {
         mdv_rollback(rollbacker);
-        return 0;
+        return false;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_stfree, op, "trlog_op");
@@ -184,23 +243,17 @@ mdv_objid const * mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_ta
     op->type = MDV_OP_TABLE_CREATE;
     memcpy(op->payload, binn_ptr(&obj), binn_obj_size);
 
-    mdv_objid const *objid = 0;
+    mdv_uuid const *objid = 0;
 
-    uint64_t op_id = 0;
-
-    if (mdv_trlog_new_op(trlog, op, &op_id))
+    if (!mdv_trlog_new_op(trlog, op))
     {
-        static _Thread_local mdv_objid id;
-
-        id.node = MDV_LOCAL_ID;
-        id.id = op_id;
-
-        objid = &id;
+        mdv_rollback(rollbacker);
+        return false;
     }
 
     mdv_rollback(rollbacker);
 
-    return objid;
+    return true;
 }
 
 

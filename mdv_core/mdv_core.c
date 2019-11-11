@@ -107,7 +107,7 @@ mdv_core * mdv_core_create()
 
 
     // Tablespace
-    core->storage.tablespace = mdv_tablespace_open(&core->metainf.uuid.value);
+    core->storage.tablespace = mdv_tablespace_open(&core->metainf.uuid.value, core->ebus);
 
     if (!core->storage.tablespace)
     {

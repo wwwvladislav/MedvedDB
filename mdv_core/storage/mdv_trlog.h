@@ -89,11 +89,9 @@ bool mdv_trlog_add(mdv_trlog *trlog,
  *
  * @param trlog [in]            Transaction logs storage
  * @param op [in]               DB operation to be written to the transaction log
- * @param id [out]              Identifier for new transaction log entry
  *
  * @return true if data was successfully written
  * @return false if error was happened
  */
 bool mdv_trlog_new_op(mdv_trlog *trlog,
-                      mdv_trlog_op const *op,
-                      uint64_t *id);
+                      mdv_trlog_op const *op);

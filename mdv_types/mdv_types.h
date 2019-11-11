@@ -88,6 +88,7 @@ typedef struct
     struct mdv_table_##N            \
     {                               \
         mdv_string      name;       \
+        mdv_uuid        id;         \
         uint32_t        size;       \
         mdv_field       fields[N];  \
     }

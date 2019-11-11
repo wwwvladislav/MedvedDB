@@ -400,13 +400,16 @@ void mdv_client_close(mdv_client *client)
 }
 
 
-mdv_errno mdv_create_table(mdv_client *client, mdv_table_base const *table, mdv_gobjid *id)
+mdv_errno mdv_create_table(mdv_client *client, mdv_table_base *table)
 {
-    mdv_msg_create_table_base *create_table = (mdv_msg_create_table_base *)table;
+    mdv_msg_create_table create_table =
+    {
+        .table = table
+    };
 
     binn create_table_msg;
 
-    if (!mdv_binn_create_table(create_table, &create_table_msg))
+    if (!mdv_binn_create_table(&create_table, &create_table_msg))
         return MDV_FAILED;
 
     mdv_msg req =
@@ -432,9 +435,12 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_base const *table, mdv_
             case mdv_message_id(table_info):
             {
                 mdv_msg_table_info info;
+
                 err = mdv_client_table_info_handler(&resp, &info);
+
                 if (err == MDV_OK)
-                    *id = info.id;
+                    table->id = info.id;
+
                 break;
             }
 

@@ -89,7 +89,7 @@ static mdv_vector * mdv_ebus_evt_subscribers(mdv_ebus *ebus, mdv_event_type type
 
 static mdv_errno mdv_ebus_event_process(mdv_ebus *ebus, mdv_event *event)
 {
-    mdv_errno err = MDV_OK;
+    mdv_errno err = MDV_NO_IMPL;
 
     mdv_vector *subscribers = mdv_ebus_evt_subscribers(ebus, event->type);
 
@@ -98,7 +98,8 @@ static mdv_errno mdv_ebus_event_process(mdv_ebus *ebus, mdv_event *event)
         mdv_vector_foreach(subscribers, mdv_ebus_subscriber, sbr)
         {
             mdv_errno res = sbr->handler(sbr->arg, event);
-            if (err == MDV_OK)
+
+            if (err == MDV_OK || err == MDV_NO_IMPL)
                 err = res;
         }
         mdv_vector_release(subscribers);

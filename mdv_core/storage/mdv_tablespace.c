@@ -15,7 +15,7 @@
 struct mdv_tablespace
 {
     mdv_mutex    mutex;         ///< Mutex for storages guard
-    mdv_hashmap *trlogs;        ///< Transaction logs map (UUID -> mdv_trlog)
+    mdv_hashmap *trlogs;        ///< Transaction logs map (Node UUID -> mdv_trlog)
     mdv_uuid     uuid;          ///< Current node UUID
     mdv_ebus    *ebus;          ///< Events bus
 };

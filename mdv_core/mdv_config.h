@@ -51,13 +51,13 @@ typedef struct
 
     struct
     {
-        uint32_t   batch_size;      ///< Batch size for data synchronization
-    } datasync;                     ///< Data synchronizer settings
+        uint32_t   workers;         ///< Number of thread pool workers for transaction log applying
+    } committer;
 
     struct
     {
-        uint32_t   batch_size;      ///< Batch size for commit to transaction log
-    } transaction;                  ///< Transaction settings
+        uint32_t   batch_size;      ///< Batch size for data synchronization
+    } datasync;                     ///< Data synchronizer settings
 
     struct
     {

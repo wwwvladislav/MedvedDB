@@ -51,6 +51,12 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         MDV_LOGI("Ebus queues: %u", config->ebus.queues);
     }
 
+    else if (MDV_CFG_MATCH("committer", "workers"))
+    {
+        config->committer.workers = atoi(value);
+        MDV_LOGI("Committer workers: %u", config->committer.workers);
+    }
+
     else if (MDV_CFG_MATCH("log", "level"))
     {
         config->log.level = mdv_str_pdup(config->mempool, value);
@@ -62,12 +68,6 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
     {
         config->datasync.batch_size = atoi(value);
         MDV_LOGI("Data sync batch size: %u", config->datasync.batch_size);
-    }
-
-    else if (MDV_CFG_MATCH("transaction", "batch_size"))
-    {
-        config->transaction.batch_size = atoi(value);
-        MDV_LOGI("Transaction batch size: %u", config->transaction.batch_size);
     }
 
     else if (MDV_CFG_MATCH("cluster", "node"))
@@ -134,9 +134,9 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.ebus.workers                 = 4;
     MDV_CONFIG.ebus.queues                  = 4;
 
-    MDV_CONFIG.datasync.batch_size          = 256;
+    MDV_CONFIG.committer.workers            = 4;
 
-    MDV_CONFIG.transaction.batch_size       = 1000;
+    MDV_CONFIG.datasync.batch_size          = 256;
 
     MDV_CONFIG.cluster.size                 = 0;
 }

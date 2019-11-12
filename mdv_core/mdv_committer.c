@@ -1,15 +1,35 @@
 #include "mdv_committer.h"
+#include "event/mdv_types.h"
+#include "event/mdv_topology.h"
+#include "event/mdv_trlog.h"
+#include <stdatomic.h>
 #include <mdv_alloc.h>
 #include <mdv_log.h>
 #include <mdv_rollbacker.h>
-#include <mdv_epoll.h>
+#include <mdv_eventfd.h>
+#include <mdv_uuid.h>
+#include <mdv_threads.h>
+#include <mdv_safeptr.h>
+
+
+/// Data committer
+struct mdv_committer
+{
+    atomic_uint     rc;             ///< References counter
+    mdv_ebus       *ebus;           ///< Event bus
+    mdv_jobber     *jobber;         ///< Jobs scheduler
+    mdv_descriptor  start;          ///< Signal for starting
+    mdv_thread      thread;         ///< Committer thread
+    atomic_bool     active;         ///< Status
+    atomic_size_t   active_jobs;    ///< Active jobs counter
+    mdv_safeptr    *topology;       ///< Current network topology
+};
 
 
 typedef struct mdv_committer_context
 {
-    uint32_t        peer_id;        ///< Source peer identifier
     mdv_committer  *committer;      ///< Data committer
-    mdv_uuid        storage;        ///< Data storage UUID for synchronization
+    mdv_uuid        storage;        ///< Data storage UUID for commit
 } mdv_committer_context;
 
 
@@ -30,8 +50,8 @@ static void mdv_committer_fn(mdv_job_base *job)
     if (!mdv_committer_is_active(committer))
         return;
 
-    if (!mdv_tablespace_log_apply(committer->tablespace, &ctx->storage, ctx->peer_id))
-        MDV_LOGE("Transaction log was not applied");
+//    if (!mdv_tablespace_log_apply(committer->tablespace, &ctx->storage, ctx->peer_id))
+//        MDV_LOGE("Transaction log was not applied");
 }
 
 
@@ -40,11 +60,12 @@ static void mdv_committer_finalize(mdv_job_base *job)
     mdv_committer_context *ctx = (mdv_committer_context *)job->data;
     mdv_committer         *committer = ctx->committer;
     atomic_fetch_sub_explicit(&committer->active_jobs, 1, memory_order_relaxed);
+    mdv_committer_release(committer);
     mdv_free(job, "committer_job");
 }
 
 
-static void mdv_committer_job_emit(mdv_committer *committer, uint32_t peer_id, mdv_uuid const *storage)
+static void mdv_committer_job_emit(mdv_committer *committer, mdv_uuid const *storage)
 {
     mdv_committer_job *job = mdv_alloc(sizeof(mdv_committer_job), "committer_job");
 
@@ -56,8 +77,7 @@ static void mdv_committer_job_emit(mdv_committer *committer, uint32_t peer_id, m
 
     job->fn             = mdv_committer_fn;
     job->finalize       = mdv_committer_finalize;
-    job->data.peer_id   = peer_id;
-    job->data.committer = committer;
+    job->data.committer = mdv_committer_retain(committer);
     job->data.storage   = *storage;
 
     mdv_errno err = mdv_jobber_push(committer->jobber, (mdv_job_base*)job);
@@ -79,7 +99,9 @@ static void mdv_committer_main(mdv_committer *committer)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
+    MDV_LOGE("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
 
+/*
     mdv_vector *src_peers = mdv_tracker_nodes(committer->tracker);
 
     if (!src_peers)
@@ -95,7 +117,7 @@ static void mdv_committer_main(mdv_committer *committer)
         mdv_rollback(rollbacker);
         return;
     }
-
+*/
 /* TODO
     mdv_vector *storages = mdv_tablespace_storages(committer->tablespace);
 
@@ -189,21 +211,75 @@ static void * mdv_committer_thread(void *arg)
 }
 
 
-mdv_errno mdv_committer_create(mdv_committer *committer,
-                               mdv_tablespace *tablespace,
-                               mdv_tracker *tracker,
-                               mdv_jobber *jobber)
+static mdv_errno mdv_committer_evt_topology(void *arg, mdv_event *event)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+    mdv_committer *committer = arg;
+    mdv_evt_topology *topo = (mdv_evt_topology *)event;
+    return mdv_safeptr_set(committer->topology, topo->topology);
+}
 
-    committer->tablespace = tablespace;
-    committer->tracker = mdv_tracker_retain(tracker);
-    committer->jobber = mdv_jobber_retain(jobber);
 
-    mdv_rollbacker_push(rollbacker, mdv_tracker_release, committer->tracker);
-    mdv_rollbacker_push(rollbacker, mdv_jobber_release, committer->jobber);
+static mdv_errno mdv_committer_evt_trlog_changed(void *arg, mdv_event *event)
+{
+    mdv_committer *committer = arg;
+    mdv_evt_trlog_changed *evt = (mdv_evt_trlog_changed *)event;
+    (void)evt;
+    mdv_committer_start(committer);
+    return MDV_OK;
+}
 
+
+static const mdv_event_handler_type mdv_committer_handlers[] =
+{
+    { MDV_EVT_TOPOLOGY,         mdv_committer_evt_topology },
+    { MDV_EVT_TRLOG_CHANGED,    mdv_committer_evt_trlog_changed },
+};
+
+
+mdv_committer * mdv_committer_create(mdv_ebus *ebus, mdv_jobber_config const *jconfig)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
+
+    mdv_committer *committer = mdv_alloc(sizeof(mdv_committer), "committer");
+
+    if (!committer)
+    {
+        MDV_LOGE("No memory for new committer");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    atomic_init(&committer->rc, 1);
     atomic_init(&committer->active_jobs, 0);
+    atomic_init(&committer->active, false);
+
+    committer->ebus = mdv_ebus_retain(ebus);
+
+    mdv_rollbacker_push(rollbacker, mdv_ebus_release, committer->ebus);
+
+    committer->topology = mdv_safeptr_create(&mdv_empty_topology,
+                                        (mdv_safeptr_retain_fn)mdv_topology_retain,
+                                        (mdv_safeptr_release_fn)mdv_topology_release);
+
+    if (!committer->topology)
+    {
+        MDV_LOGE("Safe pointer creation failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_safeptr_free, committer->topology);
+
+    committer->jobber = mdv_jobber_create(jconfig);
+
+    if (!committer->jobber)
+    {
+        MDV_LOGE("Jobs scheduler creation failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_jobber_release, committer->jobber);
 
     committer->start = mdv_eventfd(false);
 
@@ -211,12 +287,10 @@ mdv_errno mdv_committer_create(mdv_committer *committer,
     {
         MDV_LOGE("Eventfd creation failed");
         mdv_rollback(rollbacker);
-        return MDV_FAILED;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_eventfd_close, committer->start);
-
-    atomic_init(&committer->active, false);
 
     mdv_thread_attrs const attrs =
     {
@@ -229,7 +303,7 @@ mdv_errno mdv_committer_create(mdv_committer *committer,
     {
         MDV_LOGE("Thread creation failed with error %d", err);
         mdv_rollback(rollbacker);
-        return err;
+        return 0;
     }
 
     while(!mdv_committer_is_active(committer))
@@ -237,9 +311,26 @@ mdv_errno mdv_committer_create(mdv_committer *committer,
 
     mdv_rollbacker_push(rollbacker, mdv_committer_stop, committer);
 
+    if (mdv_ebus_subscribe_all(committer->ebus,
+                               committer,
+                               mdv_committer_handlers,
+                               sizeof mdv_committer_handlers / sizeof *mdv_committer_handlers) != MDV_OK)
+    {
+        MDV_LOGE("Ebus subscription failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
     mdv_rollbacker_free(rollbacker);
 
-    return MDV_OK;
+    return committer;
+}
+
+
+void mdv_committer_start(mdv_committer *committer)
+{
+    uint64_t const signal = 1;
+    mdv_write_all(committer->start, &signal, sizeof signal);
 }
 
 
@@ -260,19 +351,40 @@ void mdv_committer_stop(mdv_committer *committer)
 }
 
 
-void mdv_committer_free(mdv_committer *committer)
+static void mdv_committer_free(mdv_committer *committer)
 {
     mdv_committer_stop(committer);
+
+    mdv_ebus_unsubscribe_all(committer->ebus,
+                             committer,
+                             mdv_committer_handlers,
+                             sizeof mdv_committer_handlers / sizeof *mdv_committer_handlers);
+
     mdv_jobber_release(committer->jobber);
-    mdv_tracker_release(committer->tracker);
     mdv_eventfd_close(committer->start);
+    mdv_ebus_release(committer->ebus);
+    mdv_safeptr_free(committer->topology);
     memset(committer, 0, sizeof(*committer));
+    mdv_free(committer, "committer");
 }
 
 
-void mdv_committer_start(mdv_committer *committer)
+mdv_committer * mdv_committer_retain(mdv_committer *committer)
 {
-    uint64_t const signal = 1;
-    mdv_write_all(committer->start, &signal, sizeof signal);
+    atomic_fetch_add_explicit(&committer->rc, 1, memory_order_acquire);
+    return committer;
 }
 
+
+uint32_t mdv_committer_release(mdv_committer *committer)
+{
+    if (!committer)
+        return 0;
+
+    uint32_t rc = atomic_fetch_sub_explicit(&committer->rc, 1, memory_order_release) - 1;
+
+    if (!rc)
+        mdv_committer_free(committer);
+
+    return rc;
+}

@@ -56,6 +56,11 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         config->committer.workers = atoi(value);
         MDV_LOGI("Committer workers: %u", config->committer.workers);
     }
+    else if (MDV_CFG_MATCH("committer", "queues"))
+    {
+        config->committer.queues = atoi(value);
+        MDV_LOGI("Committer queues: %u", config->committer.queues);
+    }
 
     else if (MDV_CFG_MATCH("log", "level"))
     {
@@ -135,6 +140,7 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.ebus.queues                  = 4;
 
     MDV_CONFIG.committer.workers            = 4;
+    MDV_CONFIG.committer.queues             = 4;
 
     MDV_CONFIG.datasync.batch_size          = 256;
 

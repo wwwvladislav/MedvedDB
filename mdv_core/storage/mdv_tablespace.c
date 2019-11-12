@@ -2,6 +2,7 @@
 #include "../mdv_config.h"
 #include "../mdv_tracker.h"
 #include "../event/mdv_table.h"
+#include "../event/mdv_trlog.h"
 #include "../event/mdv_types.h"
 #include <mdv_serialization.h>
 #include <mdv_alloc.h>
@@ -197,6 +198,17 @@ void mdv_tablespace_close(mdv_tablespace *tablespace)
     }
 }
 
+static void mdv_tablespace_trlog_changed_notify(mdv_tablespace *tablespace)
+{
+    mdv_evt_trlog_changed *evt = mdv_evt_trlog_changed_create();
+
+    if (evt)
+    {
+        mdv_ebus_publish(tablespace->ebus, evt, MDV_EVT_UNIQUE);
+        mdv_evt_trlog_changed_release(evt);
+    }
+}
+
 
 static bool mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *table)
 {
@@ -252,6 +264,8 @@ static bool mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_ba
     }
 
     mdv_rollback(rollbacker);
+
+    mdv_tablespace_trlog_changed_notify(tablespace);
 
     return true;
 }

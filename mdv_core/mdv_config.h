@@ -52,6 +52,7 @@ typedef struct
     struct
     {
         uint32_t   workers;         ///< Number of thread pool workers for transaction log applying
+        uint32_t   queues;          ///< Number of event queues
     } committer;
 
     struct

@@ -21,12 +21,11 @@
 struct mdv_core
 {
     mdv_ebus       *ebus;               ///< Events bus
-    mdv_jobber     *jobber;             ///< Jobs scheduler
     mdv_tracker    *tracker;            ///< Network topology tracker
     mdv_conman     *conman;             ///< Connections manager
     mdv_metainf     metainf;            ///< Metainformation (DB version, node UUID etc.)
     mdv_datasync    datasync;           ///< Data synchronizer
-    mdv_committer   committer;          ///< Data committer
+    mdv_committer  *committer;          ///< Data committer
 
     struct
     {
@@ -38,7 +37,7 @@ struct mdv_core
 
 mdv_core * mdv_core_create()
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(9);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(8);
 
     mdv_core *core = mdv_alloc(sizeof(mdv_core), "core");
 
@@ -119,35 +118,6 @@ mdv_core * mdv_core_create()
     mdv_rollbacker_push(rollbacker, mdv_tablespace_close, core->storage.tablespace);
 
 
-    // Jobs scheduler
-    mdv_jobber_config const jr_config =
-    {
-        .threadpool =
-        {
-            .size = MDV_CONFIG.ebus.workers,
-            .thread_attrs =
-            {
-                .stack_size = MDV_THREAD_STACK_SIZE
-            }
-        },
-        .queue =
-        {
-            .count = MDV_CONFIG.ebus.queues
-        }
-    };
-
-    core->jobber = mdv_jobber_create(&jr_config);
-
-    if (!core->jobber)
-    {
-        MDV_LOGE("Jobs scheduler creation failed");
-        mdv_rollback(rollbacker);
-        return 0;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_jobber_release, core->jobber);
-
-
     // Topology tracker
     core->tracker = mdv_tracker_create(&core->metainf.uuid.value,
                                        core->storage.metainf,
@@ -164,30 +134,45 @@ mdv_core * mdv_core_create()
 
 
     // Data synchronizer
-    if (mdv_datasync_create(&core->datasync,
-                            core->storage.tablespace,
-                            core->jobber) != MDV_OK)
-    {
-        MDV_LOGE("Data synchronizer creation failed");
-        mdv_rollback(rollbacker);
-        return 0;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_datasync_free, &core->datasync);
+//    if (mdv_datasync_create(&core->datasync,
+//                            core->storage.tablespace,
+//                            core->jobber) != MDV_OK)
+//    {
+//        MDV_LOGE("Data synchronizer creation failed");
+//        mdv_rollback(rollbacker);
+//        return 0;
+//    }
+//
+//    mdv_rollbacker_push(rollbacker, mdv_datasync_free, &core->datasync);
 
 
     // Data committer
-    if (mdv_committer_create(&core->committer,
-                             core->storage.tablespace,
-                             core->tracker,
-                             core->jobber) != MDV_OK)
+    mdv_jobber_config const jconfig =
+    {
+        .threadpool =
+        {
+            .size = MDV_CONFIG.committer.workers,
+            .thread_attrs =
+            {
+                .stack_size = MDV_THREAD_STACK_SIZE
+            }
+        },
+        .queue =
+        {
+            .count = MDV_CONFIG.committer.queues
+        }
+    };
+
+    core->committer = mdv_committer_create(core->ebus, &jconfig);
+
+    if (!core->committer)
     {
         MDV_LOGE("Data committer creation failed");
         mdv_rollback(rollbacker);
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_committer_free, &core->committer);
+    mdv_rollbacker_push(rollbacker, mdv_committer_release, core->committer);
 
 
     // Connections manager
@@ -237,11 +222,10 @@ void mdv_core_free(mdv_core *core)
     if (core)
     {
         mdv_datasync_stop(&core->datasync);
-        mdv_committer_stop(&core->committer);
+        mdv_committer_stop(core->committer);
         mdv_conman_free(core->conman);
-        mdv_jobber_release(core->jobber);
-        mdv_datasync_free(&core->datasync);
-        mdv_committer_free(&core->committer);
+        //mdv_datasync_free(&core->datasync);
+        mdv_committer_release(core->committer);
         mdv_tracker_release(core->tracker);
         mdv_storage_release(core->storage.metainf);
         mdv_tablespace_close(core->storage.tablespace);

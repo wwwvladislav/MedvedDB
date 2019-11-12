@@ -1,57 +1,36 @@
 #pragma once
+#include <mdv_ebus.h>
 #include <mdv_jobber.h>
-#include <mdv_threads.h>
-#include <mdv_eventfd.h>
-#include <mdv_errno.h>
-#include <stdatomic.h>
-#include "storage/mdv_tablespace.h"
-#include "mdv_tracker.h"
 
 
 /// Data committer
-typedef struct
-{
-    mdv_tablespace *tablespace;     ///< DB tables space
-    mdv_tracker    *tracker;        ///< Nodes and network topology tracker
-    mdv_jobber     *jobber;         ///< Jobs scheduler
-    mdv_descriptor  start;          ///< Signal for starting
-    mdv_thread      thread;         ///< Committer thread
-    atomic_bool     active;         ///< Status
-    atomic_size_t   active_jobs;    ///< Active jobs counter
-} mdv_committer;
+typedef struct mdv_committer mdv_committer;
 
 
 /**
- * @brief Create data committer
+ * @brief Creates data committer
  *
- * @param committer [out]   Data committer for initialization
  * @param tablespace [in]   Storage
- * @param tracker [in]      Nodes and network topology tracker
- * @param jobber [in]       Jobs scheduler
+ * @param jconfig [in]      Jobs scheduler configuration
  *
- * @return MDV_OK on success
- * @return nonzero value on error
+ * @return Data committer
  */
-mdv_errno mdv_committer_create(mdv_committer *committer,
-                               mdv_tablespace *tablespace,
-                               mdv_tracker *tracker,
-                               mdv_jobber *jobber);
+mdv_committer * mdv_committer_create(mdv_ebus *ebus, mdv_jobber_config const *jconfig);
 
 
 /**
- * @brief Stop data committer
- *
- * @param committer [in] Data committer
+ * @brief Retains data committer.
+ * @details Reference counter is increased by one.
  */
-void mdv_committer_stop(mdv_committer *committer);
+mdv_committer * mdv_committer_retain(mdv_committer *committer);
 
 
 /**
- * @brief Free data committer created by mdv_committer_create()
- *
- * @param committer [in] Data committer for freeing
+ * @brief Releases data committer.
+ * @details Reference counter is decreased by one.
+ *          When the reference counter reaches zero, the data committer is stopped and freed.
  */
-void mdv_committer_free(mdv_committer *committer);
+uint32_t mdv_committer_release(mdv_committer *committer);
 
 
 /**
@@ -61,3 +40,11 @@ void mdv_committer_free(mdv_committer *committer);
  *
  */
 void mdv_committer_start(mdv_committer *committer);
+
+
+/**
+ * @brief Stop data committer
+ *
+ * @param committer [in] Data committer
+ */
+void mdv_committer_stop(mdv_committer *committer);

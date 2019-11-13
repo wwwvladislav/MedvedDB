@@ -35,6 +35,9 @@ typedef struct
 } mdv_trlog_data;
 
 
+typedef bool (*mdv_trlog_apply_fn)(void *arg, mdv_trlog_op const *op);
+
+
 typedef mdv_list_entry(mdv_trlog_data) mdv_trlog_entry;
 
 
@@ -95,3 +98,21 @@ bool mdv_trlog_add(mdv_trlog *trlog,
  */
 bool mdv_trlog_new_op(mdv_trlog *trlog,
                       mdv_trlog_op const *op);
+
+
+/**
+ * @brief Returns true if transaction log was changed
+ *
+ * @param trlog [in]
+ */
+bool mdv_trlog_changed(mdv_trlog *trlog);
+
+
+/**
+ * @brief Applies transaction log
+ * @return number of applied rows
+ */
+uint32_t mdv_trlog_apply(mdv_trlog         *trlog,
+                         uint32_t           batch_size,
+                         void              *arg,
+                         mdv_trlog_apply_fn fn);

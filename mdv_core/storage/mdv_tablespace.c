@@ -355,7 +355,11 @@ bool mdv_tablespace_log_apply(mdv_tablespace *tablespace, mdv_uuid const *storag
 
     if (trlog)
     {
-        // TODO
+        if (mdv_trlog_changed(trlog))
+        {
+            // TODO
+        }
+
         mdv_trlog_release(trlog);
     }
 
@@ -366,6 +370,6 @@ bool mdv_tablespace_log_apply(mdv_tablespace *tablespace, mdv_uuid const *storag
 
 //    return mdv_cfstorage_log_apply(cfstorage, peer_id, tablespace, &mdv_tablespace_log_apply_fn);
 
-    return false;
+    return true;
 }
 

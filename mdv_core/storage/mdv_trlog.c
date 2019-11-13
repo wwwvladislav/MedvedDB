@@ -16,43 +16,73 @@ struct mdv_trlog
 {
     mdv_uuid                uuid;               ///< storage UUID
     mdv_storage            *storage;            ///< transaction log storage
-    atomic_uint_fast64_t    top;                ///< transaction log last insertion positions
+    atomic_uint_fast64_t    top;                ///< transaction log last insertion position
+    atomic_uint_fast64_t    applied;            ///< transaction log application position
 };
 
 
 static void mdv_trlog_init(mdv_trlog *trlog)
 {
+    atomic_init(&trlog->top, 0);
+    atomic_init(&trlog->applied, 0);
+
     // Start transaction
     mdv_transaction transaction = mdv_transaction_start(trlog->storage);
 
     if (!mdv_transaction_ok(transaction))
     {
         MDV_LOGE("CFstorage transaction not started");
-        atomic_init(&trlog->top, 0);
         return;
     }
 
-    // Open transaction log
-    mdv_map map = mdv_map_open(&transaction,
-                                MDV_MAP_TRLOG,
-                                MDV_MAP_SILENT | MDV_MAP_INTEGERKEY);
-
-    if (!mdv_map_ok(map))
+    // Get transaction log last insertion position
+    do
     {
-        atomic_init(&trlog->top, 0);
-        mdv_transaction_abort(&transaction);
-        return;
-    }
+        // Open transaction log
+        mdv_map map = mdv_map_open(&transaction,
+                                    MDV_MAP_TRLOG,
+                                    MDV_MAP_SILENT | MDV_MAP_INTEGERKEY);
 
-    mdv_map_foreach_entry entry = {};
+        if (!mdv_map_ok(map))
+        {
+            mdv_transaction_abort(&transaction);
+            break;
+        }
 
-    mdv_map_foreach_explicit(transaction, map, entry, MDV_CURSOR_LAST, MDV_CURSOR_NEXT)
+        mdv_map_foreach_entry entry = {};
+
+        mdv_map_foreach_explicit(transaction, map, entry, MDV_CURSOR_LAST, MDV_CURSOR_NEXT)
+        {
+            atomic_init(&trlog->top, *(uint64_t*)entry.key.ptr);
+            mdv_map_foreach_break(entry);
+        }
+
+        mdv_map_close(&map);
+    } while(0);
+
+    // Get transaction log application position
+    do
     {
-        atomic_init(&trlog->top, *(uint64_t*)entry.key.ptr);
-        mdv_map_foreach_break(entry);
-    }
+        // Open transaction log
+        mdv_map map = mdv_map_open(&transaction,
+                                    MDV_MAP_APPLIED,
+                                    MDV_MAP_SILENT | MDV_MAP_INTEGERKEY);
 
-    mdv_map_close(&map);
+        if (!mdv_map_ok(map))
+        {
+            mdv_transaction_abort(&transaction);
+            break;
+        }
+
+        mdv_map_foreach(transaction, map, entry)
+        {
+            atomic_init(&trlog->applied, *(uint64_t*)entry.value.ptr);
+            mdv_map_foreach_break(entry);
+        }
+
+        mdv_map_close(&map);
+    } while(0);
+
     mdv_transaction_abort(&transaction);
 }
 
@@ -271,4 +301,21 @@ bool mdv_trlog_new_op(mdv_trlog *trlog,
     mdv_rollbacker_free(rollbacker);
 
     return true;
+}
+
+
+bool mdv_trlog_changed(mdv_trlog *trlog)
+{
+    return atomic_load_explicit(&trlog->top, memory_order_relaxed)
+            > atomic_load_explicit(&trlog->applied, memory_order_relaxed);
+}
+
+
+uint32_t mdv_trlog_apply(mdv_trlog         *trlog,
+                         uint32_t           batch_size,
+                         void              *arg,
+                         mdv_trlog_apply_fn fn)
+{
+    // TODO:
+    return 0;
 }

@@ -10,6 +10,7 @@
  */
 #pragma once
 #include <mdv_ebus.h>
+#include <mdv_uuid.h>
 
 
 typedef struct
@@ -20,3 +21,14 @@ typedef struct
 mdv_evt_trlog_changed * mdv_evt_trlog_changed_create();
 mdv_evt_trlog_changed * mdv_evt_trlog_changed_retain(mdv_evt_trlog_changed *evt);
 uint32_t                mdv_evt_trlog_changed_release(mdv_evt_trlog_changed *evt);
+
+
+typedef struct
+{
+    mdv_event       base;
+    mdv_uuid        uuid;       ///< Transaction log UUID
+} mdv_evt_trlog_apply;
+
+mdv_evt_trlog_apply * mdv_evt_trlog_apply_create(mdv_uuid const *uuid);
+mdv_evt_trlog_apply * mdv_evt_trlog_apply_retain(mdv_evt_trlog_apply *evt);
+uint32_t              mdv_evt_trlog_apply_release(mdv_evt_trlog_apply *evt);

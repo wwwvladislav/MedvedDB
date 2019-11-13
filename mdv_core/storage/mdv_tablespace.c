@@ -64,31 +64,42 @@ static mdv_trlog * mdv_tablespace_trlog(mdv_tablespace *tablespace, mdv_uuid con
     if (ref)
         return mdv_trlog_retain(ref->trlog);
 
-    mdv_trlog_ref new_ref =
-    {
-        .uuid = *uuid,
-        .trlog = mdv_trlog_open(uuid, MDV_CONFIG.storage.path.ptr)
-    };
+    return 0;
+}
 
-    if (!new_ref.trlog)
-        return 0;
+
+static mdv_trlog * mdv_tablespace_trlog_create(mdv_tablespace *tablespace, mdv_uuid const *uuid)
+{
+    mdv_trlog_ref *ref = 0;
 
     if (mdv_mutex_lock(&tablespace->mutex) == MDV_OK)
     {
-        if (!mdv_hashmap_insert(tablespace->trlogs, &new_ref, sizeof new_ref))
+        ref = mdv_hashmap_find(tablespace->trlogs, uuid);
+
+        if(!ref)
         {
-            mdv_trlog_release(new_ref.trlog);
-            new_ref.trlog = 0;
+            mdv_trlog_ref new_ref =
+            {
+                .uuid = *uuid,
+                .trlog = mdv_trlog_open(uuid, MDV_CONFIG.storage.path.ptr)
+            };
+
+            if (new_ref.trlog)
+            {
+                ref = mdv_hashmap_insert(tablespace->trlogs, &new_ref, sizeof new_ref);
+
+                if (!ref)
+                {
+                    mdv_trlog_release(new_ref.trlog);
+                    new_ref.trlog = 0;
+                }
+            }
         }
+
         mdv_mutex_unlock(&tablespace->mutex);
     }
-    else
-    {
-        mdv_trlog_release(new_ref.trlog);
-        new_ref.trlog = 0;
-    }
 
-    return mdv_trlog_retain(new_ref.trlog);
+    return ref ? mdv_trlog_retain(ref->trlog) : 0;
 }
 
 
@@ -106,10 +117,21 @@ static mdv_errno mdv_tablespace_evt_create_table(void *arg, mdv_event *event)
     return MDV_FAILED;
 }
 
+static mdv_errno mdv_tablespace_evt_trlog_apply(void *arg, mdv_event *event)
+{
+    mdv_tablespace      *tablespace = arg;
+    mdv_evt_trlog_apply *apply      = (mdv_evt_trlog_apply *)event;
+
+    return mdv_tablespace_log_apply(tablespace, &apply->uuid)
+                ? MDV_OK
+                : MDV_FAILED;
+}
+
 
 static const mdv_event_handler_type mdv_tablespace_handlers[] =
 {
     { MDV_EVT_CREATE_TABLE, mdv_tablespace_evt_create_table },
+    { MDV_EVT_TRLOG_APPLY,  mdv_tablespace_evt_trlog_apply },
 };
 
 
@@ -204,7 +226,7 @@ static void mdv_tablespace_trlog_changed_notify(mdv_tablespace *tablespace)
 
     if (evt)
     {
-        mdv_ebus_publish(tablespace->ebus, evt, MDV_EVT_UNIQUE);
+        mdv_ebus_publish(tablespace->ebus, &evt->base, MDV_EVT_UNIQUE);
         mdv_evt_trlog_changed_release(evt);
     }
 }
@@ -214,7 +236,7 @@ static bool mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_ba
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
-    mdv_trlog *trlog = mdv_tablespace_trlog(tablespace, &tablespace->uuid);
+    mdv_trlog *trlog = mdv_tablespace_trlog_create(tablespace, &tablespace->uuid);
 
     if (!trlog)
     {
@@ -327,8 +349,16 @@ static bool mdv_tablespace_log_apply_fn(void *arg, mdv_cfstorage_op const *op)
 }
 */
 
-bool mdv_tablespace_log_apply(mdv_tablespace *tablespace, mdv_uuid const *storage, uint32_t peer_id)
+bool mdv_tablespace_log_apply(mdv_tablespace *tablespace, mdv_uuid const *storage)
 {
+    mdv_trlog *trlog = mdv_tablespace_trlog(tablespace, storage);
+
+    if (trlog)
+    {
+        // TODO
+        mdv_trlog_release(trlog);
+    }
+
 //    mdv_cfstorage *cfstorage = mdv_tablespace_cfstorage(tablespace, storage);
 
 //    if (!cfstorage)

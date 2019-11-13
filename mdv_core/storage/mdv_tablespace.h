@@ -50,9 +50,8 @@ mdv_vector * mdv_tablespace_trlogs(mdv_tablespace *tablespace);
  *
  * @param tablespace [in]   Pointer to a tablespace structure
  * @param storage [in]      Storage UUID
- * @param peer_id [in]      Peer identifier
  *
  * @return true if transaction log was successfully applied
  * @return false if operation failed
  */
-bool mdv_tablespace_log_apply(mdv_tablespace *tablespace, mdv_uuid const *storage, uint32_t peer_id);
+bool mdv_tablespace_log_apply(mdv_tablespace *tablespace, mdv_uuid const *storage);

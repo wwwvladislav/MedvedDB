@@ -34,3 +34,29 @@ uint32_t mdv_evt_trlog_changed_release(mdv_evt_trlog_changed *evt)
 {
     return 1u;
 }
+
+
+mdv_evt_trlog_apply * mdv_evt_trlog_apply_create(mdv_uuid const *uuid)
+{
+    mdv_evt_trlog_apply *event = (mdv_evt_trlog_apply*)
+                                mdv_event_create(
+                                    MDV_EVT_TRLOG_APPLY,
+                                    sizeof(mdv_evt_trlog_apply));
+
+    if (event)
+        event->uuid = *uuid;
+
+    return event;
+}
+
+
+mdv_evt_trlog_apply * mdv_evt_trlog_apply_retain(mdv_evt_trlog_apply *evt)
+{
+    return (mdv_evt_trlog_apply*)evt->base.vptr->retain(&evt->base);
+}
+
+
+uint32_t mdv_evt_trlog_apply_release(mdv_evt_trlog_apply *evt)
+{
+    return evt->base.vptr->release(&evt->base);
+}

@@ -50,8 +50,14 @@ static void mdv_committer_fn(mdv_job_base *job)
     if (!mdv_committer_is_active(committer))
         return;
 
-//    if (!mdv_tablespace_log_apply(committer->tablespace, &ctx->storage, ctx->peer_id))
-//        MDV_LOGE("Transaction log was not applied");
+    mdv_evt_trlog_apply *apply = mdv_evt_trlog_apply_create(&ctx->storage);
+
+    if (apply)
+    {
+        if (mdv_ebus_publish(committer->ebus, &apply->base, MDV_EVT_SYNC) != MDV_OK)
+            MDV_LOGE("Transaction log was not applied");
+        mdv_evt_trlog_apply_release(apply);
+    }
 }
 
 
@@ -97,60 +103,24 @@ static void mdv_committer_job_emit(mdv_committer *committer, mdv_uuid const *sto
 // Main data commit thread generates asynchronous jobs for each peer.
 static void mdv_committer_main(mdv_committer *committer)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+    mdv_topology *topology = mdv_safeptr_get(committer->topology);
 
-    MDV_LOGE("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
-
-/*
-    mdv_vector *src_peers = mdv_tracker_nodes(committer->tracker);
-
-    if (!src_peers)
+    if (topology)
     {
-        mdv_rollback(rollbacker);
-        return;
-    }
+        mdv_vector *nodes = mdv_topology_nodes(topology);
 
-    mdv_rollbacker_push(rollbacker, mdv_vector_release, src_peers);
-
-    if (mdv_vector_empty(src_peers))
-    {
-        mdv_rollback(rollbacker);
-        return;
-    }
-*/
-/* TODO
-    mdv_vector *storages = mdv_tablespace_storages(committer->tablespace);
-
-    if (!storages)
-    {
-        mdv_rollback(rollbacker);
-        return;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_vector_release, storages);
-
-    if (mdv_vector_empty(storages))
-    {
-        mdv_rollback(rollbacker);
-        return;
-    }
-
-
-    mdv_vector_foreach(storages, mdv_uuid, strg)
-    {
-        mdv_cfstorage *storage = mdv_tablespace_cfstorage(committer->tablespace, strg);
-
-        if (!storage)
-            continue;
-
-        mdv_vector_foreach(src_peers, uint32_t, src)
+        if (nodes)
         {
-            if (mdv_cfstorage_log_changed(storage, *src))
-                mdv_committer_job_emit(committer, *src, strg);
+            mdv_vector_foreach(nodes, mdv_toponode, node)
+            {
+                mdv_committer_job_emit(committer, &node->uuid);
+            }
+
+            mdv_vector_release(nodes);
         }
+
+        mdv_topology_release(topology);
     }
-*/
-    mdv_rollback(rollbacker);
 }
 
 

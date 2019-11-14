@@ -3,12 +3,13 @@
  * @brief Nodes and network topology tracker
  */
 #pragma once
+#include "mdv_node.h"
+#include "storage/mdv_storage.h"
 #include <mdv_def.h>
 #include <mdv_uuid.h>
 #include <mdv_vector.h>
 #include <mdv_ebus.h>
-#include "mdv_node.h"
-#include "storage/mdv_storage.h"
+#include <mdv_topology.h>
 
 
 /// Link between nodes
@@ -104,16 +105,6 @@ mdv_node * mdv_tracker_node_by_uuid(mdv_tracker *tracker, mdv_uuid const *uuid);
 
 
 /**
- * @brief Return node identifiers
- *
- * @param tracker [in]  Topology tracker
- *
- * @return node identifiers (vector<uint32_t>)
- */
-mdv_vector * mdv_tracker_nodes(mdv_tracker *tracker);
-
-
-/**
  * @brief Return links vector
  *
  * @param tracker [in]  Topology tracker
@@ -122,3 +113,13 @@ mdv_vector * mdv_tracker_nodes(mdv_tracker *tracker);
  */
 mdv_vector * mdv_tracker_links(mdv_tracker *tracker);
 
+
+/**
+ * @brief Extract network topology from tracker
+ * @details In result topology links are sorted in ascending order.
+ *
+ * @param tracker [in]          Topology tracker
+ *
+ * @return On success return non NULL pointer to a network topology.
+ */
+mdv_topology * mdv_tracker_topology(mdv_tracker *tracker);

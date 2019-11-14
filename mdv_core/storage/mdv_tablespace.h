@@ -36,16 +36,6 @@ void mdv_tablespace_close(mdv_tablespace *tablespace);
 
 
 /**
- * @brief Return transaction logs uuids vector.
- *
- * @param tablespace [in] Pointer to a tablespace structure
- *
- * @return storages uuids vector.
- */
-mdv_vector * mdv_tablespace_trlogs(mdv_tablespace *tablespace);
-
-
-/**
  * @brief Applies a transaction log to the data storage.
  *
  * @param tablespace [in]   Pointer to a tablespace structure

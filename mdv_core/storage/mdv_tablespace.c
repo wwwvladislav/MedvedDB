@@ -15,7 +15,7 @@
 /// DB tables space
 struct mdv_tablespace
 {
-    mdv_mutex    mutex;         ///< Mutex for storages guard
+    mdv_mutex    trlogs_mutex;  ///< Mutex for transaction logs guard
     mdv_hashmap *trlogs;        ///< Transaction logs map (Node UUID -> mdv_trlog)
     mdv_uuid     uuid;          ///< Current node UUID
     mdv_ebus    *ebus;          ///< Events bus
@@ -48,17 +48,17 @@ enum
  *
  * @return non zero table identifier pointer if operation successfully completed.
  */
-static bool mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *table);
+static bool mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_table_base *table);
 
 
 static mdv_trlog * mdv_tablespace_trlog(mdv_tablespace *tablespace, mdv_uuid const *uuid)
 {
     mdv_trlog_ref *ref = 0;
 
-    if (mdv_mutex_lock(&tablespace->mutex) == MDV_OK)
+    if (mdv_mutex_lock(&tablespace->trlogs_mutex) == MDV_OK)
     {
         ref = mdv_hashmap_find(tablespace->trlogs, uuid);
-        mdv_mutex_unlock(&tablespace->mutex);
+        mdv_mutex_unlock(&tablespace->trlogs_mutex);
     }
 
     if (ref)
@@ -72,7 +72,7 @@ static mdv_trlog * mdv_tablespace_trlog_create(mdv_tablespace *tablespace, mdv_u
 {
     mdv_trlog_ref *ref = 0;
 
-    if (mdv_mutex_lock(&tablespace->mutex) == MDV_OK)
+    if (mdv_mutex_lock(&tablespace->trlogs_mutex) == MDV_OK)
     {
         ref = mdv_hashmap_find(tablespace->trlogs, uuid);
 
@@ -96,7 +96,7 @@ static mdv_trlog * mdv_tablespace_trlog_create(mdv_tablespace *tablespace, mdv_u
             }
         }
 
-        mdv_mutex_unlock(&tablespace->mutex);
+        mdv_mutex_unlock(&tablespace->trlogs_mutex);
     }
 
     return ref ? mdv_trlog_retain(ref->trlog) : 0;
@@ -108,7 +108,7 @@ static mdv_errno mdv_tablespace_evt_create_table(void *arg, mdv_event *event)
     mdv_tablespace       *tablespace   = arg;
     mdv_evt_create_table *create_table = (mdv_evt_create_table *)event;
 
-    if (mdv_tablespace_create_table(tablespace, create_table->table))
+    if (mdv_tablespace_log_create_table(tablespace, create_table->table))
     {
         MDV_LOGI("New table '%s' is created", mdv_uuid_to_str(&create_table->table->id).ptr);
         return MDV_OK;
@@ -152,7 +152,7 @@ mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid, mdv_ebus *ebus)
 
     tablespace->uuid = *uuid;
 
-    mdv_errno err = mdv_mutex_create(&tablespace->mutex);
+    mdv_errno err = mdv_mutex_create(&tablespace->trlogs_mutex);
 
     if (err != MDV_OK)
     {
@@ -160,7 +160,7 @@ mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid, mdv_ebus *ebus)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tablespace->mutex);
+    mdv_rollbacker_push(rollbacker, mdv_mutex_free, &tablespace->trlogs_mutex);
 
     tablespace->trlogs = mdv_hashmap_create(mdv_trlog_ref,
                                             uuid,
@@ -214,7 +214,7 @@ void mdv_tablespace_close(mdv_tablespace *tablespace)
 
         mdv_hashmap_release(tablespace->trlogs);
 
-        mdv_mutex_free(&tablespace->mutex);
+        mdv_mutex_free(&tablespace->trlogs_mutex);
 
         mdv_free(tablespace, "tablespace");
     }
@@ -232,7 +232,7 @@ static void mdv_tablespace_trlog_changed_notify(mdv_tablespace *tablespace)
 }
 
 
-static bool mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *table)
+static bool mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_table_base *table)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
@@ -293,53 +293,49 @@ static bool mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_ba
 }
 
 
-mdv_vector * mdv_tablespace_trlogs(mdv_tablespace *tablespace)
+static bool mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *table)
 {
-    mdv_vector *uuids = mdv_vector_create(54, sizeof(mdv_uuid), &mdv_default_allocator);
-
-    if (!uuids)
-        return 0;
-
-    if (mdv_mutex_lock(&tablespace->mutex) == MDV_OK)
-    {
-        mdv_hashmap_foreach(tablespace->trlogs, mdv_trlog_ref, ref)
-        {
-            mdv_vector_push_back(uuids, &ref->uuid);
-        }
-        mdv_mutex_unlock(&tablespace->mutex);
-    }
-
-    return uuids;
+    // TODO: OOOOOOOOOOOOOOOOOOOOOOOOOO
+    return true;
 }
 
 
-static bool mdv_tablespace_trlog_apply(void *arg, mdv_trlog_op const *op)
+static bool mdv_tablespace_trlog_apply(void *arg, mdv_trlog_op *op)
 {
     mdv_tablespace *tablespace = arg;
 
-    MDV_LOGE("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
-
-/*
-    mdv_op *db_op = op->op.ptr;
-
     binn obj;
 
-    if (!binn_load(db_op->payload, &obj))
+    if (!binn_load(op->payload, &obj))
     {
         MDV_LOGE("Invalid transaction operation");
         return false;
     }
 
-    switch(db_op->op)
+    bool ret = true;
+
+    switch(op->type)
     {
         case MDV_OP_TABLE_CREATE:
         {
-            MDV_LOGE("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
+            mdv_table_base *table = mdv_unbinn_table(&obj);
+
+            if (table)
+            {
+                ret = mdv_tablespace_create_table(tablespace, table);
+
+                mdv_free(table, "table");
+            }
+            else
+                MDV_LOGE("Table creation failed. Invalid TR log operation.");
+
             break;
         }
 
         case MDV_OP_ROW_INSERT:
         {
+            MDV_LOGE("TODO: MDV_OP_ROW_INSERT");
+            break;
         }
 
         default:
@@ -347,9 +343,8 @@ static bool mdv_tablespace_trlog_apply(void *arg, mdv_trlog_op const *op)
     }
 
     binn_free(&obj);
-*/
 
-    return true;
+    return ret;
 }
 
 

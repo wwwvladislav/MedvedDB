@@ -1,6 +1,7 @@
 #pragma once
 #include <mdv_ebus.h>
 #include <mdv_jobber.h>
+#include <mdv_topology.h>
 
 
 /// Data committer
@@ -12,10 +13,11 @@ typedef struct mdv_committer mdv_committer;
  *
  * @param tablespace [in]   Storage
  * @param jconfig [in]      Jobs scheduler configuration
+ * @param topology [in]     Network topology
  *
  * @return Data committer
  */
-mdv_committer * mdv_committer_create(mdv_ebus *ebus, mdv_jobber_config const *jconfig);
+mdv_committer * mdv_committer_create(mdv_ebus *ebus, mdv_jobber_config const *jconfig, mdv_topology *topology);
 
 
 /**

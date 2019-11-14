@@ -35,7 +35,7 @@ typedef struct
 } mdv_trlog_data;
 
 
-typedef bool (*mdv_trlog_apply_fn)(void *arg, mdv_trlog_op const *op);
+typedef bool (*mdv_trlog_apply_fn)(void *arg, mdv_trlog_op *op);
 
 
 typedef mdv_list_entry(mdv_trlog_data) mdv_trlog_entry;

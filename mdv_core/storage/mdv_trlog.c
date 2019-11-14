@@ -9,6 +9,10 @@
 #include <mdv_log.h>
 #include <mdv_filesystem.h>
 #include <stdatomic.h>
+#include <assert.h>
+
+
+static const uint32_t MDV_TRLOG_APPLIED_POS_KEY = 0;
 
 
 /// Transaction logs storage
@@ -31,7 +35,7 @@ static void mdv_trlog_init(mdv_trlog *trlog)
 
     if (!mdv_transaction_ok(transaction))
     {
-        MDV_LOGE("CFstorage transaction not started");
+        MDV_LOGE("TR log transaction not started");
         return;
     }
 
@@ -44,10 +48,7 @@ static void mdv_trlog_init(mdv_trlog *trlog)
                                     MDV_MAP_SILENT | MDV_MAP_INTEGERKEY);
 
         if (!mdv_map_ok(map))
-        {
-            mdv_transaction_abort(&transaction);
             break;
-        }
 
         mdv_map_foreach_entry entry = {};
 
@@ -69,16 +70,13 @@ static void mdv_trlog_init(mdv_trlog *trlog)
                                     MDV_MAP_SILENT | MDV_MAP_INTEGERKEY);
 
         if (!mdv_map_ok(map))
-        {
-            mdv_transaction_abort(&transaction);
             break;
-        }
 
-        mdv_map_foreach(transaction, map, entry)
-        {
-            atomic_init(&trlog->applied, *(uint64_t*)entry.value.ptr);
-            mdv_map_foreach_break(entry);
-        }
+        mdv_data const key = { sizeof MDV_TRLOG_APPLIED_POS_KEY, (void*)&MDV_TRLOG_APPLIED_POS_KEY };
+        mdv_data value = {};
+
+        if (mdv_map_get(&map, &transaction, &key, &value))
+            atomic_init(&trlog->applied, *(uint64_t*)value.ptr);
 
         mdv_map_close(&map);
     } while(0);
@@ -179,12 +177,55 @@ static uint64_t mdv_trlog_new_id(mdv_trlog *trlog)
 }
 
 
-void mdv_trlog_id_maximize(mdv_trlog *trlog, uint64_t id)
+static void mdv_trlog_id_maximize(mdv_trlog *trlog, uint64_t id)
 {
     for(uint64_t top_id = atomic_load(&trlog->top); id > top_id;)
     {
         if(atomic_compare_exchange_weak(&trlog->top, &top_id, id))
             break;
+    }
+}
+
+
+static void mdv_trlog_applied_pos_set(mdv_trlog *trlog, uint64_t applied_pos)
+{
+    atomic_store_explicit(&trlog->applied, applied_pos, memory_order_relaxed);
+
+    // Start transaction
+    mdv_transaction transaction = mdv_transaction_start(trlog->storage);
+
+    if (!mdv_transaction_ok(transaction))
+    {
+        MDV_LOGE("TR log transaction not started");
+        return;
+    }
+
+    // Open transaction log
+    mdv_map map = mdv_map_open(&transaction,
+                                MDV_MAP_APPLIED,
+                                MDV_MAP_CREATE | MDV_MAP_INTEGERKEY);
+
+    if (!mdv_map_ok(map))
+    {
+        mdv_transaction_abort(&transaction);
+        return;
+    }
+
+    // Save transaction log application position
+    mdv_data const key = { sizeof MDV_TRLOG_APPLIED_POS_KEY, (void*)&MDV_TRLOG_APPLIED_POS_KEY };
+    mdv_data value = { sizeof applied_pos, &applied_pos };
+
+    if (mdv_map_put(&map, &transaction, &key, &value))
+    {
+        if (!mdv_transaction_commit(&transaction))
+            MDV_LOGE("Transaction failed.");
+        mdv_map_close(&map);
+    }
+    else
+    {
+        MDV_LOGE("TR log applied posiotion wasn't saved");
+        mdv_map_close(&map);
+        mdv_transaction_abort(&transaction);
     }
 }
 
@@ -304,6 +345,84 @@ bool mdv_trlog_add_op(mdv_trlog *trlog,
 }
 
 
+static size_t mdv_trlog_read(mdv_trlog                    *trlog,
+                             uint64_t                      pos,
+                             size_t                        size,
+                             mdv_list/*<mdv_trlog_data>*/ *ops)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
+
+    // Start transaction
+    mdv_transaction transaction = mdv_transaction_start(trlog->storage);
+
+    if (!mdv_transaction_ok(transaction))
+    {
+        MDV_LOGE("TR log transaction failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
+
+    // Open transaction log
+    mdv_map tr_log = mdv_map_open(&transaction,
+                                  MDV_MAP_TRLOG,
+                                  MDV_MAP_SILENT | MDV_MAP_INTEGERKEY);
+
+    if (!mdv_map_ok(tr_log))
+    {
+        MDV_LOGE("Transaction log map '%s' not opened", MDV_MAP_TRLOG);
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &tr_log);
+
+    mdv_map_foreach_entry entry =
+    {
+        .key =
+        {
+            .size = sizeof pos,
+            .ptr = &pos
+        }
+    };
+
+    size_t n = 0;
+
+    mdv_map_foreach_explicit(transaction, tr_log, entry, MDV_SET_RANGE, MDV_CURSOR_NEXT)
+    {
+        mdv_trlog_entry *op = mdv_alloc(sizeof(mdv_trlog_entry) + entry.value.size, "trlog_entry");
+
+        if (!op)
+        {
+            MDV_LOGE("No memory for TR log entry");
+            mdv_map_foreach_break(entry);
+        }
+
+        mdv_trlog_op const *trlog_op = entry.value.ptr;
+
+        op->data.id = *(uint64_t*)entry.key.ptr;
+
+        assert(trlog_op->size == entry.value.size);
+
+        memcpy(&op->data.op, trlog_op, trlog_op->size);
+
+        mdv_list_emplace_back(ops, (mdv_list_entry_base *)op);
+
+        if(++n >= size)
+            mdv_map_foreach_break(entry);
+    }
+
+    mdv_map_close(&tr_log);
+
+    mdv_transaction_abort(&transaction);
+
+    mdv_rollbacker_free(rollbacker);
+
+    return n;
+}
+
+
 bool mdv_trlog_changed(mdv_trlog *trlog)
 {
     return atomic_load_explicit(&trlog->top, memory_order_relaxed)
@@ -316,14 +435,39 @@ uint32_t mdv_trlog_apply(mdv_trlog         *trlog,
                          void              *arg,
                          mdv_trlog_apply_fn fn)
 {
-    uint64_t const new_records =
-        atomic_load_explicit(&trlog->top, memory_order_relaxed) -
-        atomic_load_explicit(&trlog->applied, memory_order_relaxed);
+    uint64_t const applied_pos = atomic_load_explicit(&trlog->applied, memory_order_relaxed);
+    uint64_t const top         = atomic_load_explicit(&trlog->top, memory_order_relaxed);
 
-    if (!new_records)
+    if (applied_pos >= top)
         return 0;
 
-    // TODO:
+    mdv_list/*<mdv_trlog_data>*/ ops = {};
 
-    return 0;
+    size_t const count = mdv_trlog_read(trlog, applied_pos + 1, batch_size, &ops);
+
+    if (!count)     // No data in TR log
+        return 0;
+
+    uint64_t new_applied_pos = applied_pos;
+
+    size_t n = 0;
+
+    mdv_list_foreach(&ops, mdv_trlog_data, op)
+    {
+        if (!fn(arg, &op->op))
+        {
+            MDV_LOGE("TR Log operation not applied");
+            break;
+        }
+
+        new_applied_pos = op->id;
+        ++n;
+    }
+
+    mdv_list_clear(&ops);
+
+    if (n)
+        mdv_trlog_applied_pos_set(trlog, new_applied_pos);
+
+    return n;
 }

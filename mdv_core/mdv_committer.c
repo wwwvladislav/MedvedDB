@@ -206,7 +206,7 @@ static const mdv_event_handler_type mdv_committer_handlers[] =
 };
 
 
-mdv_committer * mdv_committer_create(mdv_ebus *ebus, mdv_jobber_config const *jconfig)
+mdv_committer * mdv_committer_create(mdv_ebus *ebus, mdv_jobber_config const *jconfig, mdv_topology *topology)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
 
@@ -227,7 +227,7 @@ mdv_committer * mdv_committer_create(mdv_ebus *ebus, mdv_jobber_config const *jc
 
     mdv_rollbacker_push(rollbacker, mdv_ebus_release, committer->ebus);
 
-    committer->topology = mdv_safeptr_create(&mdv_empty_topology,
+    committer->topology = mdv_safeptr_create(topology,
                                         (mdv_safeptr_retain_fn)mdv_topology_retain,
                                         (mdv_safeptr_release_fn)mdv_topology_release);
 

@@ -37,7 +37,7 @@ struct mdv_core
 
 mdv_core * mdv_core_create()
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(8);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(9);
 
     mdv_core *core = mdv_alloc(sizeof(mdv_core), "core");
 
@@ -132,6 +132,9 @@ mdv_core * mdv_core_create()
 
     mdv_rollbacker_push(rollbacker, mdv_tracker_release, core->tracker);
 
+    mdv_topology *topology = mdv_tracker_topology(core->tracker);
+
+    mdv_rollbacker_push(rollbacker, mdv_topology_release, topology);
 
     // Data synchronizer
 //    if (mdv_datasync_create(&core->datasync,
@@ -163,7 +166,7 @@ mdv_core * mdv_core_create()
         }
     };
 
-    core->committer = mdv_committer_create(core->ebus, &jconfig);
+    core->committer = mdv_committer_create(core->ebus, &jconfig, topology);
 
     if (!core->committer)
     {
@@ -212,6 +215,8 @@ mdv_core * mdv_core_create()
     MDV_LOGI("Node UUID: %s", mdv_uuid_to_str(&core->metainf.uuid.value).ptr);
 
     mdv_rollbacker_free(rollbacker);
+
+    mdv_topology_release(topology);
 
     return core;
 }

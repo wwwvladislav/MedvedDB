@@ -279,7 +279,7 @@ static bool mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_ba
 
     mdv_uuid const *objid = 0;
 
-    if (!mdv_trlog_new_op(trlog, op))
+    if (!mdv_trlog_add_op(trlog, op))
     {
         mdv_rollback(rollbacker);
         return false;
@@ -312,11 +312,14 @@ mdv_vector * mdv_tablespace_trlogs(mdv_tablespace *tablespace)
     return uuids;
 }
 
-/*
-static bool mdv_tablespace_log_apply_fn(void *arg, mdv_cfstorage_op const *op)
+
+static bool mdv_tablespace_trlog_apply(void *arg, mdv_trlog_op const *op)
 {
     mdv_tablespace *tablespace = arg;
 
+    MDV_LOGE("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
+
+/*
     mdv_op *db_op = op->op.ptr;
 
     binn obj;
@@ -344,10 +347,11 @@ static bool mdv_tablespace_log_apply_fn(void *arg, mdv_cfstorage_op const *op)
     }
 
     binn_free(&obj);
+*/
 
     return true;
 }
-*/
+
 
 bool mdv_tablespace_log_apply(mdv_tablespace *tablespace, mdv_uuid const *storage)
 {
@@ -355,20 +359,14 @@ bool mdv_tablespace_log_apply(mdv_tablespace *tablespace, mdv_uuid const *storag
 
     if (trlog)
     {
-        if (mdv_trlog_changed(trlog))
-        {
-            // TODO
-        }
+        while(mdv_trlog_apply(trlog,
+                              MDV_CONFIG.committer.batch_size,
+                              tablespace,
+                              mdv_tablespace_trlog_apply)
+                >= MDV_CONFIG.committer.batch_size);
 
         mdv_trlog_release(trlog);
     }
-
-//    mdv_cfstorage *cfstorage = mdv_tablespace_cfstorage(tablespace, storage);
-
-//    if (!cfstorage)
-//        return false;
-
-//    return mdv_cfstorage_log_apply(cfstorage, peer_id, tablespace, &mdv_tablespace_log_apply_fn);
 
     return true;
 }

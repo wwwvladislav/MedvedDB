@@ -246,7 +246,7 @@ bool mdv_trlog_add(mdv_trlog *trlog,
 }
 
 
-bool mdv_trlog_new_op(mdv_trlog *trlog,
+bool mdv_trlog_add_op(mdv_trlog *trlog,
                       mdv_trlog_op const *op)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
@@ -316,6 +316,14 @@ uint32_t mdv_trlog_apply(mdv_trlog         *trlog,
                          void              *arg,
                          mdv_trlog_apply_fn fn)
 {
+    uint64_t const new_records =
+        atomic_load_explicit(&trlog->top, memory_order_relaxed) -
+        atomic_load_explicit(&trlog->applied, memory_order_relaxed);
+
+    if (!new_records)
+        return 0;
+
     // TODO:
+
     return 0;
 }

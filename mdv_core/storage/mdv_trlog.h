@@ -96,7 +96,7 @@ bool mdv_trlog_add(mdv_trlog *trlog,
  * @return true if data was successfully written
  * @return false if error was happened
  */
-bool mdv_trlog_new_op(mdv_trlog *trlog,
+bool mdv_trlog_add_op(mdv_trlog *trlog,
                       mdv_trlog_op const *op);
 
 

@@ -1,9 +1,12 @@
 #include "mdv_tablespace.h"
+#include "mdv_trlog.h"
+#include "mdv_tables.h"
 #include "../mdv_config.h"
 #include "../mdv_tracker.h"
 #include "../event/mdv_table.h"
 #include "../event/mdv_trlog.h"
 #include "../event/mdv_types.h"
+#include <mdv_types.h>
 #include <mdv_serialization.h>
 #include <mdv_alloc.h>
 #include <mdv_rollbacker.h>
@@ -17,6 +20,7 @@ struct mdv_tablespace
 {
     mdv_mutex    trlogs_mutex;  ///< Mutex for transaction logs guard
     mdv_hashmap *trlogs;        ///< Transaction logs map (Node UUID -> mdv_trlog)
+    mdv_tables  *tables;        ///< Tables storage
     mdv_uuid     uuid;          ///< Current node UUID
     mdv_ebus    *ebus;          ///< Events bus
 };
@@ -137,7 +141,7 @@ static const mdv_event_handler_type mdv_tablespace_handlers[] =
 
 mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid, mdv_ebus *ebus)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
 
     mdv_tablespace *tablespace = mdv_alloc(sizeof(mdv_tablespace), "tablespace");
 
@@ -176,6 +180,17 @@ mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid, mdv_ebus *ebus)
 
     mdv_rollbacker_push(rollbacker, mdv_hashmap_release, tablespace->trlogs);
 
+    tablespace->tables = mdv_tables_open(MDV_CONFIG.storage.path.ptr);
+
+    if (!tablespace->tables)
+    {
+        MDV_LOGE("Tables storage creation failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_tables_release, tablespace->tables);
+
     tablespace->ebus = mdv_ebus_retain(ebus);
 
     mdv_rollbacker_push(rollbacker, mdv_ebus_release, tablespace->ebus);
@@ -211,6 +226,8 @@ void mdv_tablespace_close(mdv_tablespace *tablespace)
         {
             mdv_trlog_release(ref->trlog);
         }
+
+        mdv_tables_release(tablespace->tables);
 
         mdv_hashmap_release(tablespace->trlogs);
 
@@ -293,13 +310,6 @@ static bool mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_tabl
 }
 
 
-static bool mdv_tablespace_create_table(mdv_tablespace *tablespace, mdv_table_base *table)
-{
-    // TODO: OOOOOOOOOOOOOOOOOOOOOOOOOO
-    return true;
-}
-
-
 static bool mdv_tablespace_trlog_apply(void *arg, mdv_trlog_op *op)
 {
     mdv_tablespace *tablespace = arg;
@@ -318,13 +328,17 @@ static bool mdv_tablespace_trlog_apply(void *arg, mdv_trlog_op *op)
     {
         case MDV_OP_TABLE_CREATE:
         {
-            mdv_table_base *table = mdv_unbinn_table(&obj);
+            mdv_uuid const *uuid = mdv_unbinn_table_uuid(&obj);
 
-            if (table)
+            if (uuid)
             {
-                ret = mdv_tablespace_create_table(tablespace, table);
+                mdv_data const data =
+                {
+                    .size = binn_size(&obj),
+                    .ptr = binn_ptr(&obj)
+                };
 
-                mdv_free(table, "table");
+                ret = mdv_tables_add_raw(tablespace->tables, uuid, &data) == MDV_OK;
             }
             else
                 MDV_LOGE("Table creation failed. Invalid TR log operation.");

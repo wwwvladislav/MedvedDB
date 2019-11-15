@@ -306,6 +306,22 @@ mdv_table_base * mdv_unbinn_table(binn const *obj)
 }
 
 
+mdv_uuid const * mdv_unbinn_table_uuid(binn const *obj)
+{
+    static _Thread_local mdv_uuid uuid;
+
+    if (0
+        || !binn_object_get_uint64((void*)obj, "U0", (uint64 *)&uuid.u64[0])
+        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&uuid.u64[1]))
+    {
+        MDV_LOGE("unbinn_table failed");
+        return 0;
+    }
+
+    return &uuid;
+}
+
+
 bool mdv_binn_row(mdv_field const *fields, mdv_row_base const *row, binn *list)
 {
     if (!binn_create_list(list))

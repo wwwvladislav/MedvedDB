@@ -4,10 +4,7 @@
  * @details Tablespace contains table descriptions, row data and transaction logs.
 */
 #pragma once
-#include "mdv_trlog.h"
-#include <mdv_types.h>
-#include <mdv_errno.h>
-#include <mdv_vector.h>
+#include <mdv_def.h>
 #include <mdv_uuid.h>
 #include <mdv_ebus.h>
 

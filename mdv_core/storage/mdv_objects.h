@@ -52,7 +52,7 @@ uint32_t mdv_objects_release(mdv_objects *objs);
  *
  * @param objs [in]     DB objects storage
  * @param id [in]       Unique object identifier
- * @param obj [in]      Serialized object
+ * @param objs_arr [in] Serialized objects array
  *
  * @return On success, return MDV_OK.
  * @return On error, return non zero value

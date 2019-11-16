@@ -15,7 +15,7 @@
 #define MDV_MAP_REMOVED                 "REMOVED"           /// Removed objects identifiers
 
 
-char const *MDV_STRG_TRLOG(mdv_uuid const *uuid);
+char const *MDV_STRG_UUID(mdv_uuid const *uuid);
 #define MDV_STRG_TRLOG_MAPS             2
 #define MDV_MAP_TRLOG                   "TRLOG"             /// Transaction log
 #define MDV_MAP_APPLIED                 "APPLIED"           /// Transaction logs applied position

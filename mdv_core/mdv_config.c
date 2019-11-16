@@ -35,8 +35,19 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
 
     else if (MDV_CFG_MATCH("storage", "path"))
     {
+        mdv_string const trlog = mdv_str_static("/trlog");
+        mdv_string const rowdata = mdv_str_static("/rowdata");
+
         config->storage.path = mdv_str_pdup(config->mempool, value);
+        config->storage.trlog = mdv_str_pdup(config->mempool, value);
+        config->storage.trlog = mdv_str_pcat(config->mempool, config->storage.trlog, trlog);
+        config->storage.rowdata = mdv_str_pdup(config->mempool, value);
+        config->storage.rowdata = mdv_str_pcat(config->mempool, config->storage.rowdata, rowdata);
+
         MDV_CFG_CHECK(config->storage.path);
+        MDV_CFG_CHECK(config->storage.trlog);
+        MDV_CFG_CHECK(config->storage.rowdata);
+
         MDV_LOGI("Storage path: %s", config->storage.path.ptr);
     }
 
@@ -140,6 +151,8 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.connection.keep_interval     = 5;
 
     MDV_CONFIG.storage.path                 = mdv_str_static("./data");
+    MDV_CONFIG.storage.trlog                = mdv_str_static("./data/trlog");
+    MDV_CONFIG.storage.rowdata              = mdv_str_static("./data/rowdata");
 
     MDV_CONFIG.ebus.workers                 = 4;
     MDV_CONFIG.ebus.queues                  = 4;

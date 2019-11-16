@@ -84,7 +84,7 @@ static void mdv_trlog_init(mdv_trlog *trlog)
 }
 
 
-mdv_trlog * mdv_trlog_open(mdv_uuid const *uuid, char const *root_dir)
+mdv_trlog * mdv_trlog_open(char const *dir, mdv_uuid const *uuid)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
@@ -103,40 +103,14 @@ mdv_trlog * mdv_trlog_open(mdv_uuid const *uuid, char const *root_dir)
 
     atomic_init(&trlog->top, 0);
 
-    // Build trlog subdirectory
-    mdv_stack(char, MDV_PATH_MAX) mpool;
-    mdv_stack_clear(mpool);
-
-    static mdv_string const trlogs_dir = mdv_str_static("/trlog");
-    mdv_string path = mdv_str_pdup(mpool, root_dir);
-    path = mdv_str_pcat(mpool, path, trlogs_dir);
-
-    if (mdv_str_empty(path))
-    {
-        MDV_LOGE("Path '%s' is too long.", root_dir);
-        mdv_rollback(rollbacker);
-        return 0;
-    }
-
-    // Create subdirectory for table
-    if (!mdv_mkdir(path.ptr))
-    {
-        MDV_LOGE("TR logs directory wasn't created");
-        mdv_rollback(rollbacker);
-        return 0;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_rmdir, path.ptr);
-
-
-    trlog->storage = mdv_storage_open(path.ptr,
-                                      MDV_STRG_TRLOG(uuid),
+    trlog->storage = mdv_storage_open(dir,
+                                      MDV_STRG_UUID(uuid),
                                       MDV_STRG_TRLOG_MAPS,
                                       MDV_STRG_NOSUBDIR);
 
     if (!trlog->storage)
     {
-        MDV_LOGE("Storage '%s' wasn't created", MDV_STRG_TRLOG(uuid));
+        MDV_LOGE("Storage '%s' wasn't created", MDV_STRG_UUID(uuid));
         mdv_rollback(rollbacker);
         return 0;
     }

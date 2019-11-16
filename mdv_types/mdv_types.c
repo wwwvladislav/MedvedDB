@@ -43,3 +43,11 @@ uint32_t mdv_field_type_size(mdv_field_type t)
     MDV_LOGE("Unknown type: %u", t);
     return 0;
 }
+
+
+mdv_table_base * mdv_table_base_clone(mdv_table_base const *table)
+{
+    // TODO
+    return 0;
+}
+

@@ -44,13 +44,12 @@ typedef mdv_list_entry(mdv_trlog_data) mdv_trlog_entry;
 /**
  * @brief Opens or creates new transaction log storage
  *
+ * @param dir [in]      directory for transaction logs
  * @param uuid [in]     TR log storage UUID
- * @param root_dir [in] Root directory for transaction logs
  *
  * @return transaction log storage
  */
-mdv_trlog * mdv_trlog_open(mdv_uuid const *uuid,
-                           char const *root_dir);
+mdv_trlog * mdv_trlog_open(char const *dir, mdv_uuid const *uuid);
 
 
 /**

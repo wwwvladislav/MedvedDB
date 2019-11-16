@@ -18,19 +18,17 @@ typedef struct
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Object ID
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-typedef struct __attribute__((packed))
+typedef union __attribute__((packed))
 {
-    union
-    {
-        uint8_t  u8[12];    ///< representation as u8 array
+    uint8_t  u8[12];    ///< representation as u8 array
 
-        struct
-        {
-            uint32_t node;  ///< Node identifier
-            uint64_t id;    ///< Object identifier
-        };
+    struct __attribute__((packed))
+    {
+        uint32_t node;  ///< Node identifier
+        uint64_t id;    ///< Object identifier
     };
 } mdv_objid;
+
 
 mdv_string mdv_objid_to_str(mdv_objid const *objid);
 
@@ -112,3 +110,6 @@ typedef mdv_row(0) mdv_row_base;
 
 
 uint32_t mdv_field_type_size(mdv_field_type t);
+
+
+mdv_table_base * mdv_table_base_clone(mdv_table_base const *table);

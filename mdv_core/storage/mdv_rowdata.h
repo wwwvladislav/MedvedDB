@@ -21,11 +21,12 @@ typedef struct mdv_rowdata mdv_rowdata;
 /**
  * @brief Creates new or opens existing rowdata storage
  *
- * @param dir [in]  directory for rowdata storage
+ * @param dir [in]      directory for rowdata storage
+ * @param table [in]    table descriptor
  *
  * @return rowdata storage
  */
-mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_table_desc const *table);
+mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_table *table);
 
 
 /**

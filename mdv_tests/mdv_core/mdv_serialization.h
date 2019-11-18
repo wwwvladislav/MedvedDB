@@ -2,6 +2,7 @@
 #include "../minunit.h"
 #include <mdv_serialization.h>
 #include <mdv_alloc.h>
+#include <mdv_uuid.h>
 
 
 static void test_table_serialization()
@@ -13,31 +14,41 @@ static void test_table_serialization()
         { MDV_FLD_TYPE_UINT64, 2, mdv_str_static("u64pair") }   // uint64[2]
     };
 
-    mdv_table_desc tbl =
+    mdv_table_desc desc =
     {
         .name = mdv_str_static("my_table"),
         .size = 3,
         .fields = fields
     };
 
+    mdv_uuid uuid = { .u64 = { 1, 2 } };
+
+    mdv_table *table = mdv_table_create(&uuid, &desc);
+    mu_check(table);
+
     binn obj;
-    mu_check(mdv_binn_table(&tbl, &obj));
-    mdv_table_desc *deserialized_tbl = mdv_unbinn_table(&obj);
+    mu_check(mdv_binn_table(table, &obj));
+    mdv_table *deserialized_table = mdv_unbinn_table(&obj);
 
-    mu_check(deserialized_tbl->size == tbl.size);
-    mu_check(deserialized_tbl->name.size == tbl.name.size);
-    mu_check(memcmp(deserialized_tbl->name.ptr, tbl.name.ptr, tbl.name.size) == 0);
+    mu_check(mdv_uuid_cmp(&uuid, mdv_table_uuid(table)) == 0);
+    mu_check(mdv_uuid_cmp(&uuid, mdv_table_uuid(deserialized_table)) == 0);
 
-    for(uint32_t i = 0; i < tbl.size; ++i)
+    mdv_table_desc const *deserialized_desc = mdv_table_description(deserialized_table);
+
+    mu_check(deserialized_desc->size == desc.size);
+    mu_check(deserialized_desc->name.size == desc.name.size);
+    mu_check(memcmp(deserialized_desc->name.ptr, desc.name.ptr, desc.name.size) == 0);
+
+    for(uint32_t i = 0; i < desc.size; ++i)
     {
-        mu_check(deserialized_tbl->fields[i].type == tbl.fields[i].type);
-        mu_check(deserialized_tbl->fields[i].limit == tbl.fields[i].limit);
-        mu_check(deserialized_tbl->fields[i].name.size == tbl.fields[i].name.size);
-        mu_check(memcmp(deserialized_tbl->fields[i].name.ptr, tbl.fields[i].name.ptr, tbl.fields[i].name.size) == 0);
+        mu_check(deserialized_desc->fields[i].type == desc.fields[i].type);
+        mu_check(deserialized_desc->fields[i].limit == desc.fields[i].limit);
+        mu_check(deserialized_desc->fields[i].name.size == desc.fields[i].name.size);
+        mu_check(memcmp(deserialized_desc->fields[i].name.ptr, desc.fields[i].name.ptr, desc.fields[i].name.size) == 0);
     }
 
     binn_free(&obj);
-    mdv_free(deserialized_tbl, "table");
+    mdv_table_release(deserialized_table);
 }
 
 

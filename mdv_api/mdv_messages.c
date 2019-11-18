@@ -95,23 +95,23 @@ bool mdv_unbinn_status(binn const *obj, mdv_msg_status *msg)
 
 bool mdv_binn_create_table(mdv_msg_create_table const *msg, binn *obj)
 {
-    return mdv_binn_table(msg->table, obj);
+    return mdv_binn_table_desc(msg->desc, obj);
 }
 
 
 bool mdv_unbinn_create_table(binn const *obj, mdv_msg_create_table *msg)
 {
-    msg->table = mdv_unbinn_table(obj);
+    msg->desc = mdv_unbinn_table_desc(obj);
     return msg != 0;
 }
 
 
 void mdv_create_table_free(mdv_msg_create_table *msg)
 {
-    if (msg->table)
+    if (msg->desc)
     {
-        mdv_free(msg->table, "table");
-        msg->table = 0;
+        mdv_free(msg->desc, "table_desc");
+        msg->desc = 0;
     }
 }
 

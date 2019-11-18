@@ -180,23 +180,22 @@ static void mdv_test_scenario(char const *args)
         { MDV_FLD_TYPE_BOOL,  1, mdv_str_static("Col3") }   // bool
     };
 
-    mdv_table_desc table =
+    mdv_table_desc desc =
     {
         .name = mdv_str_static("MyTable"),
         .size = 3,
         .fields = fields
     };
 
-    mdv_errno err = mdv_create_table(client, &table);
+    mdv_table *table = mdv_create_table(client, &desc);
 
-    if (err == MDV_OK)
+    if (table)
     {
-        MDV_INF("New table '%s' with ID '%s' successfully created\n", table.name.ptr, mdv_uuid_to_str(&table.id).ptr);
+        MDV_INF("New table '%s' with ID '%s' successfully created\n", desc.name.ptr, mdv_uuid_to_str(mdv_table_uuid(table)).ptr);
+        mdv_table_release(table);
     }
     else
-    {
-        MDV_INF("Table '%s' creation failed with error '%s' (%d)\n", table.name.ptr, mdv_strerror(err), err);
-    }
+        MDV_INF("Table '%s' creation failed\n", desc.name.ptr);
 
 //    mdv_gobjid row_id;
 //

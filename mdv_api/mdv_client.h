@@ -64,10 +64,10 @@ void mdv_client_close(mdv_client *client);
  * @param table  [in]   Table description
  *               [out]  Table identifier (table->id)
  *
- * @return On success, return MDV_OK. The table->uuid contains new table UUID.
- * @return On error, return non zero value
+ * @return On success, returns nonsero table descriptor.
+ * @return On error, returns NULL
  */
-mdv_errno mdv_create_table(mdv_client *client, mdv_table_desc *table);
+mdv_table * mdv_create_table(mdv_client *client, mdv_table_desc *table);
 
 
 /**

@@ -9,11 +9,11 @@
 struct mdv_rowdata
 {
     mdv_objects     *objects;   ///< DB objects storage
-    mdv_table_desc  *table;     ///< Table information
+    mdv_table       *table;     ///< Table descriptor
 };
 
 
-mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_table_desc const *table)
+mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_table *table)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
@@ -28,18 +28,21 @@ mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_table_desc const *table)
 
     mdv_rollbacker_push(rollbacker, mdv_free, rowdata, "rowdata");
 
-    rowdata->objects = mdv_objects_open(dir, MDV_STRG_UUID(&table->id));
+    rowdata->table = mdv_table_retain(table);
+
+    mdv_rollbacker_push(rollbacker, mdv_table_release, rowdata->table);
+
+
+    rowdata->objects = mdv_objects_open(dir, MDV_STRG_UUID(mdv_table_uuid(table)));
 
     if (!rowdata->objects)
     {
-        MDV_LOGE("Rowdata storage '%s' wasn't created", MDV_STRG_UUID(&table->id));
+        MDV_LOGE("Rowdata storage '%s' wasn't created", MDV_STRG_UUID(mdv_table_uuid(table)));
         mdv_rollback(rollbacker);
         return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_objects_release, rowdata->objects);
-
-    rowdata->table = 0;
 
 //    rowdata->table = mdv_table_base_clone(table);
 //
@@ -75,7 +78,7 @@ uint32_t mdv_rowdata_release(mdv_rowdata *rowdata)
 
     if (!rc)
     {
-        mdv_free(rowdata->table, "table");
+        mdv_table_release(rowdata->table);
         mdv_free(rowdata, "tables");
     }
 

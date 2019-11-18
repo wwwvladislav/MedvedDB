@@ -158,11 +158,11 @@ static bool binn_get(binn *val, mdv_field_type type, void *data)
 }
 
 
-bool mdv_binn_table(mdv_table_desc const *table, binn *obj)
+bool mdv_binn_table_desc(mdv_table_desc const *table, binn *obj)
 {
     if (!binn_create_object(obj))
     {
-        MDV_LOGE("binn_table failed");
+        MDV_LOGE("binn_table_desc failed");
         return false;
     }
 
@@ -174,12 +174,10 @@ bool mdv_binn_table(mdv_table_desc const *table, binn *obj)
 
     if (0
         || !binn_object_set_str(obj, "N", table->name.ptr)
-        || !binn_object_set_uint64(obj, "U0", (uint64)table->id.u64[0])
-        || !binn_object_set_uint64(obj, "U1", (uint64)table->id.u64[1])
         || !binn_object_set_uint32(obj, "S", table->size)
         || !binn_object_set_uint32(obj, "B", size))
     {
-        MDV_LOGE("binn_table failed");
+        MDV_LOGE("binn_table_desc failed");
         binn_free(obj);
         return false;
     }
@@ -188,7 +186,7 @@ bool mdv_binn_table(mdv_table_desc const *table, binn *obj)
 
     if (!binn_create_list(&fields))
     {
-        MDV_LOGE("binn_table failed");
+        MDV_LOGE("binn_table_desc failed");
         binn_free(obj);
         return false;
     }
@@ -221,16 +219,17 @@ bool mdv_binn_table(mdv_table_desc const *table, binn *obj)
 }
 
 
-mdv_table_desc * mdv_unbinn_table(binn const *obj)
+mdv_table_desc * mdv_unbinn_table_desc(binn const *obj)
 {
     uint32_t size = 0;
+
     if (!binn_object_get_uint32((void*)obj, "B", &size))
     {
         MDV_LOGE("unbinn_table failed");
         return 0;
     }
 
-    mdv_table_desc *table = mdv_alloc(size, "table");
+    mdv_table_desc *table = mdv_alloc(size, "table_desc");
 
     if (!table)
     {
@@ -242,12 +241,10 @@ mdv_table_desc * mdv_unbinn_table(binn const *obj)
 
     if (0
         || !binn_object_get_str((void*)obj, "N", &name)
-        || !binn_object_get_uint64((void*)obj, "U0", (uint64 *)&table->id.u64[0])
-        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&table->id.u64[1])
         || !binn_object_get_uint32((void*)obj, "S", &table->size))
     {
-        MDV_LOGE("unbinn_table failed");
-        mdv_free(table, "table");
+        MDV_LOGE("unbinn_table_desc failed");
+        mdv_free(table, "table_desc");
         return 0;
     }
 
@@ -266,8 +263,8 @@ mdv_table_desc * mdv_unbinn_table(binn const *obj)
 
     if (!binn_object_get_list((void*)obj, "F", (void**)&binn_fields))
     {
-        MDV_LOGE("unbinn_table failed");
-        mdv_free(table, "table");
+        MDV_LOGE("unbinn_table_desc failed");
+        mdv_free(table, "table_desc");
         return 0;
     }
 
@@ -279,8 +276,8 @@ mdv_table_desc * mdv_unbinn_table(binn const *obj)
     {
         if (i > table->size)
         {
-            MDV_LOGE("unbinn_table failed");
-            mdv_free(table, "table");
+            MDV_LOGE("unbinn_table_desc failed");
+            mdv_free(table, "table_desc");
             return 0;
         }
 
@@ -291,8 +288,8 @@ mdv_table_desc * mdv_unbinn_table(binn const *obj)
             || !binn_object_get_uint32(&value, "L", &field->limit)
             || !binn_object_get_str(&value, "N", &field_name))
         {
-            MDV_LOGE("unbinn_table failed");
-            mdv_free(table, "table");
+            MDV_LOGE("unbinn_table_desc failed");
+            mdv_free(table, "table_desc");
             return 0;
         }
 
@@ -308,6 +305,86 @@ mdv_table_desc * mdv_unbinn_table(binn const *obj)
         MDV_LOGE("memory is corrupted: %p, %zu != %u", table, buff - (char*)table, size);
 
     return table;
+}
+
+
+bool mdv_binn_table(mdv_table const *table, binn *obj)
+{
+    if (!binn_create_object(obj))
+    {
+        MDV_LOGE("binn_table failed");
+        return false;
+    }
+
+    binn desc;
+
+    if (!mdv_binn_table_desc(mdv_table_description(table), &desc))
+    {
+        binn_free(obj);
+        return false;
+    }
+
+    if (!mdv_binn_table_uuid(mdv_table_uuid(table), obj)
+        || !binn_object_set_object(obj, "D", &desc))
+    {
+        MDV_LOGE("binn_table failed");
+        binn_free(obj);
+        binn_free(&desc);
+        return false;
+    }
+
+    binn_free(&desc);
+
+    return true;
+}
+
+
+mdv_table * mdv_unbinn_table(binn const *obj)
+{
+    mdv_uuid const *puuid = mdv_unbinn_table_uuid(obj);
+
+    if (!puuid)
+    {
+        MDV_LOGE("unbinn_table failed");
+        return 0;
+    }
+
+    mdv_uuid const id = *puuid;
+
+    binn *desc_odj = 0;
+
+    if (!binn_object_get_object((void*)obj, "D", (void**)&desc_odj))
+    {
+        MDV_LOGE("unbinn_table failed");
+        return 0;
+    }
+
+    mdv_table_desc *desc = mdv_unbinn_table_desc(desc_odj);
+
+    if (!desc)
+    {
+        MDV_LOGE("unbinn_table failed");
+        return 0;
+    }
+
+    mdv_table *table = mdv_table_create(&id, desc);
+
+    mdv_free(desc, "table_desc");
+
+    if (!table)
+    {
+        MDV_LOGE("unbinn_table failed");
+        return 0;
+    }
+
+    return table;
+}
+
+
+bool mdv_binn_table_uuid(mdv_uuid const *uuid, binn *obj)
+{
+    return binn_object_set_uint64((void*)obj, "U0", uuid->u64[0])
+           && binn_object_set_uint64((void*)obj, "U1", uuid->u64[1]);
 }
 
 

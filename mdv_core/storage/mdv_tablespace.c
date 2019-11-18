@@ -59,11 +59,11 @@ enum
  * @details After the successfully table creation new generated table UUID is saved to table->id.
  *
  * @param tablespace [in]   Pointer to a tablespace structure
- * @param table [in] [out]  Table description
+ * @param desc [in]         Table description
  *
- * @return non zero table identifier pointer if operation successfully completed.
+ * @return non zero table descritpro pointer if operation successfully completed.
  */
-static bool mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_table_desc *table);
+static mdv_table * mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_table_desc const *desc);
 
 
 static mdv_trlog * mdv_tablespace_trlog(mdv_tablespace *tablespace, mdv_uuid const *uuid)
@@ -118,19 +118,19 @@ static mdv_trlog * mdv_tablespace_trlog_create(mdv_tablespace *tablespace, mdv_u
 }
 
 
-static mdv_rowdata * mdv_tablespace_rowdata_create(mdv_tablespace *tablespace, mdv_table_desc const *table)
+static mdv_rowdata * mdv_tablespace_rowdata_create(mdv_tablespace *tablespace, mdv_table *table)
 {
     mdv_rowdata_ref *ref = 0;
 
     if (mdv_mutex_lock(&tablespace->rowdata_mutex) == MDV_OK)
     {
-        ref = mdv_hashmap_find(tablespace->rowdata, &table->id);
+        ref = mdv_hashmap_find(tablespace->rowdata, mdv_table_uuid(table));
 
         if(!ref)
         {
             mdv_rowdata_ref new_ref =
             {
-                .uuid = table->id,
+                .uuid = *mdv_table_uuid(table),
                 .rowdata = mdv_rowdata_open(MDV_CONFIG.storage.rowdata.ptr, table)
             };
 
@@ -158,9 +158,13 @@ static mdv_errno mdv_tablespace_evt_create_table(void *arg, mdv_event *event)
     mdv_tablespace       *tablespace   = arg;
     mdv_evt_create_table *create_table = (mdv_evt_create_table *)event;
 
-    if (mdv_tablespace_log_create_table(tablespace, create_table->table))
+    mdv_table *table = mdv_tablespace_log_create_table(tablespace, create_table->desc);
+
+    if (table)
     {
-        MDV_LOGI("New table '%s' is created", mdv_uuid_to_str(&create_table->table->id).ptr);
+        MDV_LOGI("New table '%s' is created", mdv_uuid_to_str(mdv_table_uuid(table)).ptr);
+        create_table->table_id = *mdv_table_uuid(table);
+        mdv_table_release(table);
         return MDV_OK;
     }
 
@@ -318,28 +322,38 @@ static void mdv_tablespace_trlog_changed_notify(mdv_tablespace *tablespace)
 }
 
 
-static bool mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_table_desc *table)
+static mdv_table * mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_table_desc const *desc)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     mdv_trlog *trlog = mdv_tablespace_trlog_create(tablespace, &tablespace->uuid);
 
     if (!trlog)
     {
         mdv_rollback(rollbacker);
-        return false;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_trlog_release, trlog);
 
-    table->id = mdv_uuid_generate();
+    mdv_uuid const uuid = mdv_uuid_generate();
+
+    mdv_table *table = mdv_table_create(&uuid, desc);
+
+    if (!table)
+    {
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_table_release, table);
 
     binn obj;
 
     if (!mdv_binn_table(table, &obj))
     {
         mdv_rollback(rollbacker);
-        return false;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, binn_free, &obj);
@@ -354,7 +368,7 @@ static bool mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_tabl
     if (!op)
     {
         mdv_rollback(rollbacker);
-        return false;
+        return 0;
     }
 
     mdv_rollbacker_push(rollbacker, mdv_stfree, op, "trlog_op");
@@ -368,14 +382,16 @@ static bool mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_tabl
     if (!mdv_trlog_add_op(trlog, op))
     {
         mdv_rollback(rollbacker);
-        return false;
+        return 0;
     }
+
+    mdv_table_retain(table);
 
     mdv_rollback(rollbacker);
 
     mdv_tablespace_trlog_changed_notify(tablespace);
 
-    return true;
+    return table;
 }
 
 

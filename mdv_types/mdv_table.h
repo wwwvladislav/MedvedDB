@@ -20,19 +20,48 @@
 typedef struct mdv_table_desc
 {
     mdv_string       name;
-    mdv_uuid         id;
     uint32_t         size;
     mdv_field const *fields;
 } mdv_table_desc;
-
-
-mdv_table_desc * mdv_table_desc_clone(mdv_table_desc const *table);
 
 
 /// Table descriptor
 typedef struct mdv_table mdv_table;
 
 
+/**
+ * @brief Create new table desriptor
+ *
+ * @param id [in]   Table unique identifier
+ * @param desc [in] Table description
+ *
+ * @return table desriptor or NULL
+ */
 mdv_table * mdv_table_create(mdv_uuid const *id, mdv_table_desc const *desc);
-mdv_table *mdv_table_retain(mdv_table *table);
+
+
+/**
+ * @brief Retains table desriptor.
+ * @details Reference counter is increased by one.
+ */
+mdv_table * mdv_table_retain(mdv_table *table);
+
+
+/**
+ * @brief Releases table desriptor.
+ * @details Reference counter is decreased by one.
+ *          When the reference counter reaches zero, the table desriptor is freed.
+ */
 uint32_t mdv_table_release(mdv_table *table);
+
+
+/**
+ * @brief Returns table unique identifier
+ */
+mdv_uuid const * mdv_table_uuid(mdv_table const *table);
+
+
+/**
+ * @brief Returns table description
+ */
+mdv_table_desc const * mdv_table_description(mdv_table const *table);

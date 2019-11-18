@@ -195,7 +195,7 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
 
     if (mdv_unbinn_create_table(&binn_msg, &create_table))
     {
-        mdv_evt_create_table *evt = mdv_evt_create_table_create(&create_table.table);
+        mdv_evt_create_table *evt = mdv_evt_create_table_create(&create_table.desc);
 
         if (evt)
         {
@@ -205,7 +205,7 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
             {
                 mdv_msg_table_info const table_info =
                 {
-                    .id = evt->table->id
+                    .id = evt->table_id
                 };
 
                 err = mdv_user_table_info_reply(user, msg->hdr.number, &table_info);

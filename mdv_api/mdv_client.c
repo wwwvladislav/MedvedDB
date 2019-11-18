@@ -400,17 +400,17 @@ void mdv_client_close(mdv_client *client)
 }
 
 
-mdv_errno mdv_create_table(mdv_client *client, mdv_table_desc *table)
+mdv_table * mdv_create_table(mdv_client *client, mdv_table_desc *desc)
 {
     mdv_msg_create_table create_table =
     {
-        .table = table
+        .desc = desc
     };
 
     binn create_table_msg;
 
     if (!mdv_binn_create_table(&create_table, &create_table_msg))
-        return MDV_FAILED;
+        return 0;
 
     mdv_msg req =
     {
@@ -428,6 +428,8 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_desc *table)
 
     binn_free(&create_table_msg);
 
+    mdv_table *tbl = 0;
+
     if (err == MDV_OK)
     {
         switch(resp.hdr.id)
@@ -438,8 +440,7 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_desc *table)
 
                 err = mdv_client_table_info_handler(&resp, &info);
 
-                if (err == MDV_OK)
-                    table->id = info.id;
+                tbl = mdv_table_create(&info.id, desc);
 
                 break;
             }
@@ -460,7 +461,7 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_desc *table)
         mdv_free_msg(&resp);
     }
 
-    return err;
+    return tbl;
 }
 
 

@@ -17,9 +17,9 @@
 typedef struct
 {
     mdv_event       base;
-    mdv_table_base *table;      ///< Table description
+    mdv_table_desc *table;      ///< Table description
 } mdv_evt_create_table;
 
-mdv_evt_create_table * mdv_evt_create_table_create(mdv_table_base **table);
+mdv_evt_create_table * mdv_evt_create_table_create(mdv_table_desc **table);
 mdv_evt_create_table * mdv_evt_create_table_retain(mdv_evt_create_table *evt);
 uint32_t               mdv_evt_create_table_release(mdv_evt_create_table *evt);

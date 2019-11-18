@@ -50,7 +50,7 @@ mdv_message_def(hello, 2,
 
 
 mdv_message_def(create_table, 3,
-    mdv_table_base *table;
+    mdv_table_desc *table;
 );
 
 

@@ -400,7 +400,7 @@ void mdv_client_close(mdv_client *client)
 }
 
 
-mdv_errno mdv_create_table(mdv_client *client, mdv_table_base *table)
+mdv_errno mdv_create_table(mdv_client *client, mdv_table_desc *table)
 {
     mdv_msg_create_table create_table =
     {

@@ -6,21 +6,23 @@
 
 static void test_table_serialization()
 {
-    mdv_table(3) tbl =
+    mdv_field const fields[] =
+    {
+        { MDV_FLD_TYPE_CHAR,   0, mdv_str_static("string") },   // char *
+        { MDV_FLD_TYPE_BOOL,   1, mdv_str_static("bool") },     // bool
+        { MDV_FLD_TYPE_UINT64, 2, mdv_str_static("u64pair") }   // uint64[2]
+    };
+
+    mdv_table_desc tbl =
     {
         .name = mdv_str_static("my_table"),
         .size = 3,
-        .fields =
-        {
-            { MDV_FLD_TYPE_CHAR,   0, mdv_str_static("string") },   // char *
-            { MDV_FLD_TYPE_BOOL,   1, mdv_str_static("bool") },     // bool
-            { MDV_FLD_TYPE_UINT64, 2, mdv_str_static("u64pair") }   // uint64[2]
-        }
+        .fields = fields
     };
 
     binn obj;
-    mu_check(mdv_binn_table((mdv_table_base const *)&tbl, &obj));
-    mdv_table_base * deserialized_tbl = mdv_unbinn_table(&obj);
+    mu_check(mdv_binn_table(&tbl, &obj));
+    mdv_table_desc *deserialized_tbl = mdv_unbinn_table(&obj);
 
     mu_check(deserialized_tbl->size == tbl.size);
     mu_check(deserialized_tbl->name.size == tbl.name.size);

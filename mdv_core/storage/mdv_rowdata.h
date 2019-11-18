@@ -24,7 +24,7 @@ typedef struct mdv_rowdata mdv_rowdata;
  *
  * @return rowdata storage
  */
-mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_table_base const *table);
+mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_table_desc const *table);
 
 
 /**

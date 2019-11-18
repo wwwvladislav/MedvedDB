@@ -3,7 +3,7 @@
 #include <mdv_alloc.h>
 
 
-mdv_evt_create_table * mdv_evt_create_table_create(mdv_table_base **table)
+mdv_evt_create_table * mdv_evt_create_table_create(mdv_table_desc **table)
 {
     static mdv_ievent vtbl =
     {
@@ -35,7 +35,7 @@ mdv_evt_create_table * mdv_evt_create_table_retain(mdv_evt_create_table *evt)
 
 uint32_t mdv_evt_create_table_release(mdv_evt_create_table *evt)
 {
-    mdv_table_base *table = evt->table;
+    mdv_table_desc *table = evt->table;
 
     uint32_t rc = mdv_event_release(&evt->base);
 

@@ -80,19 +80,15 @@ typedef struct
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Table
+// Table Description
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define mdv_table(N)                \
-    struct mdv_table_##N            \
-    {                               \
-        mdv_string      name;       \
-        mdv_uuid        id;         \
-        uint32_t        size;       \
-        mdv_field       fields[N];  \
-    }
-
-
-typedef mdv_table(0) mdv_table_base;
+typedef struct mdv_table_desc
+{
+    mdv_string       name;
+    mdv_uuid         id;
+    uint32_t         size;
+    mdv_field const *fields;
+} mdv_table_desc;
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -112,4 +108,4 @@ typedef mdv_row(0) mdv_row_base;
 uint32_t mdv_field_type_size(mdv_field_type t);
 
 
-mdv_table_base * mdv_table_base_clone(mdv_table_base const *table);
+mdv_table_desc * mdv_table_desc_clone(mdv_table_desc const *table);

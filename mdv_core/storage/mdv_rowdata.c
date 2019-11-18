@@ -9,11 +9,11 @@
 struct mdv_rowdata
 {
     mdv_objects     *objects;   ///< DB objects storage
-    mdv_table_base  *table;     ///< Table information
+    mdv_table_desc  *table;     ///< Table information
 };
 
 
-mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_table_base const *table)
+mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_table_desc const *table)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 

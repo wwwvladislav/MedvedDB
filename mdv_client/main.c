@@ -173,19 +173,21 @@ static void mdv_test_scenario(char const *args)
 {
     (void)args;
 
-    mdv_table(3) table =
+    mdv_field const fields[] =
+    {
+        { MDV_FLD_TYPE_CHAR,  0, mdv_str_static("Col1") },  // char *
+        { MDV_FLD_TYPE_INT32, 2, mdv_str_static("Col2") },  // pair { int, int }
+        { MDV_FLD_TYPE_BOOL,  1, mdv_str_static("Col3") }   // bool
+    };
+
+    mdv_table_desc table =
     {
         .name = mdv_str_static("MyTable"),
         .size = 3,
-        .fields =
-        {
-            { MDV_FLD_TYPE_CHAR,  0, mdv_str_static("Col1") },  // char *
-            { MDV_FLD_TYPE_INT32, 2, mdv_str_static("Col2") },  // pair { int, int }
-            { MDV_FLD_TYPE_BOOL,  1, mdv_str_static("Col3") }   // bool
-        }
+        .fields = fields
     };
 
-    mdv_errno err = mdv_create_table(client, (mdv_table_base *)&table);
+    mdv_errno err = mdv_create_table(client, &table);
 
     if (err == MDV_OK)
     {

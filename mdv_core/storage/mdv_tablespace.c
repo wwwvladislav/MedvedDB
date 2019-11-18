@@ -63,7 +63,7 @@ enum
  *
  * @return non zero table identifier pointer if operation successfully completed.
  */
-static bool mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_table_base *table);
+static bool mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_table_desc *table);
 
 
 static mdv_trlog * mdv_tablespace_trlog(mdv_tablespace *tablespace, mdv_uuid const *uuid)
@@ -118,7 +118,7 @@ static mdv_trlog * mdv_tablespace_trlog_create(mdv_tablespace *tablespace, mdv_u
 }
 
 
-static mdv_rowdata * mdv_tablespace_rowdata_create(mdv_tablespace *tablespace, mdv_table_base const *table)
+static mdv_rowdata * mdv_tablespace_rowdata_create(mdv_tablespace *tablespace, mdv_table_desc const *table)
 {
     mdv_rowdata_ref *ref = 0;
 
@@ -318,7 +318,7 @@ static void mdv_tablespace_trlog_changed_notify(mdv_tablespace *tablespace)
 }
 
 
-static bool mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_table_base *table)
+static bool mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_table_desc *table)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 

@@ -60,13 +60,13 @@ void mdv_client_close(mdv_client *client);
  * @brief Create new table
  *
  * @param client [in]   DB client
- * @param table [in]    Table description
- *              [out]   Table identifier (table->id)
+ * @param table  [in]   Table description
+ *               [out]  Table identifier (table->id)
  *
  * @return On success, return MDV_OK. The table->uuid contains new table UUID.
  * @return On error, return non zero value
  */
-mdv_errno mdv_create_table(mdv_client *client, mdv_table_base *table);
+mdv_errno mdv_create_table(mdv_client *client, mdv_table_desc *table);
 
 
 /**
@@ -82,21 +82,9 @@ mdv_errno mdv_create_table(mdv_client *client, mdv_table_base *table);
 mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology);
 
 
-// todo - wee need to think about query validation and how we can t fetch info about table and its fields
-//typedef struct
-//{
-//    mdv_uuid uuid;
-//    mdv_table_base* table;
-//} mdv_table_info;
-//
-///**
-// *
-// * @param client
-// * @param name
-// * @param info
-// * @return
-// */
-//mdv_errno ndv_get_table_info(mdv_client *client, char const * name, mdv_list * info);
+// mdv_errno mdv_get_table_uuids(mdv_client *client, char const *name, mdv_list * info);
+
+// mdv_table * mdv_get_table(mdv_client *client, mdv_uuid const *uuid);
 
 
 /**

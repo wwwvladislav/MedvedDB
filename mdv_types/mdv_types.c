@@ -45,7 +45,7 @@ uint32_t mdv_field_type_size(mdv_field_type t)
 }
 
 
-mdv_table_base * mdv_table_base_clone(mdv_table_base const *table)
+mdv_table_desc * mdv_table_desc_clone(mdv_table_desc const *table)
 {
     // TODO
     return 0;

@@ -158,7 +158,7 @@ static bool binn_get(binn *val, mdv_field_type type, void *data)
 }
 
 
-bool mdv_binn_table(mdv_table_base const *table, binn *obj)
+bool mdv_binn_table(mdv_table_desc const *table, binn *obj)
 {
     if (!binn_create_object(obj))
     {
@@ -167,7 +167,7 @@ bool mdv_binn_table(mdv_table_base const *table, binn *obj)
     }
 
     // Calculate size
-    uint32_t size = offsetof(mdv_table_base, fields) + table->size * sizeof(mdv_field);
+    uint32_t size = sizeof(mdv_table_desc) + table->size * sizeof(mdv_field);
     size += table->name.size;
     for(uint32_t i = 0; i < table->size; ++i)
         size += table->fields[i].name.size;
@@ -221,7 +221,7 @@ bool mdv_binn_table(mdv_table_base const *table, binn *obj)
 }
 
 
-mdv_table_base * mdv_unbinn_table(binn const *obj)
+mdv_table_desc * mdv_unbinn_table(binn const *obj)
 {
     uint32_t size = 0;
     if (!binn_object_get_uint32((void*)obj, "B", &size))
@@ -230,7 +230,7 @@ mdv_table_base * mdv_unbinn_table(binn const *obj)
         return 0;
     }
 
-    mdv_table_base *table = (mdv_table_base *)mdv_alloc(size, "table");
+    mdv_table_desc *table = mdv_alloc(size, "table");
 
     if (!table)
     {
@@ -251,15 +251,20 @@ mdv_table_base * mdv_unbinn_table(binn const *obj)
         return 0;
     }
 
-    char *buff = (char *)(table->fields + table->size);
+    mdv_field *fields = (mdv_field *)(table + 1);
+
+    table->fields = fields;
+
+    char *buff = (char *)(fields + table->size);
 
     table->name.size = strlen(name) + 1;
     table->name.ptr = buff;
     buff += table->name.size;
     memcpy(table->name.ptr, name, table->name.size);
 
-    binn *fields = 0;
-    if (!binn_object_get_list((void*)obj, "F", (void**)&fields))
+    binn *binn_fields = 0;
+
+    if (!binn_object_get_list((void*)obj, "F", (void**)&binn_fields))
     {
         MDV_LOGE("unbinn_table failed");
         mdv_free(table, "table");
@@ -270,7 +275,7 @@ mdv_table_base * mdv_unbinn_table(binn const *obj)
     binn value = {};
     size_t i = 0;
 
-    binn_list_foreach(fields, value)
+    binn_list_foreach(binn_fields, value)
     {
         if (i > table->size)
         {
@@ -279,7 +284,7 @@ mdv_table_base * mdv_unbinn_table(binn const *obj)
             return 0;
         }
 
-        mdv_field *field = table->fields + i;
+        mdv_field *field = fields + i;
         char *field_name = 0;
 
         if (!binn_object_get_uint32(&value, "T", &field->type)

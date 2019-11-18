@@ -11,6 +11,7 @@
 #pragma once
 #include <mdv_def.h>
 #include <mdv_types.h>
+#include <mdv_table.h>
 
 
 /// Rowdata storage

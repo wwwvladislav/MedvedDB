@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <mdv_binn.h>
 #include <mdv_types.h>
+#include <mdv_table.h>
 #include <mdv_topology.h>
 
 

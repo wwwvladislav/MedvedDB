@@ -13,12 +13,26 @@
 #include <mdv_string.h>
 #include <mdv_uuid.h>
 
-/*
-/// Table description
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Table Description
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+typedef struct mdv_table_desc
+{
+    mdv_string       name;
+    mdv_uuid         id;
+    uint32_t         size;
+    mdv_field const *fields;
+} mdv_table_desc;
+
+
+mdv_table_desc * mdv_table_desc_clone(mdv_table_desc const *table);
+
+
+/// Table descriptor
 typedef struct mdv_table mdv_table;
 
 
-mdv_table * mdv_table_create(char const *name, uint32_t fields_count, mdv_field const *fields);
+mdv_table * mdv_table_create(mdv_uuid const *id, mdv_table_desc const *desc);
 mdv_table *mdv_table_retain(mdv_table *table);
 uint32_t mdv_table_release(mdv_table *table);
-*/

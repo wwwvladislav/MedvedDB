@@ -5,6 +5,7 @@
  */
 #pragma once
 #include <mdv_types.h>
+#include <mdv_table.h>
 #include <mdv_topology.h>
 #include <mdv_errno.h>
 

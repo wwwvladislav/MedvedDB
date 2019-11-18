@@ -9,7 +9,7 @@
 #include "mdv_tracker.h"
 #include "storage/mdv_metainf.h"
 #include "storage/mdv_tablespace.h"
-#include "event/mdv_types.h"
+#include "event/mdv_evt_types.h"
 #include <mdv_log.h>
 #include <mdv_messages.h>
 #include <mdv_ctypes.h>

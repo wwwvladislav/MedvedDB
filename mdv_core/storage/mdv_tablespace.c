@@ -4,9 +4,9 @@
 #include "mdv_rowdata.h"
 #include "../mdv_config.h"
 #include "../mdv_tracker.h"
-#include "../event/mdv_table.h"
-#include "../event/mdv_trlog.h"
-#include "../event/mdv_types.h"
+#include "../event/mdv_evt_table.h"
+#include "../event/mdv_evt_trlog.h"
+#include "../event/mdv_evt_types.h"
 #include <mdv_types.h>
 #include <mdv_serialization.h>
 #include <mdv_alloc.h>

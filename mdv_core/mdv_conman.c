@@ -2,8 +2,8 @@
 #include "mdv_user.h"
 #include "mdv_peer.h"
 #include "mdv_conctx.h"
-#include "event/mdv_types.h"
-#include "event/mdv_topology.h"
+#include "event/mdv_evt_types.h"
+#include "event/mdv_evt_topology.h"
 #include <mdv_chaman.h>
 #include <mdv_log.h>
 #include <mdv_alloc.h>

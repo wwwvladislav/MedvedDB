@@ -2,10 +2,10 @@
 #include "mdv_p2pmsg.h"
 #include "mdv_config.h"
 #include "mdv_conctx.h"
-#include "event/mdv_types.h"
-#include "event/mdv_link.h"
-#include "event/mdv_topology.h"
-#include "event/mdv_broadcast.h"
+#include "event/mdv_evt_types.h"
+#include "event/mdv_evt_link.h"
+#include "event/mdv_evt_topology.h"
+#include "event/mdv_evt_broadcast.h"
 #include <mdv_version.h>
 #include <mdv_alloc.h>
 #include <mdv_log.h>

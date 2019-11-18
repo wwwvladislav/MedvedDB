@@ -1,9 +1,9 @@
 #include "mdv_user.h"
 #include "mdv_config.h"
 #include "mdv_conctx.h"
-#include "event/mdv_types.h"
-#include "event/mdv_topology.h"
-#include "event/mdv_table.h"
+#include "event/mdv_evt_types.h"
+#include "event/mdv_evt_topology.h"
+#include "event/mdv_evt_table.h"
 #include <mdv_messages.h>
 #include <mdv_version.h>
 #include <mdv_alloc.h>

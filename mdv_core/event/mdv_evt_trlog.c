@@ -1,5 +1,5 @@
-#include "mdv_trlog.h"
-#include "mdv_types.h"
+#include "mdv_evt_trlog.h"
+#include "mdv_evt_types.h"
 
 
 mdv_evt_trlog_changed * mdv_evt_trlog_changed_create()

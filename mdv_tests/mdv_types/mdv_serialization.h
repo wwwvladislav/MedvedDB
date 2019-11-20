@@ -49,6 +49,7 @@ static void test_table_serialization()
 
     binn_free(&obj);
     mdv_table_release(deserialized_table);
+    mdv_table_release(table);
 }
 
 
@@ -93,7 +94,7 @@ static void test_row_serialization()
 }
 
 
-MU_TEST(core_serialization)
+MU_TEST(types_serialization)
 {
     test_table_serialization();
     test_row_serialization();

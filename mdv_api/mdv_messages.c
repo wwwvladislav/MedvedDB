@@ -13,7 +13,7 @@ char const * mdv_msg_name(uint32_t id)
         case mdv_message_id(table_info):    return "TABLE INFO";
         case mdv_message_id(get_topology):  return "GET TOPOLOGY";
         case mdv_message_id(topology):      return "TOPOLOGY";
-        case mdv_message_id(insert_row):    return "INSERT ROW";
+        case mdv_message_id(insert_into):   return "INSERT INTO";
     }
     return "UNKOWN";
 }
@@ -184,15 +184,40 @@ mdv_topology * mdv_unbinn_topology(binn const *obj)
 }
 
 
-bool mdv_binn_insert_row(mdv_msg_insert_row const *msg, mdv_field const * fields, binn *obj)
+bool mdv_binn_insert_into(mdv_msg_insert_into const *msg, binn *obj)
 {
-    return  mdv_binn_row(fields, msg->row, obj);
+    if (!binn_create_object(obj))
+    {
+        MDV_LOGE("binn_insert_into failed");
+        return false;
+    }
+
+    if (0
+        || !binn_object_set_uint64(obj, "U0", msg->table.u64[0])
+        || !binn_object_set_uint64(obj, "U1", msg->table.u64[1])
+        || !binn_object_set_list(obj, "R", (void *)msg->rows))
+    {
+        binn_free(obj);
+        MDV_LOGE("binn_insert_into failed");
+        return false;
+    }
+
+    return true;
 }
 
 
-mdv_msg_insert_row * mdv_unbinn_insert_row(binn const *obj,  mdv_field const * fields)
+bool mdv_unbinn_insert_into(binn const * obj, mdv_msg_insert_into *msg)
 {
-    return (mdv_msg_insert_row *) mdv_unbinn_row(obj, fields);
+    if (0
+        || !binn_object_get_uint64((void*)obj, "U0", (uint64 *)(msg->table.u64 + 0))
+        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)(msg->table.u64 + 1))
+        || !binn_object_get_list((void*)obj, "R", (void**)&msg->rows))
+    {
+        MDV_LOGE("unbinn_insert_into failed");
+        return false;
+    }
+
+    return true;
 }
 
 

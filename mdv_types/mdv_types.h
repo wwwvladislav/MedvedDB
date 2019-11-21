@@ -79,18 +79,4 @@ typedef struct
 } mdv_field;
 
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Row
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define mdv_row(N)                  \
-    struct mdv_row_##N              \
-    {                               \
-        uint32_t        size;       \
-        mdv_data        fields[N];  \
-    }
-
-
-typedef mdv_row(0) mdv_row_base;
-
-
 uint32_t mdv_field_type_size(mdv_field_type t);

@@ -6,6 +6,7 @@
 #pragma once
 #include <mdv_types.h>
 #include <mdv_table.h>
+#include <mdv_rowset.h>
 #include <mdv_topology.h>
 #include <mdv_errno.h>
 
@@ -93,11 +94,9 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology);
  * @details This function implements insertion functionality.
  *
  * @param client [in]    DB client
- * @param table_id [in]    The guid of table
- * @param row [in]    Row description
- * @param id [out]    Row identifier
+ * @param rowset [in]    Set of rows for insert
  *
  * @return On success, return MDV_OK.
  * @return On error, return non zero value
  */
-mdv_errno mdv_insert_row(mdv_client *client, mdv_gobjid const *table_id, mdv_field const *fields, mdv_row_base const *row, mdv_gobjid *id);
+mdv_errno mdv_insert_row(mdv_client *client, mdv_rowset *rowset);

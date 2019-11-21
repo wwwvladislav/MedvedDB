@@ -1,6 +1,7 @@
 #pragma once
 #include "mdv_types.h"
 #include "mdv_table.h"
+#include "mdv_rowset.h"
 #include <mdv_binn.h>
 #include <mdv_topology.h>
 #include <stdbool.h>
@@ -15,8 +16,8 @@ mdv_table      * mdv_unbinn_table(binn const *obj);
 bool             mdv_binn_table_uuid(mdv_uuid const *uuid, binn *obj);
 mdv_uuid const * mdv_unbinn_table_uuid(binn const *obj);
 
-bool             mdv_binn_row(mdv_field const *fields, mdv_row_base const *row, binn *list);
-mdv_row_base *   mdv_unbinn_row(binn const *obj, mdv_field const *fields);
+bool             mdv_binn_rowset(mdv_rowset *rowset, binn *list);
+mdv_rowset *     mdv_unbinn_rowset(binn const *list, mdv_table *table);
 
 
 /**

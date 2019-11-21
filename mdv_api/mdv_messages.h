@@ -4,6 +4,7 @@
 #include <mdv_binn.h>
 #include <mdv_types.h>
 #include <mdv_table.h>
+#include <mdv_rowset.h>
 #include <mdv_topology.h>
 
 
@@ -69,9 +70,9 @@ mdv_message_def(topology, 6,
 );
 
 
-mdv_message_def(insert_row, 7,
-    mdv_gobjid          table;
-    mdv_row_base const *row;
+mdv_message_def(insert_into, 7,
+    mdv_uuid    table;
+    binn       *rows;
 );
 
 
@@ -108,8 +109,8 @@ bool                        mdv_binn_topology               (mdv_msg_topology co
 mdv_topology              * mdv_unbinn_topology             (binn const *obj);
 
 
-bool                        mdv_binn_insert_row             (mdv_msg_insert_row const *msg,  mdv_field const * fields, binn *obj);
-mdv_msg_insert_row        * mdv_unbinn_insert_row           (binn const * obj, mdv_field const * fields);
+bool                        mdv_binn_insert_into            (mdv_msg_insert_into const *msg, binn *obj);
+bool                        mdv_unbinn_insert_into          (binn const * obj, mdv_msg_insert_into *msg);
 
 
 bool                        mdv_binn_row_info               (mdv_msg_row_info const *msg, binn *obj);

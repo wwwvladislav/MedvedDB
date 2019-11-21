@@ -522,8 +522,9 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
 }
 
 
-mdv_errno mdv_insert_row(mdv_client *client, mdv_gobjid const *table_id, mdv_field const *fields, mdv_row_base const *row, mdv_gobjid *id)
+mdv_errno mdv_insert_row(mdv_client *client, mdv_rowset *rowset)
 {
+/*
     mdv_msg_insert_row row_msg;
 
     row_msg.table = *table_id;
@@ -538,10 +539,10 @@ mdv_errno mdv_insert_row(mdv_client *client, mdv_gobjid const *table_id, mdv_fie
     mdv_msg req =
     {
         .hdr =
-            {
-                .id   = mdv_msg_insert_row_id,
-                .size = binn_size(&insert_row_msg)
-            },
+        {
+            .id   = mdv_msg_insert_row_id,
+            .size = binn_size(&insert_row_msg)
+        },
         .payload = binn_ptr(&insert_row_msg)
     };
 
@@ -579,4 +580,6 @@ mdv_errno mdv_insert_row(mdv_client *client, mdv_gobjid const *table_id, mdv_fie
 
         mdv_free_msg(&resp);
     }
+*/
+    return MDV_NO_IMPL;
 }

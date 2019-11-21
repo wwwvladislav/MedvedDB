@@ -55,19 +55,6 @@ static void test_table_serialization()
 
 static void test_row_serialization()
 {
-    int arr[] =  { 41, 42 };
-
-    mdv_row(3) row =
-    {
-        .size = 3,
-        .fields =
-        {
-            { 1, "1" },
-            { 2, "12" },
-            { sizeof(arr), arr }
-        }
-    };
-
     mdv_field fields[] =
     {
         { MDV_FLD_TYPE_CHAR,  1, mdv_str_static("col1") },
@@ -75,22 +62,69 @@ static void test_row_serialization()
         { MDV_FLD_TYPE_INT32, 3, mdv_str_static("col3") }
     };
 
-    binn obj;
-
-    mu_check(mdv_binn_row(fields, (mdv_row_base const *)&row, &obj));
-
-    mdv_row_base *deserialized_row = mdv_unbinn_row(&obj, fields);
-
-    mu_check(deserialized_row->size == row.size);
-
-    for(uint32_t i = 0; i < row.size; ++i)
+    mdv_table_desc desc =
     {
-        mu_check(deserialized_row->fields[i].size == row.fields[i].size);
-        mu_check(memcmp(deserialized_row->fields[i].ptr, row.fields[i].ptr, row.fields[i].size) == 0);
+        .name = mdv_str_static("MyTable"),
+        .size = 3,
+        .fields = fields
+    };
+
+    mdv_uuid const uuid = {};
+
+    mdv_table *table = mdv_table_create(&uuid, &desc);
+    mdv_rowset *rowset = mdv_rowset_create(table);
+
+    int arr1[] =  { 41, 42 };
+    int arr2[] =  { 43, 44 };
+
+    mdv_data const row0[] = { { 1, "1" }, { 2, "12" }, { sizeof(arr1), arr1 } };
+    mdv_data const row1[] = { { 1, "2" }, { 2, "34" }, { sizeof(arr2), arr2 } };
+    mdv_data const *rows[] = { row0, row1 };
+
+    mu_check(mdv_rowset_append(rowset, rows, sizeof rows / sizeof *rows) == sizeof rows / sizeof *rows);
+
+    binn serialized_rowset;
+
+    mu_check(mdv_binn_rowset(rowset, &serialized_rowset));
+
+    mdv_rowset *deserialized_rowset = mdv_unbinn_rowset(&serialized_rowset, table);
+
+    mu_check(mdv_rowset_columns(deserialized_rowset) == mdv_rowset_columns(rowset));
+
+    mdv_enumerator *enumerator1 = mdv_rowset_enumerator(rowset);
+    mdv_enumerator *enumerator2 = mdv_rowset_enumerator(deserialized_rowset);
+
+    size_t rows_count = 0;
+
+    uint32_t const columns = mdv_rowset_columns(rowset);
+
+    while(mdv_enumerator_next(enumerator1) == MDV_OK
+          && mdv_enumerator_next(enumerator2) == MDV_OK)
+    {
+        mdv_row *row1 = mdv_enumerator_current(enumerator1);
+        mdv_row *row2 = mdv_enumerator_current(enumerator2);
+
+        for(uint32_t i = 0; i < columns; ++i)
+        {
+            mdv_data const *entry1 = &row1->fields[i];
+            mdv_data const *entry2 = &row2->fields[i];
+
+            mu_check(entry1->size == entry2->size);
+            mu_check(memcmp(entry1->ptr, entry2->ptr, entry2->size) == 0);
+        }
+
+        ++rows_count;
     }
 
-    binn_free(&obj);
-    mdv_free(deserialized_row, "row");
+    mu_check(rows_count == sizeof rows / sizeof *rows);
+
+    binn_free(&serialized_rowset);
+
+    mu_check(mdv_enumerator_release(enumerator1) == 0);
+    mu_check(mdv_enumerator_release(enumerator2) == 0);
+    mu_check(mdv_rowset_release(rowset) == 0);
+    mu_check(mdv_rowset_release(deserialized_rowset) == 0);
+    mu_check(mdv_table_release(table) == 0);
 }
 
 

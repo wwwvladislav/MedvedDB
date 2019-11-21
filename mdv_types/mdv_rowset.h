@@ -12,6 +12,7 @@
 #include "mdv_table.h"
 #include <mdv_def.h>
 #include <mdv_enumerator.h>
+#include <mdv_list.h>
 #include <stdatomic.h>
 
 
@@ -22,6 +23,9 @@ typedef struct
 } mdv_row;
 
 
+typedef mdv_list_entry(mdv_row) mdv_rowlist_entry;
+
+
 /// Set of rows
 typedef struct mdv_rowset mdv_rowset;
 
@@ -29,6 +33,7 @@ typedef struct mdv_rowset mdv_rowset;
 typedef mdv_rowset *     (*mdv_rowset_retain_fn)    (mdv_rowset *);
 typedef uint32_t         (*mdv_rowset_release_fn)   (mdv_rowset *);
 typedef size_t           (*mdv_rowset_append_fn)    (mdv_rowset *, mdv_data const **, size_t);
+typedef void             (*mdv_rowset_emplace_fn)   (mdv_rowset *, mdv_rowlist_entry *);
 typedef mdv_enumerator * (*mdv_rowset_enumerator_fn)(mdv_rowset *);
 
 
@@ -39,6 +44,7 @@ typedef struct
     mdv_rowset_retain_fn     retain;        ///< Function for rowset retain
     mdv_rowset_release_fn    release;       ///< Function for rowset release
     mdv_rowset_append_fn     append;        ///< Function for append new row to rowset
+    mdv_rowset_emplace_fn    emplace;       ///< Function for emplace new row in rowset
     mdv_rowset_enumerator_fn enumerator;    ///< Function for rowset iterator creation
 } mdv_irowset;
 
@@ -92,6 +98,15 @@ uint32_t mdv_rowset_columns(mdv_rowset const *rowset);
  * @return number of appended rows
  */
 size_t mdv_rowset_append(mdv_rowset *rowset, mdv_data const **rows, size_t count);
+
+
+/**
+ * @brief Appends row to rowset
+ *
+ * @param rowset [in]   set of rows
+ * @param entry [in]    rows set entry
+ */
+void mdv_rowset_emplace(mdv_rowset *rowset, mdv_rowlist_entry *entry);
 
 
 /**

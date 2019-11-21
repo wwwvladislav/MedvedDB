@@ -1,11 +1,7 @@
 #include "mdv_rowset.h"
 #include <mdv_alloc.h>
 #include <mdv_log.h>
-#include <mdv_list.h>
 #include <assert.h>
-
-
-typedef mdv_list_entry(mdv_row) mdv_rowlist_entry;
 
 
 /// Set of rows
@@ -54,6 +50,13 @@ static uint32_t mdv_rowset_impl_release(mdv_rowset *rowset)
 }
 
 
+static void mdv_rowset_impl_emplace(mdv_rowset *rowset, mdv_rowlist_entry *entry)
+{
+    mdv_rowset_impl *impl = (mdv_rowset_impl *)rowset;
+    mdv_list_emplace_back(&impl->rows, (mdv_list_entry_base*)entry);
+}
+
+
 static size_t mdv_rowset_impl_append(mdv_rowset *rowset, mdv_data const **rows, size_t count)
 {
     mdv_rowset_impl *impl = (mdv_rowset_impl *)rowset;
@@ -71,7 +74,7 @@ static size_t mdv_rowset_impl_append(mdv_rowset *rowset, mdv_data const **rows, 
                             + offsetof(mdv_row, fields)
                             + sizeof(mdv_data) * cols;
         for(uint32_t j = 0; j < cols; ++j)
-            row_size += row[i].size;
+            row_size += row[j].size;
 
         // Memory allocation for new row
         mdv_rowlist_entry *entry = mdv_alloc(row_size, "rowlist_entry");
@@ -213,6 +216,7 @@ mdv_rowset * mdv_rowset_create(mdv_table *table)
         .retain = mdv_rowset_impl_retain,
         .release = mdv_rowset_impl_release,
         .append = mdv_rowset_impl_append,
+        .emplace = mdv_rowset_impl_emplace,
         .enumerator = mdv_rowset_impl_enumerator,
     };
 
@@ -251,6 +255,12 @@ uint32_t mdv_rowset_columns(mdv_rowset const *rowset)
 size_t mdv_rowset_append(mdv_rowset *rowset, mdv_data const **rows, size_t count)
 {
     return rowset->vptr->append(rowset, rows, count);
+}
+
+
+void mdv_rowset_emplace(mdv_rowset *rowset, mdv_rowlist_entry *entry)
+{
+    rowset->vptr->emplace(rowset, entry);
 }
 
 

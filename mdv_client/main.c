@@ -189,40 +189,52 @@ static void mdv_test_scenario(char const *args)
 
     mdv_table *table = mdv_create_table(client, &desc);
 
-    if (table)
+    if (!table)
     {
-        MDV_INF("New table '%s' with ID '%s' successfully created\n", desc.name.ptr, mdv_uuid_to_str(mdv_table_uuid(table)).ptr);
-        mdv_table_release(table);
-    }
-    else
         MDV_INF("Table '%s' creation failed\n", desc.name.ptr);
+        return;
+    }
 
-//    mdv_gobjid row_id;
-//
-//    int int_value[] = { 42, 43 };
-//    bool bool_value = true;
-//
-//    mdv_row(3) row =
-//    {
-//        .size = 3,
-//        .fields =
-//        {
-//            { 5, "hello" },
-//            { sizeof(int_value), int_value },
-//            { 1, &bool_value }
-//        }
-//    };
+    MDV_INF("New table '%s' with ID '%s' successfully created\n", desc.name.ptr, mdv_uuid_to_str(mdv_table_uuid(table)).ptr);
 
-//    err = mdv_insert_row(client, &id, table.fields, (mdv_row_base *)&row, &row_id);
+    mdv_rowset *rowset = mdv_rowset_create(table);
 
-//    if (err == MDV_OK)
-//    {
-//        MDV_INF("New row with ID '" PRIu64 "' successfully inserted\n",  row_id.id);
-//    }
-//    else
-//    {
-//        MDV_INF("New row insertion failed with error '%s' (%d)\n", mdv_strerror(err), err);
-//    }
+    if (!rowset)
+    {
+        MDV_INF("Rowset creation failed for table '%s'\n", desc.name.ptr);
+        mdv_table_release(table);
+        return;
+    }
+
+    int ints[] = { 42, 43 };
+    bool bool_value = true;
+
+    mdv_data const row0[] =
+    {
+        { 5,            "hello" },
+        { sizeof(ints), ints },
+        { 1,            &bool_value }
+    };
+
+    mdv_data const *rows[] = { row0 };
+
+    if (mdv_rowset_append(rowset, rows, 1) != 1)
+    {
+        MDV_INF("Rowset creation failed for table '%s'\n", desc.name.ptr);
+        mdv_rowset_release(rowset);
+        mdv_table_release(table);
+        return;
+    }
+
+    mdv_errno err = mdv_insert_row(client, rowset);
+
+    if (err == MDV_OK)
+        MDV_INF("New row was successfully inserted\n");
+     else
+        MDV_INF("New row insertion failed with error '%s' (%d)\n", mdv_strerror(err), err);
+
+    mdv_rowset_release(rowset);
+    mdv_table_release(table);
 }
 
 

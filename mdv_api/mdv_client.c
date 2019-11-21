@@ -13,6 +13,7 @@
 #include <mdv_mutex.h>
 #include <mdv_threads.h>
 #include <signal.h>
+#include <mdv_serialization.h>
 
 
 static               int total_connections = 0;
@@ -247,26 +248,6 @@ static mdv_errno mdv_client_topology_handler(mdv_msg const *msg, mdv_topology **
     if (!*topology)
     {
         MDV_LOGE("Invalid topology");
-        binn_free(&binn_msg);
-        return MDV_FAILED;
-    }
-
-    binn_free(&binn_msg);
-
-    return MDV_OK;
-}
-
-
-static mdv_errno  mdv_client_row_info_handler(mdv_msg const * msg, mdv_msg_row_info *info)
-{
-    binn binn_msg;
-
-    if(!binn_load(msg->payload, &binn_msg))
-        return MDV_FAILED;
-
-    if (!mdv_unbinn_row_info(&binn_msg, info))
-    {
-        MDV_LOGE("Invalid row info");
         binn_free(&binn_msg);
         return MDV_FAILED;
     }
@@ -524,47 +505,47 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
 
 mdv_errno mdv_insert_row(mdv_client *client, mdv_rowset *rowset)
 {
-/*
-    mdv_msg_insert_row row_msg;
+    binn serialized_rows;
 
-    row_msg.table = *table_id;
-    row_msg.row = row;
-
-    binn insert_row_msg;
-
-    if (!mdv_binn_insert_row(&row_msg, fields, &insert_row_msg))
+    if (!mdv_binn_rowset(rowset, &serialized_rows))
         return MDV_FAILED;
 
+    mdv_msg_insert_into insert_msg =
+    {
+        .table = *mdv_table_uuid(rowset->table),
+        .rows = &serialized_rows
+    };
+
+    binn insert_into_msg;
+
+    if (!mdv_binn_insert_into(&insert_msg, &insert_into_msg))
+    {
+        binn_free(&serialized_rows);
+        return MDV_FAILED;
+    }
+
+    binn_free(&serialized_rows);
 
     mdv_msg req =
     {
         .hdr =
         {
-            .id   = mdv_msg_insert_row_id,
-            .size = binn_size(&insert_row_msg)
+            .id   = mdv_msg_insert_into_id,
+            .size = binn_size(&insert_into_msg)
         },
-        .payload = binn_ptr(&insert_row_msg)
+        .payload = binn_ptr(&insert_into_msg)
     };
 
     mdv_msg resp;
 
     mdv_errno err = mdv_client_send(client, &req, &resp, client->response_timeout);
 
-    binn_free(&insert_row_msg);
+    binn_free(&insert_into_msg);
 
     if (err == MDV_OK)
     {
         switch(resp.hdr.id)
         {
-            case mdv_message_id(table_info):
-            {
-                mdv_msg_row_info info;
-                err = mdv_client_row_info_handler(&resp, &info);
-                if (err == MDV_OK)
-                    *id = info.id;
-                break;
-            }
-
             case mdv_message_id(status):
             {
                 if (mdv_client_status_handler(&resp, &err) == MDV_OK)
@@ -574,12 +555,12 @@ mdv_errno mdv_insert_row(mdv_client *client, mdv_rowset *rowset)
 
             default:
                 err = MDV_FAILED;
-                        MDV_LOGE("Unexpected response");
+                MDV_LOGE("Unexpected response");
                 break;
         }
 
         mdv_free_msg(&resp);
     }
-*/
-    return MDV_NO_IMPL;
+
+    return err;
 }

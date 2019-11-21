@@ -220,16 +220,3 @@ bool mdv_unbinn_insert_into(binn const * obj, mdv_msg_insert_into *msg)
     return true;
 }
 
-
-bool mdv_unbinn_row_info(binn const *obj, mdv_msg_row_info *msg)
-{
-    uint64 id;
-    if (!binn_object_get_uint64((void*)obj, "I", &id))
-    {
-        MDV_LOGE("unbinn_row_info failed");
-        return false;
-    }
-    msg->id.id = id;
-
-    return true;
-}

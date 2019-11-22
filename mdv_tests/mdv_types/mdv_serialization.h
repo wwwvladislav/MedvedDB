@@ -5,6 +5,21 @@
 #include <mdv_uuid.h>
 
 
+static void test_uuid_serialization()
+{
+    mdv_uuid uuid = { .u64 = { 0x1122334455667788, 0x99AABBCCDDEEFF00 } };
+    mdv_uuid deserialized_uuid;
+
+    binn obj;
+
+    mu_check(mdv_binn_uuid(&uuid, &obj));
+    mu_check(mdv_unbinn_uuid(&obj, &deserialized_uuid));
+    mu_check(mdv_uuid_cmp(&deserialized_uuid, &uuid) == 0);
+
+    binn_free(&obj);
+}
+
+
 static void test_table_serialization()
 {
     mdv_field const fields[] =
@@ -130,6 +145,7 @@ static void test_row_serialization()
 
 MU_TEST(types_serialization)
 {
+    test_uuid_serialization();
     test_table_serialization();
     test_row_serialization();
 }

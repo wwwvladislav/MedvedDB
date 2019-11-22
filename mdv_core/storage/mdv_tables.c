@@ -4,6 +4,7 @@
 #include <mdv_rollbacker.h>
 #include <mdv_alloc.h>
 #include <mdv_log.h>
+#include <mdv_serialization.h>
 
 
 struct mdv_tables
@@ -75,4 +76,35 @@ mdv_errno mdv_tables_add_raw(mdv_tables *tables, mdv_uuid const *uuid, mdv_data 
     };
 
     return mdv_objects_add(tables->objects, &id, table);
+}
+
+
+
+static void * mdv_table_restore(mdv_data const *data)
+{
+    binn obj;
+
+    if(!binn_load(data->ptr, &obj))
+    {
+        MDV_LOGW("Object reading failed");
+        return 0;
+    }
+
+    mdv_table *table = mdv_unbinn_table(&obj);
+
+    binn_free(&obj);
+
+    return table;
+}
+
+
+mdv_table * mdv_tables_get(mdv_tables *tables, mdv_uuid const *uuid)
+{
+    mdv_data const id =
+    {
+        .size = sizeof *uuid,
+        .ptr = (void*)uuid
+    };
+
+    return mdv_objects_get(tables->objects, &id, mdv_table_restore);
 }

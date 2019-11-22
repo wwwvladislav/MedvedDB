@@ -50,6 +50,17 @@ uint32_t mdv_rowdata_release(mdv_rowdata *rowdata);
 
 
 /**
+ * @brief Reserves identifiers range for rows
+ *
+ * @param rowdata [in]  Rowdata storage
+ * @param range [in]    Identifiers range length
+ *
+ * @return first identifier from range
+ */
+uint64_t mdv_rowdata_reserve(mdv_rowdata *rowdata, uint32_t range);
+
+
+/**
  * @brief Stores table row.
  *
  * @param rowdata [in] Rowdata storage
@@ -60,3 +71,4 @@ uint32_t mdv_rowdata_release(mdv_rowdata *rowdata);
  * @return On error, return non zero value
  */
 mdv_errno mdv_rowdata_add_raw(mdv_rowdata *rowdata, mdv_objid const *id, mdv_data const *row);
+

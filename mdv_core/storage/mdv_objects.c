@@ -69,6 +69,13 @@ uint32_t mdv_objects_release(mdv_objects *objs)
 }
 
 
+uint64_t mdv_objects_reserve_ids_range(mdv_objects *objs, uint32_t range)
+{
+    // TODO:
+    return 0;
+}
+
+
 static bool mdv_objects_is_deleted(mdv_objects     *objs,
                                    mdv_map         *map,
                                    mdv_transaction *transaction,
@@ -149,3 +156,75 @@ mdv_errno mdv_objects_add(mdv_objects *objs, mdv_data const *id, mdv_data const 
     return MDV_OK;
 }
 
+
+void * mdv_objects_get(mdv_objects *objs, mdv_data const *id, void * (*restore)(mdv_data const *))
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
+
+    // Start transaction
+    mdv_transaction transaction = mdv_transaction_start(objs->storage);
+
+    if (!mdv_transaction_ok(transaction))
+    {
+        MDV_LOGE("CFstorage transaction not started");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
+
+    // Open objects map
+    mdv_map objs_map = mdv_map_open(&transaction,
+                                    MDV_MAP_OBJECTS,
+                                    MDV_MAP_SILENT);
+
+    if (!mdv_map_ok(objs_map))
+    {
+        MDV_LOGE("Table '%s' not opened", MDV_MAP_OBJECTS);
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &objs_map);
+
+    // Open removed objects table
+    mdv_map rem_map = mdv_map_open(&transaction, MDV_MAP_REMOVED, MDV_MAP_SILENT);
+
+    if (!mdv_map_ok(rem_map))
+    {
+        MDV_LOGE("Table '%s' not opened", MDV_MAP_REMOVED);
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &rem_map);
+
+    if (mdv_objects_is_deleted(objs,
+                                &rem_map,
+                                &transaction,
+                                id))
+    {
+        MDV_LOGE("Object was deleted");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_data value = {};
+
+    if (!mdv_map_get(&objs_map, &transaction, id, &value))
+    {
+        MDV_LOGW("Object wasn't found.");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    void *obj = restore(&value);
+
+    mdv_transaction_abort(&transaction);
+    mdv_map_close(&objs_map);
+    mdv_map_close(&rem_map);
+
+    mdv_rollbacker_free(rollbacker);
+
+    return obj;
+}

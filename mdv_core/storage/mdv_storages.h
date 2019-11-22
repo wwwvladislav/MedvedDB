@@ -10,9 +10,10 @@
 
 
 #define MDV_STRG_TABLES                "tables.mdb"
-#define MDV_STRG_OBJECTS_MAPS           2
+#define MDV_STRG_OBJECTS_MAPS           3
 #define MDV_MAP_OBJECTS                 "OBJECTS"           /// DB objects: tables, views, etc
 #define MDV_MAP_REMOVED                 "REMOVED"           /// Removed objects identifiers
+#define MDV_MAP_IDGEN                   "IDGEN"             /// Identifiers generator for objects
 
 
 char const *MDV_STRG_UUID(mdv_uuid const *uuid);

@@ -41,3 +41,15 @@ bool mdv_topology_serialize(mdv_topology *topology, binn *obj);
  * @return On error returns NULL.
  */
 mdv_topology * mdv_topology_deserialize(binn const *obj);
+
+
+/**
+ * @brief UUID serialization
+ */
+bool mdv_binn_uuid(mdv_uuid const *uuid, binn *obj);
+
+
+/**
+ * @brief UUID deserialization
+ */
+bool mdv_unbinn_uuid(binn *obj, mdv_uuid *uuid);

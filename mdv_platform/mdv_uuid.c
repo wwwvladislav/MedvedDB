@@ -114,16 +114,3 @@ bool mdv_uuid_from_str(mdv_uuid *uuid, mdv_string const *str)
 
     return true;
 }
-
-
-binn * mdv_binn_uuid(mdv_uuid const *uuid)
-{
-    static _Thread_local char buff[32];
-
-    // binn_create(object, BINN_OBJECT, 0, NULL);
-
-}
-
-
-mdv_uuid mdv_unbinn_uuid(binn *obj)
-{}

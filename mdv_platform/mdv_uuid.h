@@ -6,7 +6,6 @@
 #pragma once
 #include "mdv_string.h"
 #include "mdv_def.h"
-#include "mdv_binn.h"
 
 
 /// Universally Unique IDentifier
@@ -82,15 +81,3 @@ mdv_string mdv_uuid_to_str(mdv_uuid const *uuid);
  * @return On error, return false
  */
 bool mdv_uuid_from_str(mdv_uuid *uuid, mdv_string const *str);
-
-
-/**
- * @brief UUID serialization
- */
-binn * mdv_binn_uuid(mdv_uuid const *uuid);
-
-
-/**
- * @brief UUID deserialization
- */
-mdv_uuid mdv_unbinn_uuid(binn *obj);

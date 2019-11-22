@@ -44,17 +44,6 @@ mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_table *table)
 
     mdv_rollbacker_push(rollbacker, mdv_objects_release, rowdata->objects);
 
-//    rowdata->table = mdv_table_base_clone(table);
-//
-//    if (!rowdata->table)
-//    {
-//        MDV_LOGE("No free space of memory for rowdata storage");
-//        mdv_rollback(rollbacker);
-//        return 0;
-//    }
-//
-//    mdv_rollbacker_push(rollbacker, mdv_free, rowdata->table, "table");
-
     mdv_rollbacker_free(rollbacker);
 
     return rowdata;
@@ -83,6 +72,12 @@ uint32_t mdv_rowdata_release(mdv_rowdata *rowdata)
     }
 
     return rc;
+}
+
+
+uint64_t mdv_rowdata_reserve(mdv_rowdata *rowdata, uint32_t range)
+{
+    return mdv_objects_reserve_ids_range(rowdata->objects, range);
 }
 
 

@@ -954,3 +954,40 @@ mdv_topology * mdv_topology_deserialize(binn const *obj)
 
     return topology;
 }
+
+
+bool mdv_binn_uuid(mdv_uuid const *uuid, binn *obj)
+{
+    static _Thread_local char buff[64];
+
+    if (!binn_create(obj, BINN_OBJECT, sizeof buff, buff))
+    {
+        MDV_LOGE("binn_uuid failed");
+        return false;
+    }
+
+    if (0
+        || !binn_object_set_uint64(obj, "U1", uuid->u64[0])
+        || !binn_object_set_uint64(obj, "U2", uuid->u64[1]))
+    {
+        MDV_LOGE("binn_uuid failed");
+        binn_free(obj);
+        return false;
+    }
+
+    return true;
+}
+
+
+bool mdv_unbinn_uuid(binn *obj, mdv_uuid *uuid)
+{
+    if (0
+        || !binn_object_get_uint64(obj, "U1", (uint64*)&uuid->u64[0])
+        || !binn_object_get_uint64(obj, "U2", (uint64*)&uuid->u64[1]))
+    {
+        MDV_LOGE("unbinn_uuid failed");
+        return false;
+    }
+
+    return true;
+}

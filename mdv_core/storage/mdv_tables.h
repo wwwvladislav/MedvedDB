@@ -11,6 +11,7 @@
 #pragma once
 #include <mdv_def.h>
 #include <mdv_types.h>
+#include <mdv_table.h>
 
 
 /// Tables storage
@@ -52,9 +53,15 @@ uint32_t mdv_tables_release(mdv_tables *tables);
  *
  * @param tables [in] Tables storage
  * @param uuid [in]   Table UUID
- * @param table [in]  Serialized table description (mdv_table_base)
+ * @param table [in]  Serialized table description (mdv_table)
  *
  * @return On success, return MDV_OK.
  * @return On error, return non zero value
  */
 mdv_errno mdv_tables_add_raw(mdv_tables *tables, mdv_uuid const *uuid, mdv_data const *table);
+
+
+/**
+ * @brief Searches the table descriptor by UUID
+ */
+mdv_table * mdv_tables_get(mdv_tables *tables, mdv_uuid const *uuid);

@@ -47,6 +47,18 @@ mdv_objects * mdv_objects_retain(mdv_objects *objs);
  */
 uint32_t mdv_objects_release(mdv_objects *objs);
 
+
+/**
+ * @brief Reserves identifiers range for objects
+ *
+ * @param objs [in]     DB objects storage
+ * @param range [in]    Identifiers range length
+ *
+ * @return first identifier from range
+ */
+uint64_t mdv_objects_reserve_ids_range(mdv_objects *objs, uint32_t range);
+
+
 /**
  * @brief Stores information about the new object.
  *
@@ -58,3 +70,16 @@ uint32_t mdv_objects_release(mdv_objects *objs);
  * @return On error, return non zero value
  */
 mdv_errno mdv_objects_add(mdv_objects *objs, mdv_data const *id, mdv_data const *obj);
+
+
+/**
+ * @brief Reads and returns the stored object
+ *
+ * @param objs [in]     DB objects storage
+ * @param id [in]       Unique object identifier
+ * @param restore [in]  Function for object reading (or deserialization)
+ *
+ * @return On success, returns nonzero object pointer
+ * @return On error, returns NULL
+ */
+void * mdv_objects_get(mdv_objects *objs, mdv_data const *id, void * (*restore)(mdv_data const *));

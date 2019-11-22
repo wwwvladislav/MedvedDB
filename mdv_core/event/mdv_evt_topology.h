@@ -1,5 +1,5 @@
 /**
- * @file mdv_topology.h
+ * @file mdv_evt_topology.h
  * @author Vladislav Volkov (wwwvladislav@gmail.com)
  * @brief Topology events definitions
  * @version 0.1

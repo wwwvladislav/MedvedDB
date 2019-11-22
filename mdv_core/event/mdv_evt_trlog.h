@@ -1,5 +1,5 @@
 /**
- * @file mdv_trlog.h
+ * @file mdv_evt_trlog.h
  * @author Vladislav Volkov (wwwvladislav@gmail.com)
  * @brief Transaction logs events definitions
  * @version 0.1

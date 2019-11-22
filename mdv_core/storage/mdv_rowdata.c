@@ -79,7 +79,7 @@ uint32_t mdv_rowdata_release(mdv_rowdata *rowdata)
     if (!rc)
     {
         mdv_table_release(rowdata->table);
-        mdv_free(rowdata, "tables");
+        mdv_free(rowdata, "rowdata");
     }
 
     return rc;

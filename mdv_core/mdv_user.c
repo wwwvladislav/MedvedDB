@@ -4,6 +4,7 @@
 #include "event/mdv_evt_types.h"
 #include "event/mdv_evt_topology.h"
 #include "event/mdv_evt_table.h"
+#include "event/mdv_evt_rowdata.h"
 #include <mdv_messages.h>
 #include <mdv_version.h>
 #include <mdv_alloc.h>
@@ -256,23 +257,26 @@ static mdv_errno mdv_user_insert_into_handler(mdv_msg const *msg, void *arg)
 
     if (mdv_unbinn_insert_into(&binn_msg, &insert_into))
     {
-        // TODO
+        mdv_evt_rowdata_ins_req *evt = mdv_evt_rowdata_ins_req_create(&insert_into.table, insert_into.rows);
+
+        if (evt)
+        {
+            err = mdv_ebus_publish(user->ebus, &evt->base, MDV_EVT_SYNC);
+            mdv_evt_rowdata_ins_req_release(evt);
+        }
     }
     else
         MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_create_table_id));
 
     binn_free(&binn_msg);
 
-    if (err != MDV_OK)
+    mdv_msg_status const status =
     {
-        mdv_msg_status const status =
-        {
-            .err = err,
-            .message = ""
-        };
+        .err = err,
+        .message = ""
+    };
 
-        err = mdv_user_status_reply(user, msg->hdr.number, &status);
-    }
+    err = mdv_user_status_reply(user, msg->hdr.number, &status);
 
     return err;
 }

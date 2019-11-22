@@ -1,5 +1,5 @@
 /**
- * @file mdv_broadcast.h
+ * @file mdv_evt_broadcast.h
  * @author Vladislav Volkov (wwwvladislav@gmail.com)
  * @brief Event definition for messages broadcasting
  * @version 0.1

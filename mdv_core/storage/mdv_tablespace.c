@@ -5,6 +5,7 @@
 #include "../mdv_config.h"
 #include "../mdv_tracker.h"
 #include "../event/mdv_evt_table.h"
+#include "../event/mdv_evt_rowdata.h"
 #include "../event/mdv_evt_trlog.h"
 #include "../event/mdv_evt_types.h"
 #include <mdv_types.h>
@@ -57,13 +58,14 @@ enum
 /**
  * @brief Insert new record into the transaction log for new table creation.
  * @details After the successfully table creation new generated table UUID is saved to table->id.
- *
- * @param tablespace [in]   Pointer to a tablespace structure
- * @param desc [in]         Table description
- *
- * @return non zero table descritpro pointer if operation successfully completed.
  */
 static mdv_table * mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_table_desc const *desc);
+
+
+/**
+ * @brief Insert new record into the transaction log for data insertion into the table.
+ */
+static mdv_errno mdv_tablespace_log_rowset(mdv_tablespace *tablespace, mdv_uuid const *table_id, binn *rows);
 
 
 static mdv_trlog * mdv_tablespace_trlog(mdv_tablespace *tablespace, mdv_uuid const *uuid)
@@ -172,6 +174,14 @@ static mdv_errno mdv_tablespace_evt_create_table(void *arg, mdv_event *event)
 }
 
 
+static mdv_errno mdv_tablespace_evt_rowdata_insert(void *arg, mdv_event *event)
+{
+    mdv_tablespace          *tablespace  = arg;
+    mdv_evt_rowdata_ins_req *rowdata_ins = (mdv_evt_rowdata_ins_req *)event;
+    return mdv_tablespace_log_rowset(tablespace, &rowdata_ins->table_id, rowdata_ins->rows);
+}
+
+
 static mdv_errno mdv_tablespace_evt_trlog_apply(void *arg, mdv_event *event)
 {
     mdv_tablespace      *tablespace = arg;
@@ -185,8 +195,9 @@ static mdv_errno mdv_tablespace_evt_trlog_apply(void *arg, mdv_event *event)
 
 static const mdv_event_handler_type mdv_tablespace_handlers[] =
 {
-    { MDV_EVT_CREATE_TABLE, mdv_tablespace_evt_create_table },
-    { MDV_EVT_TRLOG_APPLY,  mdv_tablespace_evt_trlog_apply },
+    { MDV_EVT_CREATE_TABLE,   mdv_tablespace_evt_create_table },
+    { MDV_EVT_ROWDATA_INSERT, mdv_tablespace_evt_rowdata_insert },
+    { MDV_EVT_TRLOG_APPLY,    mdv_tablespace_evt_trlog_apply },
 };
 
 
@@ -373,11 +384,9 @@ static mdv_table * mdv_tablespace_log_create_table(mdv_tablespace *tablespace, m
 
     mdv_rollbacker_push(rollbacker, mdv_stfree, op, "trlog_op");
 
-    op->size = offsetof(mdv_trlog_op, payload) + binn_obj_size;
+    op->size = op_size;
     op->type = MDV_OP_TABLE_CREATE;
     memcpy(op->payload, binn_ptr(&obj), binn_obj_size);
-
-    mdv_uuid const *objid = 0;
 
     if (!mdv_trlog_add_op(trlog, op))
     {
@@ -392,6 +401,47 @@ static mdv_table * mdv_tablespace_log_create_table(mdv_tablespace *tablespace, m
     mdv_tablespace_trlog_changed_notify(tablespace);
 
     return table;
+}
+
+
+static mdv_errno mdv_tablespace_log_rowset(mdv_tablespace *tablespace, mdv_uuid const *table_id, binn *rowset)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+
+    mdv_trlog *trlog = mdv_tablespace_trlog_create(tablespace, &tablespace->uuid);
+
+    if (!trlog)
+    {
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_trlog_release, trlog);
+
+//    int const binn_obj_size = binn_size(rowset);
+//
+//    size_t const op_size = offsetof(mdv_trlog_op, payload)
+//                            + binn_obj_size;
+//
+//    mdv_trlog_op *op = mdv_staligned_alloc(sizeof(uint64_t), op_size, "trlog_op");
+//
+//    if (!op)
+//    {
+//        mdv_rollback(rollbacker);
+//        return 0;
+//    }
+//
+//    mdv_rollbacker_push(rollbacker, mdv_stfree, op, "trlog_op");
+//
+//    op->size = op_size;
+//    op->type = MDV_OP_ROW_INSERT;
+//    memcpy(op->payload, binn_ptr(&obj), binn_obj_size);
+
+    // TODO
+
+    mdv_rollback(rollbacker);
+
+    return MDV_OK;
 }
 
 

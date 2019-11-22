@@ -1,5 +1,5 @@
 /**
- * @file mdv_table.h
+ * @file mdv_evt_table.h
  * @author Vladislav Volkov (wwwvladislav@gmail.com)
  * @brief Table events definitions
  * @version 0.1

@@ -1,5 +1,5 @@
 /**
- * @file mdv_link.h
+ * @file mdv_evt_link.h
  * @author Vladislav Volkov (wwwvladislav@gmail.com)
  * @brief Link state events definitions
  * @version 0.1

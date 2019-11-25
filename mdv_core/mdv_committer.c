@@ -65,8 +65,8 @@ static void mdv_committer_finalize(mdv_job_base *job)
 {
     mdv_committer_context *ctx = (mdv_committer_context *)job->data;
     mdv_committer         *committer = ctx->committer;
-    atomic_fetch_sub_explicit(&committer->active_jobs, 1, memory_order_relaxed);
     mdv_committer_release(committer);
+    atomic_fetch_sub_explicit(&committer->active_jobs, 1, memory_order_relaxed);
     mdv_free(job, "committer_job");
 }
 
@@ -91,6 +91,7 @@ static void mdv_committer_job_emit(mdv_committer *committer, mdv_uuid const *sto
     if (err != MDV_OK)
     {
         MDV_LOGE("Data committer job failed");
+        mdv_committer_release(committer);
         mdv_free(job, "committer_job");
     }
     else
@@ -208,7 +209,7 @@ static const mdv_event_handler_type mdv_committer_handlers[] =
 
 mdv_committer * mdv_committer_create(mdv_ebus *ebus, mdv_jobber_config const *jconfig, mdv_topology *topology)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(6);
 
     mdv_committer *committer = mdv_alloc(sizeof(mdv_committer), "committer");
 
@@ -218,6 +219,8 @@ mdv_committer * mdv_committer_create(mdv_ebus *ebus, mdv_jobber_config const *jc
         mdv_rollback(rollbacker);
         return 0;
     }
+
+    mdv_rollbacker_push(rollbacker, mdv_free, committer, "committer");
 
     atomic_init(&committer->rc, 1);
     atomic_init(&committer->active_jobs, 0);

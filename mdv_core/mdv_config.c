@@ -85,10 +85,20 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         MDV_LOGI("Log level: %s", config->log.level.ptr);
     }
 
+    else if (MDV_CFG_MATCH("datasync", "workers"))
+    {
+        config->datasync.workers = atoi(value);
+        MDV_LOGI("Datasync workers: %u", config->datasync.workers);
+    }
+    else if (MDV_CFG_MATCH("datasync", "queues"))
+    {
+        config->datasync.queues = atoi(value);
+        MDV_LOGI("Datasync queues: %u", config->datasync.queues);
+    }
     else if (MDV_CFG_MATCH("datasync", "batch_size"))
     {
         config->datasync.batch_size = atoi(value);
-        MDV_LOGI("Data sync batch size: %u", config->datasync.batch_size);
+        MDV_LOGI("Datasync batch size: %u", config->datasync.batch_size);
     }
 
     else if (MDV_CFG_MATCH("cluster", "node"))
@@ -161,7 +171,9 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.committer.queues             = 4;
     MDV_CONFIG.committer.batch_size         = 32;
 
-    MDV_CONFIG.datasync.batch_size          = 256;
+    MDV_CONFIG.datasync.workers             = 4;
+    MDV_CONFIG.datasync.queues              = 4;
+    MDV_CONFIG.datasync.batch_size          = 32;
 
     MDV_CONFIG.cluster.size                 = 0;
 }

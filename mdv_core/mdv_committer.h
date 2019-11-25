@@ -11,7 +11,7 @@ typedef struct mdv_committer mdv_committer;
 /**
  * @brief Creates data committer
  *
- * @param tablespace [in]   Storage
+ * @param ebus [in]         Events bus
  * @param jconfig [in]      Jobs scheduler configuration
  * @param topology [in]     Network topology
  *

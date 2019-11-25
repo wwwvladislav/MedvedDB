@@ -24,7 +24,7 @@ struct mdv_core
     mdv_tracker    *tracker;            ///< Network topology tracker
     mdv_conman     *conman;             ///< Connections manager
     mdv_metainf     metainf;            ///< Metainformation (DB version, node UUID etc.)
-    mdv_datasync    datasync;           ///< Data synchronizer
+    mdv_datasync   *datasync;           ///< Data synchronizer
     mdv_committer  *committer;          ///< Data committer
 
     struct
@@ -138,36 +138,56 @@ mdv_core * mdv_core_create()
 
 
     // Data synchronizer
-//    if (mdv_datasync_create(&core->datasync,
-//                            core->storage.tablespace,
-//                            core->jobber) != MDV_OK)
-//    {
-//        MDV_LOGE("Data synchronizer creation failed");
-//        mdv_rollback(rollbacker);
-//        return 0;
-//    }
-//
-//    mdv_rollbacker_push(rollbacker, mdv_datasync_free, &core->datasync);
+    {
+        mdv_jobber_config const jconfig =
+        {
+            .threadpool =
+            {
+                .size = MDV_CONFIG.datasync.workers,
+                .thread_attrs =
+                {
+                    .stack_size = MDV_THREAD_STACK_SIZE
+                }
+            },
+            .queue =
+            {
+                .count = MDV_CONFIG.datasync.queues
+            }
+        };
+
+        core->datasync = mdv_datasync_create(&core->metainf.uuid.value, core->ebus, &jconfig, topology);
+    }
+
+    if (!core->datasync)
+    {
+        MDV_LOGE("Data synchronizer creation failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_datasync_release, core->datasync);
 
 
     // Data committer
-    mdv_jobber_config const jconfig =
     {
-        .threadpool =
+        mdv_jobber_config const jconfig =
         {
-            .size = MDV_CONFIG.committer.workers,
-            .thread_attrs =
+            .threadpool =
             {
-                .stack_size = MDV_THREAD_STACK_SIZE
+                .size = MDV_CONFIG.committer.workers,
+                .thread_attrs =
+                {
+                    .stack_size = MDV_THREAD_STACK_SIZE
+                }
+            },
+            .queue =
+            {
+                .count = MDV_CONFIG.committer.queues
             }
-        },
-        .queue =
-        {
-            .count = MDV_CONFIG.committer.queues
-        }
-    };
+        };
 
-    core->committer = mdv_committer_create(core->ebus, &jconfig, topology);
+        core->committer = mdv_committer_create(core->ebus, &jconfig, topology);
+    }
 
     if (!core->committer)
     {
@@ -227,10 +247,10 @@ void mdv_core_free(mdv_core *core)
 {
     if (core)
     {
-        mdv_datasync_stop(&core->datasync);
+        mdv_datasync_stop(core->datasync);
         mdv_committer_stop(core->committer);
         mdv_conman_free(core->conman);
-        //mdv_datasync_free(&core->datasync);
+        mdv_datasync_release(core->datasync);
         mdv_committer_release(core->committer);
         mdv_tracker_release(core->tracker);
         mdv_storage_release(core->storage.metainf);

@@ -92,6 +92,12 @@ size_t mdv_hashmap_size(mdv_hashmap const *hm);
 
 
 /**
+ * @brief Checks if the container has no elements
+ */
+#define mdv_hashmap_empty(hm) (mdv_hashmap_size(hm) == 0)
+
+
+/**
  * @brief Return hash map capacity
  *
  * @param hm [in]         hash map

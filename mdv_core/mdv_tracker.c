@@ -4,7 +4,6 @@
 #include "event/mdv_evt_types.h"
 #include "event/mdv_evt_link.h"
 #include "event/mdv_evt_topology.h"
-#include "event/mdv_evt_routes.h"
 #include "event/mdv_evt_broadcast.h"
 #include "mdv_config.h"
 #include <mdv_limits.h>
@@ -255,37 +254,6 @@ static mdv_errno mdv_tracker_load(mdv_tracker *tracker)
             err = MDV_FAILED;
             MDV_LOGE("Topology notification failed");
         }
-    }
-
-    // Routes changed
-    mdv_hashmap *routes = mdv_routes_find(topology, &tracker->uuid);
-
-    if (routes)
-    {
-        mdv_evt_routes_changed *evt = mdv_evt_routes_changed_create(routes);
-
-        if (evt)
-        {
-            if (mdv_ebus_publish(tracker->ebus, &evt->base, MDV_EVT_DEFAULT) != MDV_OK)
-            {
-                err = MDV_FAILED;
-                MDV_LOGE("Routes notification failed");
-            }
-
-            mdv_evt_routes_changed_release(evt);
-        }
-        else
-        {
-            err = MDV_FAILED;
-            MDV_LOGE("Routes notification failed");
-        }
-
-        mdv_hashmap_release(routes);
-    }
-    else
-    {
-        err = MDV_FAILED;
-        MDV_LOGE("Routes calculation failed");
     }
 
     return topology;

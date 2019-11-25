@@ -41,7 +41,6 @@ static uint32_t mdv_rowset_impl_release(mdv_rowset *rowset)
         if (!rc)
         {
             mdv_list_clear(&impl->rows);
-            mdv_table_release(rowset->table);
             mdv_free(impl, "mem_rowset");
         }
     }
@@ -201,7 +200,7 @@ static mdv_enumerator * mdv_rowset_impl_enumerator(mdv_rowset *rowset)
 }
 
 
-mdv_rowset * mdv_rowset_create(mdv_table *table)
+mdv_rowset * mdv_rowset_create(uint32_t columns)
 {
     mdv_rowset_impl *impl = mdv_alloc(sizeof(mdv_rowset_impl), "mem_rowset");
 
@@ -224,7 +223,7 @@ mdv_rowset * mdv_rowset_create(mdv_table *table)
 
     impl->base.vptr = &vtbl;
 
-    impl->base.table = mdv_table_retain(table);
+    impl->base.columns = columns;
 
     memset(&impl->rows, 0, sizeof(impl->rows));
 
@@ -248,7 +247,7 @@ uint32_t mdv_rowset_release(mdv_rowset *rowset)
 
 uint32_t mdv_rowset_columns(mdv_rowset const *rowset)
 {
-    return mdv_table_description(rowset->table)->size;
+    return rowset->columns;
 }
 
 

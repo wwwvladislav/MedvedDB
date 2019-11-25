@@ -197,7 +197,7 @@ static void mdv_test_scenario(char const *args)
 
     MDV_INF("New table '%s' with ID '%s' successfully created\n", desc.name.ptr, mdv_uuid_to_str(mdv_table_uuid(table)).ptr);
 
-    mdv_rowset *rowset = mdv_rowset_create(table);
+    mdv_rowset *rowset = mdv_rowset_create(desc.size);
 
     if (!rowset)
     {
@@ -226,7 +226,7 @@ static void mdv_test_scenario(char const *args)
         return;
     }
 
-    mdv_errno err = mdv_insert_row(client, rowset);
+    mdv_errno err = mdv_insert_row(client, table, rowset);
 
     if (err == MDV_OK)
         MDV_INF("New row was successfully inserted\n");

@@ -602,7 +602,7 @@ static mdv_rowlist_entry * mdv_unbinn_row(binn const *list, mdv_table_desc const
 }
 
 
-bool mdv_binn_rowset(mdv_rowset *rowset, binn *list)
+bool mdv_binn_rowset(mdv_rowset *rowset, binn *list, mdv_table_desc const *table_desc)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
@@ -625,8 +625,6 @@ bool mdv_binn_rowset(mdv_rowset *rowset, binn *list)
     }
 
     mdv_rollbacker_push(rollbacker, mdv_enumerator_release, enumerator);
-
-    mdv_table_desc const *table_desc = mdv_table_description(rowset->table);
 
     while(mdv_enumerator_next(enumerator) == MDV_OK)
     {
@@ -661,9 +659,9 @@ bool mdv_binn_rowset(mdv_rowset *rowset, binn *list)
 }
 
 
-mdv_rowset * mdv_unbinn_rowset(binn const *list, mdv_table *table)
+mdv_rowset * mdv_unbinn_rowset(binn const *list, mdv_table_desc const *table_desc)
 {
-    mdv_rowset *rowset = mdv_rowset_create(table);
+    mdv_rowset *rowset = mdv_rowset_create(table_desc->size);
 
     if (!rowset)
     {
@@ -673,8 +671,6 @@ mdv_rowset * mdv_unbinn_rowset(binn const *list, mdv_table *table)
 
     binn_iter iter = {};
     binn value = {};
-
-    mdv_table_desc const *table_desc = mdv_table_description(table);
 
     binn_list_foreach((void*)list, value)
     {

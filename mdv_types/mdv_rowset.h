@@ -9,7 +9,7 @@
  *
  */
 #pragma once
-#include "mdv_table.h"
+#include "mdv_types.h"
 #include <mdv_def.h>
 #include <mdv_enumerator.h>
 #include <mdv_list.h>
@@ -53,18 +53,16 @@ struct mdv_rowset
 {
     mdv_irowset const      *vptr;       ///< Interface for rowset
     atomic_uint_fast32_t    rc;         ///< References counter
-    mdv_table              *table;      ///< Table descriptor
+    uint32_t                columns;    ///< Columns count
 };
 
 
 /**
  * @brief Create new rowset allocated in memory
  *
-* @param table [in] Table descriptor
- *
  * @return rowset or NULL
  */
-mdv_rowset * mdv_rowset_create(mdv_table *table);
+mdv_rowset * mdv_rowset_create(uint32_t columns);
 
 
 /**

@@ -94,9 +94,10 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology);
  * @details This function implements insertion functionality.
  *
  * @param client [in]    DB client
+ * @param table [in]     table descriptor
  * @param rowset [in]    Set of rows for insert
  *
  * @return On success, return MDV_OK.
  * @return On error, return non zero value
  */
-mdv_errno mdv_insert_row(mdv_client *client, mdv_rowset *rowset);
+mdv_errno mdv_insert_row(mdv_client *client, mdv_table *table, mdv_rowset *rowset);

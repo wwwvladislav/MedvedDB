@@ -503,16 +503,16 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
 }
 
 
-mdv_errno mdv_insert_row(mdv_client *client, mdv_rowset *rowset)
+mdv_errno mdv_insert_row(mdv_client *client, mdv_table *table, mdv_rowset *rowset)
 {
     binn serialized_rows;
 
-    if (!mdv_binn_rowset(rowset, &serialized_rows))
+    if (!mdv_binn_rowset(rowset, &serialized_rows, mdv_table_description(table)))
         return MDV_FAILED;
 
     mdv_msg_insert_into insert_msg =
     {
-        .table = *mdv_table_uuid(rowset->table),
+        .table = *mdv_table_uuid(table),
         .rows = &serialized_rows
     };
 

@@ -87,7 +87,7 @@ static void test_row_serialization()
     mdv_uuid const uuid = {};
 
     mdv_table *table = mdv_table_create(&uuid, &desc);
-    mdv_rowset *rowset = mdv_rowset_create(table);
+    mdv_rowset *rowset = mdv_rowset_create(desc.size);
 
     int arr1[] =  { 41, 42 };
     int arr2[] =  { 43, 44 };
@@ -100,9 +100,9 @@ static void test_row_serialization()
 
     binn serialized_rowset;
 
-    mu_check(mdv_binn_rowset(rowset, &serialized_rowset));
+    mu_check(mdv_binn_rowset(rowset, &serialized_rowset, &desc));
 
-    mdv_rowset *deserialized_rowset = mdv_unbinn_rowset(&serialized_rowset, table);
+    mdv_rowset *deserialized_rowset = mdv_unbinn_rowset(&serialized_rowset, &desc);
 
     mu_check(mdv_rowset_columns(deserialized_rowset) == mdv_rowset_columns(rowset));
 

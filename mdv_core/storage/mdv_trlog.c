@@ -18,6 +18,7 @@ static const uint32_t MDV_TRLOG_APPLIED_POS_KEY = 0;
 struct mdv_trlog
 {
     mdv_uuid                uuid;               ///< storage UUID
+    uint32_t                id;                 ///< storage local unique identifier
     mdv_storage            *storage;            ///< transaction log storage
     atomic_uint_fast64_t    top;                ///< transaction log last insertion position
     atomic_uint_fast64_t    applied;            ///< transaction log application position
@@ -84,7 +85,7 @@ static void mdv_trlog_init(mdv_trlog *trlog)
 }
 
 
-mdv_trlog * mdv_trlog_open(char const *dir, mdv_uuid const *uuid)
+mdv_trlog * mdv_trlog_open(char const *dir, mdv_uuid const *uuid, uint32_t id)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
@@ -100,6 +101,7 @@ mdv_trlog * mdv_trlog_open(char const *dir, mdv_uuid const *uuid)
     mdv_rollbacker_push(rollbacker, mdv_free, trlog, "trlog");
 
     trlog->uuid = *uuid;
+    trlog->id = id;
 
     atomic_init(&trlog->top, 0);
 
@@ -141,6 +143,12 @@ uint32_t mdv_trlog_release(mdv_trlog *trlog)
         mdv_free(trlog, "trlog");
 
     return rc;
+}
+
+
+uint32_t mdv_trlog_id(mdv_trlog *trlog)
+{
+    return trlog->id;
 }
 
 

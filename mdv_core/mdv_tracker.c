@@ -1313,6 +1313,7 @@ mdv_topology * mdv_tracker_topology(mdv_tracker *tracker)
         mdv_toponode const toponode =
         {
             .uuid = node->node->uuid,
+            .id   = node->id,
             .addr = addr
         };
 

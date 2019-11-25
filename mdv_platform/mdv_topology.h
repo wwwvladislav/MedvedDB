@@ -15,7 +15,8 @@
 /// Node description
 typedef struct
 {
-    mdv_uuid    uuid;                   ///< Unique identifier
+    mdv_uuid    uuid;                   ///< Global unique identifier
+    uint32_t    id;                     ///< Local unique identifier
     char const *addr;                   ///< Address
 } mdv_toponode;
 

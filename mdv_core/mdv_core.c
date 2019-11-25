@@ -105,19 +105,6 @@ mdv_core * mdv_core_create()
     mdv_rollbacker_push(rollbacker, mdv_ebus_release, core->ebus);
 
 
-    // Tablespace
-    core->storage.tablespace = mdv_tablespace_open(&core->metainf.uuid.value, core->ebus);
-
-    if (!core->storage.tablespace)
-    {
-        MDV_LOGE("DB tables space creation failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
-        mdv_rollback(rollbacker);
-        return 0;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_tablespace_close, core->storage.tablespace);
-
-
     // Topology tracker
     core->tracker = mdv_tracker_create(&core->metainf.uuid.value,
                                        core->storage.metainf,
@@ -135,6 +122,20 @@ mdv_core * mdv_core_create()
     mdv_topology *topology = mdv_tracker_topology(core->tracker);
 
     mdv_rollbacker_push(rollbacker, mdv_topology_release, topology);
+
+
+    // Tablespace
+    core->storage.tablespace = mdv_tablespace_open(&core->metainf.uuid.value, core->ebus, topology);
+
+    if (!core->storage.tablespace)
+    {
+        MDV_LOGE("DB tables space creation failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_tablespace_close, core->storage.tablespace);
+
 
     // Data synchronizer
 //    if (mdv_datasync_create(&core->datasync,

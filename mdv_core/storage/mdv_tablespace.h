@@ -7,6 +7,7 @@
 #include <mdv_def.h>
 #include <mdv_uuid.h>
 #include <mdv_ebus.h>
+#include <mdv_topology.h>
 
 
 /// DB tables space
@@ -21,7 +22,7 @@ typedef struct mdv_tablespace mdv_tablespace;
  *
  * @return pointer to a tablespace
  */
-mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid, mdv_ebus *ebus);
+mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid, mdv_ebus *ebus, mdv_topology *topology);
 
 
 /**

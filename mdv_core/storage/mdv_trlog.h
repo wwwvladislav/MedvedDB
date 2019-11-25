@@ -46,10 +46,11 @@ typedef mdv_list_entry(mdv_trlog_data) mdv_trlog_entry;
  *
  * @param dir [in]      directory for transaction logs
  * @param uuid [in]     TR log storage UUID
+ * @param id [in]       TR log storage local unique identifier
  *
  * @return transaction log storage
  */
-mdv_trlog * mdv_trlog_open(char const *dir, mdv_uuid const *uuid);
+mdv_trlog * mdv_trlog_open(char const *dir, mdv_uuid const *uuid, uint32_t id);
 
 
 /**
@@ -70,6 +71,12 @@ mdv_trlog * mdv_trlog_retain(mdv_trlog *trlog);
  * @return references counter
  */
 uint32_t mdv_trlog_release(mdv_trlog *trlog);
+
+
+/**
+ * @brief Return transaction log identifier
+ */
+uint32_t mdv_trlog_id(mdv_trlog *trlog);
 
 
 /**

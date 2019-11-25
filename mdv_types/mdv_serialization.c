@@ -748,6 +748,7 @@ bool mdv_topology_serialize(mdv_topology *topology, binn *obj)
         }
 
         if (0
+            || !binn_object_set_uint32(&node, "ID", toponode->id)
             || !binn_object_set_uint64(&node, "U1", toponode->uuid.u64[0])
             || !binn_object_set_uint64(&node, "U2", toponode->uuid.u64[1])
             || !binn_object_set_str(&node, "A", (char*)toponode->addr)
@@ -895,6 +896,7 @@ mdv_topology * mdv_topology_deserialize(binn const *obj)
         char *addr = 0;
 
         if (0
+            || !binn_object_get_uint32(&value, "ID", &node.id)
             || !binn_object_get_uint64(&value, "U1", (uint64*)&node.uuid.u64[0])
             || !binn_object_get_uint64(&value, "U2", (uint64*)&node.uuid.u64[1])
             || !binn_object_get_str(&value, "A", &addr))

@@ -482,17 +482,6 @@ static bool mdv_binn_row(mdv_row const *row, mdv_table_desc const *table_desc, b
 }
 
 
-static uint32_t binn_list_size(binn *obj)
-{
-    binn_iter iter;
-    binn value;
-    uint32_t n = 0;
-    binn_list_foreach(obj, value)
-        ++n;
-    return n;
-}
-
-
 static mdv_rowlist_entry * mdv_unbinn_row(binn const *list, mdv_table_desc const *table_desc)
 {
     binn_iter iter = {};
@@ -525,7 +514,7 @@ static mdv_rowlist_entry * mdv_unbinn_row(binn const *list, mdv_table_desc const
             row_size += blob_size;
         }
         else
-            row_size += field_type_size * binn_list_size(&value);
+            row_size += field_type_size * mdv_binn_list_length(&value);
 
         ++fields_count;
     }

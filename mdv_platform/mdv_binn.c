@@ -26,3 +26,14 @@ void mdv_binn_set_allocator()
                              &mdv_realloc_binn,
                              &mdv_free_binn);
 }
+
+
+uint32_t mdv_binn_list_length(binn *list)
+{
+    binn_iter iter;
+    binn value;
+    uint32_t n = 0;
+    binn_list_foreach(list, value)
+        ++n;
+    return n;
+}

@@ -130,31 +130,22 @@ static mdv_rowdata * mdv_tablespace_rowdata_create(mdv_tablespace *tablespace, m
 
         if(!ref)
         {
-            mdv_table *table = mdv_tables_get(tablespace->tables, table_id);
-
-            if (table)
+            mdv_rowdata_ref new_ref =
             {
-                mdv_rowdata_ref new_ref =
+                .uuid = *table_id,
+                .rowdata = mdv_rowdata_open(MDV_CONFIG.storage.rowdata.ptr, table_id)
+            };
+
+            if (new_ref.rowdata)
+            {
+                ref = mdv_hashmap_insert(tablespace->rowdata, &new_ref, sizeof new_ref);
+
+                if (!ref)
                 {
-                    .uuid = *table_id,
-                    .rowdata = mdv_rowdata_open(MDV_CONFIG.storage.rowdata.ptr, table)
-                };
-
-                mdv_table_release(table);
-
-                if (new_ref.rowdata)
-                {
-                    ref = mdv_hashmap_insert(tablespace->rowdata, &new_ref, sizeof new_ref);
-
-                    if (!ref)
-                    {
-                        mdv_rowdata_release(new_ref.rowdata);
-                        new_ref.rowdata = 0;
-                    }
+                    mdv_rowdata_release(new_ref.rowdata);
+                    new_ref.rowdata = 0;
                 }
             }
-            else
-                MDV_LOGE("Table wit UUID '%s' not found", mdv_uuid_to_str(table_id).ptr);
         }
 
         mdv_mutex_unlock(&tablespace->rowdata_mutex);
@@ -415,7 +406,7 @@ static mdv_table * mdv_tablespace_log_create_table(mdv_tablespace *tablespace, m
 
 static mdv_errno mdv_tablespace_log_rowset(mdv_tablespace *tablespace, mdv_uuid const *table_id, binn *rowset)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
     mdv_trlog *trlog = mdv_tablespace_trlog_create(tablespace, &tablespace->uuid);
 
@@ -427,21 +418,31 @@ static mdv_errno mdv_tablespace_log_rowset(mdv_tablespace *tablespace, mdv_uuid 
 
     mdv_rollbacker_push(rollbacker, mdv_trlog_release, trlog);
 
-    binn binn_uuid;
+    mdv_rowdata *rowdata = mdv_tablespace_rowdata_create(tablespace, table_id);
 
-    if (!mdv_binn_uuid(table_id, &binn_uuid))
+    if (!rowdata)
     {
         mdv_rollback(rollbacker);
         return MDV_FAILED;
     }
 
-    mdv_rollbacker_push(rollbacker, binn_free, &binn_uuid);
+    mdv_rollbacker_push(rollbacker, mdv_rowdata_release, rowdata);
 
-    int const binn_uuid_size = binn_size(&binn_uuid);
+    uint64_t id = 0;
+
+    mdv_errno err = mdv_rowdata_reserve(rowdata, mdv_binn_list_length(rowset), &id);
+
+    if (err != MDV_OK)
+    {
+        mdv_rollback(rollbacker);
+        return err;
+    }
+
     int const binn_rowset_size = binn_size(rowset);
 
     size_t const op_size = offsetof(mdv_trlog_op, payload)
-                            + binn_uuid_size
+                            + sizeof id
+                            + sizeof *table_id
                             + binn_rowset_size;
 
     mdv_trlog_op *op = mdv_staligned_alloc(sizeof(uint64_t), op_size, "trlog_op");
@@ -459,10 +460,9 @@ static mdv_errno mdv_tablespace_log_rowset(mdv_tablespace *tablespace, mdv_uuid 
 
     uint8_t *payload = op->payload;
 
-    memcpy(payload, binn_ptr(&binn_uuid), binn_uuid_size);
-    payload += binn_uuid_size;
-    memcpy(payload, binn_ptr(rowset), binn_rowset_size);
-    payload += binn_rowset_size;
+    memcpy(payload, &id, sizeof id);                        payload += sizeof id;
+    memcpy(payload, table_id, sizeof *table_id);            payload += sizeof *table_id;
+    memcpy(payload, binn_ptr(rowset), binn_rowset_size);    payload += binn_rowset_size;
 
     if (!mdv_trlog_add_op(trlog, op))
     {
@@ -524,7 +524,10 @@ static bool mdv_tablespace_trlog_apply(void *arg, mdv_trlog_op *op)
 
         case MDV_OP_ROW_INSERT:
         {
+            uint64_t id;
             mdv_uuid table_id;
+
+// TODO!!!!!!!!!!!!!!
 
             ret = mdv_unbinn_uuid(&obj, &table_id);
 

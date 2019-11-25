@@ -53,10 +53,12 @@ uint32_t mdv_objects_release(mdv_objects *objs);
  *
  * @param objs [in]     DB objects storage
  * @param range [in]    Identifiers range length
+ * @param id [out]      first identifier from range
  *
- * @return first identifier from range
+ * @return On success, return MDV_OK.
+ * @return On error, return non zero value
  */
-uint64_t mdv_objects_reserve_ids_range(mdv_objects *objs, uint32_t range);
+mdv_errno mdv_objects_reserve_ids_range(mdv_objects *objs, uint32_t range, uint64_t *id);
 
 
 /**

@@ -22,11 +22,11 @@ typedef struct mdv_rowdata mdv_rowdata;
  * @brief Creates new or opens existing rowdata storage
  *
  * @param dir [in]      directory for rowdata storage
- * @param table [in]    table descriptor
+ * @param table [in]    table identifier
  *
  * @return rowdata storage
  */
-mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_table *table);
+mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_uuid const *table);
 
 
 /**
@@ -54,10 +54,12 @@ uint32_t mdv_rowdata_release(mdv_rowdata *rowdata);
  *
  * @param rowdata [in]  Rowdata storage
  * @param range [in]    Identifiers range length
+ * @param id [out]      first identifier from range
  *
- * @return first identifier from range
+ * @return On success, return MDV_OK.
+ * @return On error, return non zero value
  */
-uint64_t mdv_rowdata_reserve(mdv_rowdata *rowdata, uint32_t range);
+mdv_errno mdv_rowdata_reserve(mdv_rowdata *rowdata, uint32_t range, uint64_t *id);
 
 
 /**

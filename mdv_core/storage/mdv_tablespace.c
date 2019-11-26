@@ -3,7 +3,6 @@
 #include "mdv_tables.h"
 #include "mdv_rowdata.h"
 #include "../mdv_config.h"
-#include "../mdv_tracker.h"
 #include "../event/mdv_evt_table.h"
 #include "../event/mdv_evt_rowdata.h"
 #include "../event/mdv_evt_topology.h"
@@ -16,7 +15,6 @@
 #include <mdv_hashmap.h>
 #include <mdv_mutex.h>
 #include <mdv_safeptr.h>
-#include <stddef.h>
 
 
 /// DB tables space

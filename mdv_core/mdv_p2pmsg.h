@@ -16,8 +16,8 @@
     |       <<<<< BROADCAST TOPOLOGY DIFF |
     |                                     |
     |                                     |
-    | CFSLOG SYNC >>>>>                   |   Storage synchronization request.
-    |         <<<<< CFSLOG STATE / STATUS |   Last transaction log record identifier.
+    | TRLOG SYNC >>>>>                    |   Transaction log synchronization request.
+    |          <<<<< TRLOG STATE / STATUS |   Last transaction log record identifier.
     | CFSLOG DATA >>>>>                   |   Transaction log records.
     |                        <<<<< STATUS |
  */
@@ -54,16 +54,15 @@ mdv_message_def(p2p_topodiff, 1000 + 4,
 );
 
 
-mdv_message_def(p2p_cfslog_sync, 1000 + 5,
-    mdv_uuid    uuid;               ///< CF Storage unique identifier
-    mdv_uuid    peer;               ///< Peer unique identifier
+mdv_message_def(p2p_trlog_sync, 1000 + 5,
+    mdv_uuid    trlog;               ///< Transaction log storage unique identifier
 );
 
 
-mdv_message_def(p2p_cfslog_state, 1000 + 6,
-    mdv_uuid    uuid;               ///< CF Storage unique identifier
-    mdv_uuid    peer;               ///< Peer unique identifier
+mdv_message_def(p2p_trlog_state, 1000 + 6,
+    mdv_uuid    trlog;              ///< Transaction log storage unique identifier
     uint64_t    trlog_top;          ///< Last transaction log record identifier for requested CF Storage and peer.
+    int64_t     diff;               ///< Difference between transaction logs last record identifiers
 );
 
 
@@ -114,12 +113,12 @@ bool            mdv_unbinn_p2p_topodiff                 (binn const *obj, mdv_ms
 void            mdv_p2p_topodiff_free                   (mdv_msg_p2p_topodiff *msg);
 
 
-bool            mdv_binn_p2p_cfslog_sync                (mdv_msg_p2p_cfslog_sync const *msg, binn *obj);
-bool            mdv_unbinn_p2p_cfslog_sync              (binn const *obj, mdv_msg_p2p_cfslog_sync *msg);
+bool            mdv_binn_p2p_trlog_sync                 (mdv_msg_p2p_trlog_sync const *msg, binn *obj);
+bool            mdv_unbinn_p2p_trlog_sync               (binn const *obj, mdv_msg_p2p_trlog_sync *msg);
 
 
-bool            mdv_binn_p2p_cfslog_state               (mdv_msg_p2p_cfslog_state const *msg, binn *obj);
-bool            mdv_unbinn_p2p_cfslog_state             (binn const *obj, mdv_msg_p2p_cfslog_state *msg);
+bool            mdv_binn_p2p_trlog_state                (mdv_msg_p2p_trlog_state const *msg, binn *obj);
+bool            mdv_unbinn_p2p_trlog_state              (binn const *obj, mdv_msg_p2p_trlog_state *msg);
 
 
 bool            mdv_binn_p2p_cfslog_data                (mdv_msg_p2p_cfslog_data const *msg, binn *obj);

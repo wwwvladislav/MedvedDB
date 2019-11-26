@@ -1,6 +1,8 @@
 #include "mdv_trlog.h"
 #include "mdv_storage.h"
 #include "mdv_storages.h"
+#include "../event/mdv_evt_types.h"
+#include "../event/mdv_evt_trlog.h"
 #include <mdv_rollbacker.h>
 #include <mdv_alloc.h>
 #include <mdv_string.h>
@@ -20,6 +22,7 @@ struct mdv_trlog
     mdv_uuid                uuid;               ///< storage UUID
     uint32_t                id;                 ///< storage local unique identifier
     mdv_storage            *storage;            ///< transaction log storage
+    mdv_ebus               *ebus;               ///< Events bus
     atomic_uint_fast64_t    top;                ///< transaction log last insertion position
     atomic_uint_fast64_t    applied;            ///< transaction log application position
 };
@@ -85,7 +88,24 @@ static void mdv_trlog_init(mdv_trlog *trlog)
 }
 
 
-mdv_trlog * mdv_trlog_open(char const *dir, mdv_uuid const *uuid, uint32_t id)
+static void mdv_trlog_changed_notify(mdv_trlog *trlog)
+{
+    mdv_evt_trlog_changed *evt = mdv_evt_trlog_changed_create(&trlog->uuid);
+
+    if (evt)
+    {
+        mdv_ebus_publish(trlog->ebus, &evt->base, MDV_EVT_UNIQUE);
+        mdv_evt_trlog_changed_release(evt);
+    }
+}
+
+
+static const mdv_event_handler_type mdv_trlog_handlers[] =
+{
+};
+
+
+mdv_trlog * mdv_trlog_open(mdv_ebus *ebus, char const *dir, mdv_uuid const *uuid, uint32_t id)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
@@ -121,6 +141,20 @@ mdv_trlog * mdv_trlog_open(char const *dir, mdv_uuid const *uuid, uint32_t id)
 
     mdv_rollbacker_push(rollbacker, mdv_storage_release, trlog->storage);
 
+    trlog->ebus = mdv_ebus_retain(ebus);
+
+    mdv_rollbacker_push(rollbacker, mdv_ebus_release, trlog->ebus);
+
+    if (mdv_ebus_subscribe_all(trlog->ebus,
+                               trlog,
+                               mdv_trlog_handlers,
+                               sizeof mdv_trlog_handlers / sizeof *mdv_trlog_handlers) != MDV_OK)
+    {
+        MDV_LOGE("Ebus subscription failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
     mdv_rollbacker_free(rollbacker);
 
     return trlog;
@@ -137,10 +171,21 @@ mdv_trlog * mdv_trlog_retain(mdv_trlog *trlog)
 
 uint32_t mdv_trlog_release(mdv_trlog *trlog)
 {
+    if (!trlog)
+        return 0;
+
     uint32_t rc = mdv_storage_release(trlog->storage);
 
     if (!rc)
+    {
+        mdv_ebus_unsubscribe_all(trlog->ebus,
+                                 trlog,
+                                 mdv_trlog_handlers,
+                                 sizeof mdv_trlog_handlers / sizeof *mdv_trlog_handlers);
+
+        mdv_ebus_release(trlog->ebus);
         mdv_free(trlog, "trlog");
+    }
 
     return rc;
 }
@@ -149,6 +194,12 @@ uint32_t mdv_trlog_release(mdv_trlog *trlog)
 uint32_t mdv_trlog_id(mdv_trlog *trlog)
 {
     return trlog->id;
+}
+
+
+uint64_t mdv_trlog_top(mdv_trlog *trlog)
+{
+    return atomic_load(&trlog->top);
 }
 
 
@@ -264,6 +315,8 @@ bool mdv_trlog_add(mdv_trlog *trlog,
 
     mdv_rollbacker_free(rollbacker);
 
+    mdv_trlog_changed_notify(trlog);
+
     return true;
 }
 
@@ -321,6 +374,8 @@ bool mdv_trlog_add_op(mdv_trlog *trlog,
     mdv_map_close(&tr_log);
 
     mdv_rollbacker_free(rollbacker);
+
+    mdv_trlog_changed_notify(trlog);
 
     return true;
 }

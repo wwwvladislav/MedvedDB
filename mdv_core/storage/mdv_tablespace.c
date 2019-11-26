@@ -67,6 +67,12 @@ enum
 
 
 /**
+ * @brief Applies a transaction log to the data storage.
+ */
+bool mdv_tablespace_log_apply(mdv_tablespace *tablespace, mdv_uuid const *storage);
+
+
+/**
  * @brief Insert new record into the transaction log for new table creation.
  * @details After the successfully table creation new generated table UUID is saved to table->id.
  */
@@ -176,7 +182,7 @@ static mdv_trlog * mdv_tablespace_trlog_create(mdv_tablespace *tablespace, mdv_u
                 mdv_trlog_ref new_ref =
                 {
                     .uuid = *uuid,
-                    .trlog = mdv_trlog_open(MDV_CONFIG.storage.trlog.ptr, uuid, id)
+                    .trlog = mdv_trlog_open(tablespace->ebus, MDV_CONFIG.storage.trlog.ptr, uuid, id)
                 };
 
                 if (new_ref.trlog)
@@ -266,9 +272,62 @@ static mdv_errno mdv_tablespace_evt_trlog_apply(void *arg, mdv_event *event)
     mdv_tablespace      *tablespace = arg;
     mdv_evt_trlog_apply *apply      = (mdv_evt_trlog_apply *)event;
 
-    return mdv_tablespace_log_apply(tablespace, &apply->uuid)
+    return mdv_tablespace_log_apply(tablespace, &apply->trlog)
                 ? MDV_OK
                 : MDV_FAILED;
+}
+
+
+static mdv_errno mdv_tablespace_evt_trlog_sync(void *arg, mdv_event *event)
+{
+    mdv_tablespace     *tablespace = arg;
+    mdv_evt_trlog_sync *sync = (mdv_evt_trlog_sync *)event;
+
+    if(mdv_uuid_cmp(&tablespace->uuid, &sync->to) != 0)
+        return MDV_OK;
+
+    mdv_errno err = MDV_FAILED;
+
+    mdv_trlog *trlog = mdv_tablespace_trlog(tablespace, &sync->trlog);
+
+    mdv_evt_trlog_state *evt = mdv_evt_trlog_state_create(&sync->trlog, &sync->to, &sync->from, trlog ? mdv_trlog_top(trlog) : 0);
+
+    if (evt)
+    {
+        err = mdv_ebus_publish(tablespace->ebus, &evt->base, MDV_EVT_DEFAULT);
+        mdv_evt_trlog_state_release(evt);
+    }
+
+    mdv_trlog_release(trlog);
+
+    return err;
+}
+
+
+static mdv_errno mdv_tablespace_evt_trlog_state(void *arg, mdv_event *event)
+{
+    mdv_tablespace      *tablespace = arg;
+    mdv_evt_trlog_state *state = (mdv_evt_trlog_state *)event;
+
+    if(mdv_uuid_cmp(&tablespace->uuid, &state->to) != 0)
+        return MDV_OK;
+
+    mdv_errno err = MDV_FAILED;
+
+    mdv_trlog *trlog = mdv_tablespace_trlog(tablespace, &state->trlog);
+
+    if (trlog)
+    {
+        if (mdv_trlog_top(trlog) > state->top)
+        {
+            // TODO: Transaction logs synchronization
+            MDV_LOGE("TODO TODO TODO");
+        }
+
+        mdv_trlog_release(trlog);
+    }
+
+    return err;
 }
 
 
@@ -295,6 +354,8 @@ static const mdv_event_handler_type mdv_tablespace_handlers[] =
     { MDV_EVT_CREATE_TABLE,   mdv_tablespace_evt_create_table },
     { MDV_EVT_ROWDATA_INSERT, mdv_tablespace_evt_rowdata_insert },
     { MDV_EVT_TRLOG_APPLY,    mdv_tablespace_evt_trlog_apply },
+    { MDV_EVT_TRLOG_SYNC,     mdv_tablespace_evt_trlog_sync },
+    { MDV_EVT_TRLOG_STATE,    mdv_tablespace_evt_trlog_state },
     { MDV_EVT_TOPOLOGY,       mdv_tablespace_evt_topology },
 };
 
@@ -447,18 +508,6 @@ void mdv_tablespace_close(mdv_tablespace *tablespace)
 }
 
 
-static void mdv_tablespace_trlog_changed_notify(mdv_tablespace *tablespace)
-{
-    mdv_evt_trlog_changed *evt = mdv_evt_trlog_changed_create();
-
-    if (evt)
-    {
-        mdv_ebus_publish(tablespace->ebus, &evt->base, MDV_EVT_UNIQUE);
-        mdv_evt_trlog_changed_release(evt);
-    }
-}
-
-
 static mdv_table * mdv_tablespace_log_create_table(mdv_tablespace *tablespace, mdv_table_desc const *desc)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
@@ -523,8 +572,6 @@ static mdv_table * mdv_tablespace_log_create_table(mdv_tablespace *tablespace, m
     mdv_table_retain(table);
 
     mdv_rollback(rollbacker);
-
-    mdv_tablespace_trlog_changed_notify(tablespace);
 
     return table;
 }
@@ -597,8 +644,6 @@ static mdv_errno mdv_tablespace_log_rowset(mdv_tablespace *tablespace, mdv_uuid 
     }
 
     mdv_rollback(rollbacker);
-
-    mdv_tablespace_trlog_changed_notify(tablespace);
 
     return MDV_OK;
 }

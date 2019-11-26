@@ -32,14 +32,3 @@ mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid, mdv_ebus *ebus, mdv_t
  */
 void mdv_tablespace_close(mdv_tablespace *tablespace);
 
-
-/**
- * @brief Applies a transaction log to the data storage.
- *
- * @param tablespace [in]   Pointer to a tablespace structure
- * @param storage [in]      Storage UUID
- *
- * @return true if transaction log was successfully applied
- * @return false if operation failed
- */
-bool mdv_tablespace_log_apply(mdv_tablespace *tablespace, mdv_uuid const *storage);

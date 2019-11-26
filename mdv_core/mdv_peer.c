@@ -6,6 +6,7 @@
 #include "event/mdv_evt_link.h"
 #include "event/mdv_evt_topology.h"
 #include "event/mdv_evt_broadcast.h"
+#include "event/mdv_evt_trlog.h"
 #include <mdv_version.h>
 #include <mdv_alloc.h>
 #include <mdv_log.h>
@@ -239,30 +240,88 @@ static mdv_errno mdv_peer_broadcast_handler(mdv_msg const *msg, void *arg)
 }
 
 
-static mdv_errno mdv_peer_cfslog_sync_handler(mdv_msg const *msg, void *arg)
+static mdv_errno mdv_peer_trlog_sync_handler(mdv_msg const *msg, void *arg)
 {
-/* TODO
     mdv_peer *peer = arg;
-    mdv_core *core = peer->core;
 
     MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
-    return mdv_datasync_cfslog_sync_handler(&core->datasync, peer->peer_id, msg);
-*/
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
+        return MDV_FAILED;
+    }
+
+    mdv_msg_p2p_trlog_sync req;
+
+    if (!mdv_unbinn_p2p_trlog_sync(&binn_msg, &req))
+    {
+        MDV_LOGE("Transaction log synchronization request processing failed");
+        binn_free(&binn_msg);
+        return MDV_FAILED;
+    }
+
+    binn_free(&binn_msg);
+
+    mdv_evt_trlog_sync *sync = mdv_evt_trlog_sync_create(&req.trlog, &peer->peer_uuid, &peer->uuid);
+
+    if (sync)
+    {
+        if (mdv_ebus_publish(peer->ebus, &sync->base, MDV_EVT_DEFAULT) != MDV_OK)
+            MDV_LOGE("Transaction log synchronization failed");
+        mdv_evt_trlog_sync_release(sync);
+    }
+    else
+    {
+        MDV_LOGE("Transaction log synchronization failed. No memory.");
+        return MDV_NO_MEM;
+    }
+
     return MDV_OK;
 }
 
 
-static mdv_errno mdv_peer_cfslog_state_handler(mdv_msg const *msg, void *arg)
+static mdv_errno mdv_peer_trlog_state_handler(mdv_msg const *msg, void *arg)
 {
-/* TODO
     mdv_peer *peer = arg;
-    mdv_core *core = peer->core;
 
     MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
-    return mdv_datasync_cfslog_state_handler(&core->datasync, peer->peer_id, msg);
-*/
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
+        return MDV_FAILED;
+    }
+
+    mdv_msg_p2p_trlog_state req;
+
+    if (!mdv_unbinn_p2p_trlog_state(&binn_msg, &req))
+    {
+        MDV_LOGE("Transaction log state processing failed");
+        binn_free(&binn_msg);
+        return MDV_FAILED;
+    }
+
+    binn_free(&binn_msg);
+
+    mdv_evt_trlog_state *state = mdv_evt_trlog_state_create(&req.trlog, &peer->peer_uuid, &peer->uuid, req.trlog_top);
+
+    if (state)
+    {
+        if (mdv_ebus_publish(peer->ebus, &state->base, MDV_EVT_DEFAULT) != MDV_OK)
+            MDV_LOGE("Transaction log state notification failed");
+        mdv_evt_trlog_state_release(state);
+    }
+    else
+    {
+        MDV_LOGE("Transaction log state notification failed. No memory.");
+        return MDV_NO_MEM;
+    }
+
     return MDV_OK;
 }
 
@@ -358,6 +417,79 @@ static mdv_errno mdv_peer_toposync(mdv_peer *peer, mdv_topology *topology)
 
 
 /**
+ * @brief Post trlog synchronization message
+ */
+static mdv_errno mdv_peer_trlog_sync(mdv_peer *peer, mdv_uuid const *trlog)
+{
+    mdv_msg_p2p_trlog_sync const trlog_sync =
+    {
+        .trlog = *trlog
+    };
+
+    binn obj;
+
+    if (!mdv_binn_p2p_trlog_sync(&trlog_sync, &obj))
+    {
+        MDV_LOGE("Transaction log synchronization request failed");
+        return MDV_FAILED;
+    }
+
+    mdv_msg message =
+    {
+        .hdr =
+        {
+            .id = mdv_message_id(p2p_trlog_sync),
+            .size = binn_size(&obj)
+        },
+        .payload = binn_ptr(&obj)
+    };
+
+    mdv_errno err = mdv_peer_post(peer, &message);
+
+    binn_free(&obj);
+
+    return err;
+}
+
+
+/**
+ * @brief Post trlog state message
+ */
+static mdv_errno mdv_peer_trlog_state(mdv_peer *peer, mdv_uuid const *trlog, uint64_t top)
+{
+    mdv_msg_p2p_trlog_state const trlog_state =
+    {
+        .trlog = *trlog,
+        .trlog_top = top
+    };
+
+    binn obj;
+
+    if (!mdv_binn_p2p_trlog_state(&trlog_state, &obj))
+    {
+        MDV_LOGE("Transaction log state notification failed");
+        return MDV_FAILED;
+    }
+
+    mdv_msg message =
+    {
+        .hdr =
+        {
+            .id = mdv_message_id(p2p_trlog_state),
+            .size = binn_size(&obj)
+        },
+        .payload = binn_ptr(&obj)
+    };
+
+    mdv_errno err = mdv_peer_post(peer, &message);
+
+    binn_free(&obj);
+
+    return err;
+}
+
+
+/**
  * @brief Broadcasts synchronization message
  */
 static mdv_errno mdv_peer_broadcast(mdv_peer *peer, mdv_msg_p2p_broadcast const *msg)
@@ -419,10 +551,36 @@ static mdv_errno mdv_peer_evt_topology_sync(void *arg, mdv_event *event)
 }
 
 
+static mdv_errno mdv_peer_evt_trlog_sync(void *arg, mdv_event *event)
+{
+    mdv_peer *peer = arg;
+    mdv_evt_trlog_sync *sync = (mdv_evt_trlog_sync *)event;
+
+    if(mdv_uuid_cmp(&peer->peer_uuid, &sync->to) == 0)
+        return mdv_peer_trlog_sync(peer, &sync->trlog);
+
+    return MDV_OK;
+}
+
+
+static mdv_errno mdv_peer_evt_trlog_state(void *arg, mdv_event *event)
+{
+    mdv_peer *peer = arg;
+    mdv_evt_trlog_state *state = (mdv_evt_trlog_state *)event;
+
+    if(mdv_uuid_cmp(&peer->peer_uuid, &state->to) == 0)
+        return mdv_peer_trlog_state(peer, &state->trlog, state->top);
+
+    return MDV_OK;
+}
+
+
 static const mdv_event_handler_type mdv_peer_handlers[] =
 {
     { MDV_EVT_TOPOLOGY_SYNC,    mdv_peer_evt_topology_sync },
     { MDV_EVT_BROADCAST_POST,   mdv_peer_evt_broadcast_post },
+    { MDV_EVT_TRLOG_SYNC,       mdv_peer_evt_trlog_sync },
+    { MDV_EVT_TRLOG_STATE,      mdv_peer_evt_trlog_state },
 };
 
 
@@ -482,8 +640,8 @@ mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
         { mdv_message_id(p2p_hello),        &mdv_peer_hello_handler,        peer },
         { mdv_message_id(p2p_toposync),     &mdv_peer_toposync_handler,     peer },
         { mdv_message_id(p2p_broadcast),    &mdv_peer_broadcast_handler,    peer },
-        { mdv_message_id(p2p_cfslog_sync),  &mdv_peer_cfslog_sync_handler,  peer },
-        { mdv_message_id(p2p_cfslog_state), &mdv_peer_cfslog_state_handler, peer },
+        { mdv_message_id(p2p_trlog_sync),   &mdv_peer_trlog_sync_handler,   peer },
+        { mdv_message_id(p2p_trlog_state),  &mdv_peer_trlog_state_handler,  peer },
         { mdv_message_id(p2p_cfslog_data),  &mdv_peer_cfslog_data_handler,  peer },
     };
 

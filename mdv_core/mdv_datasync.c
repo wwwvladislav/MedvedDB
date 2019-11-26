@@ -32,7 +32,7 @@ typedef struct mdv_datasync_context
 {
     mdv_datasync   *datasync;       ///< Data synchronizer
     mdv_hashmap    *routes;         ///< Destination peers
-    mdv_uuid        storage;        ///< Data storage UUID for synchronization
+    mdv_uuid        trlog;          ///< TR log UUID for synchronization
 } mdv_datasync_context;
 
 
@@ -53,7 +53,19 @@ static void mdv_datasync_fn(mdv_job_base *job)
     if (!mdv_datasync_is_active(datasync))
         return;
 
-    // TODO
+    mdv_hashmap_foreach(ctx->routes, mdv_route, route)
+    {
+        mdv_evt_trlog_sync *sync = mdv_evt_trlog_sync_create(&ctx->trlog, &datasync->uuid, &route->uuid);
+
+        if (sync)
+        {
+            if (mdv_ebus_publish(datasync->ebus, &sync->base, MDV_EVT_SYNC) != MDV_OK)
+                MDV_LOGE("Transaction synchronization failed");
+            mdv_evt_trlog_sync_release(sync);
+        }
+        else
+            MDV_LOGE("Transaction synchronization failed. No memory.");
+    }
 }
 
 
@@ -68,7 +80,7 @@ static void mdv_datasync_finalize(mdv_job_base *job)
 }
 
 
-static void mdv_datasync_job_emit(mdv_datasync *datasync, mdv_hashmap *routes, mdv_uuid const *storage)
+static void mdv_datasync_job_emit(mdv_datasync *datasync, mdv_hashmap *routes, mdv_uuid const *trlog)
 {
     mdv_datasync_job *job = mdv_alloc(sizeof(mdv_datasync_job), "datasync_job");
 
@@ -82,7 +94,7 @@ static void mdv_datasync_job_emit(mdv_datasync *datasync, mdv_hashmap *routes, m
     job->finalize       = mdv_datasync_finalize;
     job->data.datasync  = mdv_datasync_retain(datasync);
     job->data.routes    = mdv_hashmap_retain(routes);
-    job->data.storage   = *storage;
+    job->data.trlog     = *trlog;
 
     mdv_errno err = mdv_jobber_push(datasync->jobber, (mdv_job_base*)job);
 
@@ -207,15 +219,30 @@ static mdv_errno mdv_datasync_evt_topology(void *arg, mdv_event *event)
 {
     mdv_datasync *datasync = arg;
     mdv_evt_topology *topo = (mdv_evt_topology *)event;
-    return mdv_safeptr_set(datasync->topology, topo->topology);
+
+    mdv_errno err = mdv_safeptr_set(datasync->topology, topo->topology);
+
+    mdv_hashmap *routes = mdv_routes_find(topo->topology, &datasync->uuid);
+
+    if (routes)
+    {
+        err = err == MDV_OK
+                ? mdv_safeptr_set(datasync->routes, routes)
+                : err;
+
+        mdv_hashmap_release(routes);
+    }
+    else
+        MDV_LOGE("Routes calculation failed");
+
+    return err;
 }
 
 
 static mdv_errno mdv_datasync_evt_trlog_changed(void *arg, mdv_event *event)
 {
     mdv_datasync *datasync = arg;
-    mdv_evt_trlog_changed *evt = (mdv_evt_trlog_changed *)event;
-    (void)evt;
+    (void)event;
     mdv_datasync_start(datasync);
     return MDV_OK;
 }

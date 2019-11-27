@@ -507,3 +507,35 @@ uint32_t mdv_trlog_apply(mdv_trlog         *trlog,
 
     return n;
 }
+
+
+uint32_t mdv_trlog_foreach(mdv_trlog   *trlog,
+                           uint64_t     id,
+                           uint32_t     batch_size,
+                           void        *arg,
+                           mdv_trlog_fn fn)
+{
+    mdv_list/*<mdv_trlog_data>*/ ops = {};
+
+    size_t const count = mdv_trlog_read(trlog, id, batch_size, &ops);
+
+    if (!count)     // No data in TR log
+        return 0;
+
+    size_t n = 0;
+
+    mdv_list_foreach(&ops, mdv_trlog_data, op)
+    {
+        if (!fn(arg, op))
+        {
+            MDV_LOGE("TR Log items iteration failed");
+            break;
+        }
+
+        ++n;
+    }
+
+    mdv_list_clear(&ops);
+
+    return n;
+}

@@ -2,7 +2,50 @@
 #include "mdv_evt_types.h"
 
 
-mdv_evt_trlog_changed * mdv_evt_trlog_changed_create(mdv_uuid const *uuid)
+mdv_evt_trlog * mdv_evt_trlog_create(mdv_uuid const *uuid)
+{
+    static mdv_ievent vtbl =
+    {
+        .retain = (mdv_event_retain_fn)mdv_evt_trlog_retain,
+        .release = (mdv_event_release_fn)mdv_evt_trlog_release
+    };
+
+    mdv_evt_trlog *event = (mdv_evt_trlog*)
+                                mdv_event_create(
+                                    MDV_EVT_TRLOG_GET,
+                                    sizeof(mdv_evt_trlog));
+
+    if (event)
+    {
+        event->base.vptr = &vtbl;
+        event->uuid = *uuid;
+        event->trlog  = 0;
+    }
+
+    return event;
+}
+
+
+mdv_evt_trlog * mdv_evt_trlog_retain(mdv_evt_trlog *evt)
+{
+    return (mdv_evt_trlog*)mdv_event_retain(&evt->base);
+}
+
+
+uint32_t mdv_evt_trlog_release(mdv_evt_trlog *evt)
+{
+    mdv_trlog *trlog = evt->trlog;
+
+    uint32_t rc = mdv_event_release(&evt->base);
+
+    if (!rc)
+        mdv_trlog_release(trlog);
+
+    return rc;
+}
+
+
+mdv_evt_trlog_changed * mdv_evt_trlog_changed_create(mdv_uuid const *trlog)
 {
     mdv_evt_trlog_changed *event = (mdv_evt_trlog_changed*)
                                 mdv_event_create(
@@ -10,7 +53,7 @@ mdv_evt_trlog_changed * mdv_evt_trlog_changed_create(mdv_uuid const *uuid)
                                     sizeof(mdv_evt_trlog_changed));
 
     if (event)
-        event->uuid = *uuid;
+        event->trlog = *trlog;
 
     return event;
 }

@@ -45,6 +45,27 @@ static bool mdv_datasync_is_active(mdv_datasync *datasync)
 }
 
 
+static mdv_trlog * mdv_datasync_trlog(mdv_datasync *datasync, mdv_uuid const *uuid)
+{
+    mdv_evt_trlog *evt = mdv_evt_trlog_create(uuid);
+
+    if (!evt)
+    {
+        MDV_LOGE("Transaction log request failed. No memory.");
+        return 0;
+    }
+
+    if (mdv_ebus_publish(datasync->ebus, &evt->base, MDV_EVT_SYNC) != MDV_OK)
+        MDV_LOGE("Transaction log request failed");
+
+    mdv_trlog *trlog = mdv_trlog_retain(evt->trlog);
+
+    mdv_evt_trlog_release(evt);
+
+    return trlog;
+}
+
+
 static void mdv_datasync_fn(mdv_job_base *job)
 {
     mdv_datasync_context *ctx      = (mdv_datasync_context *)job->data;
@@ -248,10 +269,65 @@ static mdv_errno mdv_datasync_evt_trlog_changed(void *arg, mdv_event *event)
 }
 
 
+static mdv_errno mdv_datasync_evt_trlog_sync(void *arg, mdv_event *event)
+{
+    mdv_datasync *datasync = arg;
+    mdv_evt_trlog_sync *sync = (mdv_evt_trlog_sync *)event;
+
+    if(mdv_uuid_cmp(&datasync->uuid, &sync->to) != 0)
+        return MDV_OK;
+
+    mdv_errno err = MDV_FAILED;
+
+    mdv_trlog *trlog = mdv_datasync_trlog(datasync, &sync->trlog);
+
+    mdv_evt_trlog_state *evt = mdv_evt_trlog_state_create(&sync->trlog, &sync->to, &sync->from, trlog ? mdv_trlog_top(trlog) : 0);
+
+    if (evt)
+    {
+        err = mdv_ebus_publish(datasync->ebus, &evt->base, MDV_EVT_DEFAULT);
+        mdv_evt_trlog_state_release(evt);
+    }
+
+    mdv_trlog_release(trlog);
+
+    return err;
+}
+
+
+static mdv_errno mdv_datasync_evt_trlog_state(void *arg, mdv_event *event)
+{
+    mdv_datasync *datasync = arg;
+    mdv_evt_trlog_state *state = (mdv_evt_trlog_state *)event;
+
+    if(mdv_uuid_cmp(&datasync->uuid, &state->to) != 0)
+        return MDV_OK;
+
+    mdv_errno err = MDV_FAILED;
+
+    mdv_trlog *trlog = mdv_datasync_trlog(datasync, &state->trlog);
+
+    if (trlog)
+    {
+        if (mdv_trlog_top(trlog) > state->top)
+        {
+            // TODO: Transaction logs synchronization
+            MDV_LOGE("TODO TODO TODO");
+        }
+
+        mdv_trlog_release(trlog);
+    }
+
+    return err;
+}
+
+
 static const mdv_event_handler_type mdv_datasync_handlers[] =
 {
     { MDV_EVT_TOPOLOGY,         mdv_datasync_evt_topology },
     { MDV_EVT_TRLOG_CHANGED,    mdv_datasync_evt_trlog_changed },
+    { MDV_EVT_TRLOG_SYNC,       mdv_datasync_evt_trlog_sync },
+    { MDV_EVT_TRLOG_STATE,      mdv_datasync_evt_trlog_state },
 };
 
 
@@ -442,139 +518,7 @@ uint32_t mdv_datasync_release(mdv_datasync *datasync)
 }
 
 
-
-
-
-
 #if 0
-
-/*
-static mdv_errno mdv_datasync_cfslog_sync(mdv_datasync   *datasync,
-                                          mdv_uuid const *storage_uuid,
-                                          uint32_t        peer_src,
-                                          mdv_vector     *routes)
-{
-    mdv_tracker *tracker = datasync->tracker;
-
-    mdv_node const *node_src = mdv_tracker_node_by_id(tracker, peer_src);
-
-    if (!node_src)
-        return MDV_FAILED;
-
-    mdv_msg_p2p_cfslog_sync const sync =
-    {
-        .uuid = *storage_uuid,
-        .peer = node_src->uuid
-    };
-
-    binn obj;
-
-    if (mdv_binn_p2p_cfslog_sync(&sync, &obj))
-    {
-        mdv_msg message =
-        {
-            .hdr =
-            {
-                .id = mdv_message_id(p2p_cfslog_sync),
-                .size = binn_size(&obj)
-            },
-            .payload = binn_ptr(&obj)
-        };
-
-        mdv_vector_foreach(routes, uint32_t, dst)
-        {
-            if (peer_src == *dst)
-                continue;
-            // TODO: mdv_tracker_peers_call(tracker, *dst, &message, &mdv_peer_node_post);
-        }
-
-        binn_free(&obj);
-    }
-    else
-        return MDV_FAILED;
-
-    return MDV_OK;
-}
-
-
-
-static mdv_errno mdv_datasync_cfslog_state(mdv_datasync                   *datasync,
-                                           uint32_t                        peer_id,
-                                           mdv_msg_p2p_cfslog_state const *cfslog_state)
-{
-    binn obj;
-
-    if (mdv_binn_p2p_cfslog_state(cfslog_state, &obj))
-    {
-        mdv_msg message =
-        {
-            .hdr =
-            {
-                .id = mdv_message_id(p2p_cfslog_state),
-                .size = binn_size(&obj)
-            },
-            .payload = binn_ptr(&obj)
-        };
-
-        // TODO: mdv_tracker_peers_call(tracker, peer_id, &message, &mdv_peer_node_post);
-
-        binn_free(&obj);
-    }
-    else
-        return MDV_FAILED;
-
-    return MDV_OK;
-}
-
-
-mdv_errno mdv_datasync_cfslog_sync_handler(mdv_datasync *datasync, uint32_t peer_id, mdv_msg const *msg)
-{
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
-
-    binn binn_msg;
-
-    if(!binn_load(msg->payload, &binn_msg))
-    {
-        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
-        mdv_rollback(rollbacker);
-        return MDV_FAILED;
-    }
-
-    mdv_rollbacker_push(rollbacker, binn_free, &binn_msg);
-
-    mdv_msg_p2p_cfslog_sync cfslog_sync;
-
-    if (!mdv_unbinn_p2p_cfslog_sync(&binn_msg, &cfslog_sync))
-    {
-        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
-        mdv_rollback(rollbacker);
-        return MDV_FAILED;
-    }
-
-    mdv_cfstorage *storage = mdv_tablespace_cfstorage(datasync->tablespace, &cfslog_sync.uuid);
-
-    mdv_node *node = mdv_tracker_node_by_uuid(datasync->tracker, &cfslog_sync.peer);
-
-    if (storage && node)
-    {
-        mdv_msg_p2p_cfslog_state const cfslog_state =
-        {
-            .uuid = cfslog_sync.uuid,
-            .peer = cfslog_sync.peer,
-            .trlog_top = mdv_cfstorage_log_last_id(storage, node->id)
-        };
-
-        if (mdv_datasync_cfslog_state(datasync, peer_id, &cfslog_state) != MDV_OK)
-            MDV_LOGE("Cflog state notification failed");
-    }
-
-    mdv_rollback(rollbacker);
-
-    return MDV_OK;
-}
-*/
-
-
 typedef struct
 {
     mdv_datasync   *datasync;       ///< Data synchronizer

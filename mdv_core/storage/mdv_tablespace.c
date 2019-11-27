@@ -265,6 +265,15 @@ static mdv_errno mdv_tablespace_evt_rowdata_insert(void *arg, mdv_event *event)
 }
 
 
+static mdv_errno mdv_tablespace_evt_trlog_get(void *arg, mdv_event *event)
+{
+    mdv_tablespace *tablespace = arg;
+    mdv_evt_trlog  *get = (mdv_evt_trlog *)event;
+    get->trlog = mdv_tablespace_trlog(tablespace, &get->uuid);
+    return MDV_OK;
+}
+
+
 static mdv_errno mdv_tablespace_evt_trlog_apply(void *arg, mdv_event *event)
 {
     mdv_tablespace      *tablespace = arg;
@@ -273,59 +282,6 @@ static mdv_errno mdv_tablespace_evt_trlog_apply(void *arg, mdv_event *event)
     return mdv_tablespace_log_apply(tablespace, &apply->trlog)
                 ? MDV_OK
                 : MDV_FAILED;
-}
-
-
-static mdv_errno mdv_tablespace_evt_trlog_sync(void *arg, mdv_event *event)
-{
-    mdv_tablespace     *tablespace = arg;
-    mdv_evt_trlog_sync *sync = (mdv_evt_trlog_sync *)event;
-
-    if(mdv_uuid_cmp(&tablespace->uuid, &sync->to) != 0)
-        return MDV_OK;
-
-    mdv_errno err = MDV_FAILED;
-
-    mdv_trlog *trlog = mdv_tablespace_trlog(tablespace, &sync->trlog);
-
-    mdv_evt_trlog_state *evt = mdv_evt_trlog_state_create(&sync->trlog, &sync->to, &sync->from, trlog ? mdv_trlog_top(trlog) : 0);
-
-    if (evt)
-    {
-        err = mdv_ebus_publish(tablespace->ebus, &evt->base, MDV_EVT_DEFAULT);
-        mdv_evt_trlog_state_release(evt);
-    }
-
-    mdv_trlog_release(trlog);
-
-    return err;
-}
-
-
-static mdv_errno mdv_tablespace_evt_trlog_state(void *arg, mdv_event *event)
-{
-    mdv_tablespace      *tablespace = arg;
-    mdv_evt_trlog_state *state = (mdv_evt_trlog_state *)event;
-
-    if(mdv_uuid_cmp(&tablespace->uuid, &state->to) != 0)
-        return MDV_OK;
-
-    mdv_errno err = MDV_FAILED;
-
-    mdv_trlog *trlog = mdv_tablespace_trlog(tablespace, &state->trlog);
-
-    if (trlog)
-    {
-        if (mdv_trlog_top(trlog) > state->top)
-        {
-            // TODO: Transaction logs synchronization
-            MDV_LOGE("TODO TODO TODO");
-        }
-
-        mdv_trlog_release(trlog);
-    }
-
-    return err;
 }
 
 
@@ -351,9 +307,8 @@ static const mdv_event_handler_type mdv_tablespace_handlers[] =
 {
     { MDV_EVT_CREATE_TABLE,   mdv_tablespace_evt_create_table },
     { MDV_EVT_ROWDATA_INSERT, mdv_tablespace_evt_rowdata_insert },
+    { MDV_EVT_TRLOG_GET,      mdv_tablespace_evt_trlog_get },
     { MDV_EVT_TRLOG_APPLY,    mdv_tablespace_evt_trlog_apply },
-    { MDV_EVT_TRLOG_SYNC,     mdv_tablespace_evt_trlog_sync },
-    { MDV_EVT_TRLOG_STATE,    mdv_tablespace_evt_trlog_state },
     { MDV_EVT_TOPOLOGY,       mdv_tablespace_evt_topology },
 };
 

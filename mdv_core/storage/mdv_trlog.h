@@ -37,6 +37,7 @@ typedef struct
 
 
 typedef bool (*mdv_trlog_apply_fn)(void *arg, mdv_trlog_op *op);
+typedef bool (*mdv_trlog_fn)(void *arg, mdv_trlog_data *op);
 
 
 typedef mdv_list_entry(mdv_trlog_data) mdv_trlog_entry;
@@ -130,3 +131,14 @@ uint32_t mdv_trlog_apply(mdv_trlog         *trlog,
                          uint32_t           batch_size,
                          void              *arg,
                          mdv_trlog_apply_fn fn);
+
+
+/**
+ * @brief Transaction log records enumeration
+ * @return number of iterated rows
+ */
+uint32_t mdv_trlog_foreach(mdv_trlog   *trlog,
+                           uint64_t     id,
+                           uint32_t     batch_size,
+                           void        *arg,
+                           mdv_trlog_fn fn);

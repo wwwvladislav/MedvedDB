@@ -19,7 +19,7 @@
     | TRLOG SYNC >>>>>                    |   Transaction log synchronization request.
     |          <<<<< TRLOG STATE / STATUS |   Last transaction log record identifier.
     | CFSLOG DATA >>>>>                   |   Transaction log records.
-    |                        <<<<< STATUS |
+    |          <<<<< TRLOG STATE / STATUS |
  */
 
 

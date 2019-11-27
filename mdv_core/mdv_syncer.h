@@ -1,7 +1,7 @@
 /**
- * @file mdv_datasync.h
+ * @file mdv_syncer.h
  * @author Vladislav Volkov (wwwvladislav@gmail.com)
- * @brief Data synchronization module
+ * @brief Transaction logs synchronizer
  * @version 0.1
  * @date 2019-09-16
  *
@@ -16,7 +16,7 @@
 
 
 /// Data synchronizer
-typedef struct mdv_datasync mdv_datasync;
+typedef struct mdv_syncer mdv_syncer;
 
 
 /**
@@ -27,19 +27,19 @@ typedef struct mdv_datasync mdv_datasync;
  * @param jconfig [in]      Jobs scheduler configuration
  * @param topology [in]     Network topology
  *
- * @return Data committer
+ * @return Data synchronizer
  */
-mdv_datasync * mdv_datasync_create(mdv_uuid const *uuid,
-                                   mdv_ebus *ebus,
-                                   mdv_jobber_config const *jconfig,
-                                   mdv_topology *topology);
+mdv_syncer * mdv_syncer_create(mdv_uuid const *uuid,
+                               mdv_ebus *ebus,
+                               mdv_jobber_config const *jconfig,
+                               mdv_topology *topology);
 
 
 /**
  * @brief Retains data synchronizer.
  * @details Reference counter is increased by one.
  */
-mdv_datasync * mdv_datasync_retain(mdv_datasync *datasync);
+mdv_syncer * mdv_syncer_retain(mdv_syncer *syncer);
 
 
 /**
@@ -47,23 +47,23 @@ mdv_datasync * mdv_datasync_retain(mdv_datasync *datasync);
  * @details Reference counter is decreased by one.
  *          When the reference counter reaches zero, the data synchronizer is stopped and freed.
  */
-uint32_t mdv_datasync_release(mdv_datasync *datasync);
+uint32_t mdv_syncer_release(mdv_syncer *syncer);
 
 
 /**
  * @brief Start transaction logs synchronization
  *
- * @param datasync [in] Data synchronizer
+ * @param syncer [in] Data synchronizer
  *
  * @return true if data synchronization is required
  * @return false if data synchronization is completed
  */
-void mdv_datasync_start(mdv_datasync *datasync);
+void mdv_syncer_start(mdv_syncer *syncer);
 
 
 /**
  * @brief Stop data synchronization
  *
- * @param datasync [in] Data synchronizer
+ * @param syncer [in] Data synchronizer
  */
-void mdv_datasync_stop(mdv_datasync *datasync);
+void mdv_syncer_stop(mdv_syncer *syncer);

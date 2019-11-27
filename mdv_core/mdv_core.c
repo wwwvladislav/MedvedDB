@@ -3,7 +3,7 @@
 #include "mdv_peer.h"
 #include "mdv_config.h"
 #include "mdv_p2pmsg.h"
-#include "mdv_datasync.h"
+#include "mdv_syncer.h"
 #include "mdv_committer.h"
 #include "mdv_conman.h"
 #include "mdv_tracker.h"
@@ -24,7 +24,7 @@ struct mdv_core
     mdv_tracker    *tracker;            ///< Network topology tracker
     mdv_conman     *conman;             ///< Connections manager
     mdv_metainf     metainf;            ///< Metainformation (DB version, node UUID etc.)
-    mdv_datasync   *datasync;           ///< Data synchronizer
+    mdv_syncer     *syncer;             ///< Data synchronizer
     mdv_committer  *committer;          ///< Data committer
 
     struct
@@ -155,17 +155,17 @@ mdv_core * mdv_core_create()
             }
         };
 
-        core->datasync = mdv_datasync_create(&core->metainf.uuid.value, core->ebus, &jconfig, topology);
+        core->syncer = mdv_syncer_create(&core->metainf.uuid.value, core->ebus, &jconfig, topology);
     }
 
-    if (!core->datasync)
+    if (!core->syncer)
     {
         MDV_LOGE("Data synchronizer creation failed");
         mdv_rollback(rollbacker);
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_datasync_release, core->datasync);
+    mdv_rollbacker_push(rollbacker, mdv_syncer_release, core->syncer);
 
 
     // Data committer
@@ -247,10 +247,10 @@ void mdv_core_free(mdv_core *core)
 {
     if (core)
     {
-        mdv_datasync_stop(core->datasync);
+        mdv_syncer_stop(core->syncer);
         mdv_committer_stop(core->committer);
         mdv_conman_free(core->conman);
-        mdv_datasync_release(core->datasync);
+        mdv_syncer_release(core->syncer);
         mdv_committer_release(core->committer);
         mdv_tracker_release(core->tracker);
         mdv_storage_release(core->storage.metainf);

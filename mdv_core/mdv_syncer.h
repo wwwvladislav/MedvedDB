@@ -51,19 +51,8 @@ uint32_t mdv_syncer_release(mdv_syncer *syncer);
 
 
 /**
- * @brief Start transaction logs synchronization
- *
- * @param syncer [in] Data synchronizer
- *
- * @return true if data synchronization is required
- * @return false if data synchronization is completed
- */
-void mdv_syncer_start(mdv_syncer *syncer);
-
-
-/**
- * @brief Stop data synchronization
+ * @brief Cancels data synchronization
  *
  * @param syncer [in] Data synchronizer
  */
-void mdv_syncer_stop(mdv_syncer *syncer);
+void mdv_syncer_cancel(mdv_syncer *syncer);

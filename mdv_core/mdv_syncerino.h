@@ -11,6 +11,7 @@
 #pragma once
 #include <mdv_ebus.h>
 #include <mdv_uuid.h>
+#include <mdv_jobber.h>
 
 
 /// Data synchronizer with specific node
@@ -20,12 +21,14 @@ typedef struct mdv_syncerino mdv_syncerino;
 /**
  * @brief Creates transaction logs synchronizer with specific node
  *
- * @param uuid [in]         Global unique identifier for node
+ * @param uuid [in]         Current node UUID
+ * @param peer [in]         Global unique identifier for peer
  * @param ebus [in]         Events bus
+ * @param jobber [in]       Jobs scheduler
  *
  * @return Data committer
  */
-mdv_syncerino * mdv_syncerino_create(mdv_uuid const *uuid, mdv_ebus *ebus);
+mdv_syncerino * mdv_syncerino_create(mdv_uuid const *uuid, mdv_uuid const *peer, mdv_ebus *ebus, mdv_jobber *jobber);
 
 
 /**

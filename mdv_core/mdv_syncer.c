@@ -12,6 +12,7 @@
 #include <mdv_router.h>
 #include <mdv_mutex.h>
 #include <mdv_hashmap.h>
+#include <mdv_vector.h>
 #include <stdatomic.h>
 
 
@@ -21,9 +22,6 @@ struct mdv_syncer
     atomic_uint     rc;             ///< References counter
     mdv_ebus       *ebus;           ///< Event bus
     mdv_jobber     *jobber;         ///< Jobs scheduler
-    mdv_descriptor  start;          ///< Signal for starting
-    mdv_thread      thread;         ///< Committer thread
-    atomic_bool     active;         ///< Status
     mdv_uuid        uuid;           ///< Current node UUID
     mdv_mutex       mutex;          ///< Mutex for peers synchronizers guard
     mdv_hashmap    *peers;          ///< Current synchronizing peers (hashmap<mdv_syncer_peer>)
@@ -38,24 +36,6 @@ typedef struct
 } mdv_syncer_peer;
 
 
-typedef struct mdv_syncer_start_context
-{
-    mdv_syncer     *syncer;         ///< Data synchronizer
-    mdv_hashmap    *routes;         ///< Destination peers
-    mdv_uuid        trlog;          ///< TR log UUID for synchronization
-} mdv_syncer_start_context;
-
-
-// typedef mdv_job(mdv_syncer_start_context)     mdv_syncer_start_job;
-
-
-static bool mdv_syncer_is_active(mdv_syncer *syncer)
-{
-    return atomic_load(&syncer->active);
-}
-
-
-#if 0
 static mdv_trlog * mdv_syncer_trlog(mdv_syncer *syncer, mdv_uuid const *uuid)
 {
     mdv_evt_trlog *evt = mdv_evt_trlog_create(uuid);
@@ -75,6 +55,20 @@ static mdv_trlog * mdv_syncer_trlog(mdv_syncer *syncer, mdv_uuid const *uuid)
 
     return trlog;
 }
+
+
+#if 0
+typedef struct mdv_syncer_start_context
+{
+    mdv_syncer     *syncer;         ///< Data synchronizer
+    mdv_hashmap    *routes;         ///< Destination peers
+    mdv_uuid        trlog;          ///< TR log UUID for synchronization
+} mdv_syncer_start_context;
+
+
+typedef mdv_job(mdv_syncer_start_context)     mdv_syncer_start_job;
+
+
 
 
 static void mdv_syncer_start_fn(mdv_job_base *job)
@@ -187,8 +181,6 @@ static void mdv_syncer_start_jobs_emit(mdv_syncer *syncer)
 
     mdv_rollback(rollbacker);
 }
-#endif
-
 
 static void * mdv_syncer_thread(void *arg)
 {
@@ -196,7 +188,7 @@ static void * mdv_syncer_thread(void *arg)
 
     atomic_store(&syncer->active, true);
 
-/*
+
     mdv_descriptor epfd = mdv_epoll_create();
 
     if (epfd == MDV_INVALID_DESCRIPTOR)
@@ -244,8 +236,20 @@ static void * mdv_syncer_thread(void *arg)
     }
 
     mdv_epoll_close(epfd);
-*/
+
     return 0;
+}
+#endif
+
+
+static void mdv_syncerino_start4all_storages(mdv_syncerino *syncerino, mdv_topology *topology)
+{
+    mdv_vector *nodes = mdv_topology_nodes(topology);
+
+    mdv_vector_foreach(nodes, mdv_toponode, node)
+        mdv_syncerino_start(syncerino, &node->uuid);
+
+    mdv_vector_release(nodes);
 }
 
 
@@ -261,32 +265,72 @@ static mdv_errno mdv_syncer_topology_changed(mdv_syncer *syncer, mdv_topology *t
 
         if (err == MDV_OK)
         {
-            mdv_hashmap_foreach(syncer->peers, mdv_syncer_peer, peer)
+            // I. Disconnected peers removal
+            if (!mdv_hashmap_empty(syncer->peers))
             {
-                if (mdv_hashmap_find(routes, &peer->uuid))
+                mdv_vector *removed_peers = mdv_vector_create(mdv_hashmap_size(syncer->peers),
+                                                              sizeof(mdv_uuid),
+                                                              &mdv_stallocator);
+
+                if (removed_peers)
                 {
-                    mdv_syncerino_cancel(peer->syncerino);
-                    mdv_syncerino_release(peer->syncerino);
-                    // TODO: mdv_hashmap_erase(syncer->peers);
+                    mdv_hashmap_foreach(syncer->peers, mdv_syncer_peer, peer)
+                    {
+                        if (!mdv_hashmap_find(routes, &peer->uuid))
+                        {
+                            mdv_syncerino_cancel(peer->syncerino);
+                            mdv_syncerino_release(peer->syncerino);
+                            mdv_vector_push_back(removed_peers, &peer->uuid);
+                        }
+                    }
+
+                    mdv_vector_foreach(removed_peers, mdv_uuid, peer)
+                        mdv_hashmap_erase(syncer->peers, peer);
+
+                    mdv_vector_release(removed_peers);
+                }
+                else
+                {
+                    err = MDV_NO_MEM;
+                    MDV_LOGE("No memory for removed peers");
                 }
             }
 
+            // II. New peers adding
             mdv_hashmap_foreach(routes, mdv_route, route)
             {
-                //mdv_syncer_peer *peer = mdv_hashmap_find(syncer->peers);
+                mdv_syncer_peer *peer = mdv_hashmap_find(syncer->peers, &route->uuid);
 
-                //if (peer)
-                    //continue;
+                if (peer)
+                    continue;
+
+                mdv_syncer_peer syncer_peer =
+                {
+                    .uuid = route->uuid,
+                    .syncerino = mdv_syncerino_create(&syncer->uuid, &route->uuid, syncer->ebus, syncer->jobber)
+                };
+
+                if (syncer_peer.syncerino)
+                {
+                    if (mdv_hashmap_insert(syncer->peers, &syncer_peer, sizeof syncer_peer))
+                        mdv_syncerino_start4all_storages(syncer_peer.syncerino, topology);
+                    else
+                    {
+                        err = MDV_FAILED;
+                        mdv_syncerino_release(syncer_peer.syncerino);
+                        MDV_LOGE("Synchronizer creation for '%s' peer failed", mdv_uuid_to_str(&route->uuid).ptr);
+                    }
+                }
+                else
+                {
+                    err = MDV_FAILED;
+                    MDV_LOGE("Synchronizer creation for '%s' peer failed", mdv_uuid_to_str(&route->uuid).ptr);
+                }
             }
+
 
             mdv_mutex_unlock(&syncer->mutex);
         }
-
-        //err = err == MDV_OK
-        //        ? mdv_safeptr_set(syncer->routes, routes)
-        //        : err;
-
-        // TODO: Create peers synchronizers
 
         mdv_hashmap_release(routes);
     }
@@ -302,16 +346,6 @@ static mdv_errno mdv_syncer_evt_topology(void *arg, mdv_event *event)
     mdv_syncer *syncer = arg;
     mdv_evt_topology *topo = (mdv_evt_topology *)event;
     return mdv_syncer_topology_changed(syncer, topo->topology);
-}
-
-
-#if 0
-static mdv_errno mdv_syncer_evt_trlog_changed(void *arg, mdv_event *event)
-{
-    mdv_syncer *syncer = arg;
-    (void)event;
-    mdv_syncer_start(syncer);
-    return MDV_OK;
 }
 
 
@@ -341,47 +375,17 @@ static mdv_errno mdv_syncer_evt_trlog_sync(void *arg, mdv_event *event)
 }
 
 
-static mdv_errno mdv_syncer_evt_trlog_state(void *arg, mdv_event *event)
-{
-    mdv_syncer *syncer = arg;
-    mdv_evt_trlog_state *state = (mdv_evt_trlog_state *)event;
-
-    if(mdv_uuid_cmp(&syncer->uuid, &state->to) != 0)
-        return MDV_OK;
-
-    mdv_errno err = MDV_FAILED;
-
-    mdv_trlog *trlog = mdv_syncer_trlog(syncer, &state->trlog);
-
-    if (trlog)
-    {
-        if (mdv_trlog_top(trlog) > state->top)
-        {
-            // TODO: Transaction logs synchronization
-            MDV_LOGE("TODO TODO TODO");
-        }
-
-        mdv_trlog_release(trlog);
-    }
-
-    return err;
-}
-#endif
-
-
 static const mdv_event_handler_type mdv_syncer_handlers[] =
 {
     { MDV_EVT_TOPOLOGY,         mdv_syncer_evt_topology },
-//    { MDV_EVT_TRLOG_CHANGED,    mdv_syncer_evt_trlog_changed },
-//    { MDV_EVT_TRLOG_SYNC,       mdv_syncer_evt_trlog_sync },
-//    { MDV_EVT_TRLOG_STATE,      mdv_syncer_evt_trlog_state },
+    { MDV_EVT_TRLOG_SYNC,       mdv_syncer_evt_trlog_sync },
 };
 
 
 mdv_syncer * mdv_syncer_create(mdv_uuid const *uuid,
-                                   mdv_ebus *ebus,
-                                   mdv_jobber_config const *jconfig,
-                                   mdv_topology *topology)
+                               mdv_ebus *ebus,
+                               mdv_jobber_config const *jconfig,
+                               mdv_topology *topology)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(7);
 
@@ -397,7 +401,6 @@ mdv_syncer * mdv_syncer_create(mdv_uuid const *uuid,
     mdv_rollbacker_push(rollbacker, mdv_free, syncer, "syncer");
 
     atomic_init(&syncer->rc, 1);
-    atomic_init(&syncer->active, false);
 
     syncer->uuid = *uuid;
 
@@ -446,35 +449,7 @@ mdv_syncer * mdv_syncer_create(mdv_uuid const *uuid,
 
     mdv_rollbacker_push(rollbacker, mdv_jobber_release, syncer->jobber);
 
-    syncer->start = mdv_eventfd(false);
-
-    if (syncer->start == MDV_INVALID_DESCRIPTOR)
-    {
-        MDV_LOGE("Eventfd creation failed");
-        mdv_rollback(rollbacker);
-        return 0;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_eventfd_close, syncer->start);
-
-    mdv_thread_attrs const attrs =
-    {
-        .stack_size = MDV_THREAD_STACK_SIZE
-    };
-
-    mdv_errno err = mdv_thread_create(&syncer->thread, &attrs, mdv_syncer_thread, syncer);
-
-    if (err != MDV_OK)
-    {
-        MDV_LOGE("Thread creation failed with error %d", err);
-        mdv_rollback(rollbacker);
-        return 0;
-    }
-
-    while(!mdv_syncer_is_active(syncer))
-        mdv_sleep(100);
-
-    mdv_rollbacker_push(rollbacker, mdv_syncer_stop, syncer);
+    mdv_rollbacker_push(rollbacker, mdv_syncer_cancel, syncer);
 
     if (mdv_ebus_subscribe_all(syncer->ebus,
                                syncer,
@@ -492,33 +467,16 @@ mdv_syncer * mdv_syncer_create(mdv_uuid const *uuid,
 }
 
 
-void mdv_syncer_start(mdv_syncer *syncer)
+void mdv_syncer_cancel(mdv_syncer *syncer)
 {
-    uint64_t const signal = 1;
-    mdv_write_all(syncer->start, &signal, sizeof signal);
-}
-
-
-void mdv_syncer_stop(mdv_syncer *syncer)
-{
-    if (mdv_syncer_is_active(syncer))
-    {
-        atomic_store(&syncer->active, false);
-
-        uint64_t const signal = 1;
-        mdv_write_all(syncer->start, &signal, sizeof signal);
-
-        mdv_thread_join(syncer->thread);
-
-        mdv_hashmap_foreach(syncer->peers, mdv_syncer_peer, peer)
-            mdv_syncerino_cancel(peer->syncerino);
-    }
+    mdv_hashmap_foreach(syncer->peers, mdv_syncer_peer, peer)
+        mdv_syncerino_cancel(peer->syncerino);
 }
 
 
 static void mdv_syncer_free(mdv_syncer *syncer)
 {
-    mdv_syncer_stop(syncer);
+    mdv_syncer_cancel(syncer);
 
     mdv_ebus_unsubscribe_all(syncer->ebus,
                              syncer,
@@ -526,7 +484,6 @@ static void mdv_syncer_free(mdv_syncer *syncer)
                              sizeof mdv_syncer_handlers / sizeof *mdv_syncer_handlers);
 
     mdv_jobber_release(syncer->jobber);
-    mdv_eventfd_close(syncer->start);
     mdv_ebus_release(syncer->ebus);
 
     mdv_hashmap_foreach(syncer->peers, mdv_syncer_peer, peer)

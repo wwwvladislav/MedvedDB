@@ -247,7 +247,7 @@ void mdv_core_free(mdv_core *core)
 {
     if (core)
     {
-        mdv_syncer_stop(core->syncer);
+        mdv_syncer_cancel(core->syncer);
         mdv_committer_stop(core->committer);
         mdv_conman_free(core->conman);
         mdv_syncer_release(core->syncer);

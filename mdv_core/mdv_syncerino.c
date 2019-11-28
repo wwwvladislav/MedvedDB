@@ -1,6 +1,5 @@
 #include "mdv_syncerino.h"
-#include "event/mdv_evt_types.h"
-#include "event/mdv_evt_trlog.h"
+#include "mdv_syncerlog.h"
 #include <mdv_alloc.h>
 #include <mdv_log.h>
 #include <mdv_mutex.h>
@@ -14,37 +13,24 @@ struct mdv_syncerino
 {
     atomic_uint     rc;             ///< References counter
     mdv_ebus       *ebus;           ///< Event bus
-    mdv_uuid        uuid;           ///< Global unique identifier for node
+    mdv_jobber     *jobber;         ///< Jobs scheduler
+    mdv_uuid        uuid;           ///< Current node UUID
+    mdv_uuid        peer;           ///< Global unique identifier for peer
     mdv_mutex       mutex;          ///< Mutex for TR log synchronizers guard
-    mdv_hashmap    *trlogs;         ///< Current synchronizing TR logs (hashmap<mdv_syncerino_trlog>)
+    mdv_hashmap    *trlogs;         ///< Current synchronizing TR logs (hashmap<mdv_syncerlog_ref>)
 };
 
 
 typedef struct
 {
-    mdv_uuid    uuid;               ///< TR log UUID
-} mdv_syncerino_trlog;
+    mdv_uuid        uuid;           ///< TR log UUID
+    mdv_syncerlog  *syncerlog;      ///< TR log changes counter
+} mdv_syncerlog_ref;
 
 
-static mdv_errno mdv_syncerino_evt_trlog_changed(void *arg, mdv_event *event)
+mdv_syncerino * mdv_syncerino_create(mdv_uuid const *uuid, mdv_uuid const *peer, mdv_ebus *ebus, mdv_jobber *jobber)
 {
-    mdv_syncerino *syncerino = arg;
-    mdv_evt_trlog_changed *evt = (mdv_evt_trlog_changed *)event;
-    return mdv_syncerino_start(syncerino, &evt->trlog);
-}
-
-
-static const mdv_event_handler_type mdv_syncerino_handlers[] =
-{
-    { MDV_EVT_TRLOG_CHANGED,    mdv_syncerino_evt_trlog_changed },
-//    { MDV_EVT_TRLOG_SYNC,       mdv_syncer_evt_trlog_sync },
-//    { MDV_EVT_TRLOG_STATE,      mdv_syncer_evt_trlog_state },
-};
-
-
-mdv_syncerino * mdv_syncerino_create(mdv_uuid const *uuid, mdv_ebus *ebus)
-{
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
 
     mdv_syncerino *syncerino = mdv_alloc(sizeof(mdv_syncerino), "syncerino");
 
@@ -58,10 +44,16 @@ mdv_syncerino * mdv_syncerino_create(mdv_uuid const *uuid, mdv_ebus *ebus)
     mdv_rollbacker_push(rollbacker, mdv_free, syncerino, "syncerino");
 
     atomic_init(&syncerino->rc, 1);
+    syncerino->uuid = *uuid;
+    syncerino->peer = *peer;
 
     syncerino->ebus = mdv_ebus_retain(ebus);
 
     mdv_rollbacker_push(rollbacker, mdv_ebus_release, syncerino->ebus);
+
+    syncerino->jobber = mdv_jobber_retain(jobber);
+
+    mdv_rollbacker_push(rollbacker, mdv_jobber_release, syncerino->jobber);
 
     if (mdv_mutex_create(&syncerino->mutex) != MDV_OK)
     {
@@ -72,7 +64,7 @@ mdv_syncerino * mdv_syncerino_create(mdv_uuid const *uuid, mdv_ebus *ebus)
 
     mdv_rollbacker_push(rollbacker, mdv_mutex_free, &syncerino->mutex);
 
-    syncerino->trlogs = mdv_hashmap_create(mdv_syncerino_trlog,
+    syncerino->trlogs = mdv_hashmap_create(mdv_syncerlog_ref,
                                            uuid,
                                            4,
                                            mdv_uuid_hash,
@@ -103,6 +95,7 @@ static void mdv_syncerino_free(mdv_syncerino *syncerino)
 {
     mdv_syncerino_cancel(syncerino);
     mdv_ebus_release(syncerino->ebus);
+    mdv_jobber_release(syncerino->jobber);
     mdv_hashmap_release(syncerino->trlogs);
     mdv_mutex_free(&syncerino->mutex);
     memset(syncerino, 0, sizeof(*syncerino));
@@ -125,10 +118,69 @@ uint32_t mdv_syncerino_release(mdv_syncerino *syncerino)
 
 
 void mdv_syncerino_cancel(mdv_syncerino *syncerino)
-{}
+{
+    if (mdv_mutex_lock(&syncerino->mutex) == MDV_OK)
+    {
+        mdv_hashmap_foreach(syncerino->trlogs, mdv_syncerlog_ref, ref)
+            mdv_syncerlog_release(ref->syncerlog);
+        mdv_hashmap_clear(syncerino->trlogs);
+        mdv_mutex_unlock(&syncerino->mutex);
+    }
+}
+
+
+static mdv_syncerlog * mdv_syncerino_syncerlog(mdv_syncerino *syncerino, mdv_uuid const *trlog)
+{
+    if (mdv_uuid_cmp(trlog, &syncerino->peer) == 0)
+        return 0;
+
+    mdv_syncerlog_ref *ref = 0;
+
+    if (mdv_mutex_lock(&syncerino->mutex) == MDV_OK)
+    {
+        ref = mdv_hashmap_find(syncerino->trlogs, trlog);
+
+        if (!ref)
+        {
+            mdv_syncerlog_ref new_ref =
+            {
+                .uuid = *trlog,
+                .syncerlog = mdv_syncerlog_create(&syncerino->uuid, &syncerino->peer, trlog, syncerino->ebus, syncerino->jobber)
+            };
+
+            if (new_ref.syncerlog)
+            {
+                ref = mdv_hashmap_insert(syncerino->trlogs, &new_ref, sizeof new_ref);
+
+                if (!ref)
+                {
+                    mdv_syncerlog_release(new_ref.syncerlog);
+                    MDV_LOGE("Transaction log synchronizer creation failed");
+                }
+            }
+            else
+                MDV_LOGE("Transaction log synchronizer creation failed");
+        }
+
+        mdv_mutex_unlock(&syncerino->mutex);
+    }
+
+    return ref ? mdv_syncerlog_retain(ref->syncerlog) : 0;
+}
 
 
 mdv_errno mdv_syncerino_start(mdv_syncerino *syncerino, mdv_uuid const *trlog)
 {
-    return MDV_OK;
+    if (mdv_uuid_cmp(trlog, &syncerino->peer) == 0)
+        return MDV_OK;
+
+    mdv_syncerlog *syncerlog = mdv_syncerino_syncerlog(syncerino, trlog);
+
+    if (syncerlog)
+    {
+        mdv_syncerlog_release(syncerlog);
+        return MDV_OK;
+    }
+
+    return MDV_FAILED;
 }

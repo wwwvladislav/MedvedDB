@@ -24,6 +24,7 @@ struct mdv_syncerlog
     mdv_uuid            peer;           ///< Global unique identifier for peer
     mdv_uuid            trlog;          ///< Global unique identifier for transaction log
     size_t              changes;        ///< TR log changes counter
+    uint64_t            scheduled;      ///< The last log record identifier scheduled for synchronization
     mdv_syncerlog_state state;          ///< TR log synchronizer state
     mdv_ebus           *ebus;           ///< Event bus
     mdv_jobber         *jobber;         ///< Jobs scheduler
@@ -72,6 +73,8 @@ static mdv_errno mdv_syncerlog_start(mdv_syncerlog *syncerlog)
      if(mdv_syncerlog_is_empty(syncerlog))
         return MDV_OK;
 
+    bool start_synchronization = false;
+
     mdv_errno err = mdv_mutex_lock(&syncerlog->mutex);
 
     if(err == MDV_OK)
@@ -82,24 +85,30 @@ static mdv_errno mdv_syncerlog_start(mdv_syncerlog *syncerlog)
         {
             syncerlog->state = MDV_TRLOG_SYNC_STARTED;
             syncerlog->changes = 0;
-
-            mdv_evt_trlog_sync *sync = mdv_evt_trlog_sync_create(&syncerlog->trlog, &syncerlog->uuid, &syncerlog->peer);
-
-            if (sync)
-            {
-                err = mdv_ebus_publish(syncerlog->ebus, &sync->base, MDV_EVT_SYNC);
-                if (err != MDV_OK)
-                    MDV_LOGE("Transaction synchronization failed");
-                mdv_evt_trlog_sync_release(sync);
-            }
-            else
-            {
-                err = MDV_NO_MEM;
-                MDV_LOGE("Transaction synchronization failed. No memory.");
-            }
+            start_synchronization = true;
         }
-
         mdv_mutex_unlock(&syncerlog->mutex);
+    }
+
+    if (start_synchronization)
+    {
+        mdv_evt_trlog_sync *sync = mdv_evt_trlog_sync_create(
+                                        &syncerlog->trlog,
+                                        &syncerlog->uuid,
+                                        &syncerlog->peer);
+
+        if (sync)
+        {
+            err = mdv_ebus_publish(syncerlog->ebus, &sync->base, MDV_EVT_SYNC);
+            if (err != MDV_OK)
+                MDV_LOGE("Transaction synchronization failed");
+            mdv_evt_trlog_sync_release(sync);
+        }
+        else
+        {
+            err = MDV_NO_MEM;
+            MDV_LOGE("Transaction synchronization failed. No memory.");
+        }
     }
 
     return err;
@@ -111,6 +120,15 @@ static mdv_errno mdv_syncerlog_evt_changed(void *arg, mdv_event *event)
     mdv_syncerlog *syncerlog = arg;
     mdv_evt_trlog_changed *evt = (mdv_evt_trlog_changed *)event;
     return mdv_syncerlog_start(syncerlog);
+}
+
+
+static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, uint64_t pos)
+{
+    // TODO: Transaction logs synchronization
+    MDV_LOGE("TODO TODO TODO");
+
+    return MDV_OK;
 }
 
 
@@ -130,11 +148,7 @@ static mdv_errno mdv_syncerlog_evt_trlog_state(void *arg, mdv_event *event)
     if (trlog)
     {
         if (mdv_trlog_top(trlog) > state->top)
-        {
-            // TODO: Transaction logs synchronization
-            MDV_LOGE("TODO TODO TODO");
-        }
-
+            err = mdv_syncerlog_schedule(syncerlog, state->top);
         mdv_trlog_release(trlog);
     }
 
@@ -169,6 +183,7 @@ mdv_syncerlog * mdv_syncerlog_create(mdv_uuid const *uuid, mdv_uuid const *peer,
     syncerlog->peer = *peer;
     syncerlog->trlog = *trlog;
     syncerlog->changes = 0;
+    syncerlog->scheduled = 0;
     syncerlog->state = MDV_TRLOG_SYNC_IDLE;
 
     syncerlog->ebus = mdv_ebus_retain(ebus);

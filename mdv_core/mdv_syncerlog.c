@@ -9,26 +9,20 @@
 #include <stdatomic.h>
 
 
-typedef enum
-{
-    MDV_TRLOG_SYNC_IDLE = 0,
-    MDV_TRLOG_SYNC_STARTED
-} mdv_syncerlog_state;
+// TODO: Restart synchronization by timeout
 
 
 /// Data synchronizer with specific node
 struct mdv_syncerlog
 {
-    atomic_uint         rc;             ///< References counter
-    mdv_uuid            uuid;           ///< Current node UUID
-    mdv_uuid            peer;           ///< Global unique identifier for peer
-    mdv_uuid            trlog;          ///< Global unique identifier for transaction log
-    size_t              changes;        ///< TR log changes counter
-    uint64_t            scheduled;      ///< The last log record identifier scheduled for synchronization
-    mdv_syncerlog_state state;          ///< TR log synchronizer state
-    mdv_ebus           *ebus;           ///< Event bus
-    mdv_jobber         *jobber;         ///< Jobs scheduler
-    mdv_mutex           mutex;          ///< Mutex for synchronizer guard
+    atomic_uint             rc;             ///< References counter
+    mdv_uuid                uuid;           ///< Current node UUID
+    mdv_uuid                peer;           ///< Global unique identifier for peer
+    mdv_uuid                trlog;          ///< Global unique identifier for transaction log
+    atomic_size_t           requests;       ///< TR log synchronization requests counter
+    atomic_uint_fast64_t    scheduled;      ///< The last log record identifier scheduled for synchronization
+    mdv_ebus               *ebus;           ///< Event bus
+    mdv_jobber             *jobber;         ///< Jobs scheduler
 };
 
 
@@ -73,47 +67,36 @@ static mdv_errno mdv_syncerlog_start(mdv_syncerlog *syncerlog)
      if(mdv_syncerlog_is_empty(syncerlog))
         return MDV_OK;
 
-    bool start_synchronization = false;
+    int requests = 0;
 
-    mdv_errno err = mdv_mutex_lock(&syncerlog->mutex);
+    if (atomic_fetch_add_explicit(&syncerlog->requests, 1, memory_order_relaxed))
+        return MDV_OK;
 
-    if(err == MDV_OK)
+    mdv_errno err = MDV_OK;
+
+    mdv_evt_trlog_sync *sync = mdv_evt_trlog_sync_create(
+                                    &syncerlog->trlog,
+                                    &syncerlog->uuid,
+                                    &syncerlog->peer);
+
+    if (sync)
     {
-        if (syncerlog->state != MDV_TRLOG_SYNC_IDLE)
-            ++syncerlog->changes;
-        else
-        {
-            syncerlog->state = MDV_TRLOG_SYNC_STARTED;
-            syncerlog->changes = 0;
-            start_synchronization = true;
-        }
-        mdv_mutex_unlock(&syncerlog->mutex);
+        err = mdv_ebus_publish(syncerlog->ebus, &sync->base, MDV_EVT_SYNC);
+        if (err != MDV_OK)
+            MDV_LOGE("Transaction synchronization failed");
+        mdv_evt_trlog_sync_release(sync);
+    }
+    else
+    {
+        err = MDV_NO_MEM;
+        MDV_LOGE("Transaction synchronization failed. No memory.");
     }
 
-    if (start_synchronization)
-    {
-        mdv_evt_trlog_sync *sync = mdv_evt_trlog_sync_create(
-                                        &syncerlog->trlog,
-                                        &syncerlog->uuid,
-                                        &syncerlog->peer);
-
-        if (sync)
-        {
-            err = mdv_ebus_publish(syncerlog->ebus, &sync->base, MDV_EVT_SYNC);
-            if (err != MDV_OK)
-                MDV_LOGE("Transaction synchronization failed");
-            mdv_evt_trlog_sync_release(sync);
-        }
-        else
-        {
-            err = MDV_NO_MEM;
-            MDV_LOGE("Transaction synchronization failed. No memory.");
-        }
-    }
+    if (err != MDV_OK)
+        atomic_init(&syncerlog->requests, 0);
 
     return err;
 }
-
 
 static mdv_errno mdv_syncerlog_evt_changed(void *arg, mdv_event *event)
 {
@@ -123,10 +106,28 @@ static mdv_errno mdv_syncerlog_evt_changed(void *arg, mdv_event *event)
 }
 
 
-static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, uint64_t pos)
+static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, mdv_trlog *trlog, uint64_t pos)
 {
-    // TODO: Transaction logs synchronization
-    MDV_LOGE("TODO TODO TODO");
+    size_t   requests  = atomic_load_explicit(&syncerlog->requests, memory_order_relaxed);
+    uint64_t scheduled,
+             trlog_top;
+
+    do
+    {
+        scheduled = atomic_load_explicit(&syncerlog->scheduled, memory_order_relaxed);
+        trlog_top = mdv_trlog_top(trlog);
+    }
+    while (!atomic_compare_exchange_strong(&syncerlog->requests, &requests, 0));
+
+    if (scheduled >= trlog_top)
+        return MDV_OK;
+
+    if (!atomic_compare_exchange_strong(&syncerlog->scheduled, &scheduled, trlog_top))
+        return MDV_FAILED;
+
+    // Only one request should reach this point
+
+    MDV_LOGE("TODOOOOOOOOOOOOOOOOOOO");
 
     return MDV_OK;
 }
@@ -147,8 +148,7 @@ static mdv_errno mdv_syncerlog_evt_trlog_state(void *arg, mdv_event *event)
 
     if (trlog)
     {
-        if (mdv_trlog_top(trlog) > state->top)
-            err = mdv_syncerlog_schedule(syncerlog, state->top);
+        err = mdv_syncerlog_schedule(syncerlog, trlog, state->top);
         mdv_trlog_release(trlog);
     }
 
@@ -165,7 +165,7 @@ static const mdv_event_handler_type mdv_syncerlog_handlers[] =
 
 mdv_syncerlog * mdv_syncerlog_create(mdv_uuid const *uuid, mdv_uuid const *peer, mdv_uuid const *trlog, mdv_ebus *ebus, mdv_jobber *jobber)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
     mdv_syncerlog *syncerlog = mdv_alloc(sizeof(mdv_syncerlog), "syncerlog");
 
@@ -179,12 +179,12 @@ mdv_syncerlog * mdv_syncerlog_create(mdv_uuid const *uuid, mdv_uuid const *peer,
     mdv_rollbacker_push(rollbacker, mdv_free, syncerlog, "syncerlog");
 
     atomic_init(&syncerlog->rc, 1);
+    atomic_init(&syncerlog->requests, 0);
+    atomic_init(&syncerlog->scheduled, 0);
+
     syncerlog->uuid = *uuid;
     syncerlog->peer = *peer;
     syncerlog->trlog = *trlog;
-    syncerlog->changes = 0;
-    syncerlog->scheduled = 0;
-    syncerlog->state = MDV_TRLOG_SYNC_IDLE;
 
     syncerlog->ebus = mdv_ebus_retain(ebus);
 
@@ -193,15 +193,6 @@ mdv_syncerlog * mdv_syncerlog_create(mdv_uuid const *uuid, mdv_uuid const *peer,
     syncerlog->jobber = mdv_jobber_retain(jobber);
 
     mdv_rollbacker_push(rollbacker, mdv_jobber_release, syncerlog->jobber);
-
-    if (mdv_mutex_create(&syncerlog->mutex) != MDV_OK)
-    {
-        MDV_LOGE("Mutex for TR log synchronizers not created");
-        mdv_rollback(rollbacker);
-        return 0;
-    }
-
-    mdv_rollbacker_push(rollbacker, mdv_mutex_free, &syncerlog->mutex);
 
     if (mdv_ebus_subscribe_all(syncerlog->ebus,
                                syncerlog,
@@ -239,7 +230,6 @@ static void mdv_syncerlog_free(mdv_syncerlog *syncerlog)
 
     mdv_ebus_release(syncerlog->ebus);
     mdv_jobber_release(syncerlog->jobber);
-    mdv_mutex_free(&syncerlog->mutex);
     memset(syncerlog, 0, sizeof(*syncerlog));
     mdv_free(syncerlog, "syncerlog");
 }

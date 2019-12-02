@@ -3,6 +3,7 @@
 #include <mdv_topology.h>
 #include <mdv_list.h>
 #include <mdv_hashmap.h>
+#include "storage/mdv_trlog.h"
 
 
 /*
@@ -66,17 +67,11 @@ mdv_message_def(p2p_trlog_state, 1000 + 6,
 );
 
 
-typedef struct
-{
-    uint64_t                row_id;
-    mdv_data                op;
-} mdv_cfslog_data;
-
-mdv_message_def(p2p_cfslog_data, 1000 + 7,
-    mdv_uuid    uuid;               ///< CF Storage unique identifier
+mdv_message_def(p2p_trlog_data, 1000 + 7,
+    mdv_uuid    trlog;              ///< Transaction log storage unique identifier
     mdv_uuid    peer;               ///< Peer unique identifier
     uint32_t    count;              ///< log records count
-    mdv_list   *rows;               ///< transaction log data (list<mdv_cfslog_data>)
+    mdv_list    rows;               ///< transaction log data (list<mdv_trlog_data>)
 );
 
 
@@ -121,12 +116,9 @@ bool            mdv_binn_p2p_trlog_state                (mdv_msg_p2p_trlog_state
 bool            mdv_unbinn_p2p_trlog_state              (binn const *obj, mdv_msg_p2p_trlog_state *msg);
 
 
-bool            mdv_binn_p2p_cfslog_data                (mdv_msg_p2p_cfslog_data const *msg, binn *obj);
-mdv_uuid *      mdv_unbinn_p2p_cfslog_data_uuid         (binn const *obj);
-mdv_uuid *      mdv_unbinn_p2p_cfslog_data_peer         (binn const *obj);
-uint32_t *      mdv_unbinn_p2p_cfslog_data_count        (binn const *obj);
-uint64_t *      mdv_unbinn_p2p_cfslog_data_size         (binn const *obj);
-bool            mdv_unbinn_p2p_cfslog_data_rows         (binn const *obj, mdv_list *rows);
+bool            mdv_binn_p2p_trlog_data                 (mdv_msg_p2p_trlog_data const *msg, binn *obj);
+bool            mdv_unbinn_p2p_trlog_data               (binn const *obj, mdv_msg_p2p_trlog_data *msg);
+void            mdv_p2p_trlog_data_free                 (mdv_msg_p2p_trlog_data *msg);
 
 
 bool            mdv_binn_p2p_broadcast                  (mdv_msg_p2p_broadcast const *msg, binn *obj);

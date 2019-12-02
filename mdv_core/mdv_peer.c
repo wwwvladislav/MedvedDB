@@ -326,7 +326,7 @@ static mdv_errno mdv_peer_trlog_state_handler(mdv_msg const *msg, void *arg)
 }
 
 
-static mdv_errno mdv_peer_cfslog_data_handler(mdv_msg const *msg, void *arg)
+static mdv_errno mdv_peer_trlog_data_handler(mdv_msg const *msg, void *arg)
 {
 /* TODO
     mdv_peer *peer = arg;
@@ -642,7 +642,7 @@ mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
         { mdv_message_id(p2p_broadcast),    &mdv_peer_broadcast_handler,    peer },
         { mdv_message_id(p2p_trlog_sync),   &mdv_peer_trlog_sync_handler,   peer },
         { mdv_message_id(p2p_trlog_state),  &mdv_peer_trlog_state_handler,  peer },
-        { mdv_message_id(p2p_cfslog_data),  &mdv_peer_cfslog_data_handler,  peer },
+        { mdv_message_id(p2p_trlog_data),   &mdv_peer_trlog_data_handler,   peer },
     };
 
     for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)

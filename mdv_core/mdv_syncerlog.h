@@ -46,10 +46,3 @@ mdv_syncerlog * mdv_syncerlog_retain(mdv_syncerlog *syncerlog);
  */
 uint32_t mdv_syncerlog_release(mdv_syncerlog *syncerlog);
 
-
-/**
- * @brief Cancels all synchronization jobs
- *
- * @param syncerlog [in] transaction logs synchronizer with specific node
- */
-void mdv_syncerlog_cancel(mdv_syncerlog *syncerlog);

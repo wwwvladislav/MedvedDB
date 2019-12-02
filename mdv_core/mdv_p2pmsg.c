@@ -1,6 +1,7 @@
 #include "mdv_p2pmsg.h"
 #include <mdv_log.h>
 #include <mdv_serialization.h>
+#include <assert.h>
 
 
 char const * mdv_p2p_msg_name(uint32_t id)
@@ -14,7 +15,7 @@ char const * mdv_p2p_msg_name(uint32_t id)
         case mdv_message_id(p2p_topodiff):      return "P2P TOPOLOGY DIFF";
         case mdv_message_id(p2p_trlog_sync):    return "P2P TRLOG SYNC";
         case mdv_message_id(p2p_trlog_state):   return "P2P TRLOG STATE";
-        case mdv_message_id(p2p_cfslog_data):   return "P2P TRLOG DATA";
+        case mdv_message_id(p2p_trlog_data):    return "P2P TRLOG DATA";
         case mdv_message_id(p2p_broadcast):     return "P2P BROADCAST";
     }
 
@@ -267,32 +268,34 @@ bool mdv_unbinn_p2p_trlog_state(binn const *obj, mdv_msg_p2p_trlog_state *msg)
 }
 
 
-bool mdv_binn_p2p_cfslog_data(mdv_msg_p2p_cfslog_data const *msg, binn *obj)
+bool mdv_binn_p2p_trlog_data(mdv_msg_p2p_trlog_data const *msg, binn *obj)
 {
     binn rows;
 
     if (!binn_create_list(&rows))
     {
-        MDV_LOGE("binn_p2p_cfslog_data failed");
+        MDV_LOGE("binn_p2p_trlog_data failed");
         return false;
     }
 
-    uint64_t data_size = 0;
-
-    mdv_list_foreach(msg->rows, mdv_cfslog_data, entry)
+    mdv_list_foreach(&msg->rows, mdv_trlog_data, entry)
     {
         binn row;
 
         if (!binn_create_object(&row))
         {
-            MDV_LOGE("binn_p2p_cfslog_data failed");
+            MDV_LOGE("binn_p2p_trlog_data failed");
             binn_free(&rows);
             return false;
         }
 
+        uint32_t const payload_size = entry->op.size - offsetof(mdv_trlog_op, payload);
+
         if (0
-            || !binn_object_set_uint64(&row, "I", entry->row_id)
-            || !binn_object_set_blob(&row, "O", entry->op.ptr, entry->op.size)
+            || !binn_object_set_uint64(&row, "I", entry->id)
+            || !binn_object_set_uint32(&row, "S", entry->op.size)
+            || !binn_object_set_uint32(&row, "T", entry->op.type)
+            || !binn_object_set_blob(&row,   "O", entry->op.payload, payload_size)
             || !binn_list_add_object(&rows, &row))
         {
             MDV_LOGE("binn_p2p_cfslog_data failed");
@@ -300,8 +303,6 @@ bool mdv_binn_p2p_cfslog_data(mdv_msg_p2p_cfslog_data const *msg, binn *obj)
             binn_free(&rows);
             return false;
         }
-
-        data_size += entry->op.size;
 
         binn_free(&row);
     }
@@ -314,13 +315,12 @@ bool mdv_binn_p2p_cfslog_data(mdv_msg_p2p_cfslog_data const *msg, binn *obj)
     }
 
     if (0
-        || !binn_object_set_uint64(obj, "U0", msg->uuid.u64[0])
-        || !binn_object_set_uint64(obj, "U1", msg->uuid.u64[1])
+        || !binn_object_set_uint64(obj, "U0", msg->trlog.u64[0])
+        || !binn_object_set_uint64(obj, "U1", msg->trlog.u64[1])
         || !binn_object_set_uint64(obj, "P0", msg->peer.u64[0])
         || !binn_object_set_uint64(obj, "P1", msg->peer.u64[1])
-        || !binn_object_set_uint32(obj, "C", msg->count)
-        || !binn_object_set_uint64(obj, "S", data_size)
-        || !binn_object_set_list(obj, "R", &rows))
+        || !binn_object_set_uint32(obj, "C",  msg->count)
+        || !binn_object_set_list  (obj, "R", &rows))
     {
         binn_free(&rows);
         binn_free(obj);
@@ -334,97 +334,56 @@ bool mdv_binn_p2p_cfslog_data(mdv_msg_p2p_cfslog_data const *msg, binn *obj)
 }
 
 
-mdv_uuid * mdv_unbinn_p2p_cfslog_data_uuid(binn const *obj)
+bool mdv_unbinn_p2p_trlog_data(binn const *obj, mdv_msg_p2p_trlog_data *msg)
 {
-    static _Thread_local mdv_uuid uuid;
+    binn *rows = 0;
 
-    if (!binn_object_get_uint64((void*)obj, "U0", (uint64*)&uuid.u64[0])
-        || !binn_object_get_uint64((void*)obj, "U1", (uint64*)&uuid.u64[1]))
+    if (0
+        || !binn_object_get_uint64((void*)obj, "U0", (uint64*)&msg->trlog.u64[0])
+        || !binn_object_get_uint64((void*)obj, "U1", (uint64*)&msg->trlog.u64[1])
+        || !binn_object_get_uint64((void*)obj, "P0", (uint64*)&msg->peer.u64[0])
+        || !binn_object_get_uint64((void*)obj, "P1", (uint64*)&msg->peer.u64[1])
+        || !binn_object_get_uint32((void*)obj, "C",  &msg->count)
+        || !binn_object_get_list  ((void*)obj, "R", (void **)&rows))
     {
-        MDV_LOGE("unbinn_p2p_cfslog_data_uuid failed");
-        return 0;
-    }
-
-    return &uuid;
-}
-
-
-mdv_uuid * mdv_unbinn_p2p_cfslog_data_peer(binn const *obj)
-{
-    static _Thread_local mdv_uuid uuid;
-
-    if (!binn_object_get_uint64((void*)obj, "P0", (uint64*)&uuid.u64[0])
-        || !binn_object_get_uint64((void*)obj, "P1", (uint64*)&uuid.u64[1]))
-    {
-        MDV_LOGE("unbinn_p2p_cfslog_data_uuid failed");
-        return 0;
-    }
-
-    return &uuid;
-}
-
-
-uint32_t * mdv_unbinn_p2p_cfslog_data_count(binn const *obj)
-{
-    static _Thread_local uint32_t rows_count;
-
-    if (!binn_object_get_uint32((void*)obj, "C", &rows_count))
-    {
-        MDV_LOGE("unbinn_p2p_cfslog_data_count failed");
-        return 0;
-    }
-
-    return &rows_count;
-}
-
-
-uint64_t * mdv_unbinn_p2p_cfslog_data_size(binn const *obj)
-{
-    static _Thread_local uint64_t data_size;
-
-    if (!binn_object_get_uint64((void*)obj, "S", (uint64*)&data_size))
-    {
-        MDV_LOGE("unbinn_p2p_cfslog_data_size failed");
-        return 0;
-    }
-
-    return &data_size;
-}
-
-
-typedef mdv_list_entry(mdv_cfslog_data) mdv_cfslog_data_list_entry;
-
-
-bool mdv_unbinn_p2p_cfslog_data_rows(binn const *obj, mdv_list *rows)
-{
-    binn *rows_list = 0;
-
-    if (!binn_object_get_list((void*)obj, "R", (void**)&rows_list))
-    {
-        MDV_LOGE("unbinn_p2p_cfslog_data_rows failed");
+        MDV_LOGE("unbinn_p2p_trlog_data failed");
         return false;
     }
 
-    binn_iter iter = {};
-    binn value = {};
-
     bool ret = true;
 
-    binn_list_foreach(rows_list, value)
-    {
-        uint64_t row_id = 0;
-        void *ptr = 0;
-        int size = 0;
+    binn_iter iter = {};
+    binn row = {};
 
-        if (!binn_object_get_uint64((void*)&value, "I", (uint64*)&row_id)
-            || !binn_object_get_blob((void*)&value, "O", &ptr, &size))
+    binn_list_foreach(rows, row)
+    {
+        uint64_t id = 0;
+        uint32_t size = 0;
+        uint32_t type = 0;
+        void *payload = 0;
+        int payload_size = 0;
+
+        if (0
+            || !binn_object_get_uint64((void*)&row, "I", (uint64*)&id)
+            || !binn_object_get_uint32((void*)&row, "S", &size)
+            || !binn_object_get_uint32((void*)&row, "T", &type)
+            || !binn_object_get_blob((void*)&row,   "O", &payload, &payload_size))
         {
             ret = false;
             MDV_LOGE("unbinn_p2p_cfslog_data_count failed");
             break;
         }
 
-        mdv_cfslog_data_list_entry *op = mdv_alloc(sizeof(mdv_cfslog_data_list_entry) + size, "cfstorage_op_list_entry");
+        assert(offsetof(mdv_trlog_op, payload) + payload_size == size);
+
+        if (offsetof(mdv_trlog_op, payload) + payload_size != size)
+        {
+            ret = false;
+            MDV_LOGE("unbinn_p2p_cfslog_data_count failed");
+            break;
+        }
+
+        mdv_trlog_entry *op = mdv_alloc(sizeof(mdv_trlog_entry) + payload_size, "trlog_entry");
 
         if (!op)
         {
@@ -433,16 +392,25 @@ bool mdv_unbinn_p2p_cfslog_data_rows(binn const *obj, mdv_list *rows)
             break;
         }
 
-        op->data.row_id = row_id;
+        op->data.id = id;
         op->data.op.size = size;
-        op->data.op.ptr = op + 1;
+        op->data.op.type = type;
 
-        memcpy(op->data.op.ptr, ptr, size);
+        memcpy(op->data.op.payload, payload, payload_size);
 
-        mdv_list_emplace_back(rows, (mdv_list_entry_base *)op);
+        mdv_list_emplace_back(&msg->rows, (mdv_list_entry_base *)op);
     }
 
+    if (!ret)
+        mdv_list_clear(&msg->rows);
+
     return ret;
+}
+
+
+void mdv_p2p_trlog_data_free(mdv_msg_p2p_trlog_data *msg)
+{
+    mdv_list_clear(&msg->rows);
 }
 
 
@@ -566,5 +534,3 @@ bool mdv_unbinn_p2p_broadcast(binn const *obj, mdv_msg_p2p_broadcast *msg)
 
     return true;
 }
-
-

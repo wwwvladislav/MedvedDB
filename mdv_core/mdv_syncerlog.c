@@ -10,9 +10,6 @@
 #include <assert.h>
 
 
-// TODO: Restart synchronization by timeout
-
-
 /// Data synchronizer with specific node
 struct mdv_syncerlog
 {
@@ -22,9 +19,88 @@ struct mdv_syncerlog
     mdv_uuid                trlog;          ///< Global unique identifier for transaction log
     atomic_size_t           requests;       ///< TR log synchronization requests counter
     atomic_uint_fast64_t    scheduled;      ///< The last log record identifier scheduled for synchronization
+    atomic_size_t           active_jobs;    ///< Active jobs counter
     mdv_ebus               *ebus;           ///< Event bus
     mdv_jobber             *jobber;         ///< Jobs scheduler
 };
+
+
+typedef struct mdv_syncerlog_context
+{
+    mdv_syncerlog  *syncer;                 ///< Data synchronizer
+    mdv_trlog      *trlog;                  ///< TR log for synchronization
+    uint64_t        range[2];               ///< TR log entries range for synchronization
+} mdv_syncerlog_context;
+
+
+typedef mdv_job(mdv_syncerlog_context)     mdv_syncerlog_job;
+
+
+static void mdv_syncerlog_fn(mdv_job_base *job)
+{
+    mdv_syncerlog_context *ctx = (mdv_syncerlog_context *)job->data;
+    mdv_syncerlog         *syncer = ctx->syncer;
+
+/*
+    mdv_hashmap_foreach(ctx->routes, mdv_route, route)
+    {
+        mdv_evt_trlog_sync *sync = mdv_evt_trlog_sync_create(&ctx->trlog, &syncer->uuid, &route->uuid);
+
+        if (sync)
+        {
+            if (mdv_ebus_publish(syncer->ebus, &sync->base, MDV_EVT_SYNC) != MDV_OK)
+                MDV_LOGE("Transaction synchronization failed");
+            mdv_evt_trlog_sync_release(sync);
+        }
+        else
+            MDV_LOGE("Transaction synchronization failed. No memory.");
+    }
+*/
+}
+
+
+static void mdv_syncerlog_finalize(mdv_job_base *job)
+{
+    mdv_syncerlog_context *ctx = (mdv_syncerlog_context *)job->data;
+    mdv_syncerlog         *syncer = ctx->syncer;
+    mdv_trlog_release(ctx->trlog);
+    atomic_fetch_sub_explicit(&syncer->active_jobs, 1, memory_order_relaxed);
+    mdv_syncerlog_release(syncer);
+    mdv_free(job, "syncer_job");
+}
+
+
+static mdv_errno mdv_syncerlog_job_emit(mdv_syncerlog *syncerlog, mdv_trlog *trlog, uint64_t lrange, uint64_t rrange)
+{
+    mdv_syncerlog_job *job = mdv_alloc(sizeof(mdv_syncerlog_job), "syncer_job");
+
+    if (!job)
+    {
+        MDV_LOGE("No memory for data synchronization job");
+        return MDV_NO_MEM;
+    }
+
+    job->fn             = mdv_syncerlog_fn;
+    job->finalize       = mdv_syncerlog_finalize;
+    job->data.syncer    = mdv_syncerlog_retain(syncerlog);
+    job->data.trlog     = mdv_trlog_retain(trlog);
+    job->data.range[0]  = lrange;
+    job->data.range[1]  = rrange;
+
+    mdv_errno err = mdv_jobber_push(syncerlog->jobber, (mdv_job_base*)job);
+
+    if (err != MDV_OK)
+    {
+        MDV_LOGE("Data synchronization job failed");
+        mdv_trlog_release(trlog);
+        mdv_syncerlog_release(syncerlog);
+        mdv_free(job, "syncer_job");
+    }
+    else
+        atomic_fetch_add_explicit(&syncerlog->active_jobs, 1, memory_order_relaxed);
+
+    return err;
+}
 
 
 static mdv_trlog * mdv_syncerlog_get(mdv_syncerlog *syncerlog)
@@ -111,6 +187,8 @@ static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, mdv_trlog *trl
     uint64_t scheduled = atomic_load_explicit(&syncerlog->scheduled, memory_order_relaxed),
              trlog_top;
 
+    mdv_errno err = MDV_OK;
+
     do
     {
         do
@@ -124,11 +202,11 @@ static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, mdv_trlog *trl
 
         assert(scheduled < trlog_top);
 
-        MDV_LOGE("TODOOOOOOOOOOOOOOOOOOOOOOO");
+        err = mdv_syncerlog_job_emit(syncerlog, trlog, scheduled, trlog_top);
 
     } while(!atomic_compare_exchange_weak(&syncerlog->requests, &requests, 0));
 
-    return MDV_OK;
+    return err;
 }
 
 
@@ -180,6 +258,7 @@ mdv_syncerlog * mdv_syncerlog_create(mdv_uuid const *uuid, mdv_uuid const *peer,
     atomic_init(&syncerlog->rc, 1);
     atomic_init(&syncerlog->requests, 0);
     atomic_init(&syncerlog->scheduled, 0);
+    atomic_init(&syncerlog->active_jobs, 0);
 
     syncerlog->uuid = *uuid;
     syncerlog->peer = *peer;
@@ -220,15 +299,17 @@ mdv_syncerlog * mdv_syncerlog_retain(mdv_syncerlog *syncerlog)
 
 static void mdv_syncerlog_free(mdv_syncerlog *syncerlog)
 {
-    mdv_syncerlog_cancel(syncerlog);
-
     mdv_ebus_unsubscribe_all(syncerlog->ebus,
                              syncerlog,
                              mdv_syncerlog_handlers,
                              sizeof mdv_syncerlog_handlers / sizeof *mdv_syncerlog_handlers);
 
     mdv_ebus_release(syncerlog->ebus);
+
+    while(atomic_load_explicit(&syncerlog->active_jobs, memory_order_relaxed) > 0)
+        mdv_sleep(100);
     mdv_jobber_release(syncerlog->jobber);
+
     memset(syncerlog, 0, sizeof(*syncerlog));
     mdv_free(syncerlog, "syncerlog");
 }
@@ -246,8 +327,4 @@ uint32_t mdv_syncerlog_release(mdv_syncerlog *syncerlog)
 
     return rc;
 }
-
-
-void mdv_syncerlog_cancel(mdv_syncerlog *syncerlog)
-{}
 

@@ -7,6 +7,7 @@
 #include <mdv_hashmap.h>
 #include <mdv_rollbacker.h>
 #include <stdatomic.h>
+#include <assert.h>
 
 
 // TODO: Restart synchronization by timeout
@@ -67,9 +68,7 @@ static mdv_errno mdv_syncerlog_start(mdv_syncerlog *syncerlog)
      if(mdv_syncerlog_is_empty(syncerlog))
         return MDV_OK;
 
-    int requests = 0;
-
-    if (atomic_fetch_add_explicit(&syncerlog->requests, 1, memory_order_relaxed))
+    if (atomic_fetch_add_explicit(&syncerlog->requests, 1, memory_order_relaxed) != 0)
         return MDV_OK;
 
     mdv_errno err = MDV_OK;
@@ -108,26 +107,26 @@ static mdv_errno mdv_syncerlog_evt_changed(void *arg, mdv_event *event)
 
 static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, mdv_trlog *trlog, uint64_t pos)
 {
-    size_t   requests  = atomic_load_explicit(&syncerlog->requests, memory_order_relaxed);
-    uint64_t scheduled,
+    size_t   requests = atomic_load_explicit(&syncerlog->requests, memory_order_relaxed);
+    uint64_t scheduled = atomic_load_explicit(&syncerlog->scheduled, memory_order_relaxed),
              trlog_top;
 
     do
     {
-        scheduled = atomic_load_explicit(&syncerlog->scheduled, memory_order_relaxed);
-        trlog_top = mdv_trlog_top(trlog);
-    }
-    while (!atomic_compare_exchange_strong(&syncerlog->requests, &requests, 0));
+        do
+        {
+            trlog_top = mdv_trlog_top(trlog);
 
-    if (scheduled >= trlog_top)
-        return MDV_OK;
+            if (scheduled >= trlog_top)
+                return MDV_OK;
 
-    if (!atomic_compare_exchange_strong(&syncerlog->scheduled, &scheduled, trlog_top))
-        return MDV_FAILED;
+        } while (!atomic_compare_exchange_weak(&syncerlog->scheduled, &scheduled, trlog_top));
 
-    // Only one request should reach this point
+        assert(scheduled < trlog_top);
 
-    MDV_LOGE("TODOOOOOOOOOOOOOOOOOOO");
+        MDV_LOGE("TODOOOOOOOOOOOOOOOOOOOOOOO");
+
+    } while(!atomic_compare_exchange_weak(&syncerlog->requests, &requests, 0));
 
     return MDV_OK;
 }

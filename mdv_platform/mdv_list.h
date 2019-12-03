@@ -102,6 +102,14 @@ void mdv_list_clear(mdv_list *l);
 
 
 /**
+ * @brief Creates new list by moving
+ *
+ * @param l [in]    list
+ */
+mdv_list mdv_list_move(mdv_list *l);
+
+
+/**
  * @brief list entries iterator
  *
  * @param l [in]        list

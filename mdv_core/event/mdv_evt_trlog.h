@@ -73,3 +73,18 @@ typedef struct
 mdv_evt_trlog_state * mdv_evt_trlog_state_create(mdv_uuid const *trlog, mdv_uuid const *from, mdv_uuid const *to, uint64_t top);
 mdv_evt_trlog_state * mdv_evt_trlog_state_retain(mdv_evt_trlog_state *evt);
 uint32_t              mdv_evt_trlog_state_release(mdv_evt_trlog_state *evt);
+
+
+typedef struct
+{
+    mdv_event       base;
+    mdv_uuid        from;       ///< Source peer UUID
+    mdv_uuid        to;         ///< Destination peer UUID for synchronization
+    mdv_uuid        trlog;      ///< Transaction log UUID
+    uint32_t        count;      ///< log records count
+    mdv_list        rows;       ///< transaction log data (list<mdv_trlog_data>)
+} mdv_evt_trlog_data;
+
+mdv_evt_trlog_data * mdv_evt_trlog_data_create(mdv_uuid const *trlog, mdv_uuid const *from, mdv_uuid const *to, mdv_list *rows, uint32_t count);
+mdv_evt_trlog_data * mdv_evt_trlog_data_retain(mdv_evt_trlog_data *evt);
+uint32_t             mdv_evt_trlog_data_release(mdv_evt_trlog_data *evt);

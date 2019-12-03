@@ -34,6 +34,21 @@ void mdv_list_clear(mdv_list *l)
 }
 
 
+mdv_list mdv_list_move(mdv_list *l)
+{
+    mdv_list list =
+    {
+        .next = l->next,
+        .last = l->last
+    };
+
+    l->next = 0;
+    l->last = 0;
+
+    return list;
+}
+
+
 void mdv_list_exclude(mdv_list *l, mdv_list_entry_base *entry)
 {
     mdv_list_entry_base *entry4remove = entry;

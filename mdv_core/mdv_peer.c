@@ -328,19 +328,43 @@ static mdv_errno mdv_peer_trlog_state_handler(mdv_msg const *msg, void *arg)
 
 static mdv_errno mdv_peer_trlog_data_handler(mdv_msg const *msg, void *arg)
 {
-/* TODO
     mdv_peer *peer = arg;
-    mdv_core *core = peer->core;
 
     MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
-    mdv_errno err = mdv_syncer_cfslog_data_handler(&core->syncer, peer->peer_id, msg);
+    binn binn_msg;
 
-    if (err == MDV_OK)
-        mdv_committer_start(&core->committer);
+    if(!binn_load(msg->payload, &binn_msg))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_p2p_msg_name(msg->hdr.id));
+        return MDV_FAILED;
+    }
 
-    return err;
-*/
+    mdv_msg_p2p_trlog_data req = {};
+
+    if (!mdv_unbinn_p2p_trlog_data(&binn_msg, &req))
+    {
+        MDV_LOGE("Transaction log data processing failed");
+        binn_free(&binn_msg);
+        return MDV_FAILED;
+    }
+
+    binn_free(&binn_msg);
+
+    mdv_evt_trlog_data *data = mdv_evt_trlog_data_create(&req.trlog, &peer->peer_uuid, &peer->uuid, &req.rows, req.count);
+
+    if (data)
+    {
+        if (mdv_ebus_publish(peer->ebus, &data->base, MDV_EVT_DEFAULT) != MDV_OK)
+            MDV_LOGE("Transaction log data processing failed");
+        mdv_evt_trlog_data_release(data);
+    }
+    else
+    {
+        MDV_LOGE("Transaction log data processing failed. No memory.");
+        return MDV_NO_MEM;
+    }
+
     return MDV_OK;
 }
 
@@ -490,6 +514,44 @@ static mdv_errno mdv_peer_trlog_state(mdv_peer *peer, mdv_uuid const *trlog, uin
 
 
 /**
+ * @brief Post trlog data message
+ */
+static mdv_errno mdv_peer_trlog_data(mdv_peer *peer, mdv_uuid const *trlog, mdv_list const *rows, uint32_t count)
+{
+    mdv_msg_p2p_trlog_data const trlog_data =
+    {
+        .trlog = *trlog,
+        .count = count,
+        .rows = *rows
+    };
+
+    binn obj;
+
+    if (!mdv_binn_p2p_trlog_data(&trlog_data, &obj))
+    {
+        MDV_LOGE("Transaction log data posting failed");
+        return MDV_FAILED;
+    }
+
+    mdv_msg message =
+    {
+        .hdr =
+        {
+            .id = mdv_message_id(p2p_trlog_data),
+            .size = binn_size(&obj)
+        },
+        .payload = binn_ptr(&obj)
+    };
+
+    mdv_errno err = mdv_peer_post(peer, &message);
+
+    binn_free(&obj);
+
+    return err;
+}
+
+
+/**
  * @brief Broadcasts synchronization message
  */
 static mdv_errno mdv_peer_broadcast(mdv_peer *peer, mdv_msg_p2p_broadcast const *msg)
@@ -575,12 +637,25 @@ static mdv_errno mdv_peer_evt_trlog_state(void *arg, mdv_event *event)
 }
 
 
+static mdv_errno mdv_peer_evt_trlog_data(void *arg, mdv_event *event)
+{
+    mdv_peer *peer = arg;
+    mdv_evt_trlog_data *data = (mdv_evt_trlog_data *)event;
+
+    if(mdv_uuid_cmp(&peer->peer_uuid, &data->to) == 0)
+        return mdv_peer_trlog_data(peer, &data->trlog, &data->rows, data->count);
+
+    return MDV_OK;
+}
+
+
 static const mdv_event_handler_type mdv_peer_handlers[] =
 {
     { MDV_EVT_TOPOLOGY_SYNC,    mdv_peer_evt_topology_sync },
     { MDV_EVT_BROADCAST_POST,   mdv_peer_evt_broadcast_post },
     { MDV_EVT_TRLOG_SYNC,       mdv_peer_evt_trlog_sync },
     { MDV_EVT_TRLOG_STATE,      mdv_peer_evt_trlog_state },
+    { MDV_EVT_TRLOG_DATA,       mdv_peer_evt_trlog_data },
 };
 
 

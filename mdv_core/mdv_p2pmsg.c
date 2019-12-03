@@ -317,8 +317,6 @@ bool mdv_binn_p2p_trlog_data(mdv_msg_p2p_trlog_data const *msg, binn *obj)
     if (0
         || !binn_object_set_uint64(obj, "U0", msg->trlog.u64[0])
         || !binn_object_set_uint64(obj, "U1", msg->trlog.u64[1])
-        || !binn_object_set_uint64(obj, "P0", msg->peer.u64[0])
-        || !binn_object_set_uint64(obj, "P1", msg->peer.u64[1])
         || !binn_object_set_uint32(obj, "C",  msg->count)
         || !binn_object_set_list  (obj, "R", &rows))
     {
@@ -341,8 +339,6 @@ bool mdv_unbinn_p2p_trlog_data(binn const *obj, mdv_msg_p2p_trlog_data *msg)
     if (0
         || !binn_object_get_uint64((void*)obj, "U0", (uint64*)&msg->trlog.u64[0])
         || !binn_object_get_uint64((void*)obj, "U1", (uint64*)&msg->trlog.u64[1])
-        || !binn_object_get_uint64((void*)obj, "P0", (uint64*)&msg->peer.u64[0])
-        || !binn_object_get_uint64((void*)obj, "P1", (uint64*)&msg->peer.u64[1])
         || !binn_object_get_uint32((void*)obj, "C",  &msg->count)
         || !binn_object_get_list  ((void*)obj, "R", (void **)&rows))
     {

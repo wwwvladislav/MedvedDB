@@ -69,7 +69,6 @@ mdv_message_def(p2p_trlog_state, 1000 + 6,
 
 mdv_message_def(p2p_trlog_data, 1000 + 7,
     mdv_uuid    trlog;              ///< Transaction log storage unique identifier
-    mdv_uuid    peer;               ///< Peer unique identifier
     uint32_t    count;              ///< log records count
     mdv_list    rows;               ///< transaction log data (list<mdv_trlog_data>)
 );

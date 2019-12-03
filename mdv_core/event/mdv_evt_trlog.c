@@ -156,3 +156,49 @@ uint32_t mdv_evt_trlog_state_release(mdv_evt_trlog_state *evt)
 {
     return evt->base.vptr->release(&evt->base);
 }
+
+
+mdv_evt_trlog_data * mdv_evt_trlog_data_create(mdv_uuid const *trlog, mdv_uuid const *from, mdv_uuid const *to, mdv_list *rows, uint32_t count)
+{
+    static mdv_ievent vtbl =
+    {
+        .retain = (mdv_event_retain_fn)mdv_evt_trlog_data_retain,
+        .release = (mdv_event_release_fn)mdv_evt_trlog_data_release
+    };
+
+    mdv_evt_trlog_data *event = (mdv_evt_trlog_data*)
+                                mdv_event_create(
+                                    MDV_EVT_TRLOG_DATA,
+                                    sizeof(mdv_evt_trlog_data));
+
+    if (event)
+    {
+        event->base.vptr = &vtbl;
+        event->from      = *from;
+        event->to        = *to;
+        event->trlog     = *trlog;
+        event->count     = count;
+        event->rows      = mdv_list_move(rows);
+    }
+
+    return event;
+}
+
+
+mdv_evt_trlog_data * mdv_evt_trlog_data_retain(mdv_evt_trlog_data *evt)
+{
+    return (mdv_evt_trlog_data*)mdv_event_retain(&evt->base);
+}
+
+
+uint32_t mdv_evt_trlog_data_release(mdv_evt_trlog_data *evt)
+{
+    mdv_list rows = evt->rows;
+
+    uint32_t rc = mdv_event_release(&evt->base);
+
+    if (!rc)
+        mdv_list_clear(&rows);
+
+    return rc;
+}

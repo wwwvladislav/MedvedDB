@@ -197,6 +197,12 @@ uint32_t mdv_trlog_id(mdv_trlog *trlog)
 }
 
 
+mdv_uuid const * mdv_trlog_uuid(mdv_trlog *trlog)
+{
+    return &trlog->uuid;
+}
+
+
 uint64_t mdv_trlog_top(mdv_trlog *trlog)
 {
     return atomic_load(&trlog->top);
@@ -427,6 +433,8 @@ static size_t mdv_trlog_read(mdv_trlog                    *trlog,
 
     mdv_map_foreach_explicit(transaction, tr_log, entry, MDV_SET_RANGE, MDV_CURSOR_NEXT)
     {
+        uint64_t const id = *(uint64_t*)entry.key.ptr;
+
         mdv_trlog_entry *op = mdv_alloc(sizeof(mdv_trlog_entry) + entry.value.size, "trlog_entry");
 
         if (!op)
@@ -437,7 +445,7 @@ static size_t mdv_trlog_read(mdv_trlog                    *trlog,
 
         mdv_trlog_op const *trlog_op = entry.value.ptr;
 
-        op->data.id = *(uint64_t*)entry.key.ptr;
+        op->data.id = id;
 
         assert(trlog_op->size == entry.value.size);
 
@@ -447,6 +455,88 @@ static size_t mdv_trlog_read(mdv_trlog                    *trlog,
 
         if(++n >= size)
             mdv_map_foreach_break(entry);
+    }
+
+    mdv_map_close(&tr_log);
+
+    mdv_transaction_abort(&transaction);
+
+    mdv_rollbacker_free(rollbacker);
+
+    return n;
+}
+
+
+size_t mdv_trlog_range_read(mdv_trlog                    *trlog,
+                            uint64_t                      from,
+                            uint64_t                      to,
+                            mdv_list/*<mdv_trlog_data>*/ *ops)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
+
+    // Start transaction
+    mdv_transaction transaction = mdv_transaction_start(trlog->storage);
+
+    if (!mdv_transaction_ok(transaction))
+    {
+        MDV_LOGE("TR log transaction failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
+
+    // Open transaction log
+    mdv_map tr_log = mdv_map_open(&transaction,
+                                  MDV_MAP_TRLOG,
+                                  MDV_MAP_SILENT | MDV_MAP_INTEGERKEY);
+
+    if (!mdv_map_ok(tr_log))
+    {
+        MDV_LOGE("Transaction log map '%s' not opened", MDV_MAP_TRLOG);
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &tr_log);
+
+    mdv_map_foreach_entry entry =
+    {
+        .key =
+        {
+            .size = sizeof from,
+            .ptr = &from
+        }
+    };
+
+    size_t n = 0;
+
+    mdv_map_foreach_explicit(transaction, tr_log, entry, MDV_SET_RANGE, MDV_CURSOR_NEXT)
+    {
+        uint64_t const id = *(uint64_t*)entry.key.ptr;
+
+        if(id >= to)
+            mdv_map_foreach_break(entry);
+
+        mdv_trlog_entry *op = mdv_alloc(sizeof(mdv_trlog_entry) + entry.value.size, "trlog_entry");
+
+        if (!op)
+        {
+            MDV_LOGE("No memory for TR log entry");
+            mdv_map_foreach_break(entry);
+        }
+
+        mdv_trlog_op const *trlog_op = entry.value.ptr;
+
+        op->data.id = id;
+
+        assert(trlog_op->size == entry.value.size);
+
+        memcpy(&op->data.op, trlog_op, trlog_op->size);
+
+        mdv_list_emplace_back(ops, (mdv_list_entry_base *)op);
+
+        ++n;
     }
 
     mdv_map_close(&tr_log);

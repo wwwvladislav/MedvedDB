@@ -190,10 +190,41 @@ static mdv_errno mdv_syncer_evt_trlog_sync(void *arg, mdv_event *event)
 }
 
 
+static mdv_errno mdv_syncer_evt_trlog_data(void *arg, mdv_event *event)
+{
+    mdv_syncer *syncer = arg;
+    mdv_evt_trlog_data *data = (mdv_evt_trlog_data *)event;
+
+    if(mdv_uuid_cmp(&syncer->uuid, &data->to) != 0)
+        return MDV_OK;
+
+/*
+    if(mdv_uuid_cmp(&syncerlog->uuid, &data->to) != 0
+      || mdv_uuid_cmp(&syncerlog->trlog, &data->trlog) != 0)
+        return MDV_OK;
+
+    mdv_errno err = MDV_FAILED;
+
+    mdv_trlog *trlog = mdv_syncerlog_get(syncerlog);
+
+    if (trlog)
+    {
+        err = mdv_syncerlog_data_save_job_emit(syncerlog, trlog, &data->rows, data->count);
+        mdv_trlog_release(trlog);
+    }
+*/
+
+    MDV_LOGE("OOOOOOOOOOOOOOOOOO 222 SAVE: %u", data->count);
+
+    return MDV_OK;
+}
+
+
 static const mdv_event_handler_type mdv_syncer_handlers[] =
 {
     { MDV_EVT_TOPOLOGY,         mdv_syncer_evt_topology },
     { MDV_EVT_TRLOG_SYNC,       mdv_syncer_evt_trlog_sync },
+    { MDV_EVT_TRLOG_DATA,       mdv_syncer_evt_trlog_data },
 };
 
 

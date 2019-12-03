@@ -83,6 +83,12 @@ uint32_t mdv_trlog_id(mdv_trlog *trlog);
 
 
 /**
+ * @brief Return transaction log global unique identifier
+ */
+mdv_uuid const * mdv_trlog_uuid(mdv_trlog *trlog);
+
+
+/**
  * @brief Returns transaction log last insertion position
  */
 uint64_t mdv_trlog_top(mdv_trlog *trlog);
@@ -142,3 +148,21 @@ uint32_t mdv_trlog_foreach(mdv_trlog   *trlog,
                            uint32_t     batch_size,
                            void        *arg,
                            mdv_trlog_fn fn);
+
+
+
+/**
+ * @brief Transaction log reading
+ * @details Transaction log reading from range [from, to)
+ *
+ * @param trlog [in]            Transaction logs storage
+ * @param from [in]             First record identifier
+ * @param to [in]               Last record identifier
+ * @param ops [out]             Place for read records
+ *
+ * @return number of read rows
+ */
+size_t mdv_trlog_range_read(mdv_trlog                    *trlog,
+                            uint64_t                      from,
+                            uint64_t                      to,
+                            mdv_list/*<mdv_trlog_data>*/ *ops);

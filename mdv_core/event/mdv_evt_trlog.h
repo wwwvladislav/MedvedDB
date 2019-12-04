@@ -19,9 +19,10 @@ typedef struct
     mdv_event       base;
     mdv_uuid        uuid;       ///< Transaction log UUID (in)
     mdv_trlog      *trlog;      ///< Transaction log (out)
+    bool            create;     ///< Flag indicates that new TR log should be created if TR log isn't exist.
 } mdv_evt_trlog;
 
-mdv_evt_trlog * mdv_evt_trlog_create(mdv_uuid const *uuid);
+mdv_evt_trlog * mdv_evt_trlog_create(mdv_uuid const *uuid, bool create);
 mdv_evt_trlog * mdv_evt_trlog_retain(mdv_evt_trlog *evt);
 uint32_t        mdv_evt_trlog_release(mdv_evt_trlog *evt);
 

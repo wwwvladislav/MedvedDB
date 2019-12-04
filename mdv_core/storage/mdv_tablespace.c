@@ -269,8 +269,10 @@ static mdv_errno mdv_tablespace_evt_trlog_get(void *arg, mdv_event *event)
 {
     mdv_tablespace *tablespace = arg;
     mdv_evt_trlog  *get = (mdv_evt_trlog *)event;
-    get->trlog = mdv_tablespace_trlog(tablespace, &get->uuid);
-    return MDV_OK;
+    get->trlog = get->create
+                    ? mdv_tablespace_trlog_create(tablespace, &get->uuid)
+                    : mdv_tablespace_trlog(tablespace, &get->uuid);
+    return get->trlog ? MDV_OK : MDV_FAILED;
 }
 
 

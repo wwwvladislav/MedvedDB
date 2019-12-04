@@ -2,7 +2,7 @@
 #include "mdv_evt_types.h"
 
 
-mdv_evt_trlog * mdv_evt_trlog_create(mdv_uuid const *uuid)
+mdv_evt_trlog * mdv_evt_trlog_create(mdv_uuid const *uuid, bool create)
 {
     static mdv_ievent vtbl =
     {
@@ -18,8 +18,9 @@ mdv_evt_trlog * mdv_evt_trlog_create(mdv_uuid const *uuid)
     if (event)
     {
         event->base.vptr = &vtbl;
-        event->uuid = *uuid;
-        event->trlog  = 0;
+        event->uuid      = *uuid;
+        event->trlog     = 0;
+        event->create    = create;
     }
 
     return event;

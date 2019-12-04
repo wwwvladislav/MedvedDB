@@ -38,7 +38,7 @@ typedef struct
 
 static mdv_trlog * mdv_syncer_trlog(mdv_syncer *syncer, mdv_uuid const *uuid)
 {
-    mdv_evt_trlog *evt = mdv_evt_trlog_create(uuid);
+    mdv_evt_trlog *evt = mdv_evt_trlog_create(uuid, false);
 
     if (!evt)
     {
@@ -83,9 +83,10 @@ static mdv_errno mdv_syncer_topology_changed(mdv_syncer *syncer, mdv_topology *t
             // I. Disconnected peers removal
             if (!mdv_hashmap_empty(syncer->peers))
             {
-                mdv_vector *removed_peers = mdv_vector_create(mdv_hashmap_size(syncer->peers),
-                                                              sizeof(mdv_uuid),
-                                                              &mdv_stallocator);
+                mdv_vector *removed_peers = mdv_vector_create(
+                                                mdv_hashmap_size(syncer->peers),
+                                                sizeof(mdv_uuid),
+                                                &mdv_stallocator);
 
                 if (removed_peers)
                 {
@@ -117,7 +118,10 @@ static mdv_errno mdv_syncer_topology_changed(mdv_syncer *syncer, mdv_topology *t
                 mdv_syncer_peer *peer = mdv_hashmap_find(syncer->peers, &route->uuid);
 
                 if (peer)
+                {
+                    mdv_syncerino_start4all_storages(peer->syncerino, topology);
                     continue;
+                }
 
                 mdv_syncer_peer syncer_peer =
                 {
@@ -190,41 +194,10 @@ static mdv_errno mdv_syncer_evt_trlog_sync(void *arg, mdv_event *event)
 }
 
 
-static mdv_errno mdv_syncer_evt_trlog_data(void *arg, mdv_event *event)
-{
-    mdv_syncer *syncer = arg;
-    mdv_evt_trlog_data *data = (mdv_evt_trlog_data *)event;
-
-    if(mdv_uuid_cmp(&syncer->uuid, &data->to) != 0)
-        return MDV_OK;
-
-/*
-    if(mdv_uuid_cmp(&syncerlog->uuid, &data->to) != 0
-      || mdv_uuid_cmp(&syncerlog->trlog, &data->trlog) != 0)
-        return MDV_OK;
-
-    mdv_errno err = MDV_FAILED;
-
-    mdv_trlog *trlog = mdv_syncerlog_get(syncerlog);
-
-    if (trlog)
-    {
-        err = mdv_syncerlog_data_save_job_emit(syncerlog, trlog, &data->rows, data->count);
-        mdv_trlog_release(trlog);
-    }
-*/
-
-    MDV_LOGE("OOOOOOOOOOOOOOOOOO 222 SAVE: %u", data->count);
-
-    return MDV_OK;
-}
-
-
 static const mdv_event_handler_type mdv_syncer_handlers[] =
 {
     { MDV_EVT_TOPOLOGY,         mdv_syncer_evt_topology },
     { MDV_EVT_TRLOG_SYNC,       mdv_syncer_evt_trlog_sync },
-    { MDV_EVT_TRLOG_DATA,       mdv_syncer_evt_trlog_data },
 };
 
 

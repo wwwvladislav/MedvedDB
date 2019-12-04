@@ -1,4 +1,5 @@
 #include "mdv_syncerlog.h"
+#include "mdv_config.h"
 #include "event/mdv_evt_types.h"
 #include "event/mdv_evt_trlog.h"
 #include <mdv_alloc.h>
@@ -306,6 +307,9 @@ static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, mdv_trlog *trl
 
             if (scheduled >= trlog_top)
                 return MDV_OK;
+
+            if (trlog_top - scheduled > MDV_CONFIG.datasync.batch_size)
+                trlog_top = scheduled + MDV_CONFIG.datasync.batch_size;
 
         } while (!atomic_compare_exchange_weak(&syncerlog->scheduled, &scheduled, trlog_top));
 

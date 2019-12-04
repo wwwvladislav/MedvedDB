@@ -46,8 +46,7 @@ static mdv_trlog * mdv_syncer_trlog(mdv_syncer *syncer, mdv_uuid const *uuid)
         return 0;
     }
 
-    if (mdv_ebus_publish(syncer->ebus, &evt->base, MDV_EVT_SYNC) != MDV_OK)
-        MDV_LOGE("Transaction log request failed");
+    mdv_ebus_publish(syncer->ebus, &evt->base, MDV_EVT_SYNC);
 
     mdv_trlog *trlog = mdv_trlog_retain(evt->trlog);
 

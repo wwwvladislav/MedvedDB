@@ -57,7 +57,7 @@ static void mdv_trlog_init(mdv_trlog *trlog)
 
         mdv_map_foreach_explicit(transaction, map, entry, MDV_CURSOR_LAST, MDV_CURSOR_NEXT)
         {
-            atomic_init(&trlog->top, *(uint64_t*)entry.key.ptr);
+            atomic_init(&trlog->top, *(uint64_t*)entry.key.ptr + 1);
             mdv_map_foreach_break(entry);
         }
 
@@ -122,8 +122,6 @@ mdv_trlog * mdv_trlog_open(mdv_ebus *ebus, char const *dir, mdv_uuid const *uuid
 
     trlog->uuid = *uuid;
     trlog->id = id;
-
-    atomic_init(&trlog->top, 0);
 
     trlog->storage = mdv_storage_open(dir,
                                       MDV_STRG_UUID(uuid),
@@ -211,12 +209,14 @@ uint64_t mdv_trlog_top(mdv_trlog *trlog)
 
 static uint64_t mdv_trlog_new_id(mdv_trlog *trlog)
 {
-    return atomic_fetch_add_explicit(&trlog->top, 1, memory_order_relaxed) + 1;
+    return atomic_fetch_add_explicit(&trlog->top, 1, memory_order_relaxed);
 }
 
 
 static void mdv_trlog_id_maximize(mdv_trlog *trlog, uint64_t id)
 {
+    ++id;
+
     for(uint64_t top_id = atomic_load(&trlog->top); id > top_id;)
     {
         if(atomic_compare_exchange_weak(&trlog->top, &top_id, id))
@@ -569,7 +569,7 @@ uint32_t mdv_trlog_apply(mdv_trlog         *trlog,
 
     mdv_list/*<mdv_trlog_data>*/ ops = {};
 
-    size_t const count = mdv_trlog_read(trlog, applied_pos + 1, batch_size, &ops);
+    size_t const count = mdv_trlog_read(trlog, applied_pos, batch_size, &ops);
 
     if (!count)     // No data in TR log
         return 0;
@@ -586,7 +586,7 @@ uint32_t mdv_trlog_apply(mdv_trlog         *trlog,
             break;
         }
 
-        new_applied_pos = op->id;
+        new_applied_pos = op->id + 1;
         ++n;
     }
 

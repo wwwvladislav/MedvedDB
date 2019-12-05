@@ -25,6 +25,7 @@ struct mdv_syncer
     mdv_uuid        uuid;           ///< Current node UUID
     mdv_mutex       mutex;          ///< Mutex for peers synchronizers guard
     mdv_hashmap    *peers;          ///< Current synchronizing peers (hashmap<mdv_syncer_peer>)
+    atomic_size_t   active_jobs;    ///< Active jobs counter
 };
 
 
@@ -36,9 +37,9 @@ typedef struct
 } mdv_syncer_peer;
 
 
-static mdv_trlog * mdv_syncer_trlog(mdv_syncer *syncer, mdv_uuid const *uuid)
+static mdv_trlog * mdv_syncer_trlog(mdv_syncer *syncer, mdv_uuid const *uuid, bool create)
 {
-    mdv_evt_trlog *evt = mdv_evt_trlog_create(uuid, false);
+    mdv_evt_trlog *evt = mdv_evt_trlog_create(uuid, create);
 
     if (!evt)
     {
@@ -53,6 +54,99 @@ static mdv_trlog * mdv_syncer_trlog(mdv_syncer *syncer, mdv_uuid const *uuid)
     mdv_evt_trlog_release(evt);
 
     return trlog;
+}
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Job for data saving
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+typedef struct mdv_syncer_data_save_context
+{
+    mdv_syncer     *syncer;                 ///< Data synchronizer
+    mdv_uuid        peer;                   ///< Peer UUID
+    mdv_uuid        trlog;                  ///< transaction log UUID
+    mdv_list        rows;                   ///< transaction log data (list<mdv_trlog_data>)
+    uint32_t        count;                  ///< log records count
+} mdv_syncer_data_save_context;
+
+
+typedef mdv_job(mdv_syncer_data_save_context)    mdv_syncer_data_save_job;
+
+
+static void mdv_syncer_data_save_fn(mdv_job_base *job)
+{
+    mdv_syncer_data_save_context *ctx = (mdv_syncer_data_save_context *)job->data;
+    mdv_syncer                   *syncer = ctx->syncer;
+
+    mdv_trlog *trlog = mdv_syncer_trlog(syncer, &ctx->trlog, true);
+
+    uint64_t trlog_top = 0;
+
+    if (trlog)
+    {
+        if (!mdv_trlog_add(trlog, &ctx->rows))
+            MDV_LOGE("Transaction synchronization failed. Rows count: %u", ctx->count);
+
+        trlog_top = mdv_trlog_top(trlog);
+
+        mdv_trlog_release(trlog);
+    }
+    else
+        MDV_LOGE("Transaction synchronization failed. Rows count: %u", ctx->count);
+
+    mdv_evt_trlog_state *evt = mdv_evt_trlog_state_create(&ctx->trlog, &syncer->uuid, &ctx->peer, trlog_top);
+
+    if (evt)
+    {
+        if (mdv_ebus_publish(syncer->ebus, &evt->base, MDV_EVT_DEFAULT) != MDV_OK)
+            MDV_LOGE("Transaction synchronization failed. Rows count: %u", ctx->count);
+        mdv_evt_trlog_state_release(evt);
+    }
+}
+
+
+static void mdv_syncer_data_save_finalize(mdv_job_base *job)
+{
+    mdv_syncer_data_save_context *ctx = (mdv_syncer_data_save_context *)job->data;
+    mdv_syncer                   *syncer = ctx->syncer;
+    mdv_list_clear(&ctx->rows);
+    atomic_fetch_sub_explicit(&syncer->active_jobs, 1, memory_order_relaxed);
+    mdv_syncer_release(syncer);
+    mdv_free(job, "syncer_data_save_job");
+}
+
+
+static mdv_errno mdv_syncer_data_save_job_emit(mdv_syncer *syncer, mdv_uuid const *peer, mdv_uuid const *trlog, mdv_list *rows, uint32_t count)
+{
+    mdv_syncer_data_save_job *job = mdv_alloc(sizeof(mdv_syncer_data_save_job), "syncer_data_save_job");
+
+    if (!job)
+    {
+        MDV_LOGE("No memory for data synchronization job");
+        return MDV_NO_MEM;
+    }
+
+    job->fn             = mdv_syncer_data_save_fn;
+    job->finalize       = mdv_syncer_data_save_finalize;
+    job->data.syncer    = mdv_syncer_retain(syncer);
+    job->data.peer      = *peer;
+    job->data.trlog     = *trlog;
+    job->data.rows      = mdv_list_move(rows);
+    job->data.count     = count;
+
+    mdv_errno err = mdv_jobber_push(syncer->jobber, (mdv_job_base*)job);
+
+    if (err != MDV_OK)
+    {
+        MDV_LOGE("Data synchronization job failed");
+        mdv_syncer_release(syncer);
+        *rows = mdv_list_move(&job->data.rows);
+        mdv_free(job, "syncer_data_save_job");
+    }
+    else
+        atomic_fetch_add_explicit(&syncer->active_jobs, 1, memory_order_relaxed);
+
+    return err;
 }
 
 
@@ -146,6 +240,7 @@ static mdv_errno mdv_syncer_topology_changed(mdv_syncer *syncer, mdv_topology *t
                 }
             }
 
+            MDV_LOGI("Number of peers synchronizers is: %u", (uint32_t)mdv_hashmap_size(syncer->peers));
 
             mdv_mutex_unlock(&syncer->mutex);
         }
@@ -177,7 +272,7 @@ static mdv_errno mdv_syncer_evt_trlog_sync(void *arg, mdv_event *event)
 
     mdv_errno err = MDV_FAILED;
 
-    mdv_trlog *trlog = mdv_syncer_trlog(syncer, &sync->trlog);
+    mdv_trlog *trlog = mdv_syncer_trlog(syncer, &sync->trlog, false);
 
     mdv_evt_trlog_state *evt = mdv_evt_trlog_state_create(&sync->trlog, &sync->to, &sync->from, trlog ? mdv_trlog_top(trlog) : 0);
 
@@ -193,10 +288,25 @@ static mdv_errno mdv_syncer_evt_trlog_sync(void *arg, mdv_event *event)
 }
 
 
+static mdv_errno mdv_syncer_evt_trlog_data(void *arg, mdv_event *event)
+{
+    mdv_syncer *syncer = arg;
+    mdv_evt_trlog_data *data = (mdv_evt_trlog_data *)event;
+
+    if(mdv_uuid_cmp(&syncer->uuid, &data->to) != 0)
+        return MDV_OK;
+
+    mdv_errno err = mdv_syncer_data_save_job_emit(syncer, &data->from, &data->trlog, &data->rows, data->count);
+
+    return err;
+}
+
+
 static const mdv_event_handler_type mdv_syncer_handlers[] =
 {
     { MDV_EVT_TOPOLOGY,         mdv_syncer_evt_topology },
     { MDV_EVT_TRLOG_SYNC,       mdv_syncer_evt_trlog_sync },
+    { MDV_EVT_TRLOG_DATA,       mdv_syncer_evt_trlog_data },
 };
 
 
@@ -219,6 +329,7 @@ mdv_syncer * mdv_syncer_create(mdv_uuid const *uuid,
     mdv_rollbacker_push(rollbacker, mdv_free, syncer, "syncer");
 
     atomic_init(&syncer->rc, 1);
+    atomic_init(&syncer->active_jobs, 0);
 
     syncer->uuid = *uuid;
 

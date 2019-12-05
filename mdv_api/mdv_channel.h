@@ -5,6 +5,7 @@
 #pragma once
 #include <mdv_def.h>
 #include <mdv_msg.h>
+#include <mdv_uuid.h>
 
 
 /// User connection context used for storing different type of information
@@ -36,6 +37,12 @@ mdv_channel * mdv_channel_retain(mdv_channel *channel);
  *          When the reference counter reaches zero, the  user's connection context destructor is called.
  */
 uint32_t mdv_channel_release(mdv_channel *channel);
+
+
+/**
+ * @brief Returns channel UUID
+ */
+mdv_uuid const * mdv_channel_uuid(mdv_channel *channel);
 
 
 /**

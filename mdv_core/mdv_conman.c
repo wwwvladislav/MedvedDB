@@ -87,7 +87,7 @@ static void * mdv_conman_ctx_create(mdv_descriptor    fd,
         case MDV_CTX_USER:
         {
             mdv_topology *topology = mdv_safeptr_get(conman->topology);
-            conctx = mdv_user_create(fd, conman->ebus, topology);
+            conctx = mdv_user_create(&conman->uuid, fd, conman->ebus, topology);
             mdv_topology_release(topology);
             break;
         }

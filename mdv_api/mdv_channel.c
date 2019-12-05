@@ -214,6 +214,12 @@ uint32_t mdv_channel_release(mdv_channel *channel)
 }
 
 
+mdv_uuid const * mdv_channel_uuid(mdv_channel *channel)
+{
+    return &channel->uuid;
+}
+
+
 mdv_errno mdv_channel_send(mdv_channel *channel, mdv_msg *req, mdv_msg *resp, size_t timeout)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(req->hdr.id));

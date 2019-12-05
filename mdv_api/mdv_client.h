@@ -84,6 +84,19 @@ mdv_table * mdv_create_table(mdv_client *client, mdv_table_desc *table);
 mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology);
 
 
+/**
+ * @brief Request network routes.
+ * @details This function should be used only for diagnostic purposes. Use mdv_free() to free the allocated links array.
+ *
+ * @param client [in]       DB client
+ * @param routes [out]      Routes
+ *
+ * @return On success, return routes table (hashmap<UUID>).
+ * @return On error, return NULL pointer
+ */
+mdv_hashmap * mdv_get_routes(mdv_client *client);
+
+
 // mdv_errno mdv_get_table_uuids(mdv_client *client, char const *name, mdv_list * info);
 
 // mdv_table * mdv_get_table(mdv_client *client, mdv_uuid const *uuid);

@@ -21,6 +21,7 @@ struct mdv_user
 {
     mdv_conctx              base;           ///< connection context base type
     atomic_uint             rc;             ///< References counter
+    mdv_uuid                uuid;           ///< Current node uuid
     mdv_dispatcher         *dispatcher;     ///< Messages dispatcher
     mdv_ebus               *ebus;           ///< Events bus
     mdv_mutex               topomutex;      ///< Mutex for topology guard
@@ -169,7 +170,7 @@ static mdv_errno mdv_user_wave_handler(mdv_msg const *msg, void *arg)
     mdv_msg_hello hello =
     {
         .version = MDV_VERSION,
-        .uuid = {}
+        .uuid = user->uuid
     };
 
     return mdv_user_wave_reply(user, msg->hdr.number, &hello);
@@ -328,7 +329,10 @@ static const mdv_event_handler_type mdv_user_handlers[] =
 };
 
 
-mdv_user * mdv_user_create(mdv_descriptor fd, mdv_ebus *ebus, mdv_topology *topology)
+mdv_user * mdv_user_create(mdv_uuid const *uuid,
+                           mdv_descriptor fd,
+                           mdv_ebus *ebus,
+                           mdv_topology *topology)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
@@ -355,6 +359,8 @@ mdv_user * mdv_user_create(mdv_descriptor fd, mdv_ebus *ebus, mdv_topology *topo
 
     user->base.type = MDV_CTX_USER;
     user->base.vptr = &iconctx;
+
+    user->uuid = *uuid;
 
     user->ebus = mdv_ebus_retain(ebus);
     mdv_rollbacker_push(rollbacker, mdv_ebus_release, user->ebus);

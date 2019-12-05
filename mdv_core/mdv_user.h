@@ -18,6 +18,7 @@ typedef struct mdv_user mdv_user;
 /**
  * @brief Creates user connection context
  *
+ * @param uuid [in]     current node uuid
  * @param fd [in]       channel descriptor
  * @param ebus [in]     events bus
  * @param topology [in] current topology
@@ -25,7 +26,10 @@ typedef struct mdv_user mdv_user;
  * @return On success, return pointer to new user connection context
  * @return On error, return NULL pointer
  */
-mdv_user * mdv_user_create(mdv_descriptor fd, mdv_ebus *ebus, mdv_topology *topology);
+mdv_user * mdv_user_create(mdv_uuid const *uuid,
+                           mdv_descriptor fd,
+                           mdv_ebus *ebus,
+                           mdv_topology *topology);
 
 
 /**

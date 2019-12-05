@@ -12,8 +12,9 @@
 #include <mdv_socket.h>
 #include <mdv_mutex.h>
 #include <mdv_threads.h>
-#include <signal.h>
 #include <mdv_serialization.h>
+#include <mdv_router.h>
+#include <signal.h>
 
 
 static               int total_connections = 0;
@@ -500,6 +501,23 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
     }
 
     return err;
+}
+
+
+mdv_hashmap * mdv_get_routes(mdv_client *client)
+{
+    mdv_topology *topology = 0;
+    mdv_errno err = mdv_get_topology(client, &topology);
+
+    mdv_hashmap *routes = 0;
+
+    if (err == MDV_OK && topology)
+    {
+        routes = mdv_routes_find(topology, mdv_channel_uuid(client->channel));
+        mdv_topology_release(topology);
+    }
+
+    return routes;
 }
 
 

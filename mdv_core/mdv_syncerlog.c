@@ -73,7 +73,7 @@ static void mdv_syncerlog_data_send_fn(mdv_job_base *job)
     size_t const count = mdv_trlog_range_read(
                             ctx->trlog,
                             ctx->range[0],
-                            ctx->range[1] + 1,
+                            ctx->range[1],
                             &rows);
 
     if (count)
@@ -137,95 +137,6 @@ static mdv_errno mdv_syncerlog_data_send_job_emit(mdv_syncerlog *syncerlog, mdv_
         mdv_trlog_release(trlog);
         mdv_syncerlog_release(syncerlog);
         mdv_free(job, "syncer_data_send_job");
-    }
-    else
-        atomic_fetch_add_explicit(&syncerlog->active_jobs, 1, memory_order_relaxed);
-
-    return err;
-}
-
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Job for data saving
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-typedef struct mdv_syncerlog_data_save_context
-{
-    mdv_syncerlog  *syncer;                 ///< Data synchronizer
-    mdv_list        rows;                   ///< transaction log data (list<mdv_trlog_data>)
-    uint32_t        count;                  ///< log records count
-} mdv_syncerlog_data_save_context;
-
-
-typedef mdv_job(mdv_syncerlog_data_save_context)    mdv_syncerlog_data_save_job;
-
-
-static void mdv_syncerlog_data_save_fn(mdv_job_base *job)
-{
-    mdv_syncerlog_data_save_context *ctx = (mdv_syncerlog_data_save_context *)job->data;
-    mdv_syncerlog                   *syncer = ctx->syncer;
-
-    mdv_trlog *trlog = mdv_syncerlog_get(syncer, true);
-
-    uint64_t trlog_top = 0;
-
-    if (trlog)
-    {
-        if (!mdv_trlog_add(trlog, &ctx->rows))
-            MDV_LOGE("Transaction synchronization failed. Rows count: %u", ctx->count);
-
-        trlog_top = mdv_trlog_top(trlog);
-
-        mdv_trlog_release(trlog);
-    }
-    else
-        MDV_LOGE("Transaction synchronization failed. Rows count: %u", ctx->count);
-
-    mdv_evt_trlog_state *evt = mdv_evt_trlog_state_create(&syncer->trlog, &syncer->peer, &syncer->uuid, trlog_top);
-
-    if (evt)
-    {
-        if (mdv_ebus_publish(syncer->ebus, &evt->base, MDV_EVT_DEFAULT) != MDV_OK)
-            MDV_LOGE("Transaction synchronization failed. Rows count: %u", ctx->count);
-        mdv_evt_trlog_state_release(evt);
-    }
-}
-
-
-static void mdv_syncerlog_data_save_finalize(mdv_job_base *job)
-{
-    mdv_syncerlog_data_save_context *ctx = (mdv_syncerlog_data_save_context *)job->data;
-    mdv_syncerlog                   *syncer = ctx->syncer;
-    mdv_list_clear(&ctx->rows);
-    atomic_fetch_sub_explicit(&syncer->active_jobs, 1, memory_order_relaxed);
-    mdv_syncerlog_release(syncer);
-    mdv_free(job, "syncer_data_save_job");
-}
-
-
-static mdv_errno mdv_syncerlog_data_save_job_emit(mdv_syncerlog *syncerlog, mdv_list *rows, uint32_t count)
-{
-    mdv_syncerlog_data_save_job *job = mdv_alloc(sizeof(mdv_syncerlog_data_save_job), "syncer_data_save_job");
-
-    if (!job)
-    {
-        MDV_LOGE("No memory for data synchronization job");
-        return MDV_NO_MEM;
-    }
-
-    job->fn             = mdv_syncerlog_data_save_fn;
-    job->finalize       = mdv_syncerlog_data_save_finalize;
-    job->data.syncer    = mdv_syncerlog_retain(syncerlog);
-    job->data.rows      = mdv_list_move(rows);
-    job->data.count     = count;
-
-    mdv_errno err = mdv_jobber_push(syncerlog->jobber, (mdv_job_base*)job);
-
-    if (err != MDV_OK)
-    {
-        MDV_LOGE("Data synchronization job failed");
-        mdv_syncerlog_release(syncerlog);
-        *rows = mdv_list_move(&job->data.rows);
-        mdv_free(job, "syncer_data_save_job");
     }
     else
         atomic_fetch_add_explicit(&syncerlog->active_jobs, 1, memory_order_relaxed);
@@ -346,26 +257,10 @@ static mdv_errno mdv_syncerlog_evt_trlog_state(void *arg, mdv_event *event)
 }
 
 
-static mdv_errno mdv_syncerlog_evt_trlog_data(void *arg, mdv_event *event)
-{
-    mdv_syncerlog *syncerlog = arg;
-    mdv_evt_trlog_data *data = (mdv_evt_trlog_data *)event;
-
-    if(mdv_uuid_cmp(&syncerlog->uuid, &data->to) != 0
-      || mdv_uuid_cmp(&syncerlog->trlog, &data->trlog) != 0)
-        return MDV_OK;
-
-    mdv_errno err = mdv_syncerlog_data_save_job_emit(syncerlog, &data->rows, data->count);
-
-    return err;
-}
-
-
 static const mdv_event_handler_type mdv_syncerlog_handlers[] =
 {
     { MDV_EVT_TRLOG_CHANGED,    mdv_syncerlog_evt_changed },
     { MDV_EVT_TRLOG_STATE,      mdv_syncerlog_evt_trlog_state },
-    { MDV_EVT_TRLOG_DATA,       mdv_syncerlog_evt_trlog_data },
 };
 
 

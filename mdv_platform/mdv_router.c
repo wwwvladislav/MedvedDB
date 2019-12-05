@@ -51,7 +51,6 @@ static mdv_hashmap * mdv_router_unique_nodes(mdv_vector *topolinks, mdv_vector *
     return nodes;
 }
 
-// mdv_vector *topolinks = mdv_topology_links(topology);
 
 mdv_hashmap * mdv_routes_find(mdv_topology *topology, mdv_uuid const *src)
 {

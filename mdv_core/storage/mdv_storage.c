@@ -228,6 +228,28 @@ void mdv_map_close(mdv_map *pmap)
 }
 
 
+static char const * mdv_array_to_hexstr(uint8_t const *ptr, size_t size)
+{
+    size *= 2;
+
+    static _Thread_local char buff[65];
+
+    size = size > sizeof buff - 1 ? sizeof buff - 1 : size;
+
+    static char const hex[] = "0123456789ABCDEF";
+
+    for(size_t i = 0; i < size; ++i)
+    {
+        uint8_t const d = (ptr[i / 2] >> ((1 - i % 2) * 4)) & 0xF;
+        buff[i] = hex[d];
+    }
+
+    buff[size] = 0;
+
+    return buff;
+}
+
+
 static bool mdv_map_put_impl(mdv_map *pmap, mdv_transaction *ptransaction, mdv_data const *key, mdv_data const *value, unsigned int flags)
 {
     MDB_txn *txn = (MDB_txn*)ptransaction->ptransaction;
@@ -244,10 +266,16 @@ static bool mdv_map_put_impl(mdv_map *pmap, mdv_transaction *ptransaction, mdv_d
     MDB_val v = { value->size, value->ptr };
 
     int rc = mdb_put(txn, dbi, &k, &v, flags);
+
     if(rc != MDB_SUCCESS)
     {
         if (!(MDV_MAP_SILENT & flags))
-            MDV_LOGE("Unable to put data into the LMDB database: '%s' (%d)", mdb_strerror(rc), rc);
+        {
+            MDV_LOGE("Unable to put data with key \'%s\' into the LMDB database: '%s' (%d)",
+                            mdv_array_to_hexstr(key->ptr, key->size),
+                            mdb_strerror(rc),
+                            rc);
+        }
         return false;
     }
 

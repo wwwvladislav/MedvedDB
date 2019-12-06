@@ -299,13 +299,18 @@ bool mdv_trlog_add(mdv_trlog *trlog,
 
     mdv_rollbacker_push(rollbacker, mdv_map_close, &tr_log);
 
+    bool changed = false;
+
     mdv_list_foreach(ops, mdv_trlog_data, op)
     {
         mdv_data k = { sizeof op->id, &op->id };
         mdv_data v = { op->op.size, &op->op };
 
         if (mdv_map_put_unique(&tr_log, &transaction, &k, &v))
+        {
+            changed = true;
             mdv_trlog_id_maximize(trlog, op->id);
+        }
         else
             MDV_LOGW("OP insertion failed.");
     }
@@ -321,7 +326,8 @@ bool mdv_trlog_add(mdv_trlog *trlog,
 
     mdv_rollbacker_free(rollbacker);
 
-    mdv_trlog_changed_notify(trlog);
+    if (changed)
+        mdv_trlog_changed_notify(trlog);
 
     return true;
 }

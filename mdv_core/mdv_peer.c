@@ -14,6 +14,7 @@
 #include <mdv_rollbacker.h>
 #include <mdv_ctypes.h>
 #include <stdatomic.h>
+#include <inttypes.h>
 
 
 struct mdv_peer
@@ -306,7 +307,7 @@ static mdv_errno mdv_peer_trlog_state_handler(mdv_msg const *msg, void *arg)
         return MDV_FAILED;
     }
 
-    MDV_LOGI("RECV %s '%s': count: %u",
+    MDV_LOGI("RECV %s '%s': TR log top: %" PRId64,
              mdv_uuid_to_str(&peer->peer_uuid).ptr,
              mdv_p2p_msg_name(msg->hdr.id),
              req.trlog_top);

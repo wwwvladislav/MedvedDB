@@ -9,6 +9,7 @@
 #include <mdv_rollbacker.h>
 #include <stdatomic.h>
 #include <assert.h>
+#include <inttypes.h>
 
 
 /// Data synchronizer with specific node
@@ -19,7 +20,6 @@ struct mdv_syncerlog
     mdv_uuid                peer;           ///< Global unique identifier for peer
     mdv_uuid                trlog;          ///< Global unique identifier for transaction log
     atomic_size_t           requests;       ///< TR log synchronization requests counter
-    atomic_uint_fast64_t    scheduled;      ///< The last log record identifier scheduled for synchronization
     atomic_size_t           active_jobs;    ///< Active jobs counter
     mdv_ebus               *ebus;           ///< Event bus
     mdv_jobber             *jobber;         ///< Jobs scheduler
@@ -162,7 +162,7 @@ static bool mdv_syncerlog_is_empty(mdv_syncerlog *syncerlog)
 
 static mdv_errno mdv_syncerlog_start(mdv_syncerlog *syncerlog)
 {
-     if(mdv_syncerlog_is_empty(syncerlog))
+    if(mdv_syncerlog_is_empty(syncerlog))
         return MDV_OK;
 
     if (atomic_fetch_add_explicit(&syncerlog->requests, 1, memory_order_relaxed) != 0)
@@ -198,37 +198,37 @@ static mdv_errno mdv_syncerlog_evt_changed(void *arg, mdv_event *event)
 {
     mdv_syncerlog *syncerlog = arg;
     mdv_evt_trlog_changed *evt = (mdv_evt_trlog_changed *)event;
-    return mdv_syncerlog_start(syncerlog);
+
+    if(mdv_uuid_cmp(&evt->trlog, &syncerlog->trlog) == 0)
+        return mdv_syncerlog_start(syncerlog);
+
+    return MDV_OK;
 }
 
 
 static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, mdv_trlog *trlog, uint64_t pos)
 {
-    size_t   requests = atomic_load_explicit(&syncerlog->requests, memory_order_relaxed);
-    uint64_t scheduled = atomic_load_explicit(&syncerlog->scheduled, memory_order_relaxed),
-             trlog_top;
+    size_t requests = atomic_load_explicit(&syncerlog->requests, memory_order_relaxed);
 
     mdv_errno err = MDV_OK;
 
     do
     {
-        do
+        uint64_t trlog_top = mdv_trlog_top(trlog);
+
+        if (pos < trlog_top)
         {
-            trlog_top = mdv_trlog_top(trlog);
+            MDV_LOGI("Transaction log synchronization job emit for peer \'%s\': %" PRId64 "-%" PRId64,
+                    mdv_uuid_to_str(&syncerlog->peer).ptr,
+                    pos,
+                    trlog_top);
 
-            if (scheduled >= trlog_top)
-                return MDV_OK;
-
-            if (trlog_top - scheduled > MDV_CONFIG.datasync.batch_size)
-                trlog_top = scheduled + MDV_CONFIG.datasync.batch_size;
-
-        } while (!atomic_compare_exchange_weak(&syncerlog->scheduled, &scheduled, trlog_top));
-
-        assert(scheduled < trlog_top);
-
-        err = mdv_syncerlog_data_send_job_emit(syncerlog, trlog, scheduled, trlog_top);
-
-    } while(!atomic_compare_exchange_weak(&syncerlog->requests, &requests, 0));
+            if (trlog_top > pos + MDV_CONFIG.datasync.batch_size)
+                trlog_top = pos + MDV_CONFIG.datasync.batch_size;
+            err = mdv_syncerlog_data_send_job_emit(syncerlog, trlog, pos, trlog_top);
+            pos = trlog_top;
+        }
+    } while(!atomic_compare_exchange_strong(&syncerlog->requests, &requests, 0));
 
     return err;
 }
@@ -252,6 +252,8 @@ static mdv_errno mdv_syncerlog_evt_trlog_state(void *arg, mdv_event *event)
         err = mdv_syncerlog_schedule(syncerlog, trlog, state->top);
         mdv_trlog_release(trlog);
     }
+    else
+        MDV_LOGE("Transaction log for synchronization not found");
 
     return err;
 }
@@ -281,7 +283,6 @@ mdv_syncerlog * mdv_syncerlog_create(mdv_uuid const *uuid, mdv_uuid const *peer,
 
     atomic_init(&syncerlog->rc, 1);
     atomic_init(&syncerlog->requests, 0);
-    atomic_init(&syncerlog->scheduled, 0);
     atomic_init(&syncerlog->active_jobs, 0);
 
     syncerlog->uuid = *uuid;
@@ -310,6 +311,10 @@ mdv_syncerlog * mdv_syncerlog_create(mdv_uuid const *uuid, mdv_uuid const *peer,
 
     mdv_syncerlog_start(syncerlog);
 
+    char peer_uuid[33];
+    memcpy(peer_uuid, mdv_uuid_to_str(peer).ptr, sizeof peer_uuid);
+    MDV_LOGI("Transaction log synchronizer created for peer \'%s\' and log \'%s\'", peer_uuid, mdv_uuid_to_str(trlog).ptr);
+
     return syncerlog;
 }
 
@@ -333,6 +338,10 @@ static void mdv_syncerlog_free(mdv_syncerlog *syncerlog)
     while(atomic_load_explicit(&syncerlog->active_jobs, memory_order_relaxed) > 0)
         mdv_sleep(100);
     mdv_jobber_release(syncerlog->jobber);
+
+    char peer_uuid[33];
+    memcpy(peer_uuid, mdv_uuid_to_str(&syncerlog->peer).ptr, sizeof peer_uuid);
+    MDV_LOGI("Transaction log synchronizer deleted for peer \'%s\' and log \'%s\'", peer_uuid, mdv_uuid_to_str(&syncerlog->trlog).ptr);
 
     memset(syncerlog, 0, sizeof(*syncerlog));
     mdv_free(syncerlog, "syncerlog");

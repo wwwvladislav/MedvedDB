@@ -63,7 +63,6 @@ mdv_message_def(p2p_trlog_sync, 1000 + 5,
 mdv_message_def(p2p_trlog_state, 1000 + 6,
     mdv_uuid    trlog;              ///< Transaction log storage unique identifier
     uint64_t    trlog_top;          ///< Last transaction log record identifier for requested CF Storage and peer.
-    int64_t     diff;               ///< Difference between transaction logs last record identifiers
 );
 
 

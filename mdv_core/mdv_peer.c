@@ -306,6 +306,11 @@ static mdv_errno mdv_peer_trlog_state_handler(mdv_msg const *msg, void *arg)
         return MDV_FAILED;
     }
 
+    MDV_LOGI("RECV %s '%s': count: %u",
+             mdv_uuid_to_str(&peer->peer_uuid).ptr,
+             mdv_p2p_msg_name(msg->hdr.id),
+             req.trlog_top);
+
     binn_free(&binn_msg);
 
     mdv_evt_trlog_state *state = mdv_evt_trlog_state_create(&req.trlog, &peer->peer_uuid, &peer->uuid, req.trlog_top);
@@ -348,6 +353,11 @@ static mdv_errno mdv_peer_trlog_data_handler(mdv_msg const *msg, void *arg)
         binn_free(&binn_msg);
         return MDV_FAILED;
     }
+
+    MDV_LOGI("RECV %s '%s': count: %u",
+             mdv_uuid_to_str(&peer->peer_uuid).ptr,
+             mdv_p2p_msg_name(msg->hdr.id),
+             req.count);
 
     binn_free(&binn_msg);
 

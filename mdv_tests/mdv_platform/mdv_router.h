@@ -21,37 +21,6 @@ static mdv_topology * mdv_test_router_topology_create(mdv_toponode *nodes, size_
 }
 
 
-#if 0
-static void mdv_topology_check(mdv_topology *t,
-                               mdv_toponode *nodes, size_t nsize,
-                               mdv_topolink *links, size_t lsize)
-{
-    mdv_vector *toponodes = mdv_topology_nodes(t);
-    mdv_vector *topolinks = mdv_topology_links(t);
-
-    mu_check(mdv_vector_size(toponodes) == nsize);
-
-    for(size_t i = 0; i < nsize; ++i)
-    {
-        mdv_toponode const *node = mdv_vector_at(toponodes, i);
-        mu_check(mdv_uuid_cmp(&node->uuid, &nodes[i].uuid) == 0);
-    }
-
-    mu_check(mdv_vector_size(topolinks) == lsize);
-
-    for(size_t i = 0; i < lsize; ++i)
-    {
-        mdv_topolink const *link = mdv_vector_at(topolinks, i);
-        mu_check(mdv_link_cmp(link, links + i) == 0);
-        mu_check(link->weight == links[i].weight);
-    }
-
-    mdv_vector_release(toponodes);
-    mdv_vector_release(topolinks);
-}
-#endif
-
-
 MU_TEST(platform_router)
 {
     /*
@@ -65,12 +34,12 @@ MU_TEST(platform_router)
 
     mdv_toponode nodes[] =
     {
-        { .uuid = { .a = 0 }, .addr = "0" },
-        { .uuid = { .a = 1 }, .addr = "1" },
-        { .uuid = { .a = 2 }, .addr = "2" },
-        { .uuid = { .a = 3 }, .addr = "3" },
-        { .uuid = { .a = 4 }, .addr = "4" },
-        { .uuid = { .a = 5 }, .addr = "5" },
+        { .id = 0, .uuid = { .a = 0 }, .addr = "0" },
+        { .id = 1, .uuid = { .a = 1 }, .addr = "1" },
+        { .id = 2, .uuid = { .a = 2 }, .addr = "2" },
+        { .id = 3, .uuid = { .a = 3 }, .addr = "3" },
+        { .id = 4, .uuid = { .a = 4 }, .addr = "4" },
+        { .id = 5, .uuid = { .a = 5 }, .addr = "5" },
     };
 
     mdv_topolink links[] =

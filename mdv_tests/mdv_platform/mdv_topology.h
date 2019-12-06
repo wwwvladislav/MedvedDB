@@ -87,10 +87,10 @@ static void mdv_topology_test_1()
 
     mdv_toponode nodes[] =
     {
-        { .uuid = { .a = 1 }, .addr = "1" },
-        { .uuid = { .a = 2 }, .addr = "2" },
-        { .uuid = { .a = 3 }, .addr = "3" },
-        { .uuid = { .a = 4 }, .addr = "4" },
+        { .id = 1, .uuid = { .a = 1 }, .addr = "1" },
+        { .id = 2, .uuid = { .a = 2 }, .addr = "2" },
+        { .id = 3, .uuid = { .a = 3 }, .addr = "3" },
+        { .id = 4, .uuid = { .a = 4 }, .addr = "4" },
     };
 
     mdv_topolink a_links[] =
@@ -108,9 +108,9 @@ static void mdv_topology_test_1()
 
     mdv_toponode ab_nodes[] =
     {
-        { .uuid = { .a = 1 }, .addr = "1" },
-        { .uuid = { .a = 3 }, .addr = "3" },
-        { .uuid = { .a = 4 }, .addr = "4" },
+        { .id = 1, .uuid = { .a = 1 }, .addr = "1" },
+        { .id = 3, .uuid = { .a = 3 }, .addr = "3" },
+        { .id = 4, .uuid = { .a = 4 }, .addr = "4" },
     };
 
     mdv_topolink ab_links[] =
@@ -121,9 +121,9 @@ static void mdv_topology_test_1()
 
     mdv_toponode ba_nodes[] =
     {
-        { .uuid = { .a = 1 }, .addr = "1" },
-        { .uuid = { .a = 3 }, .addr = "3" },
-        { .uuid = { .a = 4 }, .addr = "4" },
+        { .id = 1, .uuid = { .a = 1 }, .addr = "1" },
+        { .id = 3, .uuid = { .a = 3 }, .addr = "3" },
+        { .id = 4, .uuid = { .a = 4 }, .addr = "4" },
     };
 
     mdv_topolink ba_links[] =
@@ -172,9 +172,9 @@ static void mdv_topology_test_2()
 
     mdv_toponode nodes[] =
     {
-        { .uuid = { .a = 1 }, .addr = "1" },
-        { .uuid = { .a = 2 }, .addr = "2" },
-        { .uuid = { .a = 3 }, .addr = "3" },
+        { .id = 1, .uuid = { .a = 1 }, .addr = "1" },
+        { .id = 2, .uuid = { .a = 2 }, .addr = "2" },
+        { .id = 3, .uuid = { .a = 3 }, .addr = "3" },
     };
 
     mdv_topolink a_links[] =
@@ -190,9 +190,9 @@ static void mdv_topology_test_2()
 
     mdv_toponode ab_nodes[] =
     {
-        { .uuid = { .a = 1 }, .addr = "1" },
-        { .uuid = { .a = 2 }, .addr = "2" },
-        { .uuid = { .a = 3 }, .addr = "3" },
+        { .id = 1, .uuid = { .a = 1 }, .addr = "1" },
+        { .id = 2, .uuid = { .a = 2 }, .addr = "2" },
+        { .id = 3, .uuid = { .a = 3 }, .addr = "3" },
     };
 
     mdv_topolink ab_links[] =
@@ -203,8 +203,8 @@ static void mdv_topology_test_2()
 
     mdv_toponode ba_nodes[] =
     {
-        { .uuid = { .a = 1 }, .addr = "1" },
-        { .uuid = { .a = 2 }, .addr = "2" },
+        { .id = 1, .uuid = { .a = 1 }, .addr = "1" },
+        { .id = 2, .uuid = { .a = 2 }, .addr = "2" },
     };
 
     mdv_topolink ba_links[] =
@@ -250,8 +250,8 @@ static void mdv_topology_test_3()
 
     mdv_toponode nodes[] =
     {
-        { .uuid = { .a = 1 }, .addr = "1" },
-        { .uuid = { .a = 2 }, .addr = "2" },
+        { .id = 1, .uuid = { .a = 1 }, .addr = "1" },
+        { .id = 2, .uuid = { .a = 2 }, .addr = "2" },
     };
 
     mdv_topolink links[] =

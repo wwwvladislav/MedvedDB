@@ -239,7 +239,8 @@ static mdv_errno mdv_syncerlog_evt_trlog_state(void *arg, mdv_event *event)
     mdv_syncerlog *syncerlog = arg;
     mdv_evt_trlog_state *state = (mdv_evt_trlog_state *)event;
 
-    if(mdv_uuid_cmp(&syncerlog->uuid, &state->to) != 0
+    if(mdv_uuid_cmp(&syncerlog->peer, &state->from) != 0
+      || mdv_uuid_cmp(&syncerlog->uuid, &state->to) != 0
       || mdv_uuid_cmp(&syncerlog->trlog, &state->trlog) != 0)
         return MDV_OK;
 

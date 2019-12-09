@@ -225,46 +225,26 @@ static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, mdv_trlog *trl
             trlog_top = mdv_trlog_top(trlog);
 
             if (synced >= trlog_top)
-                return MDV_OK;
+                break;
 
             if (trlog_top > synced + MDV_CONFIG.datasync.batch_size)
                 trlog_top = synced + MDV_CONFIG.datasync.batch_size;
         }
         while (!atomic_compare_exchange_weak(&syncerlog->synced, &synced, trlog_top));
 
-        MDV_LOGI("Transaction log synchronization job emit for peer \'%s\': %" PRId64 "-%" PRId64,
-                mdv_uuid_to_str(&syncerlog->peer).ptr,
-                pos,
-                trlog_top);
-
-        assert(synced < trlog_top);
-
-        err = mdv_syncerlog_data_send_job_emit(syncerlog, trlog, synced, trlog_top);
-
-        synced = trlog_top;
-    }
-    while (!atomic_compare_exchange_strong(&syncerlog->requests, &requests, 0));
-
-
-/*
-    do
-    {
-        trlog_top = mdv_trlog_top(trlog);
-
-        if (pos < trlog_top)
+        if (synced < trlog_top)
         {
             MDV_LOGI("Transaction log synchronization job emit for peer \'%s\': %" PRId64 "-%" PRId64,
                     mdv_uuid_to_str(&syncerlog->peer).ptr,
-                    pos,
+                    synced,
                     trlog_top);
 
-            if (trlog_top > pos + MDV_CONFIG.datasync.batch_size)
-                trlog_top = pos + MDV_CONFIG.datasync.batch_size;
-            err = mdv_syncerlog_data_send_job_emit(syncerlog, trlog, pos, trlog_top);
-            pos = trlog_top;
+            err = mdv_syncerlog_data_send_job_emit(syncerlog, trlog, synced, trlog_top);
+
+            synced = trlog_top;
         }
-    } while(!atomic_compare_exchange_strong(&syncerlog->requests, &requests, 0));
-*/
+    }
+    while (!atomic_compare_exchange_strong(&syncerlog->requests, &requests, 0));
 
     return err;
 }

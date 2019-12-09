@@ -21,6 +21,7 @@ struct mdv_syncerlog
     mdv_uuid                trlog;          ///< Global unique identifier for transaction log
     atomic_size_t           requests;       ///< TR log synchronization requests counter
     atomic_size_t           active_jobs;    ///< Active jobs counter
+    atomic_uint_fast64_t    synced;         ///< The last synchronized log record
     mdv_ebus               *ebus;           ///< Event bus
     mdv_jobber             *jobber;         ///< Jobs scheduler
 };
@@ -209,12 +210,46 @@ static mdv_errno mdv_syncerlog_evt_changed(void *arg, mdv_event *event)
 static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, mdv_trlog *trlog, uint64_t pos)
 {
     size_t requests = atomic_load_explicit(&syncerlog->requests, memory_order_relaxed);
+    uint64_t synced = atomic_load_explicit(&syncerlog->synced, memory_order_relaxed);
+    uint64_t trlog_top;
 
     mdv_errno err = MDV_OK;
 
+    if (synced < pos)
+        synced = pos;
+
     do
     {
-        uint64_t trlog_top = mdv_trlog_top(trlog);
+        do
+        {
+            trlog_top = mdv_trlog_top(trlog);
+
+            if (synced >= trlog_top)
+                return MDV_OK;
+
+            if (trlog_top > synced + MDV_CONFIG.datasync.batch_size)
+                trlog_top = synced + MDV_CONFIG.datasync.batch_size;
+        }
+        while (!atomic_compare_exchange_weak(&syncerlog->synced, &synced, trlog_top));
+
+        MDV_LOGI("Transaction log synchronization job emit for peer \'%s\': %" PRId64 "-%" PRId64,
+                mdv_uuid_to_str(&syncerlog->peer).ptr,
+                pos,
+                trlog_top);
+
+        assert(synced < trlog_top);
+
+        err = mdv_syncerlog_data_send_job_emit(syncerlog, trlog, synced, trlog_top);
+
+        synced = trlog_top;
+    }
+    while (!atomic_compare_exchange_strong(&syncerlog->requests, &requests, 0));
+
+
+/*
+    do
+    {
+        trlog_top = mdv_trlog_top(trlog);
 
         if (pos < trlog_top)
         {
@@ -229,6 +264,7 @@ static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, mdv_trlog *trl
             pos = trlog_top;
         }
     } while(!atomic_compare_exchange_strong(&syncerlog->requests, &requests, 0));
+*/
 
     return err;
 }
@@ -285,6 +321,7 @@ mdv_syncerlog * mdv_syncerlog_create(mdv_uuid const *uuid, mdv_uuid const *peer,
     atomic_init(&syncerlog->rc, 1);
     atomic_init(&syncerlog->requests, 0);
     atomic_init(&syncerlog->active_jobs, 0);
+    atomic_init(&syncerlog->synced, 0);
 
     syncerlog->uuid = *uuid;
     syncerlog->peer = *peer;

@@ -76,15 +76,27 @@ mdv_vector * mdv_vector_retain(mdv_vector *vector)
 }
 
 
-void mdv_vector_release(mdv_vector *vector)
+uint32_t mdv_vector_release(mdv_vector *vector)
 {
-    if (vector
-        && vector != &mdv_empty_vector
-        && atomic_fetch_sub_explicit(&vector->rc, 1, memory_order_release) == 1)
+    if (!vector
+        || vector == &mdv_empty_vector)
+        return 0;
+
+    uint32_t refs = atomic_fetch_sub_explicit(&vector->rc, 1, memory_order_release) - 1;
+
+    if (!refs)
     {
         vector->allocator->free(vector->data, "vector.data");
         vector->allocator->free(vector, "vector");
     }
+
+    return refs;
+}
+
+
+uint32_t mdv_vector_refs(mdv_vector *vector)
+{
+    return atomic_load_explicit(&vector->rc, memory_order_relaxed);
 }
 
 

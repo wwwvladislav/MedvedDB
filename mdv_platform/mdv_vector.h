@@ -56,7 +56,13 @@ mdv_vector * mdv_vector_retain(mdv_vector *vector);
  * @details Reference counter is decreased by one.
  *          When the reference counter reaches zero, the vecror's destructor is called.
  */
-void mdv_vector_release(mdv_vector *vector);
+uint32_t mdv_vector_release(mdv_vector *vector);
+
+
+/**
+ * @brief Returns references counter
+ */
+uint32_t mdv_vector_refs(mdv_vector *vector);
 
 
 /**

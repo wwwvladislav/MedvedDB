@@ -6,6 +6,8 @@
 #include "mdv_alloc.h"
 #include "mdv_log.h"
 #include "mdv_mutex.h"
+#include "mdv_algorithm.h"
+#include "mdv_threads.h"
 
 
 /// @cond Doxygen_Suppress
@@ -467,10 +469,14 @@ static mdv_errno mdv_ebus_unsubscribe_unsafe(mdv_ebus *ebus,
                                     - (mdv_ebus_subscriber const *)
                                             mdv_vector_data(handlers->subscribers);
                 mdv_vector_erase(subscribers, mdv_vector_at(subscribers, idx));
-                mdv_vector_release(handlers->subscribers);
-                handlers->subscribers = subscribers;
 
-                // TODO: Wait running handlers
+                mdv_swap(mdv_vector *, handlers->subscribers, subscribers);
+
+                // Waiting for handlers completion
+                while(mdv_vector_refs(subscribers) > 1)
+                    mdv_sleep(10);
+
+                mdv_vector_release(subscribers);
             }
             else
                 err = MDV_NO_MEM;
@@ -506,6 +512,8 @@ mdv_errno mdv_ebus_subscribe_all(mdv_ebus *ebus,
                                  mdv_event_handler_type const *handlers,
                                  size_t count)
 {
+    // TODO: Fix deadlock. The event might be fired during the subscription.
+
     mdv_errno err = mdv_mutex_lock(&ebus->mutex);
 
     if (err == MDV_OK)

@@ -398,8 +398,12 @@ mdv_syncer * mdv_syncer_create(mdv_uuid const *uuid,
 
 void mdv_syncer_cancel(mdv_syncer *syncer)
 {
-    mdv_hashmap_foreach(syncer->peers, mdv_syncer_peer, peer)
-        mdv_syncerino_cancel(peer->syncerino);
+    if (mdv_mutex_lock(&syncer->mutex) == MDV_OK)
+    {
+        mdv_hashmap_foreach(syncer->peers, mdv_syncer_peer, peer)
+            mdv_syncerino_cancel(peer->syncerino);
+        mdv_mutex_unlock(&syncer->mutex);
+    }
 }
 
 

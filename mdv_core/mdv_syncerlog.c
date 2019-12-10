@@ -211,7 +211,7 @@ static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, mdv_trlog *trl
 {
     size_t requests = atomic_load_explicit(&syncerlog->requests, memory_order_relaxed);
     uint64_t synced = atomic_load_explicit(&syncerlog->synced, memory_order_relaxed);
-    uint64_t trlog_top;
+    uint64_t trlog_top, rrange;
 
     mdv_errno err = MDV_OK;
 
@@ -222,27 +222,31 @@ static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, mdv_trlog *trl
     {
         do
         {
-            trlog_top = mdv_trlog_top(trlog);
+            do
+            {
+                rrange = trlog_top = mdv_trlog_top(trlog);
 
-            if (synced >= trlog_top)
-                break;
+                if (synced >= trlog_top)
+                    break;
 
-            if (trlog_top > synced + MDV_CONFIG.datasync.batch_size)
-                trlog_top = synced + MDV_CONFIG.datasync.batch_size;
+                if (rrange > synced + MDV_CONFIG.datasync.batch_size)
+                    rrange = synced + MDV_CONFIG.datasync.batch_size;
+            }
+            while (!atomic_compare_exchange_weak(&syncerlog->synced, &synced, rrange));
+
+            if (synced < rrange)
+            {
+                MDV_LOGI("Sync job for peer \'%s\': %" PRId64 "-%" PRId64,
+                        mdv_uuid_to_str(&syncerlog->peer).ptr,
+                        synced,
+                        rrange);
+
+                err = mdv_syncerlog_data_send_job_emit(syncerlog, trlog, synced, rrange);
+
+                synced = rrange;
+            }
         }
-        while (!atomic_compare_exchange_weak(&syncerlog->synced, &synced, trlog_top));
-
-        if (synced < trlog_top)
-        {
-            MDV_LOGI("Transaction log synchronization job emit for peer \'%s\': %" PRId64 "-%" PRId64,
-                    mdv_uuid_to_str(&syncerlog->peer).ptr,
-                    synced,
-                    trlog_top);
-
-            err = mdv_syncerlog_data_send_job_emit(syncerlog, trlog, synced, trlog_top);
-
-            synced = trlog_top;
-        }
+        while (rrange < trlog_top);
     }
     while (!atomic_compare_exchange_strong(&syncerlog->requests, &requests, 0));
 

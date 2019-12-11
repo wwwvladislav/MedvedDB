@@ -200,6 +200,8 @@ static void mdv_test_scenario(char const *args)
 {
     (void)args;
 
+    // Table description
+
     mdv_field const fields[] =
     {
         { MDV_FLD_TYPE_CHAR,  0, mdv_str_static("Col1") },  // char *
@@ -214,6 +216,8 @@ static void mdv_test_scenario(char const *args)
         .fields = fields
     };
 
+    // Table creation
+
     mdv_table *table = mdv_create_table(client, &desc);
 
     if (!table)
@@ -223,6 +227,8 @@ static void mdv_test_scenario(char const *args)
     }
 
     MDV_INF("New table '%s' with ID '%s' successfully created\n", desc.name.ptr, mdv_uuid_to_str(mdv_table_uuid(table)).ptr);
+
+    // Rowset creation
 
     mdv_rowset *rowset = mdv_rowset_create(desc.size);
 
@@ -234,24 +240,34 @@ static void mdv_test_scenario(char const *args)
     }
 
     int ints[] = { 42, 43 };
-    bool bool_value = true;
+    bool bool_value_0 = true;
+    bool bool_value_1 = false;
 
     mdv_data const row0[] =
     {
         { 5,            "hello" },
         { sizeof(ints), ints },
-        { 1,            &bool_value }
+        { 1,            &bool_value_0 }
     };
 
-    mdv_data const *rows[] = { row0 };
+    mdv_data const row1[] =
+    {
+        { 5,            "world" },
+        { sizeof(ints), ints },
+        { 1,            &bool_value_1 }
+    };
 
-    if (mdv_rowset_append(rowset, rows, 1) != 1)
+    mdv_data const *rows[] = { row0, row1 };
+
+    if (mdv_rowset_append(rowset, rows, 2) != 2)
     {
         MDV_INF("Rowset creation failed for table '%s'\n", desc.name.ptr);
         mdv_rowset_release(rowset);
         mdv_table_release(table);
         return;
     }
+
+    // Data insertion into the table
 
     mdv_errno err = mdv_insert_row(client, table, rowset);
 

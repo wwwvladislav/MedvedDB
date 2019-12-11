@@ -439,8 +439,11 @@ static mdv_errno mdv_ebus_subscribe_unsafe(mdv_ebus *ebus,
 static mdv_errno mdv_ebus_unsubscribe_unsafe(mdv_ebus *ebus,
                                              mdv_event_type type,
                                              void *arg,
-                                             mdv_event_handler handler)
+                                             mdv_event_handler handler,
+                                             mdv_vector **prev_subscribers)
 {
+    *prev_subscribers = 0;
+
     mdv_errno err = MDV_OK;
 
     mdv_event_handlers *handlers = mdv_hashmap_find(ebus->handlers, &type);
@@ -472,11 +475,7 @@ static mdv_errno mdv_ebus_unsubscribe_unsafe(mdv_ebus *ebus,
 
                 mdv_swap(mdv_vector *, handlers->subscribers, subscribers);
 
-                // Waiting for handlers completion
-                while(mdv_vector_refs(subscribers) > 1)
-                    mdv_sleep(10);
-
-                mdv_vector_release(subscribers);
+                *prev_subscribers = subscribers;
             }
             else
                 err = MDV_NO_MEM;
@@ -484,6 +483,18 @@ static mdv_errno mdv_ebus_unsubscribe_unsafe(mdv_ebus *ebus,
     }
 
     return err;
+}
+
+
+static void mdv_ebus_subscribers_wait_and_release(mdv_vector *subscribers)
+{
+    if (subscribers)
+    {
+        // Waiting for handlers completion
+        while(mdv_vector_refs(subscribers) > 1)
+            mdv_sleep(10);
+        mdv_vector_release(subscribers);
+    }
 }
 
 
@@ -512,7 +523,7 @@ mdv_errno mdv_ebus_subscribe_all(mdv_ebus *ebus,
                                  mdv_event_handler_type const *handlers,
                                  size_t count)
 {
-    // TODO: Fix deadlock. The event might be fired during the subscription.
+    mdv_vector *prev_subscribers = 0;
 
     mdv_errno err = mdv_mutex_lock(&ebus->mutex);
 
@@ -531,7 +542,8 @@ mdv_errno mdv_ebus_subscribe_all(mdv_ebus *ebus,
                     mdv_ebus_unsubscribe_unsafe(ebus,
                                                 handlers[i - 1].type,
                                                 arg,
-                                                handlers[i - 1].handler);
+                                                handlers[i - 1].handler,
+                                                &prev_subscribers);
 
                 break;
             }
@@ -543,6 +555,8 @@ mdv_errno mdv_ebus_subscribe_all(mdv_ebus *ebus,
     if (err != MDV_OK)
         MDV_LOGE("Event subscriber registration failed with error %d", err);
 
+    mdv_ebus_subscribers_wait_and_release(prev_subscribers);
+
     return err;
 }
 
@@ -552,16 +566,20 @@ void mdv_ebus_unsubscribe(mdv_ebus *ebus,
                           void *arg,
                           mdv_event_handler handler)
 {
+    mdv_vector *prev_subscribers = 0;
+
     mdv_errno err = mdv_mutex_lock(&ebus->mutex);
 
     if (err == MDV_OK)
     {
-        err = mdv_ebus_unsubscribe_unsafe(ebus, type, arg, handler);
+        err = mdv_ebus_unsubscribe_unsafe(ebus, type, arg, handler, &prev_subscribers);
         mdv_mutex_unlock(&ebus->mutex);
     }
 
     if (err != MDV_OK)
         MDV_LOGE("Event subscriber unregistration failed with error %d", err);
+
+    mdv_ebus_subscribers_wait_and_release(prev_subscribers);
 }
 
 
@@ -570,21 +588,11 @@ void mdv_ebus_unsubscribe_all(mdv_ebus *ebus,
                               mdv_event_handler_type const *handlers,
                               size_t count)
 {
-    mdv_errno err = mdv_mutex_lock(&ebus->mutex);
-
-    if (err == MDV_OK)
-    {
-        for(size_t i = 0; i < count; ++i)
-            mdv_ebus_unsubscribe_unsafe(ebus,
-                                        handlers[i].type,
-                                        arg,
-                                        handlers[i].handler);
-
-        mdv_mutex_unlock(&ebus->mutex);
-    }
-
-    if (err != MDV_OK)
-        MDV_LOGE("Event subscriber unregistration failed with error %d", err);
+    for(size_t i = 0; i < count; ++i)
+        mdv_ebus_unsubscribe(ebus,
+                             handlers[i].type,
+                             arg,
+                             handlers[i].handler);
 }
 
 

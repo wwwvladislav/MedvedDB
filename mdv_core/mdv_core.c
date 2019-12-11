@@ -249,8 +249,8 @@ void mdv_core_free(mdv_core *core)
     {
         mdv_syncer_cancel(core->syncer);
         mdv_committer_stop(core->committer);
-        mdv_conman_free(core->conman);
         mdv_syncer_release(core->syncer);
+        mdv_conman_free(core->conman);
         mdv_committer_release(core->committer);
         mdv_tracker_release(core->tracker);
         mdv_storage_release(core->storage.metainf);

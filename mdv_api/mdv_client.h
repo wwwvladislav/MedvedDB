@@ -72,6 +72,18 @@ mdv_table * mdv_create_table(mdv_client *client, mdv_table_desc *table);
 
 
 /**
+ * @brief Finds and returns table with given UUID
+ *
+ * @param client [in]   DB client
+ * @param uuid [in]     Table identifier
+ *
+ * @return On success, returns nonsero table descriptor.
+ * @return On error, returns NULL
+ */
+mdv_table * mdv_get_table(mdv_client *client, mdv_uuid const *uuid);
+
+
+/**
  * @brief Request network topology.
  * @details This function should be used only for diagnostic purposes. Use mdv_free() to free the allocated links array.
  *
@@ -95,11 +107,6 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology);
  * @return On error, return NULL pointer
  */
 mdv_hashmap * mdv_get_routes(mdv_client *client);
-
-
-// mdv_errno mdv_get_table_uuids(mdv_client *client, char const *name, mdv_list * info);
-
-// mdv_table * mdv_get_table(mdv_client *client, mdv_uuid const *uuid);
 
 
 /**

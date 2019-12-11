@@ -213,6 +213,21 @@ static mdv_errno mdv_client_table_info_handler(mdv_msg const *msg, mdv_msg_table
 }
 
 
+static mdv_table_desc * mdv_client_table_desc_handler(mdv_msg const *msg)
+{
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+        return 0;
+
+    mdv_table_desc *desc = mdv_unbinn_table_desc(&binn_msg);
+
+    binn_free(&binn_msg);
+
+    return desc;
+}
+
+
 static mdv_errno mdv_client_status_handler(mdv_msg const *msg, mdv_errno *err)
 {
     mdv_msg_status status;
@@ -425,6 +440,73 @@ mdv_table * mdv_create_table(mdv_client *client, mdv_table_desc *desc)
                 tbl = mdv_table_create(&info.id, desc);
 
                 break;
+            }
+
+            case mdv_message_id(status):
+            {
+                if (mdv_client_status_handler(&resp, &err) == MDV_OK)
+                    break;
+                // fallthrough
+            }
+
+            default:
+                err = MDV_FAILED;
+                MDV_LOGE("Unexpected response");
+                break;
+        }
+
+        mdv_free_msg(&resp);
+    }
+
+    return tbl;
+}
+
+
+mdv_table * mdv_get_table(mdv_client *client, mdv_uuid const *uuid)
+{
+    mdv_msg_get_table get_table =
+    {
+        .id = *uuid
+    };
+
+    binn get_table_msg;
+
+    if (!mdv_binn_get_table(&get_table, &get_table_msg))
+        return 0;
+
+    mdv_msg req =
+    {
+        .hdr =
+        {
+            .id   = mdv_msg_get_table_id,
+            .size = binn_size(&get_table_msg)
+        },
+        .payload = binn_ptr(&get_table_msg)
+    };
+
+    mdv_msg resp;
+
+    mdv_errno err = mdv_client_send(client, &req, &resp, client->response_timeout);
+
+    binn_free(&get_table_msg);
+
+    mdv_table *tbl = 0;
+
+    if (err == MDV_OK)
+    {
+        switch(resp.hdr.id)
+        {
+            case mdv_message_id(table_desc):
+            {
+                mdv_table_desc *desc = mdv_client_table_desc_handler(&resp);
+
+                if (desc)
+                {
+                    tbl = mdv_table_create(uuid, desc);
+                    mdv_free(desc, "table_desc");
+                    break;
+                }
+                // fallthrough
             }
 
             case mdv_message_id(status):

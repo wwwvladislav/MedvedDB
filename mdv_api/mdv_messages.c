@@ -10,7 +10,9 @@ char const * mdv_msg_name(uint32_t id)
         case mdv_message_id(hello):         return "HELLO";
         case mdv_message_id(status):        return "STATUS";
         case mdv_message_id(create_table):  return "CREATE TABLE";
+        case mdv_message_id(get_table):     return "GET TABLE";
         case mdv_message_id(table_info):    return "TABLE INFO";
+        case mdv_message_id(table_desc):    return "TABLE DESC";
         case mdv_message_id(get_topology):  return "GET TOPOLOGY";
         case mdv_message_id(topology):      return "TOPOLOGY";
         case mdv_message_id(insert_into):   return "INSERT INTO";
@@ -113,6 +115,41 @@ void mdv_create_table_free(mdv_msg_create_table *msg)
         mdv_free(msg->desc, "table_desc");
         msg->desc = 0;
     }
+}
+
+
+bool mdv_binn_get_table(mdv_msg_get_table const *msg, binn *obj)
+{
+    if (!binn_create_object(obj))
+    {
+        MDV_LOGE("binn_get_table failed");
+        return false;
+    }
+
+    if (0
+        || !binn_object_set_uint64(obj, "0", msg->id.u64[0])
+        || !binn_object_set_uint64(obj, "1", msg->id.u64[1]))
+    {
+        binn_free(obj);
+        MDV_LOGE("binn_get_table failed");
+        return false;
+    }
+
+    return true;
+}
+
+
+bool mdv_unbinn_get_table(binn const *obj, mdv_msg_get_table *msg)
+{
+    if (0
+        || !binn_object_get_uint64((void*)obj, "0", (uint64 *)(msg->id.u64 + 0))
+        || !binn_object_get_uint64((void*)obj, "1", (uint64 *)(msg->id.u64 + 1)))
+    {
+        MDV_LOGE("unbinn_get_table failed");
+        return false;
+    }
+
+    return true;
 }
 
 

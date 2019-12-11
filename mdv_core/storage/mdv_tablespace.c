@@ -238,6 +238,17 @@ static mdv_rowdata * mdv_tablespace_rowdata_create(mdv_tablespace *tablespace, m
 }
 
 
+static mdv_errno mdv_tablespace_evt_get_table(void *arg, mdv_event *event)
+{
+    mdv_tablespace  *tablespace = arg;
+    mdv_evt_table   *get_table  = (mdv_evt_table *)event;
+
+    get_table->table = mdv_tables_get(tablespace->tables, &get_table->table_id);
+
+    return get_table->table ? MDV_OK : MDV_FAILED;
+}
+
+
 static mdv_errno mdv_tablespace_evt_create_table(void *arg, mdv_event *event)
 {
     mdv_tablespace       *tablespace   = arg;
@@ -307,7 +318,8 @@ static mdv_errno mdv_tablespace_evt_topology(void *arg, mdv_event *event)
 
 static const mdv_event_handler_type mdv_tablespace_handlers[] =
 {
-    { MDV_EVT_CREATE_TABLE,   mdv_tablespace_evt_create_table },
+    { MDV_EVT_TABLE_GET,      mdv_tablespace_evt_get_table },
+    { MDV_EVT_TABLE_CREATE,   mdv_tablespace_evt_create_table },
     { MDV_EVT_ROWDATA_INSERT, mdv_tablespace_evt_rowdata_insert },
     { MDV_EVT_TRLOG_GET,      mdv_tablespace_evt_trlog_get },
     { MDV_EVT_TRLOG_APPLY,    mdv_tablespace_evt_trlog_apply },

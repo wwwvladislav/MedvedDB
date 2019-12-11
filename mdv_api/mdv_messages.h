@@ -16,6 +16,9 @@
      | CREATE TABLE >>>>>               |
      |        <<<<< TABLE INFO / STATUS |
      |                                  |
+     | GET TABLE >>>>>                  |
+     |        <<<<< TABLE DESC / STATUS |
+     |                                  |
      | GET TOPOLOGY >>>>>               |
      |          <<<<< TOPOLOGY / STATUS |
      |                                  |
@@ -56,21 +59,31 @@ mdv_message_def(create_table, 3,
 );
 
 
-mdv_message_def(table_info, 4,
+mdv_message_def(get_table, 4,
     mdv_uuid    id;
 );
 
 
-mdv_message_def(get_topology, 5,
+mdv_message_def(table_info, 5,
+    mdv_uuid    id;
 );
 
 
-mdv_message_def(topology, 6,
+mdv_message_def(table_desc, 6,
+    mdv_table_desc const *desc;
+);
+
+
+mdv_message_def(get_topology, 7,
+);
+
+
+mdv_message_def(topology, 8,
     mdv_topology *topology;
 );
 
 
-mdv_message_def(insert_into, 7,
+mdv_message_def(insert_into, 9,
     mdv_uuid    table;
     binn       *rows;
 );
@@ -90,6 +103,10 @@ bool                        mdv_unbinn_status               (binn const *obj, md
 bool                        mdv_binn_create_table           (mdv_msg_create_table const *msg, binn *obj);
 bool                        mdv_unbinn_create_table         (binn const *obj, mdv_msg_create_table *msg);
 void                        mdv_create_table_free           (mdv_msg_create_table *msg);
+
+
+bool                        mdv_binn_get_table              (mdv_msg_get_table const *msg, binn *obj);
+bool                        mdv_unbinn_get_table            (binn const *obj, mdv_msg_get_table *msg);
 
 
 bool                        mdv_binn_table_info             (mdv_msg_table_info const *msg, binn *obj);

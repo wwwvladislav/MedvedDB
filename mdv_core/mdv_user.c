@@ -14,6 +14,7 @@
 #include <mdv_ctypes.h>
 #include <mdv_mutex.h>
 #include <mdv_safeptr.h>
+#include <mdv_serialization.h>
 #include <stdatomic.h>
 
 
@@ -105,6 +106,32 @@ static mdv_errno mdv_user_table_info_reply(mdv_user *user, uint16_t id, mdv_msg_
     mdv_errno err = mdv_user_reply(user, &message);
 
     binn_free(&table_info);
+
+    return err;
+}
+
+
+static mdv_errno mdv_user_table_desc_reply(mdv_user *user, uint16_t id, mdv_msg_table_desc const *msg)
+{
+    binn table_desc;
+
+    if (!mdv_binn_table_desc(msg->desc, &table_desc))
+        return MDV_FAILED;
+
+    mdv_msg message =
+    {
+        .hdr =
+        {
+            .id = mdv_msg_table_desc_id,
+            .number = id,
+            .size = binn_size(&table_desc)
+        },
+        .payload = binn_ptr(&table_desc)
+    };
+
+    mdv_errno err = mdv_user_reply(user, &message);
+
+    binn_free(&table_desc);
 
     return err;
 }
@@ -220,6 +247,65 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
     }
     else
         MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_create_table_id));
+
+    binn_free(&binn_msg);
+
+    if (err != MDV_OK)
+    {
+        mdv_msg_status const status =
+        {
+            .err = err,
+            .message = ""
+        };
+
+        err = mdv_user_status_reply(user, msg->hdr.number, &status);
+    }
+
+    return err;
+}
+
+
+static mdv_errno mdv_user_get_table_handler(mdv_msg const *msg, void *arg)
+{
+    MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
+
+    mdv_user *user = arg;
+
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_msg_name(msg->hdr.id));
+        return MDV_FAILED;
+    }
+
+    mdv_msg_get_table get_table;
+
+    mdv_errno err = MDV_FAILED;
+
+    if (mdv_unbinn_get_table(&binn_msg, &get_table))
+    {
+        mdv_evt_table *evt = mdv_evt_table_create(&get_table.id);
+
+        if (evt)
+        {
+            err = mdv_ebus_publish(user->ebus, &evt->base, MDV_EVT_SYNC);
+
+            if (err == MDV_OK)
+            {
+                mdv_msg_table_desc const table_desc =
+                {
+                    .desc = mdv_table_description(evt->table)
+                };
+
+                err = mdv_user_table_desc_reply(user, msg->hdr.number, &table_desc);
+            }
+
+            mdv_evt_table_release(evt);
+        }
+    }
+    else
+        MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_get_table_id));
 
     binn_free(&binn_msg);
 
@@ -393,6 +479,7 @@ mdv_user * mdv_user_create(mdv_uuid const *uuid,
     {
         { mdv_message_id(hello),         &mdv_user_wave_handler,         user },
         { mdv_message_id(create_table),  &mdv_user_create_table_handler, user },
+        { mdv_message_id(get_table),     &mdv_user_get_table_handler,    user },
         { mdv_message_id(insert_into),   &mdv_user_insert_into_handler,  user },
         { mdv_message_id(get_topology),  &mdv_user_get_topology_handler, user },
     };

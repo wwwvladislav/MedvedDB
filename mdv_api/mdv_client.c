@@ -725,9 +725,18 @@ static mdv_errno mdv_rowset_enumerator_impl_next(mdv_enumerator *enumerator)
 {
     mdv_rowset_enumerator_impl *impl = (mdv_rowset_enumerator_impl *)enumerator;
 
-    // TODO
+    if(!impl->it)
+    {
+        // Fetch first set of rows
+    }
+    else if (mdv_enumerator_next(impl->it) != MDV_OK)
+    {
+        // Fetch next set of rows
+    }
+    else
+        return MDV_OK;
 
-    return MDV_NO_IMPL;
+    return MDV_FAILED;
 }
 
 

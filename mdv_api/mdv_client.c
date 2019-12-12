@@ -200,7 +200,7 @@ static mdv_errno mdv_client_table_info_handler(mdv_msg const *msg, mdv_msg_table
     if(!binn_load(msg->payload, &binn_msg))
         return MDV_FAILED;
 
-    if (!mdv_unbinn_table_info(&binn_msg, table_info))
+    if (!mdv_msg_table_info_unbinn(&binn_msg, table_info))
     {
         MDV_LOGE("Invalid table information");
         binn_free(&binn_msg);
@@ -237,7 +237,7 @@ static mdv_errno mdv_client_status_handler(mdv_msg const *msg, mdv_errno *err)
     if(!binn_load(msg->payload, &binn_msg))
         return MDV_FAILED;
 
-    if (!mdv_unbinn_status(&binn_msg, &status))
+    if (!mdv_msg_status_unbinn(&binn_msg, &status))
     {
         MDV_LOGE("Invalid status");
         binn_free(&binn_msg);
@@ -259,7 +259,7 @@ static mdv_errno mdv_client_topology_handler(mdv_msg const *msg, mdv_topology **
     if(!binn_load(msg->payload, &binn_msg))
         return MDV_FAILED;
 
-    *topology = mdv_unbinn_topology(&binn_msg);
+    *topology = mdv_msg_topology_unbinn(&binn_msg);
 
     if (!*topology)
     {
@@ -406,7 +406,7 @@ mdv_table * mdv_create_table(mdv_client *client, mdv_table_desc *desc)
 
     binn create_table_msg;
 
-    if (!mdv_binn_create_table(&create_table, &create_table_msg))
+    if (!mdv_msg_create_table_binn(&create_table, &create_table_msg))
         return 0;
 
     mdv_msg req =
@@ -471,7 +471,7 @@ mdv_table * mdv_get_table(mdv_client *client, mdv_uuid const *uuid)
 
     binn get_table_msg;
 
-    if (!mdv_binn_get_table(&get_table, &get_table_msg))
+    if (!mdv_msg_get_table_binn(&get_table, &get_table_msg))
         return 0;
 
     mdv_msg req =
@@ -537,7 +537,7 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
 
     binn binn_msg;
 
-    if (!mdv_binn_get_topology(&get_topology, &binn_msg))
+    if (!mdv_msg_get_topology_binn(&get_topology, &binn_msg))
         return MDV_FAILED;
 
     mdv_msg req =
@@ -603,7 +603,7 @@ mdv_hashmap * mdv_get_routes(mdv_client *client)
 }
 
 
-mdv_errno mdv_insert_row(mdv_client *client, mdv_table *table, mdv_rowset *rowset)
+mdv_errno mdv_insert_rows(mdv_client *client, mdv_table *table, mdv_rowset *rowset)
 {
     binn serialized_rows;
 
@@ -618,7 +618,7 @@ mdv_errno mdv_insert_row(mdv_client *client, mdv_table *table, mdv_rowset *rowse
 
     binn insert_into_msg;
 
-    if (!mdv_binn_insert_into(&insert_msg, &insert_into_msg))
+    if (!mdv_msg_insert_into_binn(&insert_msg, &insert_into_msg))
     {
         binn_free(&serialized_rows);
         return MDV_FAILED;
@@ -663,4 +663,10 @@ mdv_errno mdv_insert_row(mdv_client *client, mdv_table *table, mdv_rowset *rowse
     }
 
     return err;
+}
+
+
+mdv_enumerator * mdv_get_rows(mdv_client *client, mdv_table *table)
+{
+    return 0;
 }

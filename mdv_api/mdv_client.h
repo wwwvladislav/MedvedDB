@@ -65,7 +65,7 @@ void mdv_client_close(mdv_client *client);
  * @param table  [in]   Table description
  *               [out]  Table identifier (table->id)
  *
- * @return On success, returns nonsero table descriptor.
+ * @return On success, returns nonzero table descriptor.
  * @return On error, returns NULL
  */
 mdv_table * mdv_create_table(mdv_client *client, mdv_table_desc *table);
@@ -77,7 +77,7 @@ mdv_table * mdv_create_table(mdv_client *client, mdv_table_desc *table);
  * @param client [in]   DB client
  * @param uuid [in]     Table identifier
  *
- * @return On success, returns nonsero table descriptor.
+ * @return On success, returns nonzero table descriptor.
  * @return On error, returns NULL
  */
 mdv_table * mdv_get_table(mdv_client *client, mdv_uuid const *uuid);
@@ -120,4 +120,16 @@ mdv_hashmap * mdv_get_routes(mdv_client *client);
  * @return On success, return MDV_OK.
  * @return On error, return non zero value
  */
-mdv_errno mdv_insert_row(mdv_client *client, mdv_table *table, mdv_rowset *rowset);
+mdv_errno mdv_insert_rows(mdv_client *client, mdv_table *table, mdv_rowset *rowset);
+
+
+/**
+ * @brief Creates table rows iterator
+ *
+ * @param client [in]    DB client
+ * @param table [in]     table descriptor
+ *
+ * @return On success, return nonzero rows enumerator (mdv_row's set)
+ * @return On error, return NULL pointer
+ */
+mdv_enumerator * mdv_get_rows(mdv_client *client, mdv_table *table);

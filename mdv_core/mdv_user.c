@@ -37,7 +37,7 @@ static mdv_errno mdv_user_wave_reply(mdv_user *user, uint16_t id, mdv_msg_hello 
 {
     binn hey;
 
-    if (!mdv_binn_hello(msg, &hey))
+    if (!mdv_msg_hello_binn(msg, &hey))
         return MDV_FAILED;
 
     mdv_msg message =
@@ -63,7 +63,7 @@ static mdv_errno mdv_user_status_reply(mdv_user *user, uint16_t id, mdv_msg_stat
 {
     binn status;
 
-    if (!mdv_binn_status(msg, &status))
+    if (!mdv_msg_status_binn(msg, &status))
         return MDV_FAILED;
 
     mdv_msg message =
@@ -89,7 +89,7 @@ static mdv_errno mdv_user_table_info_reply(mdv_user *user, uint16_t id, mdv_msg_
 {
     binn table_info;
 
-    if (!mdv_binn_table_info(msg, &table_info))
+    if (!mdv_msg_table_info_binn(msg, &table_info))
         return MDV_FAILED;
 
     mdv_msg message =
@@ -141,7 +141,7 @@ static mdv_errno mdv_user_topology_reply(mdv_user *user, uint16_t id, mdv_msg_to
 {
     binn obj;
 
-    if (!mdv_binn_topology(msg, &obj))
+    if (!mdv_msg_topology_binn(msg, &obj))
         return MDV_FAILED;
 
     mdv_msg message =
@@ -179,7 +179,7 @@ static mdv_errno mdv_user_wave_handler(mdv_msg const *msg, void *arg)
 
     mdv_msg_hello client_hello = {};
 
-    if (!mdv_unbinn_hello(&binn_msg, &client_hello))
+    if (!mdv_msg_hello_unbinn(&binn_msg, &client_hello))
     {
         MDV_LOGE("Invalid '%s' message", mdv_msg_name(msg->hdr.id));
         binn_free(&binn_msg);
@@ -222,7 +222,7 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
 
     mdv_errno err = MDV_FAILED;
 
-    if (mdv_unbinn_create_table(&binn_msg, &create_table))
+    if (mdv_msg_create_table_unbinn(&binn_msg, &create_table))
     {
         mdv_evt_create_table *evt = mdv_evt_create_table_create(&create_table.desc);
 
@@ -243,7 +243,7 @@ static mdv_errno mdv_user_create_table_handler(mdv_msg const *msg, void *arg)
             mdv_evt_create_table_release(evt);
         }
 
-        mdv_create_table_free(&create_table);
+        mdv_msg_create_table_free(&create_table);
     }
     else
         MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_create_table_id));
@@ -283,7 +283,7 @@ static mdv_errno mdv_user_get_table_handler(mdv_msg const *msg, void *arg)
 
     mdv_errno err = MDV_FAILED;
 
-    if (mdv_unbinn_get_table(&binn_msg, &get_table))
+    if (mdv_msg_get_table_unbinn(&binn_msg, &get_table))
     {
         mdv_evt_table *evt = mdv_evt_table_create(&get_table.id);
 
@@ -342,7 +342,7 @@ static mdv_errno mdv_user_insert_into_handler(mdv_msg const *msg, void *arg)
 
     mdv_errno err = MDV_FAILED;
 
-    if (mdv_unbinn_insert_into(&binn_msg, &insert_into))
+    if (mdv_msg_insert_into_unbinn(&binn_msg, &insert_into))
     {
         mdv_evt_rowdata_ins_req *evt = mdv_evt_rowdata_ins_req_create(&insert_into.table, insert_into.rows);
 

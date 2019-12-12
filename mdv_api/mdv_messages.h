@@ -24,6 +24,9 @@
      |                                  |
      | INSERT INTO >>>>>                |
      |                     <<<<< STATUS |
+     |                                  |
+     | FETCH >>>>>                      |
+     |            <<<<< ROWSET / STATUS |
  */
 
 
@@ -89,37 +92,59 @@ mdv_message_def(insert_into, 9,
 );
 
 
+mdv_message_def(fetch, 10,
+    mdv_uuid    table;
+    bool        first;
+    mdv_objid   rowid;
+    uint32_t    count;
+);
+
+
+mdv_message_def(rowset, 11,
+    mdv_objid   rowid;
+    binn       *rows;
+);
+
+
 char const *                mdv_msg_name                    (uint32_t id);
 
 
-bool                        mdv_binn_hello                  (mdv_msg_hello const *msg, binn *obj);
-bool                        mdv_unbinn_hello                (binn const *obj, mdv_msg_hello *msg);
+bool                        mdv_msg_hello_binn              (mdv_msg_hello const *msg, binn *obj);
+bool                        mdv_msg_hello_unbinn            (binn const *obj, mdv_msg_hello *msg);
 
 
-bool                        mdv_binn_status                 (mdv_msg_status const *msg, binn *obj);
-bool                        mdv_unbinn_status               (binn const *obj, mdv_msg_status *msg);
+bool                        mdv_msg_status_binn             (mdv_msg_status const *msg, binn *obj);
+bool                        mdv_msg_status_unbinn           (binn const *obj, mdv_msg_status *msg);
 
 
-bool                        mdv_binn_create_table           (mdv_msg_create_table const *msg, binn *obj);
-bool                        mdv_unbinn_create_table         (binn const *obj, mdv_msg_create_table *msg);
-void                        mdv_create_table_free           (mdv_msg_create_table *msg);
+bool                        mdv_msg_create_table_binn       (mdv_msg_create_table const *msg, binn *obj);
+bool                        mdv_msg_create_table_unbinn     (binn const *obj, mdv_msg_create_table *msg);
+void                        mdv_msg_create_table_free       (mdv_msg_create_table *msg);
 
 
-bool                        mdv_binn_get_table              (mdv_msg_get_table const *msg, binn *obj);
-bool                        mdv_unbinn_get_table            (binn const *obj, mdv_msg_get_table *msg);
+bool                        mdv_msg_get_table_binn          (mdv_msg_get_table const *msg, binn *obj);
+bool                        mdv_msg_get_table_unbinn        (binn const *obj, mdv_msg_get_table *msg);
 
 
-bool                        mdv_binn_table_info             (mdv_msg_table_info const *msg, binn *obj);
-bool                        mdv_unbinn_table_info           (binn const *obj, mdv_msg_table_info *msg);
+bool                        mdv_msg_table_info_binn         (mdv_msg_table_info const *msg, binn *obj);
+bool                        mdv_msg_table_info_unbinn       (binn const *obj, mdv_msg_table_info *msg);
 
 
-bool                        mdv_binn_get_topology           (mdv_msg_get_topology const *msg, binn *obj);
-bool                        mdv_unbinn_get_topology         (binn const *obj, mdv_msg_get_topology *msg);
+bool                        mdv_msg_get_topology_binn       (mdv_msg_get_topology const *msg, binn *obj);
+bool                        mdv_msg_get_topology_unbinn     (binn const *obj, mdv_msg_get_topology *msg);
 
 
-bool                        mdv_binn_topology               (mdv_msg_topology const *msg, binn *obj);
-mdv_topology              * mdv_unbinn_topology             (binn const *obj);
+bool                        mdv_msg_topology_binn           (mdv_msg_topology const *msg, binn *obj);
+mdv_topology              * mdv_msg_topology_unbinn         (binn const *obj);
 
 
-bool                        mdv_binn_insert_into            (mdv_msg_insert_into const *msg, binn *obj);
-bool                        mdv_unbinn_insert_into          (binn const * obj, mdv_msg_insert_into *msg);
+bool                        mdv_msg_insert_into_binn        (mdv_msg_insert_into const *msg, binn *obj);
+bool                        mdv_msg_insert_into_unbinn      (binn const * obj, mdv_msg_insert_into *msg);
+
+
+bool                        mdv_msg_fetch_binn              (mdv_msg_fetch const *msg, binn *obj);
+bool                        mdv_msg_fetch_unbinn            (binn const * obj, mdv_msg_fetch *msg);
+
+
+bool                        mdv_msg_rowset_binn             (mdv_msg_rowset const *msg, binn *obj);
+bool                        mdv_msg_rowset_unbinn           (binn const * obj, mdv_msg_rowset *msg);

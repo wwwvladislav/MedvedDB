@@ -269,7 +269,7 @@ static void mdv_test_scenario(char const *args)
 
     // Data insertion into the table
 
-    mdv_errno err = mdv_insert_row(client, table, rowset);
+    mdv_errno err = mdv_insert_rows(client, table, rowset);
 
     if (err == MDV_OK)
         MDV_INF("New row was successfully inserted\n");
@@ -277,6 +277,19 @@ static void mdv_test_scenario(char const *args)
         MDV_INF("New row insertion failed with error '%s' (%d)\n", mdv_strerror(err), err);
 
     mdv_rowset_release(rowset);
+
+    // Read data from the table
+
+    mdv_enumerator *enumerator = mdv_get_rows(client, table);
+
+    if (enumerator)
+    {
+        // TODO
+        mdv_enumerator_release(enumerator);
+    }
+    else
+        MDV_INF("Rows iteration failed\n");
+
     mdv_table_release(table);
 }
 

@@ -35,7 +35,7 @@ static mdv_errno mdv_user_wave(mdv_channel *channel)
 
     binn hey;
 
-    if (!mdv_binn_hello(&hello, &hey))
+    if (!mdv_msg_hello_binn(&hello, &hey))
         return MDV_FAILED;
 
     mdv_msg message =
@@ -72,7 +72,7 @@ static mdv_errno mdv_channel_wave_handler(mdv_msg const *msg, void *arg)
 
     mdv_msg_hello client_hello = {};
 
-    if (!mdv_unbinn_hello(&binn_msg, &client_hello))
+    if (!mdv_msg_hello_unbinn(&binn_msg, &client_hello))
     {
         MDV_LOGE("Invalid '%s' message", mdv_msg_name(msg->hdr.id));
         binn_free(&binn_msg);

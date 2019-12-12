@@ -284,7 +284,15 @@ static void mdv_test_scenario(char const *args)
 
     if (enumerator)
     {
-        // TODO
+        while(mdv_enumerator_next(enumerator) == MDV_OK)
+        {
+            mdv_row *row = mdv_enumerator_current(enumerator);
+
+            // TODO
+
+            (void)row;
+        }
+
         mdv_enumerator_release(enumerator);
     }
     else

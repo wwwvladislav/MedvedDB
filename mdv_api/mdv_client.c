@@ -17,6 +17,9 @@
 #include <signal.h>
 
 
+enum { MDV_FETCH_SIZE = 64 };       // limit for rows fetching
+
+
 static               int total_connections = 0;
 static _Thread_local int thread_connections = 0;
 
@@ -721,6 +724,76 @@ static mdv_errno mdv_rowset_enumerator_impl_reset(mdv_enumerator *enumerator)
 }
 
 
+static mdv_errno mdv_rowset_enumerator_impl_fetch_first(mdv_rowset_enumerator_impl *impl)
+{
+    mdv_client *client = impl->client;
+
+    mdv_msg_fetch const msg =
+    {
+        .table = *mdv_table_uuid(impl->table),
+        .first = true,
+        .count = MDV_FETCH_SIZE
+    };
+
+    binn binn_msg;
+
+    if (!mdv_msg_fetch_binn(&msg, &binn_msg))
+        return MDV_FAILED;
+
+    mdv_msg req =
+    {
+        .hdr =
+        {
+            .id   = mdv_msg_fetch_id,
+            .size = binn_size(&binn_msg)
+        },
+        .payload = binn_ptr(&binn_msg)
+    };
+
+    mdv_msg resp;
+
+    mdv_errno err = mdv_client_send(client, &req, &resp, client->response_timeout);
+
+    binn_free(&binn_msg);
+
+    if (err == MDV_OK)
+    {
+        switch(resp.hdr.id)
+        {
+            case mdv_message_id(rowset):
+            {
+                // TODO
+                printf("Rowset!!!");
+                break;
+            }
+
+            case mdv_message_id(status):
+            {
+                if (mdv_client_status_handler(&resp, &err) == MDV_OK)
+                    break;
+                // fallthrough
+            }
+
+            default:
+                err = MDV_FAILED;
+                MDV_LOGE("Unexpected response");
+                break;
+        }
+
+        mdv_free_msg(&resp);
+    }
+
+    return err;
+}
+
+
+static mdv_errno mdv_rowset_enumerator_impl_fetch_next(mdv_rowset_enumerator_impl *impl)
+{
+    // TODO
+    return MDV_FAILED;
+}
+
+
 static mdv_errno mdv_rowset_enumerator_impl_next(mdv_enumerator *enumerator)
 {
     mdv_rowset_enumerator_impl *impl = (mdv_rowset_enumerator_impl *)enumerator;
@@ -728,10 +801,12 @@ static mdv_errno mdv_rowset_enumerator_impl_next(mdv_enumerator *enumerator)
     if(!impl->it)
     {
         // Fetch first set of rows
+        return mdv_rowset_enumerator_impl_fetch_first(impl);
     }
     else if (mdv_enumerator_next(impl->it) != MDV_OK)
     {
         // Fetch next set of rows
+        return mdv_rowset_enumerator_impl_fetch_next(impl);
     }
     else
         return MDV_OK;

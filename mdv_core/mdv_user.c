@@ -15,6 +15,7 @@
 #include <mdv_mutex.h>
 #include <mdv_safeptr.h>
 #include <mdv_serialization.h>
+#include <mdv_uuid.h>
 #include <stdatomic.h>
 
 
@@ -22,6 +23,7 @@ struct mdv_user
 {
     mdv_conctx              base;           ///< connection context base type
     atomic_uint             rc;             ///< References counter
+    mdv_uuid                session;        ///< Current session identifier
     mdv_uuid                uuid;           ///< Current node uuid
     mdv_dispatcher         *dispatcher;     ///< Messages dispatcher
     mdv_ebus               *ebus;           ///< Events bus
@@ -353,7 +355,7 @@ static mdv_errno mdv_user_insert_into_handler(mdv_msg const *msg, void *arg)
         }
     }
     else
-        MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_create_table_id));
+        MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_insert_into_id));
 
     binn_free(&binn_msg);
 
@@ -398,6 +400,59 @@ static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
     };
 
     return mdv_user_status_reply(user, msg->hdr.number, &status);
+}
+
+
+static mdv_errno mdv_user_fetch_handler(mdv_msg const *msg, void *arg)
+{
+    MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
+
+    mdv_user    *user   = arg;
+
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_msg_name(msg->hdr.id));
+        return MDV_FAILED;
+    }
+
+    mdv_msg_fetch fetch;
+
+    mdv_errno err = MDV_FAILED;
+
+    if (mdv_msg_fetch_unbinn(&binn_msg, &fetch))
+    {
+        mdv_evt_rowdata_fetch * evt = mdv_evt_rowdata_fetch_create(&user->session,
+                                                                   msg->hdr.number,
+                                                                   &fetch.table,
+                                                                   fetch.first,
+                                                                   &fetch.rowid,
+                                                                   fetch.count);
+
+        if (evt)
+        {
+            err = mdv_ebus_publish(user->ebus, &evt->base, MDV_EVT_DEFAULT);
+            mdv_evt_rowdata_fetch_release(evt);
+        }
+    }
+    else
+        MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_fetch_id));
+
+    binn_free(&binn_msg);
+
+    if (err != MDV_OK)
+    {
+        mdv_msg_status const status =
+        {
+            .err = err,
+            .message = ""
+        };
+
+        err = mdv_user_status_reply(user, msg->hdr.number, &status);
+    }
+
+    return err;
 }
 
 
@@ -446,6 +501,7 @@ mdv_user * mdv_user_create(mdv_uuid const *uuid,
     user->base.type = MDV_CTX_USER;
     user->base.vptr = &iconctx;
 
+    user->session = mdv_uuid_generate();
     user->uuid = *uuid;
 
     user->ebus = mdv_ebus_retain(ebus);
@@ -482,6 +538,7 @@ mdv_user * mdv_user_create(mdv_uuid const *uuid,
         { mdv_message_id(get_table),     &mdv_user_get_table_handler,    user },
         { mdv_message_id(insert_into),   &mdv_user_insert_into_handler,  user },
         { mdv_message_id(get_topology),  &mdv_user_get_topology_handler, user },
+        { mdv_message_id(fetch),         &mdv_user_fetch_handler,        user },
     };
 
     for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)

@@ -5,6 +5,7 @@
 #include "mdv_p2pmsg.h"
 #include "mdv_syncer.h"
 #include "mdv_committer.h"
+#include "mdv_fetcher.h"
 #include "mdv_conman.h"
 #include "mdv_tracker.h"
 #include "storage/mdv_metainf.h"
@@ -26,6 +27,7 @@ struct mdv_core
     mdv_metainf     metainf;            ///< Metainformation (DB version, node UUID etc.)
     mdv_syncer     *syncer;             ///< Data synchronizer
     mdv_committer  *committer;          ///< Data committer
+    mdv_fetcher    *fetcher;            ///< Data fetcher
 
     struct
     {
@@ -37,7 +39,7 @@ struct mdv_core
 
 mdv_core * mdv_core_create()
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(9);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(10);
 
     mdv_core *core = mdv_alloc(sizeof(mdv_core), "core");
 
@@ -199,6 +201,37 @@ mdv_core * mdv_core_create()
     mdv_rollbacker_push(rollbacker, mdv_committer_release, core->committer);
 
 
+    // Data fetcher
+    {
+        mdv_jobber_config const jconfig =
+        {
+            .threadpool =
+            {
+                .size = MDV_CONFIG.fetcher.workers,
+                .thread_attrs =
+                {
+                    .stack_size = MDV_THREAD_STACK_SIZE
+                }
+            },
+            .queue =
+            {
+                .count = MDV_CONFIG.fetcher.queues
+            }
+        };
+
+        core->fetcher = mdv_fetcher_create(core->ebus, &jconfig);
+    }
+
+    if (!core->fetcher)
+    {
+        MDV_LOGE("Data fetcher creation failed");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_fetcher_release, core->fetcher);
+
+
     // Connections manager
     mdv_conman_config const conman_config =
     {
@@ -252,6 +285,7 @@ void mdv_core_free(mdv_core *core)
         mdv_syncer_release(core->syncer);
         mdv_conman_free(core->conman);
         mdv_committer_release(core->committer);
+        mdv_fetcher_release(core->fetcher);
         mdv_tracker_release(core->tracker);
         mdv_storage_release(core->storage.metainf);
         mdv_tablespace_close(core->storage.tablespace);

@@ -359,6 +359,7 @@ static void mdv_syncerlog_free(mdv_syncerlog *syncerlog)
 
     while(atomic_load_explicit(&syncerlog->active_jobs, memory_order_relaxed) > 0)
         mdv_sleep(100);
+
     mdv_jobber_release(syncerlog->jobber);
 
     char peer_uuid[33];

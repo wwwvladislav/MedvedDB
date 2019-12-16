@@ -67,6 +67,12 @@ typedef struct
 
     struct
     {
+        uint32_t   workers;         ///< Number of thread pool workers for data fetching from database
+        uint32_t   queues;          ///< Number of event queues
+    } fetcher;                      ///< Data fetcher settings
+
+    struct
+    {
         uint32_t    size;           ///< Nimber of defined cluster nodes
         char const *nodes[MDV_MAX_CLUSTER_SIZE];    ///< Defined cluster nodes
     } cluster;                      ///< Cluster settings

@@ -101,6 +101,17 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         MDV_LOGI("Datasync batch size: %u", config->datasync.batch_size);
     }
 
+    else if (MDV_CFG_MATCH("fetcher", "workers"))
+    {
+        config->fetcher.workers = atoi(value);
+        MDV_LOGI("Fetcher workers: %u", config->fetcher.workers);
+    }
+    else if (MDV_CFG_MATCH("fetcher", "queues"))
+    {
+        config->fetcher.queues = atoi(value);
+        MDV_LOGI("Fetcher queues: %u", config->fetcher.queues);
+    }
+
     else if (MDV_CFG_MATCH("cluster", "node"))
     {
         mdv_string node = mdv_str_pdup(config->mempool, value);
@@ -174,6 +185,9 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.datasync.workers             = 4;
     MDV_CONFIG.datasync.queues              = 4;
     MDV_CONFIG.datasync.batch_size          = 32;
+
+    MDV_CONFIG.fetcher.workers              = 4;
+    MDV_CONFIG.fetcher.queues               = 4;
 
     MDV_CONFIG.cluster.size                 = 0;
 }

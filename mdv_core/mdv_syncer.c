@@ -6,7 +6,6 @@
 #include <mdv_alloc.h>
 #include <mdv_log.h>
 #include <mdv_rollbacker.h>
-#include <mdv_eventfd.h>
 #include <mdv_threads.h>
 #include <mdv_safeptr.h>
 #include <mdv_router.h>
@@ -416,8 +415,12 @@ static void mdv_syncer_free(mdv_syncer *syncer)
                              mdv_syncer_handlers,
                              sizeof mdv_syncer_handlers / sizeof *mdv_syncer_handlers);
 
-    mdv_jobber_release(syncer->jobber);
     mdv_ebus_release(syncer->ebus);
+
+    while(atomic_load_explicit(&syncer->active_jobs, memory_order_relaxed) > 0)
+        mdv_sleep(100);
+
+    mdv_jobber_release(syncer->jobber);
 
     mdv_hashmap_foreach(syncer->peers, mdv_syncer_peer, peer)
         mdv_syncerino_release(peer->syncerino);

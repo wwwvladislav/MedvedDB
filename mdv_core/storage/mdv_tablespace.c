@@ -205,11 +205,11 @@ static mdv_trlog * mdv_tablespace_trlog_create(mdv_tablespace *tablespace, mdv_u
 
 static mdv_rowdata * mdv_tablespace_rowdata_create(mdv_tablespace *tablespace, mdv_uuid const *table_id)
 {
-    mdv_rowdata_ref *ref = 0;
+    mdv_rowdata *rowdata = 0;
 
     if (mdv_mutex_lock(&tablespace->rowdata_mutex) == MDV_OK)
     {
-        ref = mdv_hashmap_find(tablespace->rowdata, table_id);
+        mdv_rowdata_ref *ref = mdv_hashmap_find(tablespace->rowdata, table_id);
 
         if(!ref)
         {
@@ -231,14 +231,35 @@ static mdv_rowdata * mdv_tablespace_rowdata_create(mdv_tablespace *tablespace, m
             }
         }
 
+        if (ref)
+            rowdata = mdv_rowdata_retain(ref->rowdata);
+
         mdv_mutex_unlock(&tablespace->rowdata_mutex);
     }
 
-    return ref ? mdv_rowdata_retain(ref->rowdata) : 0;
+    return rowdata;
 }
 
 
-static mdv_errno mdv_tablespace_evt_get_table(void *arg, mdv_event *event)
+static mdv_rowdata * mdv_tablespace_rowdata_get(mdv_tablespace *tablespace, mdv_uuid const *table_id)
+{
+    mdv_rowdata *rowdata = 0;
+
+    if (mdv_mutex_lock(&tablespace->rowdata_mutex) == MDV_OK)
+    {
+        mdv_rowdata_ref *ref = mdv_hashmap_find(tablespace->rowdata, table_id);
+
+        if (ref)
+            rowdata = mdv_rowdata_retain(ref->rowdata);
+
+        mdv_mutex_unlock(&tablespace->rowdata_mutex);
+    }
+
+    return rowdata;
+}
+
+
+static mdv_errno mdv_tablespace_evt_table_get(void *arg, mdv_event *event)
 {
     mdv_tablespace  *tablespace = arg;
     mdv_evt_table   *get_table  = (mdv_evt_table *)event;
@@ -249,7 +270,7 @@ static mdv_errno mdv_tablespace_evt_get_table(void *arg, mdv_event *event)
 }
 
 
-static mdv_errno mdv_tablespace_evt_create_table(void *arg, mdv_event *event)
+static mdv_errno mdv_tablespace_evt_table_create(void *arg, mdv_event *event)
 {
     mdv_tablespace       *tablespace   = arg;
     mdv_evt_create_table *create_table = (mdv_evt_create_table *)event;
@@ -273,6 +294,17 @@ static mdv_errno mdv_tablespace_evt_rowdata_insert(void *arg, mdv_event *event)
     mdv_tablespace          *tablespace  = arg;
     mdv_evt_rowdata_ins_req *rowdata_ins = (mdv_evt_rowdata_ins_req *)event;
     return mdv_tablespace_log_rowset(tablespace, &rowdata_ins->table_id, rowdata_ins->rows);
+}
+
+
+static mdv_errno mdv_tablespace_evt_rowdata_get(void *arg, mdv_event *event)
+{
+    mdv_tablespace  *tablespace = arg;
+    mdv_evt_rowdata *get_rowdata  = (mdv_evt_rowdata *)event;
+
+    get_rowdata->rowdata = mdv_tablespace_rowdata_get(tablespace, &get_rowdata->table);
+
+    return get_rowdata->rowdata ? MDV_OK : MDV_FAILED;
 }
 
 
@@ -318,9 +350,10 @@ static mdv_errno mdv_tablespace_evt_topology(void *arg, mdv_event *event)
 
 static const mdv_event_handler_type mdv_tablespace_handlers[] =
 {
-    { MDV_EVT_TABLE_GET,      mdv_tablespace_evt_get_table },
-    { MDV_EVT_TABLE_CREATE,   mdv_tablespace_evt_create_table },
+    { MDV_EVT_TABLE_GET,      mdv_tablespace_evt_table_get },
+    { MDV_EVT_TABLE_CREATE,   mdv_tablespace_evt_table_create },
     { MDV_EVT_ROWDATA_INSERT, mdv_tablespace_evt_rowdata_insert },
+    { MDV_EVT_ROWDATA_GET,    mdv_tablespace_evt_rowdata_get },
     { MDV_EVT_TRLOG_GET,      mdv_tablespace_evt_trlog_get },
     { MDV_EVT_TRLOG_APPLY,    mdv_tablespace_evt_trlog_apply },
     { MDV_EVT_TOPOLOGY,       mdv_tablespace_evt_topology },

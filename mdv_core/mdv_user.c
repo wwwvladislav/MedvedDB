@@ -5,6 +5,7 @@
 #include "event/mdv_evt_topology.h"
 #include "event/mdv_evt_table.h"
 #include "event/mdv_evt_rowdata.h"
+#include "event/mdv_evt_status.h"
 #include <mdv_messages.h>
 #include <mdv_version.h>
 #include <mdv_alloc.h>
@@ -464,9 +465,28 @@ static mdv_errno mdv_user_evt_topology(void *arg, mdv_event *event)
 }
 
 
+static mdv_errno mdv_user_evt_status(void *arg, mdv_event *event)
+{
+    mdv_user *user = arg;
+    mdv_evt_status *evt = (mdv_evt_status *)event;
+
+    if (mdv_uuid_cmp(&evt->session, &user->session) != 0)
+        return MDV_OK;
+
+    mdv_msg_status const status =
+    {
+        .err = evt->err,
+        .message = evt->message
+    };
+
+    return mdv_user_status_reply(user, evt->request_id, &status);
+}
+
+
 static const mdv_event_handler_type mdv_user_handlers[] =
 {
-    { MDV_EVT_TOPOLOGY,    mdv_user_evt_topology },
+    { MDV_EVT_TOPOLOGY,     mdv_user_evt_topology },
+    { MDV_EVT_STATUS,       mdv_user_evt_status },
 };
 
 

@@ -14,6 +14,7 @@
 #include <mdv_rowset.h>
 #include <mdv_uuid.h>
 #include <mdv_binn.h>
+#include "../storage/mdv_rowdata.h"
 
 
 typedef struct
@@ -47,3 +48,15 @@ mdv_evt_rowdata_fetch * mdv_evt_rowdata_fetch_create(mdv_uuid const  *session,
                                                      uint32_t         count);
 mdv_evt_rowdata_fetch * mdv_evt_rowdata_fetch_retain(mdv_evt_rowdata_fetch *evt);
 uint32_t                mdv_evt_rowdata_fetch_release(mdv_evt_rowdata_fetch *evt);
+
+
+typedef struct
+{
+    mdv_event       base;
+    mdv_uuid        table;      ///< Table identifier (in)
+    mdv_rowdata    *rowdata;    ///< Rowdata storage (out)
+} mdv_evt_rowdata;
+
+mdv_evt_rowdata * mdv_evt_rowdata_create(mdv_uuid const *table);
+mdv_evt_rowdata * mdv_evt_rowdata_retain(mdv_evt_rowdata *evt);
+uint32_t          mdv_evt_rowdata_release(mdv_evt_rowdata *evt);

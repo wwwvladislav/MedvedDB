@@ -9,6 +9,7 @@
 #include <mdv_rowset.h>
 #include <mdv_topology.h>
 #include <mdv_errno.h>
+#include <mdv_bitset.h>
 
 
 /// Client configuration. All options are mandatory.
@@ -128,8 +129,9 @@ mdv_errno mdv_insert_rows(mdv_client *client, mdv_table *table, mdv_rowset *rows
  *
  * @param client [in]    DB client
  * @param table [in]     table descriptor
+ * @param fields [in]    fields mask for reading
  *
  * @return On success, return nonzero rows enumerator (mdv_row's set)
  * @return On error, return NULL pointer
  */
-mdv_enumerator * mdv_get_rows(mdv_client *client, mdv_table *table);
+mdv_enumerator * mdv_get_rows(mdv_client *client, mdv_table *table, mdv_bitset *fields);

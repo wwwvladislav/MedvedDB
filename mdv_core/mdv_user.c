@@ -429,13 +429,16 @@ static mdv_errno mdv_user_fetch_handler(mdv_msg const *msg, void *arg)
                                                                    &fetch.table,
                                                                    fetch.first,
                                                                    &fetch.rowid,
-                                                                   fetch.count);
+                                                                   fetch.count,
+                                                                   fetch.fields);
 
         if (evt)
         {
             err = mdv_ebus_publish(user->ebus, &evt->base, MDV_EVT_DEFAULT);
             mdv_evt_rowdata_fetch_release(evt);
         }
+
+        mdv_msg_fetch_free(&fetch);
     }
     else
         MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_fetch_id));

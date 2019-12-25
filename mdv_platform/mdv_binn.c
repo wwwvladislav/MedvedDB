@@ -28,12 +28,12 @@ void mdv_binn_set_allocator()
 }
 
 
-uint32_t mdv_binn_list_length(binn *list)
+uint32_t mdv_binn_list_length(binn const *list)
 {
     binn_iter iter;
     binn value;
     uint32_t n = 0;
-    binn_list_foreach(list, value)
+    binn_list_foreach((binn*)list, value)
         ++n;
     return n;
 }

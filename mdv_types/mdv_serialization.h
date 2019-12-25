@@ -4,6 +4,7 @@
 #include "mdv_rowset.h"
 #include <mdv_binn.h>
 #include <mdv_topology.h>
+#include <mdv_bitset.h>
 #include <stdbool.h>
 
 
@@ -18,6 +19,9 @@ mdv_uuid const * mdv_unbinn_table_uuid(binn const *obj);
 
 bool             mdv_binn_rowset(mdv_rowset *rowset, binn *list, mdv_table_desc const *table_desc);
 mdv_rowset *     mdv_unbinn_rowset(binn const *list, mdv_table_desc const *table_desc);
+
+bool             mdv_binn_bitset(mdv_bitset const *bitset, binn *obj);
+mdv_bitset     * mdv_unbinn_bitset(binn const *obj);
 
 
 /**

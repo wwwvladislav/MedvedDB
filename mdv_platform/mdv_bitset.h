@@ -23,9 +23,18 @@ mdv_bitset * mdv_bitset_create(size_t size, mdv_allocator const *allocator);
 
 
 /**
- * @brief Deallocates bitset created by mdv_bitset_create()
+ * @brief Retains bitset.
+ * @details Reference counter is increased by one.
  */
-void mdv_bitset_free(mdv_bitset *bitset);
+mdv_bitset * mdv_bitset_retain(mdv_bitset *bitset);
+
+
+/**
+ * @brief Releases bitset.
+ * @details Reference counter is decreased by one.
+ *          When the reference counter reaches zero, the bitset's destructor is called.
+ */
+uint32_t mdv_bitset_release(mdv_bitset *bitset);
 
 
 /**
@@ -47,6 +56,27 @@ bool mdv_bitset_test(mdv_bitset const *bitset, size_t pos);
 
 
 /**
+ * @brief Fills bitset with given value.
+ */
+void mdv_bitset_fill(mdv_bitset *bitset, bool val);
+
+
+/**
  * @brief Returns the bitset size
  */
 size_t mdv_bitset_size(mdv_bitset const *bitset);
+
+
+/**
+ * @brief Returns the bitset capacity. Bitset alignment is 32 bits.
+ */
+size_t mdv_bitset_capacity(mdv_bitset const *bitset);
+
+
+enum { MDV_BITSET_ALIGNMENT = sizeof(uint32_t) };
+
+
+/**
+ * @brief Returns pointer to the underlying array serving as element storage.
+ */
+uint32_t const * mdv_bitset_data(mdv_bitset const *bitset);

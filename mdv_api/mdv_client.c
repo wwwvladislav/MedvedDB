@@ -678,6 +678,7 @@ typedef struct
     mdv_table              *table;      ///< Table descriptor
     mdv_rowset             *rowset;     ///< Current fetched rowset
     mdv_enumerator         *it;         ///< Fetched rowset iterator
+    mdv_bitset             *fields;     ///< Fields mask for fetching
 } mdv_rowset_enumerator_impl;
 
 
@@ -703,6 +704,7 @@ static uint32_t mdv_rowset_enumerator_impl_release(mdv_enumerator *enumerator)
             mdv_table_release(impl->table);
             mdv_rowset_release(impl->rowset);
             mdv_enumerator_release(impl->it);
+            mdv_bitset_release(impl->fields);
             memset(impl, 0, sizeof *impl);
             mdv_free(enumerator, "rowset_enumerator");
         }
@@ -732,7 +734,8 @@ static mdv_errno mdv_rowset_enumerator_impl_fetch_first(mdv_rowset_enumerator_im
     {
         .table = *mdv_table_uuid(impl->table),
         .first = true,
-        .count = MDV_FETCH_SIZE
+        .count = MDV_FETCH_SIZE,
+        .fields = impl->fields
     };
 
     binn binn_msg;
@@ -822,7 +825,7 @@ static void * mdv_rowset_enumerator_impl_current(mdv_enumerator *enumerator)
 }
 
 
-mdv_enumerator * mdv_get_rows(mdv_client *client, mdv_table *table)
+mdv_enumerator * mdv_get_rows(mdv_client *client, mdv_table *table, mdv_bitset *fields)
 {
     mdv_rowset_enumerator_impl *enumerator = mdv_alloc(sizeof(mdv_rowset_enumerator_impl), "rowset_enumerator");
 
@@ -849,6 +852,7 @@ mdv_enumerator * mdv_get_rows(mdv_client *client, mdv_table *table)
     enumerator->table = mdv_table_retain(table);
     enumerator->rowset = 0;
     enumerator->it = 0;
+    enumerator->fields = mdv_bitset_retain(fields);
 
     memset(&enumerator->rowid, 0, sizeof enumerator->rowid);
 

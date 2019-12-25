@@ -3,6 +3,7 @@
 #include <mdv_alloc.h>
 #include <mdv_rollbacker.h>
 #include <assert.h>
+#include <limits.h>
 
 
 static bool binn_field(mdv_field const *field, binn *obj)
@@ -977,4 +978,64 @@ bool mdv_unbinn_uuid(binn *obj, mdv_uuid *uuid)
     }
 
     return true;
+}
+
+
+bool mdv_binn_bitset(mdv_bitset const *bitset, binn *obj)
+{
+    if (!binn_create_list(obj))
+    {
+        MDV_LOGE("binn_bitset failed");
+        return false;
+    }
+
+    size_t const capacity = mdv_bitset_capacity(bitset);
+    int32_t const *data = (int32_t const *)mdv_bitset_data(bitset);
+
+    for(size_t i = 0; i < capacity / MDV_BITSET_ALIGNMENT; ++i)
+    {
+        if (!binn_list_add_int32(obj, data[i]))
+        {
+            MDV_LOGE("binn_bitset failed");
+            binn_free(obj);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+mdv_bitset * mdv_unbinn_bitset(binn const *obj)
+{
+    size_t const list_len = mdv_binn_list_length(obj);
+    size_t const capacity = list_len * MDV_BITSET_ALIGNMENT * CHAR_BIT;
+
+    mdv_bitset *bitset = mdv_bitset_create(capacity, &mdv_default_allocator);
+
+    if (!bitset)
+    {
+        MDV_LOGE("unbinn_bitset failed. No memory.");
+        return 0;
+    }
+
+    int32_t *data = (int32_t *)mdv_bitset_data(bitset);
+
+    binn_iter iter;
+    binn value;
+    uint32_t n = 0;
+
+    binn_list_foreach((binn*)obj, value)
+    {
+        if (!binn_get_int32(&value, data + n))
+        {
+            MDV_LOGE("unbinn_bitset failed");
+            mdv_bitset_release(bitset);
+            return 0;
+        }
+
+        ++n;
+    }
+
+    return bitset;
 }

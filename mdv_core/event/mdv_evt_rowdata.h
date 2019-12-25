@@ -14,6 +14,7 @@
 #include <mdv_rowset.h>
 #include <mdv_uuid.h>
 #include <mdv_binn.h>
+#include <mdv_bitset.h>
 #include "../storage/mdv_rowdata.h"
 
 
@@ -38,6 +39,7 @@ typedef struct
     bool            first;      ///< Flag indicates that the first row should be fetched
     mdv_objid       rowid;      ///< First row identifier to be fetched
     uint32_t        count;      ///< Batch size to be fetched
+    mdv_bitset     *fields;     ///< Fields mask
 } mdv_evt_rowdata_fetch;
 
 mdv_evt_rowdata_fetch * mdv_evt_rowdata_fetch_create(mdv_uuid const  *session,
@@ -45,7 +47,8 @@ mdv_evt_rowdata_fetch * mdv_evt_rowdata_fetch_create(mdv_uuid const  *session,
                                                      mdv_uuid const  *table,
                                                      bool             first,
                                                      mdv_objid const *rowid,
-                                                     uint32_t         count);
+                                                     uint32_t         count,
+                                                     mdv_bitset      *fields);
 mdv_evt_rowdata_fetch * mdv_evt_rowdata_fetch_retain(mdv_evt_rowdata_fetch *evt);
 uint32_t                mdv_evt_rowdata_fetch_release(mdv_evt_rowdata_fetch *evt);
 

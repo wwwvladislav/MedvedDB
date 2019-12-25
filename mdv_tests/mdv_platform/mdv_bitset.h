@@ -19,5 +19,9 @@ MU_TEST(platform_bitset)
     mdv_bitset_reset(bitset, 15);
     mu_check(!mdv_bitset_test(bitset, 15));
 
-    mdv_bitset_free(bitset);
+    mdv_bitset_fill(bitset, 0);
+    mu_check(!mdv_bitset_test(bitset, 0));
+    mu_check(!mdv_bitset_test(bitset, 32));
+
+    mdv_bitset_release(bitset);
 }

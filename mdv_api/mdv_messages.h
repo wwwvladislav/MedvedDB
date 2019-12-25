@@ -6,6 +6,7 @@
 #include <mdv_table.h>
 #include <mdv_rowset.h>
 #include <mdv_topology.h>
+#include <mdv_bitset.h>
 
 
 /*
@@ -97,6 +98,7 @@ mdv_message_def(fetch, 10,
     bool        first;
     mdv_objid   rowid;
     uint32_t    count;
+    mdv_bitset *fields;
 );
 
 
@@ -144,6 +146,7 @@ bool                        mdv_msg_insert_into_unbinn      (binn const * obj, m
 
 bool                        mdv_msg_fetch_binn              (mdv_msg_fetch const *msg, binn *obj);
 bool                        mdv_msg_fetch_unbinn            (binn const * obj, mdv_msg_fetch *msg);
+void                        mdv_msg_fetch_free              (mdv_msg_fetch *msg);
 
 
 bool                        mdv_msg_rowset_binn             (mdv_msg_rowset const *msg, binn *obj);

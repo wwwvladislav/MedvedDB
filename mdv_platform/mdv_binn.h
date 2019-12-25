@@ -5,4 +5,4 @@
 
 void mdv_binn_set_allocator();
 
-uint32_t mdv_binn_list_length(binn *list);
+uint32_t mdv_binn_list_length(binn const *list);

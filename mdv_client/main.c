@@ -280,23 +280,34 @@ static void mdv_test_scenario(char const *args)
 
     // Read data from the table
 
-    mdv_enumerator *enumerator = mdv_get_rows(client, table);
+    mdv_bitset *mask = mdv_bitset_create(desc.size, &mdv_default_allocator);
 
-    if (enumerator)
+    if (mask)
     {
-        while(mdv_enumerator_next(enumerator) == MDV_OK)
+        mdv_bitset_fill(mask, true);
+
+        mdv_enumerator *enumerator = mdv_get_rows(client, table, mask);
+
+        if (enumerator)
         {
-            mdv_row *row = mdv_enumerator_current(enumerator);
+            while(mdv_enumerator_next(enumerator) == MDV_OK)
+            {
+                mdv_row *row = mdv_enumerator_current(enumerator);
 
-            // TODO
+                // TODO
 
-            (void)row;
+                (void)row;
+            }
+
+            mdv_enumerator_release(enumerator);
         }
+        else
+            MDV_INF("Rows iteration failed\n");
 
-        mdv_enumerator_release(enumerator);
+        mdv_bitset_release(mask);
     }
     else
-        MDV_INF("Rows iteration failed\n");
+        MDV_INF("Rows iteration failed. No memory for fields mask.\n");
 
     mdv_table_release(table);
 }

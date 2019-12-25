@@ -28,6 +28,7 @@ typedef struct mdv_fetcher_context
     bool            first;          ///< Flag indicates that the first row should be fetched
     mdv_objid       rowid;          ///< First row identifier to be fetched
     uint32_t        count;          ///< Batch size to be fetched
+    mdv_bitset     *fields;         ///< Fields mask to be fetched
 } mdv_fetcher_context;
 
 
@@ -92,6 +93,7 @@ static void mdv_fetcher_finalize(mdv_job_base *job)
     mdv_fetcher_context *ctx     = (mdv_fetcher_context *)job->data;
     mdv_fetcher         *fetcher = ctx->fetcher;
     mdv_fetcher_release(fetcher);
+    mdv_bitset_release(ctx->fields);
     atomic_fetch_sub_explicit(&fetcher->active_jobs, 1, memory_order_relaxed);
     mdv_free(job, "fetcher_job");
 }
@@ -116,6 +118,7 @@ static mdv_errno mdv_fetcher_job_emit(mdv_fetcher *fetcher, mdv_evt_rowdata_fetc
     job->data.first         = fetch->first;
     job->data.rowid         = fetch->rowid;
     job->data.count         = fetch->count;
+    job->data.fields        = mdv_bitset_retain(fetch->fields);
 
     mdv_errno err = mdv_jobber_push(fetcher->jobber, (mdv_job_base*)job);
 

@@ -262,9 +262,18 @@ bool mdv_msg_insert_into_unbinn(binn const * obj, mdv_msg_insert_into *msg)
 
 bool mdv_msg_fetch_binn(mdv_msg_fetch const *msg, binn *obj)
 {
+    binn fields;
+
+    if (!mdv_binn_bitset(msg->fields, &fields))
+    {
+        MDV_LOGE("mdv_msg_fetch_binn failed");
+        return false;
+    }
+
     if (!binn_create_object(obj))
     {
         MDV_LOGE("mdv_msg_fetch_binn failed");
+        binn_free(&fields);
         return false;
     }
 
@@ -272,12 +281,16 @@ bool mdv_msg_fetch_binn(mdv_msg_fetch const *msg, binn *obj)
         || !binn_object_set_uint64(obj, "T0", msg->table.u64[0])
         || !binn_object_set_uint64(obj, "T1", msg->table.u64[1])
         || !binn_object_set_bool(obj,   "F",  msg->first)
-        || !binn_object_set_uint32(obj, "C",  msg->count))
+        || !binn_object_set_uint32(obj, "C",  msg->count)
+        || !binn_object_set_list(obj,   "M",  &fields))
     {
-        binn_free(obj);
         MDV_LOGE("mdv_msg_fetch_binn failed");
+        binn_free(obj);
+        binn_free(&fields);
         return false;
     }
+
+    binn_free(&fields);
 
     if (!msg->first)
     {
@@ -285,8 +298,8 @@ bool mdv_msg_fetch_binn(mdv_msg_fetch const *msg, binn *obj)
             || !binn_object_set_uint32(obj, "R0", msg->rowid.node)
             || !binn_object_set_uint64(obj, "R1", msg->rowid.id))
         {
-            binn_free(obj);
             MDV_LOGE("mdv_msg_fetch_binn failed");
+            binn_free(obj);
             return false;
         }
     }
@@ -298,12 +311,15 @@ bool mdv_msg_fetch_binn(mdv_msg_fetch const *msg, binn *obj)
 bool mdv_msg_fetch_unbinn(binn const * obj, mdv_msg_fetch *msg)
 {
     BOOL first = 0;
+    binn *fields = 0;
 
     if (0
         || !binn_object_get_uint64((void*)obj, "T0", (uint64 *)(msg->table.u64 + 0))
         || !binn_object_get_uint64((void*)obj, "T1", (uint64 *)(msg->table.u64 + 1))
         || !binn_object_get_bool((void*)obj,   "F",  &first)
-        || !binn_object_get_uint32((void*)obj, "C",  &msg->count))
+        || !binn_object_get_uint32((void*)obj, "C",  &msg->count)
+        || !binn_object_get_list((void*)obj,   "M",  (void**)&fields)
+        )
     {
         MDV_LOGE("mdv_msg_fetch_unbinn failed");
         return false;
@@ -322,7 +338,25 @@ bool mdv_msg_fetch_unbinn(binn const * obj, mdv_msg_fetch *msg)
         }
     }
 
+    msg->fields = mdv_unbinn_bitset(fields);
+
+    if (!msg->fields)
+    {
+        MDV_LOGE("mdv_msg_fetch_unbinn failed");
+        return false;
+    }
+
     return true;
+}
+
+
+void mdv_msg_fetch_free(mdv_msg_fetch *msg)
+{
+    if (msg->fields)
+    {
+        mdv_bitset_release(msg->fields);
+        msg->fields = 0;
+    }
 }
 
 

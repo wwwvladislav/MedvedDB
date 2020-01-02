@@ -368,31 +368,59 @@ bool mdv_msg_rowset_binn(mdv_msg_rowset const *msg, binn *obj)
         return false;
     }
 
-    if (0
-        || !binn_object_set_uint32(obj, "R0", msg->rowid.node)
-        || !binn_object_set_uint64(obj, "R1", msg->rowid.id)
-        || !binn_object_set_list(obj,   "R", (void *)msg->rows))
+    do
     {
-        binn_free(obj);
-        MDV_LOGE("mdv_msg_rowset_binn failed");
-        return false;
-    }
+        if (0
+            || !binn_object_set_list(obj, "R", (void *)msg->rows)
+            || !binn_object_set_bool(obj, "L", msg->last))
+            break;
 
-    return true;
+        if (!msg->last)
+        {
+            if (0
+                || !binn_object_set_uint32(obj, "R0", msg->next_rowid.node)
+                || !binn_object_set_uint64(obj, "R1", msg->next_rowid.id))
+                break;
+        }
+
+        return true;
+    }
+    while(false);
+
+    binn_free(obj);
+    MDV_LOGE("mdv_msg_rowset_binn failed");
+
+    return false;
 }
 
 
 bool mdv_msg_rowset_unbinn(binn const * obj, mdv_msg_rowset *msg)
 {
-    if (0
-        || !binn_object_get_uint32((void*)obj, "R0", &msg->rowid.node)
-        || !binn_object_get_uint64((void*)obj, "R1", (uint64 *)&msg->rowid.id)
-        || !binn_object_get_list((void*)obj,   "R", (void**)&msg->rows))
+    do
     {
-        MDV_LOGE("mdv_msg_rowset_unbinn failed");
-        return false;
-    }
+        BOOL last = 0;
 
-    return true;
+        if(0
+           || !binn_object_get_list((void*)obj, "R", (void**)&msg->rows)
+           || !binn_object_get_bool((void*)obj, "L", &last))
+            break;
+
+        msg->last = last ? true : false;
+
+        if (!msg->last)
+        {
+            if (0
+                || !binn_object_get_uint32((void*)obj, "R0", &msg->next_rowid.node)
+                || !binn_object_get_uint64((void*)obj, "R1", (uint64 *)&msg->next_rowid.id))
+                break;
+        }
+
+        return true;
+    }
+    while(false);
+
+    MDV_LOGE("mdv_msg_rowset_unbinn failed");
+
+    return false;
 }
 

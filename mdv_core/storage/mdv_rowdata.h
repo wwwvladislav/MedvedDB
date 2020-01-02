@@ -12,6 +12,7 @@
 #include <mdv_def.h>
 #include <mdv_types.h>
 #include <mdv_table.h>
+#include <mdv_rowset.h>
 
 
 /// Rowdata storage
@@ -74,3 +75,5 @@ mdv_errno mdv_rowdata_reserve(mdv_rowdata *rowdata, uint32_t range, uint64_t *id
  */
 mdv_errno mdv_rowdata_add_raw(mdv_rowdata *rowdata, mdv_objid const *id, mdv_data const *row);
 
+
+// mdv_rowset * mdv_rowdata_slice(mdv_rowdata *rowdata, mdv_objid const *id);

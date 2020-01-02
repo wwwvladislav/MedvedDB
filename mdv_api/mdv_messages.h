@@ -26,6 +26,8 @@
      | INSERT INTO >>>>>                |
      |                     <<<<< STATUS |
      |                                  |
+     | SELECT >>>>>                     |
+     |                       <<<<< VIEW |
      | FETCH >>>>>                      |
      |            <<<<< ROWSET / STATUS |
  */
@@ -103,8 +105,9 @@ mdv_message_def(fetch, 10,
 
 
 mdv_message_def(rowset, 11,
-    mdv_objid   rowid;
     binn       *rows;
+    mdv_objid   next_rowid;
+    bool        last;
 );
 
 

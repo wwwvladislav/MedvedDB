@@ -68,6 +68,7 @@ static void mdv_fetcher_fn(mdv_job_base *job)
     if (rowdata)
     {
         // TODO
+        MDV_LOGE("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
         mdv_rowdata_release(rowdata);
     }
 

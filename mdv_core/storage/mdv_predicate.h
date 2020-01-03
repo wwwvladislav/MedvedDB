@@ -1,33 +1,17 @@
+/**
+ * @file mdv_predicate.h
+ * @author Vladislav Volkov (wwwvladislav@gmail.com)
+ * @brief Predicate parser. Predicate is any function which returns true or false.
+ * @version 0.1
+ * @date 2020-01-03, Vladislav Volkov
+ * @copyright Copyright (c) 2020
+ */
 #pragma once
-#include <stdint.h>
-
-
-/// Any function which returns true or false
-typedef struct mdv_predicate mdv_predicate;
-
-
-typedef mdv_predicate *  (*mdv_predicate_retain_fn) (mdv_predicate *);
-typedef uint32_t         (*mdv_predicate_release_fn)(mdv_predicate *);
-
-
-/// Interface for row sets
-struct mdv_predicate
-{
-    mdv_predicate_retain_fn     retain;        ///< Function for predicate retain
-    mdv_predicate_release_fn    release;       ///< Function for predicate release
-};
+#include <mdv_vector.h>
 
 
 /**
- * @brief Retains predicate.
- * @details Reference counter is increased by one.
+ * @brief Creates predicate.
+ * @details Espression is parsed and compiled for VM
  */
-mdv_predicate * mdv_predicate_retain(mdv_predicate *predicate);
-
-
-/**
- * @brief Releases predicate.
- * @details Reference counter is decreased by one.
- *          When the reference counter reaches zero, the predicate is freed.
- */
-uint32_t mdv_predicate_release(mdv_predicate *predicate);
+mdv_vector * mdv_predicate_parse(char const *expression);

@@ -69,6 +69,7 @@ typedef struct
     {
         uint32_t   workers;         ///< Number of thread pool workers for data fetching from database
         uint32_t   queues;          ///< Number of event queues
+        uint32_t   vm_stack;        ///< VM stack size
     } fetcher;                      ///< Data fetcher settings
 
     struct

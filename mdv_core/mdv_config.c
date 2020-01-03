@@ -111,6 +111,11 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         config->fetcher.queues = atoi(value);
         MDV_LOGI("Fetcher queues: %u", config->fetcher.queues);
     }
+    else if (MDV_CFG_MATCH("fetcher", "vm_stack"))
+    {
+        config->fetcher.vm_stack = atoi(value);
+        MDV_LOGI("Fetcher VM stack: %u", config->fetcher.vm_stack);
+    }
 
     else if (MDV_CFG_MATCH("cluster", "node"))
     {
@@ -188,6 +193,7 @@ static void mdv_set_config_defaults()
 
     MDV_CONFIG.fetcher.workers              = 4;
     MDV_CONFIG.fetcher.queues               = 4;
+    MDV_CONFIG.fetcher.vm_stack             = 64;
 
     MDV_CONFIG.cluster.size                 = 0;
 }

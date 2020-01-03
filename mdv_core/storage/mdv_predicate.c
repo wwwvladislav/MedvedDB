@@ -1,15 +1,27 @@
 #include "mdv_predicate.h"
+#include <mdv_vm.h>
+#include <mdv_log.h>
 
 
-mdv_predicate * mdv_predicate_retain(mdv_predicate *predicate)
+static const uint8_t MDV_EMPTY_PREDICATE[] =
 {
-    return predicate->retain(predicate);
-}
+    MDV_VM_PUSH, 1, 0, 1,
+    MDV_VM_END
+};
 
 
-uint32_t mdv_predicate_release(mdv_predicate *predicate)
+mdv_vector * mdv_predicate_parse(char const *expression)
 {
-    if (predicate)
-        return predicate->release(predicate);
-    return 0;
+    mdv_vector *program = mdv_vector_create(sizeof MDV_EMPTY_PREDICATE, 1, &mdv_default_allocator);
+
+    if (program)
+    {
+        // TODO:
+        MDV_LOGW("Expression '%s' wasn't parsed. Default expression is used.", expression);
+        mdv_vector_append(program, MDV_EMPTY_PREDICATE, sizeof MDV_EMPTY_PREDICATE);
+    }
+    else
+        MDV_LOGE("No memory for predicate");
+
+    return program;
 }

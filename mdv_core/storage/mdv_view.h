@@ -12,9 +12,9 @@ typedef struct mdv_view mdv_view;
 /**
  * @brief Creates new view
  */
-mdv_view * mdv_view_create(mdv_rowdata   *source,
-                           mdv_bitset    *fields,
-                           mdv_predicate *filter);
+mdv_view * mdv_view_create(mdv_rowdata  *source,
+                           mdv_bitset   *fields,
+                           char const   *filter);
 
 
 /**

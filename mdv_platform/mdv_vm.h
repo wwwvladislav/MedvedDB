@@ -17,10 +17,10 @@ typedef uint8_t mdv_vm_op_t;
 
 typedef enum
 {
-    MDV_VM_NOP = 0,     /// NOP
-    MDV_VM_PUSH,        /// PUSH Size Data (Size - 2 bytes)
-    MDV_VM_CALL,        /// CALL FunctionId (FunctionId - 2 bytes)
-    MDV_VM_END = 0xff   /// END
+    MDV_VM_NOP = 0,     /// NOP                                     [0]
+    MDV_VM_PUSH,        /// PUSH Size Data (Size - 2 bytes)         [1][01][...]
+    MDV_VM_CALL,        /// CALL FunctionId (FunctionId - 2 bytes)  [2][01]
+    MDV_VM_END = 0xff   /// END                                     [0xFF]
 } mdv_vm_commands;
 
 
@@ -31,14 +31,15 @@ typedef mdv_errno(*mdv_vm_fn)(mdv_stack_base *);
 /**
  * @brief VM program interpretation
  *
- * @param stack [in]   VM stack
- * @param fns [in]     Custom commands handlers
- * @param program [in] Commands sequence
+ * @param stack [in]        VM stack
+ * @param fns [in]          Custom commands handlers
+ * @param fns_count [in]    Custom commands handlers count
+ * @param program [in]      Commands sequence
  *
  * @return On success, returns MDV_OK
  * @return On error, returns non zero error code
  */
-mdv_errno mdv_vm_run(mdv_stack_base *stack, mdv_vm_fn const *fns, uint8_t const *program);
+mdv_errno mdv_vm_run(mdv_stack_base *stack, mdv_vm_fn const *fns, size_t fns_count, uint8_t const *program);
 
 
 /**

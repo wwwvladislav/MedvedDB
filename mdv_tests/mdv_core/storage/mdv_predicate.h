@@ -12,7 +12,7 @@ static void mdv_core_storage_predicate_test_0()
     mdv_stack(uint8_t, 64) stack;
     mdv_stack_clear(stack);
 
-    mu_check(mdv_vm_run((mdv_stack_base*)&stack, 0, mdv_vector_data(predicate)) == MDV_OK);
+    mu_check(mdv_vm_run((mdv_stack_base*)&stack, 0, 0, mdv_vector_data(predicate)) == MDV_OK);
 
     bool res = false;
     mu_check(mdv_vm_result_as_bool((mdv_stack_base*)&stack, &res) == MDV_OK);

@@ -2,7 +2,7 @@
 #include "mdv_log.h"
 
 
-mdv_errno mdv_vm_run(mdv_stack_base *stack, mdv_vm_fn const *fns, uint8_t const *program)
+mdv_errno mdv_vm_run(mdv_stack_base *stack, mdv_vm_fn const *fns, size_t fns_count, uint8_t const *program)
 {
     mdv_errno err = MDV_OK;
 
@@ -42,7 +42,25 @@ mdv_errno mdv_vm_run(mdv_stack_base *stack, mdv_vm_fn const *fns, uint8_t const 
             }
 
             case MDV_VM_CALL:
-                // TODO
+            {
+                ++ip;
+                uint16_t const id = *(uint16_t*)ip;
+                ip += sizeof id;
+
+                if (id >= fns_count)
+                {
+                    ip = 0;
+                    err = MDV_NO_IMPL;
+                    break;
+                }
+
+                err = fns[id](stack);
+
+                if (err != MDV_OK)
+                    ip = 0;
+
+                break;
+            }
 
             default:
             {

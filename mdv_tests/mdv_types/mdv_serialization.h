@@ -68,7 +68,7 @@ static void test_table_serialization()
 }
 
 
-static void test_row_serialization()
+static void test_rowset_serialization()
 {
     mdv_field fields[] =
     {
@@ -143,9 +143,54 @@ static void test_row_serialization()
 }
 
 
+static void test_row_slice_serialization()
+{
+    mdv_field fields[] =
+    {
+        { MDV_FLD_TYPE_CHAR,  1, mdv_str_static("col1") },
+        { MDV_FLD_TYPE_CHAR,  2, mdv_str_static("col2") },
+        { MDV_FLD_TYPE_INT32, 3, mdv_str_static("col3") }
+    };
+
+    mdv_table_desc desc =
+    {
+        .name = mdv_str_static("MyTable"),
+        .size = 3,
+        .fields = fields
+    };
+
+    int arr[] =  { 41, 42 };
+
+    mdv_data const row[] = { { 1, "1" }, { 2, "12" }, { sizeof(arr), arr } };
+
+    binn serialized_row;
+
+    mu_check(mdv_binn_row((mdv_row const *)row, &desc, &serialized_row));
+
+    mdv_bitset *mask = mdv_bitset_create(desc.size, &mdv_default_allocator);
+
+    mu_check(mdv_bitset_set(mask, 0));
+    mu_check(mdv_bitset_set(mask, 2));
+
+    mdv_rowlist_entry *rowlist_entry = mdv_unbinn_row_slice(&serialized_row, &desc, mask);
+    mu_check(rowlist_entry);
+
+    mu_check(rowlist_entry->data.fields[0].size == row[0].size);
+    mu_check(rowlist_entry->data.fields[1].size == row[2].size);
+
+    mu_check(memcmp(rowlist_entry->data.fields[0].ptr, row[0].ptr, row[0].size) == 0);
+    mu_check(memcmp(rowlist_entry->data.fields[1].ptr, row[2].ptr, row[2].size) == 0);
+
+    mdv_free(rowlist_entry, "rowlist_entry");
+    binn_free(&serialized_row);
+    mdv_bitset_release(mask);
+}
+
+
 MU_TEST(types_serialization)
 {
     test_uuid_serialization();
     test_table_serialization();
-    test_row_serialization();
+    test_rowset_serialization();
+    test_row_slice_serialization();
 }

@@ -413,7 +413,7 @@ bool mdv_cursor_get(mdv_cursor *pcursor, mdv_data *key, mdv_data *value, mdv_cur
                                     op == MDV_CURSOR_NEXT_DUP ? MDB_NEXT_DUP :
                                     op == MDV_CURSOR_PREV ? MDB_PREV :
                                     op == MDV_CURSOR_SET ? MDB_SET :
-                                    op == MDV_SET_RANGE ? MDB_SET_RANGE :
+                                    op == MDV_CURSOR_SET_RANGE ? MDB_SET_RANGE :
                                     MDB_FIRST;
     MDB_cursor *cursor = (MDB_cursor *)pcursor->pcursor;
 

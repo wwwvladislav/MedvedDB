@@ -119,6 +119,18 @@ size_t mdv_bitset_size(mdv_bitset const *bitset)
 }
 
 
+size_t mdv_bitset_count(mdv_bitset const *bitset, bool val)
+{
+    size_t n = 0;
+
+    for(size_t i = 0; i < bitset->size; ++i)
+        if (mdv_bitset_test(bitset, i) == val)
+            ++n;
+
+    return n;
+}
+
+
 size_t mdv_bitset_capacity(mdv_bitset const *bitset)
 {
     return mdv_bitset_capacity_calc(bitset->size);

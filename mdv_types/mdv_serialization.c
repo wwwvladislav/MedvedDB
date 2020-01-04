@@ -408,7 +408,7 @@ mdv_uuid const * mdv_unbinn_table_uuid(binn const *obj)
 }
 
 
-static bool mdv_binn_row(mdv_row const *row, mdv_table_desc const *table_desc, binn *list)
+bool mdv_binn_row(mdv_row const *row, mdv_table_desc const *table_desc, binn *list)
 {
     if (!binn_create_list(list))
     {
@@ -483,26 +483,35 @@ static bool mdv_binn_row(mdv_row const *row, mdv_table_desc const *table_desc, b
 }
 
 
-static mdv_rowlist_entry * mdv_unbinn_row(binn const *list, mdv_table_desc const *table_desc)
+static size_t mdv_calc_row_size(binn const           *list,
+                                mdv_table_desc const *table_desc,
+                                uint32_t             *fields_count,
+                                mdv_bitset const     *mask)
 {
+    *fields_count = 0;
+
     binn_iter iter = {};
     binn value = {};
 
     uint32_t const cols = table_desc->size;
     mdv_field const *fields = table_desc->fields;
 
-    uint32_t fields_count = 0;
+    uint32_t n = 0;
 
-    size_t row_size = offsetof(mdv_rowlist_entry, data)
-                        + offsetof(mdv_row, fields)
-                        + sizeof(mdv_data) * cols;
+    size_t row_size = 0;
 
     // Calculate necessary space for row
     binn_list_foreach((void*)list, value)
     {
-        uint32_t const field_type_size = mdv_field_type_size(fields[fields_count].type);
+        if (mask && !mdv_bitset_test(mask, n))
+        {
+            ++n;
+            continue;
+        }
 
-        if(fields[fields_count].limit == 1)
+        uint32_t const field_type_size = mdv_field_type_size(fields[n].type);
+
+        if(fields[n].limit == 1)
             row_size += field_type_size;
         else if (field_type_size == 1)
         {
@@ -517,14 +526,47 @@ static mdv_rowlist_entry * mdv_unbinn_row(binn const *list, mdv_table_desc const
         else
             row_size += field_type_size * mdv_binn_list_length(&value);
 
-        ++fields_count;
+        ++n;
+        ++*fields_count;
     }
 
-    if (fields_count != cols)
+    if (*fields_count > cols)
     {
         MDV_LOGE("Serialized row contains invalid number of fields");
         return 0;
     }
+
+    row_size += offsetof(mdv_rowlist_entry, data)
+                + offsetof(mdv_row, fields)
+                + sizeof(mdv_data) * *fields_count;
+
+    return row_size;
+}
+
+
+mdv_rowlist_entry * mdv_unbinn_row(binn const *list, mdv_table_desc const *table_desc)
+{
+    return mdv_unbinn_row_slice(list, table_desc, 0);
+}
+
+
+mdv_rowlist_entry * mdv_unbinn_row_slice(binn const *list,
+                                         mdv_table_desc const *table_desc,
+                                         mdv_bitset const *mask)
+{
+    binn_iter iter = {};
+    binn value = {};
+
+    uint32_t const cols = table_desc->size;
+    mdv_field const *fields = table_desc->fields;
+
+    uint32_t fields_count = 0;
+
+    // Calculate necessary space for row
+    size_t const row_size = mdv_calc_row_size(list, table_desc, &fields_count, mask);
+
+    if (!row_size)
+        return 0;
 
     // Memory allocation for new row
     mdv_rowlist_entry *entry = mdv_alloc(row_size, "rowlist_entry");
@@ -537,34 +579,40 @@ static mdv_rowlist_entry * mdv_unbinn_row(binn const *list, mdv_table_desc const
 
     mdv_row *row = &entry->data;
 
-    char *dataspace = (char *)(row->fields + cols);
+    char *dataspace = (char *)(row->fields + fields_count);
 
-    fields_count = 0;
+    uint32_t n = 0, field_idx = 0;
 
     // Deserialize row
     binn_list_foreach((void*)list, value)
     {
-        uint32_t const field_type_size = mdv_field_type_size(fields[fields_count].type);
-
-        if(fields[fields_count].limit == 1)
+        if (mask && !mdv_bitset_test(mask, n))
         {
-            if (!binn_get(&value, fields[fields_count].type, dataspace))
+            ++n;
+            continue;
+        }
+
+        uint32_t const field_type_size = mdv_field_type_size(fields[n].type);
+
+        if(fields[n].limit == 1)
+        {
+            if (!binn_get(&value, fields[n].type, dataspace))
             {
                 MDV_LOGE("unbinn_table failed");
                 mdv_free(entry, "rowlist_entry");
                 return 0;
             }
 
-            row->fields[fields_count].size = field_type_size;
-            row->fields[fields_count].ptr = dataspace;
+            row->fields[field_idx].size = field_type_size;
+            row->fields[field_idx].ptr = dataspace;
             dataspace += field_type_size;
         }
         else if (field_type_size == 1)
         {
             int const blob_size = binn_size(&value);
             memcpy(dataspace, binn_ptr(&value), blob_size);
-            row->fields[fields_count].size = blob_size;
-            row->fields[fields_count].ptr = dataspace;
+            row->fields[field_idx].size = blob_size;
+            row->fields[field_idx].ptr = dataspace;
             dataspace += blob_size;
         }
         else
@@ -573,11 +621,11 @@ static mdv_rowlist_entry * mdv_unbinn_row(binn const *list, mdv_table_desc const
             binn arr_value = {};
             uint32_t arr_len = 0;
 
-            row->fields[fields_count].ptr = dataspace;
+            row->fields[field_idx].ptr = dataspace;
 
             binn_list_foreach(&value, arr_value)
             {
-                if (!binn_get(&arr_value, fields[fields_count].type, dataspace))
+                if (!binn_get(&arr_value, fields[n].type, dataspace))
                 {
                     MDV_LOGE("unbinn_table failed");
                     mdv_free(row, "row");
@@ -588,10 +636,11 @@ static mdv_rowlist_entry * mdv_unbinn_row(binn const *list, mdv_table_desc const
                 dataspace += field_type_size;
             }
 
-            row->fields[fields_count].size = field_type_size * arr_len;
+            row->fields[field_idx].size = field_type_size * arr_len;
         }
 
-        ++fields_count;
+        ++n;
+        ++field_idx;
     }
 
     if (dataspace - (char*)entry != row_size)

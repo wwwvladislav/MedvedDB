@@ -19,9 +19,9 @@
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 typedef struct mdv_table_desc
 {
-    mdv_string       name;
-    uint32_t         size;
-    mdv_field const *fields;
+    mdv_string       name;      ///< Table name
+    uint32_t         size;      ///< Fields count
+    mdv_field const *fields;    ///< Fields
 } mdv_table_desc;
 
 

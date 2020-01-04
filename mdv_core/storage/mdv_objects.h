@@ -11,10 +11,19 @@
 #pragma once
 #include <mdv_def.h>
 #include <mdv_types.h>
+#include <mdv_enumerator.h>
 
 
 /// DB objects storage
 typedef struct mdv_objects mdv_objects;
+
+
+/// Key and value pair
+typedef struct mdv_objects_entry
+{
+    mdv_data key;
+    mdv_data value;
+} mdv_objects_entry;
 
 
 /**
@@ -85,3 +94,24 @@ mdv_errno mdv_objects_add(mdv_objects *objs, mdv_data const *id, mdv_data const 
  * @return On error, returns NULL
  */
 void * mdv_objects_get(mdv_objects *objs, mdv_data const *id, void * (*restore)(mdv_data const *));
+
+
+/**
+ * @brief Creates objects iterator from begin of objects collection
+ *
+ * @param objs [in]     DB objects storage
+ *
+ * @return objects iterator from begin of objects collection
+ */
+mdv_enumerator * mdv_objects_enumerator(mdv_objects *objs);
+
+
+/**
+ * @brief Creates objects iterator from given position of objects collection
+ *
+ * @param objs [in]     DB objects storage
+ * @param id [in]       Unique object identifier
+ *
+ * @return objects iterator
+ */
+mdv_enumerator * mdv_objects_enumerator_from(mdv_objects *objs, mdv_data const *id);

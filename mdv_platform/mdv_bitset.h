@@ -68,6 +68,12 @@ size_t mdv_bitset_size(mdv_bitset const *bitset);
 
 
 /**
+ * @brief Returns items number in bitset
+ */
+size_t mdv_bitset_count(mdv_bitset const *bitset, bool val);
+
+
+/**
  * @brief Returns the bitset capacity. Bitset alignment is 32 bits.
  */
 size_t mdv_bitset_capacity(mdv_bitset const *bitset);

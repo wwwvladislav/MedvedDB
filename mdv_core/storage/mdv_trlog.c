@@ -437,7 +437,7 @@ static size_t mdv_trlog_read(mdv_trlog                    *trlog,
 
     size_t n = 0;
 
-    mdv_map_foreach_explicit(transaction, tr_log, entry, MDV_SET_RANGE, MDV_CURSOR_NEXT)
+    mdv_map_foreach_explicit(transaction, tr_log, entry, MDV_CURSOR_SET_RANGE, MDV_CURSOR_NEXT)
     {
         uint64_t const id = *(uint64_t*)entry.key.ptr;
 
@@ -517,7 +517,7 @@ size_t mdv_trlog_range_read(mdv_trlog                    *trlog,
 
     size_t n = 0;
 
-    mdv_map_foreach_explicit(transaction, tr_log, entry, MDV_SET_RANGE, MDV_CURSOR_NEXT)
+    mdv_map_foreach_explicit(transaction, tr_log, entry, MDV_CURSOR_SET_RANGE, MDV_CURSOR_NEXT)
     {
         uint64_t const id = *(uint64_t*)entry.key.ptr;
 

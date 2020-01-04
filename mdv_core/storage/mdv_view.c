@@ -10,12 +10,14 @@ struct mdv_view
 {
     atomic_uint_fast32_t  rc;               ///< References counter
     mdv_rowdata          *source;           ///< Rows source
+    mdv_table            *table;            ///< Table descriptor
     mdv_bitset           *fields;           ///< Fields mask
     mdv_vector           *filter;           ///< Predicate for rows filtering
 };
 
 
 mdv_view * mdv_view_create(mdv_rowdata  *source,
+                           mdv_table    *table,
                            mdv_bitset   *fields,
                            char const   *filter)
 {
@@ -39,6 +41,7 @@ mdv_view * mdv_view_create(mdv_rowdata  *source,
     atomic_init(&view->rc, 1);
 
     view->source = mdv_rowdata_retain(source);
+    view->table = mdv_table_retain(table);
     view->fields = mdv_bitset_retain(fields);
 
     return view;

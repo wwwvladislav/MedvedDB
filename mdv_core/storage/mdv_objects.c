@@ -369,3 +369,162 @@ void * mdv_objects_get(mdv_objects *objs, mdv_data const *id, void * (*restore)(
 
     return obj;
 }
+
+
+/// Objects set enumerator
+typedef struct
+{
+    mdv_enumerator          base;           ///< Base type for rowset enumerator
+    mdv_objects            *objects;        ///< Objects storage
+    mdv_map                 map;            ///< Objects map
+    mdv_transaction         transaction;    ///< Transaction
+    mdv_cursor              cursor;         ///< Cursor for objects access
+    mdv_objects_entry       current;        ///< Current object key and value
+} mdv_objects_enumerator_impl;
+
+
+static mdv_enumerator * mdv_objects_enumerator_impl_retain(mdv_enumerator *enumerator)
+{
+    atomic_fetch_add_explicit(&enumerator->rc, 1, memory_order_acquire);
+    return enumerator;
+}
+
+
+static uint32_t mdv_objects_enumerator_impl_release(mdv_enumerator *enumerator)
+{
+    uint32_t rc = 0;
+
+    if (enumerator)
+    {
+        mdv_objects_enumerator_impl *impl = (mdv_objects_enumerator_impl *)enumerator;
+
+        rc = atomic_fetch_sub_explicit(&enumerator->rc, 1, memory_order_release) - 1;
+
+        if (!rc)
+        {
+            mdv_cursor_close(&impl->cursor);
+            mdv_transaction_abort(&impl->transaction);
+            mdv_map_close(&impl->map);
+            mdv_objects_release(impl->objects);
+            mdv_free(enumerator, "objects_enumerator");
+        }
+    }
+
+    return rc;
+}
+
+
+static mdv_errno mdv_objects_enumerator_impl_reset(mdv_enumerator *enumerator)
+{
+    mdv_objects_enumerator_impl *impl = (mdv_objects_enumerator_impl *)enumerator;
+    return mdv_cursor_get(&impl->cursor, &impl->current.key, &impl->current.value, MDV_CURSOR_FIRST)
+                ? MDV_OK
+                : MDV_FAILED;
+}
+
+
+static mdv_errno mdv_objects_enumerator_impl_next(mdv_enumerator *enumerator)
+{
+    mdv_objects_enumerator_impl *impl = (mdv_objects_enumerator_impl *)enumerator;
+    return mdv_cursor_get(&impl->cursor,
+                          &impl->current.key,
+                          &impl->current.value,
+                          MDV_CURSOR_NEXT)
+                ? MDV_OK
+                : MDV_FAILED;
+}
+
+
+static void * mdv_objects_enumerator_impl_current(mdv_enumerator *enumerator)
+{
+    mdv_objects_enumerator_impl *impl = (mdv_objects_enumerator_impl *)enumerator;
+    return &impl->current;
+}
+
+
+static mdv_enumerator * mdv_objects_enumerator_impl_create(mdv_objects *objs, mdv_cursor_op op)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
+
+    mdv_objects_enumerator_impl *enumerator =
+            mdv_alloc(sizeof(mdv_objects_enumerator_impl),
+                      "objects_enumerator");
+
+    if (!enumerator)
+    {
+        MDV_LOGE("No memory for objects iterator");
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_free, enumerator, "objects_enumerator");
+
+    atomic_init(&enumerator->base.rc, 1);
+
+    static mdv_ienumerator const vtbl =
+    {
+        .retain = mdv_objects_enumerator_impl_retain,
+        .release = mdv_objects_enumerator_impl_release,
+        .reset = mdv_objects_enumerator_impl_reset,
+        .next = mdv_objects_enumerator_impl_next,
+        .current = mdv_objects_enumerator_impl_current
+    };
+
+    enumerator->base.vptr = &vtbl;
+
+    // Start transaction
+    enumerator->transaction = mdv_transaction_start(objs->storage);
+
+    if (!mdv_transaction_ok(enumerator->transaction))
+    {
+        MDV_LOGE("Transaction not started");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &enumerator->transaction);
+
+    // Open objects map
+    enumerator->map = mdv_map_open(&enumerator->transaction, MDV_MAP_OBJECTS, 0);
+
+    if (!mdv_map_ok(enumerator->map))
+    {
+        MDV_LOGE("Table '%s' not opened", MDV_MAP_OBJECTS);
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &enumerator->map);
+
+    // Create cursor for objects iteration
+    enumerator->cursor = mdv_cursor_open_explicit(
+                            &enumerator->map,
+                            &enumerator->transaction,
+                            &enumerator->current.key,
+                            &enumerator->current.value,
+                            op);
+
+    if (!mdv_cursor_ok(enumerator->cursor))
+    {
+        MDV_LOGE("Table '%s' cursor not opened", MDV_MAP_OBJECTS);
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    enumerator->objects = mdv_objects_retain(objs);
+
+    mdv_rollbacker_free(rollbacker);
+
+    return &enumerator->base;
+}
+
+
+mdv_enumerator * mdv_objects_enumerator(mdv_objects *objs)
+{
+    return mdv_objects_enumerator_impl_create(objs, MDV_CURSOR_FIRST);
+}
+
+
+mdv_enumerator * mdv_objects_enumerator_from(mdv_objects *objs, mdv_data const *id)
+{
+    return mdv_objects_enumerator_impl_create(objs, MDV_CURSOR_SET_RANGE);
+}

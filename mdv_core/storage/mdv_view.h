@@ -1,6 +1,7 @@
 #pragma once
 #include "mdv_predicate.h"
 #include "mdv_rowdata.h"
+#include "mdv_table.h"
 #include <mdv_bitset.h>
 #include <mdv_uuid.h>
 
@@ -13,6 +14,7 @@ typedef struct mdv_view mdv_view;
  * @brief Creates new view
  */
 mdv_view * mdv_view_create(mdv_rowdata  *source,
+                           mdv_table    *table,
                            mdv_bitset   *fields,
                            char const   *filter);
 

@@ -165,7 +165,7 @@ typedef enum
     MDV_CURSOR_NEXT_DUP,                    ///< Position at next data item of current key. Only for MDB_DUPSORT
     MDV_CURSOR_PREV,                        ///< Position at previous data item
     MDV_CURSOR_SET,                         ///< Position at specified key
-    MDV_SET_RANGE                           ///< Position at first key greater than or equal to specified key.
+    MDV_CURSOR_SET_RANGE                    ///< Position at first key greater than or equal to specified key.
 } mdv_cursor_op;
 
 

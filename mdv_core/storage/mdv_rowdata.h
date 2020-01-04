@@ -13,6 +13,7 @@
 #include <mdv_types.h>
 #include <mdv_table.h>
 #include <mdv_rowset.h>
+#include <mdv_bitset.h>
 
 
 /// Rowdata storage
@@ -70,10 +71,45 @@ mdv_errno mdv_rowdata_reserve(mdv_rowdata *rowdata, uint32_t range, uint64_t *id
  * @param id [in]      Row identifier
  * @param row [in]     Serialized rowdata (mdv_row_base)
  *
- * @return On success, return MDV_OK.
- * @return On error, return non zero value
+ * @return On success, returns MDV_OK.
+ * @return On error, returns non zero value
  */
 mdv_errno mdv_rowdata_add_raw(mdv_rowdata *rowdata, mdv_objid const *id, mdv_data const *row);
 
 
-// mdv_rowset * mdv_rowdata_slice(mdv_rowdata *rowdata, mdv_objid const *id);
+/**
+ * @brief Rows subset reading
+ *
+ * @param rowdata [in]   Rowdata storage
+ * @param table [in]     Table descriptor
+ * @param fields [in]    Fields mask for reading
+ * @param count [in]     Rows amount for reading
+ * @param rowid [out]    Last row identifier (used to continue reading)
+ *
+ * @return On success, returns nonzero pointer to rows set
+ * @return On error, returns zero pointer
+ */
+mdv_rowset * mdv_rowdata_slice_from_begin(mdv_rowdata      *rowdata,
+                                          mdv_table const  *table,
+                                          mdv_bitset const *fields,
+                                          size_t            count,
+                                          mdv_objid        *rowid);
+
+
+/**
+ * @brief Rows subset reading from given row identifier
+ *
+ * @param rowdata [in]    Rowdata storage
+ * @param table [in]      Table descriptor
+ * @param fields [in]     Fields mask for reading
+ * @param count [in]      Rows amount for reading
+ * @param rowid [in][out] Last row identifier (used to continue reading)
+ *
+ * @return On success, returns nonzero pointer to rows set
+ * @return On error, returns zero pointer
+ */
+mdv_rowset * mdv_rowdata_slice(mdv_rowdata      *rowdata,
+                               mdv_table const  *table,
+                               mdv_bitset const *fields,
+                               size_t            count,
+                               mdv_objid        *rowid);

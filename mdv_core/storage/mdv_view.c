@@ -19,7 +19,7 @@ struct mdv_view
 mdv_view * mdv_view_create(mdv_rowdata  *source,
                            mdv_table    *table,
                            mdv_bitset   *fields,
-                           char const   *filter)
+                           mdv_vector   *filter)
 {
     mdv_view *view = (mdv_view *)mdv_alloc(sizeof(mdv_view), "view");
 
@@ -29,19 +29,11 @@ mdv_view * mdv_view_create(mdv_rowdata  *source,
         return 0;
     }
 
-    view->filter = mdv_predicate_parse(filter);
-
-    if (!view->filter)
-    {
-        MDV_LOGE("View creation failed.");
-        mdv_free(view, "view");
-        return 0;
-    }
-
     atomic_init(&view->rc, 1);
 
+    view->filter = mdv_vector_retain(filter);
     view->source = mdv_rowdata_retain(source);
-    view->table = mdv_table_retain(table);
+    view->table  = mdv_table_retain(table);
     view->fields = mdv_bitset_retain(fields);
 
     return view;
@@ -50,9 +42,10 @@ mdv_view * mdv_view_create(mdv_rowdata  *source,
 
 static void mdv_view_free(mdv_view *view)
 {
-    mdv_rowdata_release(view->source);
-    mdv_bitset_release(view->fields);
     mdv_vector_release(view->filter);
+    mdv_rowdata_release(view->source);
+    mdv_table_release(view->table);
+    mdv_bitset_release(view->fields);
     mdv_free(view, "view");
 }
 

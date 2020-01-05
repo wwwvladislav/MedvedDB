@@ -16,7 +16,7 @@ typedef struct mdv_view mdv_view;
 mdv_view * mdv_view_create(mdv_rowdata  *source,
                            mdv_table    *table,
                            mdv_bitset   *fields,
-                           char const   *filter);
+                           mdv_vector   *filter);
 
 
 /**

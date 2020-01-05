@@ -32,61 +32,6 @@ uint32_t mdv_evt_rowdata_ins_req_release(mdv_evt_rowdata_ins_req *evt)
 }
 
 
-mdv_evt_rowdata_fetch * mdv_evt_rowdata_fetch_create(mdv_uuid const  *session,
-                                                     uint16_t         request_id,
-                                                     mdv_uuid const  *table,
-                                                     bool             first,
-                                                     mdv_objid const *rowid,
-                                                     uint32_t         count,
-                                                     mdv_bitset      *fields)
-{
-    static mdv_ievent vtbl =
-    {
-        .retain = (mdv_event_retain_fn)mdv_evt_rowdata_fetch_retain,
-        .release = (mdv_event_release_fn)mdv_evt_rowdata_fetch_release
-    };
-
-    mdv_evt_rowdata_fetch *event = (mdv_evt_rowdata_fetch*)
-                                mdv_event_create(
-                                    MDV_EVT_ROWDATA_FETCH,
-                                    sizeof(mdv_evt_rowdata_fetch));
-
-    if (event)
-    {
-        event->base.vptr  = &vtbl;
-
-        event->session    = *session;
-        event->request_id = request_id;
-        event->table      = *table;
-        event->first      = first;
-        event->rowid      = *rowid;
-        event->count      = count;
-        event->fields     = mdv_bitset_retain(fields);
-    }
-
-    return event;
-}
-
-
-mdv_evt_rowdata_fetch * mdv_evt_rowdata_fetch_retain(mdv_evt_rowdata_fetch *evt)
-{
-    return (mdv_evt_rowdata_fetch*)mdv_event_retain(&evt->base);
-}
-
-
-uint32_t mdv_evt_rowdata_fetch_release(mdv_evt_rowdata_fetch *evt)
-{
-    mdv_bitset *fields = evt->fields;
-
-    uint32_t rc = mdv_event_release(&evt->base);
-
-    if (!rc)
-        mdv_bitset_release(fields);
-
-    return rc;
-}
-
-
 mdv_evt_rowdata * mdv_evt_rowdata_create(mdv_uuid const *table)
 {
     static mdv_ievent vtbl =

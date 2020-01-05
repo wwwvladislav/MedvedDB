@@ -1,6 +1,7 @@
 #include "mdv_fetcher.h"
 #include "event/mdv_evt_types.h"
 #include "event/mdv_evt_rowdata.h"
+#include "event/mdv_evt_view.h"
 #include "event/mdv_evt_table.h"
 #include "event/mdv_evt_status.h"
 #include "storage/mdv_view.h"
@@ -10,6 +11,7 @@
 #include <mdv_rollbacker.h>
 #include <mdv_hashmap.h>
 #include <mdv_mutex.h>
+#include <mdv_time.h>
 #include <stdatomic.h>
 
 
@@ -43,11 +45,7 @@ typedef struct mdv_fetcher_context
     mdv_fetcher    *fetcher;        ///< Data fetcher
     mdv_uuid        session;        ///< Session identifier
     uint16_t        request_id;     ///< Request identifier (used to associate requests and responses)
-    mdv_uuid        table;          ///< Table identifier
-    bool            first;          ///< Flag indicates that the first row should be fetched
-    mdv_objid       rowid;          ///< First row identifier to be fetched
-    uint32_t        count;          ///< Batch size to be fetched
-    mdv_bitset     *fields;         ///< Fields mask to be fetched
+    uint32_t        view_id;        ///< View identifier
 } mdv_fetcher_context;
 
 
@@ -103,7 +101,7 @@ static void mdv_fetcher_fn(mdv_job_base *job)
 
     mdv_errno err = MDV_FAILED;
     char const *err_msg = "";
-
+/*
     mdv_table *table = mdv_fetcher_table(fetcher, &ctx->table);
 
     if(table)
@@ -126,7 +124,7 @@ static void mdv_fetcher_fn(mdv_job_base *job)
         err_msg = "Table not found";
         MDV_LOGE("Table '%s' not found", mdv_uuid_to_str(&ctx->table).ptr);
     }
-
+*/
     if (err != MDV_OK)
     {
         mdv_evt_status *evt = mdv_evt_status_create(
@@ -149,13 +147,12 @@ static void mdv_fetcher_finalize(mdv_job_base *job)
     mdv_fetcher_context *ctx     = (mdv_fetcher_context *)job->data;
     mdv_fetcher         *fetcher = ctx->fetcher;
     mdv_fetcher_release(fetcher);
-    mdv_bitset_release(ctx->fields);
     atomic_fetch_sub_explicit(&fetcher->active_jobs, 1, memory_order_relaxed);
     mdv_free(job, "fetcher_job");
 }
 
 
-static mdv_errno mdv_fetcher_job_emit(mdv_fetcher *fetcher, mdv_evt_rowdata_fetch const *fetch)
+static mdv_errno mdv_fetcher_job_emit(mdv_fetcher *fetcher, mdv_evt_view_fetch const *fetch)
 {
     mdv_fetcher_job *job = mdv_alloc(sizeof(mdv_fetcher_job), "fetcher_job");
 
@@ -170,11 +167,7 @@ static mdv_errno mdv_fetcher_job_emit(mdv_fetcher *fetcher, mdv_evt_rowdata_fetc
     job->data.fetcher       = mdv_fetcher_retain(fetcher);
     job->data.session       = fetch->session;
     job->data.request_id    = fetch->request_id;
-    job->data.table         = fetch->table;
-    job->data.first         = fetch->first;
-    job->data.rowid         = fetch->rowid;
-    job->data.count         = fetch->count;
-    job->data.fields        = mdv_bitset_retain(fetch->fields);
+    job->data.view_id       = fetch->view_id;
 
     mdv_errno err = mdv_jobber_push(fetcher->jobber, (mdv_job_base*)job);
 
@@ -191,10 +184,143 @@ static mdv_errno mdv_fetcher_job_emit(mdv_fetcher *fetcher, mdv_evt_rowdata_fetc
 }
 
 
-static mdv_errno mdv_fetcher_evt_rowdata_fetch(void *arg, mdv_event *event)
+static mdv_errno mdv_fetcher_view_register(mdv_fetcher  *fetcher,
+                                           mdv_view     *view,
+                                           uint32_t     *view_id)
+{
+    mdv_errno err = mdv_mutex_lock(&fetcher->mutex);
+
+    if(err == MDV_OK)
+    {
+        mdv_fetcher_view const reg_view =
+        {
+            .id = atomic_fetch_add_explicit(&fetcher->idgen, 1, memory_order_relaxed),
+            .view = mdv_view_retain(view),
+            .last_access_time = mdv_gettime(),
+        };
+
+        if (!mdv_hashmap_insert(fetcher->views, &reg_view, sizeof reg_view))
+        {
+            err = MDV_NO_MEM;
+            mdv_view_release(view);
+        }
+
+        mdv_mutex_unlock(&fetcher->mutex);
+    }
+
+    return err;
+}
+
+
+static mdv_errno mdv_fetcher_view_create(mdv_fetcher    *fetcher,
+                                         mdv_uuid const *table_id,
+                                         mdv_bitset     *fields,
+                                         char const     *filter,
+                                         char const    **err_msg,
+                                         uint32_t       *view_id)
+{
+    mdv_errno err = MDV_FAILED;
+
+    mdv_table *table = mdv_fetcher_table(fetcher, table_id);
+
+    if(table)
+    {
+        mdv_rowdata *rowdata = mdv_fetcher_rowdata(fetcher, table_id);
+
+        if (rowdata)
+        {
+            mdv_vector * vm_filter = mdv_predicate_parse(filter);
+
+            if (vm_filter)
+            {
+                mdv_view *view = mdv_view_create(rowdata, table, fields, vm_filter);
+
+                if (view)
+                {
+                    err = mdv_fetcher_view_register(fetcher, view, view_id);
+
+                    if (err != MDV_OK)
+                        *err_msg = "View registration failed";
+
+                    mdv_view_release(view);
+                }
+                else
+                    *err_msg = "View creation failed";
+
+                mdv_vector_release(vm_filter);
+            }
+            else
+                *err_msg = "Rows filter is incorrect";
+
+            mdv_rowdata_release(rowdata);
+        }
+        else
+            *err_msg = "Rowdata not found";
+
+        mdv_table_release(table);
+    }
+    else
+        *err_msg = "Table not found";
+
+    return err;
+}
+
+
+static mdv_errno mdv_fetcher_evt_select(void *arg, mdv_event *event)
 {
     mdv_fetcher *fetcher = arg;
-    mdv_evt_rowdata_fetch *fetch = (mdv_evt_rowdata_fetch *)event;
+    mdv_evt_select *select = (mdv_evt_select *)event;
+
+    uint32_t view_id = ~0u;
+    char const *err_msg = "";
+
+    mdv_errno err = mdv_fetcher_view_create(fetcher,
+                                            &select->table,
+                                            select->fields,
+                                            select->filter,
+                                            &err_msg,
+                                            &view_id);
+
+    if (err == MDV_OK)
+    {
+        mdv_evt_view *evt = mdv_evt_view_create(
+                                        &select->session,
+                                        select->request_id,
+                                        view_id);
+
+        if (evt)
+        {
+            err = mdv_ebus_publish(fetcher->ebus, &evt->base, MDV_EVT_SYNC);
+            mdv_evt_view_release(evt);
+        }
+    }
+    else
+    {
+        MDV_LOGE("Selection reqiest failed for table '%s' with error '%s'",
+                    mdv_uuid_to_str(&select->table).ptr,
+                    err_msg);
+
+        mdv_evt_status *evt = mdv_evt_status_create(
+                                        &select->session,
+                                        select->request_id,
+                                        err,
+                                        err_msg);
+
+        if (evt)
+        {
+            err = mdv_ebus_publish(fetcher->ebus, &evt->base, MDV_EVT_SYNC);
+            mdv_evt_status_release(evt);
+        }
+    }
+
+    return MDV_OK;
+}
+
+
+static mdv_errno mdv_fetcher_evt_view_fetch(void *arg, mdv_event *event)
+{
+    mdv_fetcher *fetcher = arg;
+    mdv_evt_view_fetch *fetch = (mdv_evt_view_fetch *)event;
 
     mdv_errno err = mdv_fetcher_job_emit(fetcher, fetch);
 
@@ -219,7 +345,8 @@ static mdv_errno mdv_fetcher_evt_rowdata_fetch(void *arg, mdv_event *event)
 
 static const mdv_event_handler_type mdv_fetcher_handlers[] =
 {
-    { MDV_EVT_ROWDATA_FETCH,    mdv_fetcher_evt_rowdata_fetch },
+    { MDV_EVT_SELECT,       mdv_fetcher_evt_select },
+    { MDV_EVT_VIEW_FETCH,   mdv_fetcher_evt_view_fetch },
 };
 
 
@@ -313,6 +440,9 @@ static void mdv_fetcher_free(mdv_fetcher *fetcher)
         mdv_sleep(100);
 
     mdv_jobber_release(fetcher->jobber);
+
+    mdv_hashmap_foreach(fetcher->views, mdv_fetcher_view, entry)
+        mdv_view_release(entry->view);
 
     mdv_hashmap_release(fetcher->views);
 

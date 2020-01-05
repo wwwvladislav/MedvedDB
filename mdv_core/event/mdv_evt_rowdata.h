@@ -33,29 +33,6 @@ uint32_t                  mdv_evt_rowdata_ins_req_release(mdv_evt_rowdata_ins_re
 typedef struct
 {
     mdv_event       base;
-    mdv_uuid        session;    ///< Session identifier
-    uint16_t        request_id; ///< Request identifier (used to associate requests and responses)
-    mdv_uuid        table;      ///< Table identifier
-    bool            first;      ///< Flag indicates that the first row should be fetched
-    mdv_objid       rowid;      ///< First row identifier to be fetched
-    uint32_t        count;      ///< Batch size to be fetched
-    mdv_bitset     *fields;     ///< Fields mask
-} mdv_evt_rowdata_fetch;
-
-mdv_evt_rowdata_fetch * mdv_evt_rowdata_fetch_create(mdv_uuid const  *session,
-                                                     uint16_t         request_id,
-                                                     mdv_uuid const  *table,
-                                                     bool             first,
-                                                     mdv_objid const *rowid,
-                                                     uint32_t         count,
-                                                     mdv_bitset      *fields);
-mdv_evt_rowdata_fetch * mdv_evt_rowdata_fetch_retain(mdv_evt_rowdata_fetch *evt);
-uint32_t                mdv_evt_rowdata_fetch_release(mdv_evt_rowdata_fetch *evt);
-
-
-typedef struct
-{
-    mdv_event       base;
     mdv_uuid        table;      ///< Table identifier (in)
     mdv_rowdata    *rowdata;    ///< Rowdata storage (out)
 } mdv_evt_rowdata;

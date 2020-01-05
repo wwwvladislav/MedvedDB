@@ -16,6 +16,8 @@ char const * mdv_msg_name(uint32_t id)
         case mdv_message_id(get_topology):  return "GET TOPOLOGY";
         case mdv_message_id(topology):      return "TOPOLOGY";
         case mdv_message_id(insert_into):   return "INSERT INTO";
+        case mdv_message_id(select):        return "SELECT";
+        case mdv_message_id(view):          return "VIEW";
         case mdv_message_id(fetch):         return "FETCH";
         case mdv_message_id(rowset):        return "ROWSET";
     }
@@ -260,19 +262,19 @@ bool mdv_msg_insert_into_unbinn(binn const * obj, mdv_msg_insert_into *msg)
 }
 
 
-bool mdv_msg_fetch_binn(mdv_msg_fetch const *msg, binn *obj)
+bool mdv_msg_select_binn(mdv_msg_select const *msg, binn *obj)
 {
     binn fields;
 
     if (!mdv_binn_bitset(msg->fields, &fields))
     {
-        MDV_LOGE("mdv_msg_fetch_binn failed");
+        MDV_LOGE("mdv_msg_select_binn failed");
         return false;
     }
 
     if (!binn_create_object(obj))
     {
-        MDV_LOGE("mdv_msg_fetch_binn failed");
+        MDV_LOGE("mdv_msg_select_binn failed");
         binn_free(&fields);
         return false;
     }
@@ -280,11 +282,10 @@ bool mdv_msg_fetch_binn(mdv_msg_fetch const *msg, binn *obj)
     if (0
         || !binn_object_set_uint64(obj, "T0", msg->table.u64[0])
         || !binn_object_set_uint64(obj, "T1", msg->table.u64[1])
-        || !binn_object_set_bool(obj,   "F",  msg->first)
-        || !binn_object_set_uint32(obj, "C",  msg->count)
-        || !binn_object_set_list(obj,   "M",  &fields))
+        || !binn_object_set_list(obj,   "F", (void *)&fields)
+        || !binn_object_set_str(obj,    "S", (char*)msg->filter))
     {
-        MDV_LOGE("mdv_msg_fetch_binn failed");
+        MDV_LOGE("mdv_msg_select_binn failed");
         binn_free(obj);
         binn_free(&fields);
         return false;
@@ -292,16 +293,90 @@ bool mdv_msg_fetch_binn(mdv_msg_fetch const *msg, binn *obj)
 
     binn_free(&fields);
 
-    if (!msg->first)
+    return true;
+}
+
+
+bool mdv_msg_select_unbinn(binn const * obj, mdv_msg_select *msg)
+{
+    binn *fields = 0;
+
+    if (0
+        || !binn_object_get_uint64((void*)obj, "T0", (uint64 *)(msg->table.u64 + 0))
+        || !binn_object_get_uint64((void*)obj, "T1", (uint64 *)(msg->table.u64 + 1))
+        || !binn_object_get_list((void*)obj,   "F", (void**)&fields)
+        || !binn_object_get_str((void*)obj,    "S", (char**)&msg->filter))
     {
-        if (0
-            || !binn_object_set_uint32(obj, "R0", msg->rowid.node)
-            || !binn_object_set_uint64(obj, "R1", msg->rowid.id))
-        {
-            MDV_LOGE("mdv_msg_fetch_binn failed");
-            binn_free(obj);
-            return false;
-        }
+        MDV_LOGE("unbinn_insert_into failed");
+        return false;
+    }
+
+    msg->fields = mdv_unbinn_bitset(fields);
+
+    if (!msg->fields)
+    {
+        MDV_LOGE("unbinn_insert_into failed");
+        return false;
+    }
+
+    return true;
+}
+
+
+void mdv_msg_select_free(mdv_msg_select *msg)
+{
+    if (msg->fields)
+    {
+        mdv_bitset_release(msg->fields);
+        msg->fields = 0;
+    }
+}
+
+
+bool mdv_msg_view_binn(mdv_msg_view const *msg, binn *obj)
+{
+    if (!binn_create_object(obj))
+    {
+        MDV_LOGE("mdv_msg_view_binn failed");
+        return false;
+    }
+
+    if (!binn_object_set_uint32(obj, "V", msg->id))
+    {
+        MDV_LOGE("mdv_msg_view_binn failed");
+        binn_free(obj);
+        return false;
+    }
+
+    return true;
+}
+
+
+bool mdv_msg_view_unbinn(binn const * obj, mdv_msg_view *msg)
+{
+    if (!binn_object_get_uint32((void*)obj, "V", &msg->id))
+    {
+        MDV_LOGE("mdv_msg_view_unbinn failed");
+        return false;
+    }
+
+    return true;
+}
+
+
+bool mdv_msg_fetch_binn(mdv_msg_fetch const *msg, binn *obj)
+{
+    if (!binn_create_object(obj))
+    {
+        MDV_LOGE("mdv_msg_fetch_binn failed");
+        return false;
+    }
+
+    if (!binn_object_set_uint32(obj, "V", msg->id))
+    {
+        MDV_LOGE("mdv_msg_fetch_binn failed");
+        binn_free(obj);
+        return false;
     }
 
     return true;
@@ -310,53 +385,13 @@ bool mdv_msg_fetch_binn(mdv_msg_fetch const *msg, binn *obj)
 
 bool mdv_msg_fetch_unbinn(binn const * obj, mdv_msg_fetch *msg)
 {
-    BOOL first = 0;
-    binn *fields = 0;
-
-    if (0
-        || !binn_object_get_uint64((void*)obj, "T0", (uint64 *)(msg->table.u64 + 0))
-        || !binn_object_get_uint64((void*)obj, "T1", (uint64 *)(msg->table.u64 + 1))
-        || !binn_object_get_bool((void*)obj,   "F",  &first)
-        || !binn_object_get_uint32((void*)obj, "C",  &msg->count)
-        || !binn_object_get_list((void*)obj,   "M",  (void**)&fields)
-        )
-    {
-        MDV_LOGE("mdv_msg_fetch_unbinn failed");
-        return false;
-    }
-
-    msg->first = first ? true : false;
-
-    if (!msg->first)
-    {
-        if (0
-            || !binn_object_get_uint32((void*)obj, "R0", &msg->rowid.node)
-            || !binn_object_get_uint64((void*)obj, "R1", (uint64 *)&msg->rowid.id))
-        {
-            MDV_LOGE("mdv_msg_fetch_unbinn failed");
-            return false;
-        }
-    }
-
-    msg->fields = mdv_unbinn_bitset(fields);
-
-    if (!msg->fields)
+    if (!binn_object_get_uint32((void*)obj, "V", &msg->id))
     {
         MDV_LOGE("mdv_msg_fetch_unbinn failed");
         return false;
     }
 
     return true;
-}
-
-
-void mdv_msg_fetch_free(mdv_msg_fetch *msg)
-{
-    if (msg->fields)
-    {
-        mdv_bitset_release(msg->fields);
-        msg->fields = 0;
-    }
 }
 
 
@@ -368,59 +403,33 @@ bool mdv_msg_rowset_binn(mdv_msg_rowset const *msg, binn *obj)
         return false;
     }
 
-    do
+    if (0
+        || !binn_object_set_list(obj, "R", (void *)msg->rows)
+        || !binn_object_set_bool(obj, "E", msg->end))
     {
-        if (0
-            || !binn_object_set_list(obj, "R", (void *)msg->rows)
-            || !binn_object_set_bool(obj, "L", msg->last))
-            break;
-
-        if (!msg->last)
-        {
-            if (0
-                || !binn_object_set_uint32(obj, "R0", msg->next_rowid.node)
-                || !binn_object_set_uint64(obj, "R1", msg->next_rowid.id))
-                break;
-        }
-
-        return true;
+        MDV_LOGE("mdv_msg_rowset_binn failed");
+        binn_free(obj);
+        return false;
     }
-    while(false);
 
-    binn_free(obj);
-    MDV_LOGE("mdv_msg_rowset_binn failed");
-
-    return false;
+    return true;
 }
 
 
 bool mdv_msg_rowset_unbinn(binn const * obj, mdv_msg_rowset *msg)
 {
-    do
+    BOOL end = 0;
+
+    if(0
+        || !binn_object_get_list((void*)obj, "R", (void**)&msg->rows)
+        || !binn_object_get_bool((void*)obj, "E", &end))
     {
-        BOOL last = 0;
-
-        if(0
-           || !binn_object_get_list((void*)obj, "R", (void**)&msg->rows)
-           || !binn_object_get_bool((void*)obj, "L", &last))
-            break;
-
-        msg->last = last ? true : false;
-
-        if (!msg->last)
-        {
-            if (0
-                || !binn_object_get_uint32((void*)obj, "R0", &msg->next_rowid.node)
-                || !binn_object_get_uint64((void*)obj, "R1", (uint64 *)&msg->next_rowid.id))
-                break;
-        }
-
-        return true;
+        MDV_LOGE("mdv_msg_rowset_unbinn failed");
+        return false;
     }
-    while(false);
 
-    MDV_LOGE("mdv_msg_rowset_unbinn failed");
+    msg->end = end ? true : false;
 
-    return false;
+    return true;
 }
 

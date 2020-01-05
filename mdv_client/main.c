@@ -286,7 +286,7 @@ static void mdv_test_scenario(char const *args)
     {
         mdv_bitset_fill(mask, true);
 
-        mdv_enumerator *enumerator = mdv_get_rows(client, table, mask);
+        mdv_enumerator *enumerator = mdv_select(client, table, mask, "");
 
         if (enumerator)
         {

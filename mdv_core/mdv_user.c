@@ -5,6 +5,7 @@
 #include "event/mdv_evt_topology.h"
 #include "event/mdv_evt_table.h"
 #include "event/mdv_evt_rowdata.h"
+#include "event/mdv_evt_view.h"
 #include "event/mdv_evt_status.h"
 #include <mdv_messages.h>
 #include <mdv_version.h>
@@ -83,6 +84,32 @@ static mdv_errno mdv_user_status_reply(mdv_user *user, uint16_t id, mdv_msg_stat
     mdv_errno err = mdv_user_reply(user, &message);
 
     binn_free(&status);
+
+    return err;
+}
+
+
+static mdv_errno mdv_user_view_reply(mdv_user *user, uint16_t id, mdv_msg_view const *msg)
+{
+    binn view;
+
+    if (!mdv_msg_view_binn(msg, &view))
+        return MDV_FAILED;
+
+    mdv_msg message =
+    {
+        .hdr =
+        {
+            .id = mdv_msg_view_id,
+            .number = id,
+            .size = binn_size(&view)
+        },
+        .payload = binn_ptr(&view)
+    };
+
+    mdv_errno err = mdv_user_reply(user, &message);
+
+    binn_free(&view);
 
     return err;
 }
@@ -404,6 +431,60 @@ static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
 }
 
 
+static mdv_errno mdv_user_select_handler(mdv_msg const *msg, void *arg)
+{
+    MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
+
+    mdv_user    *user   = arg;
+
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_msg_name(msg->hdr.id));
+        return MDV_FAILED;
+    }
+
+    mdv_msg_select select;
+
+    mdv_errno err = MDV_FAILED;
+
+    if (mdv_msg_select_unbinn(&binn_msg, &select))
+    {
+        mdv_evt_select * evt = mdv_evt_select_create(&user->session,
+                                                     msg->hdr.number,
+                                                     &select.table,
+                                                     select.fields,
+                                                     select.filter);
+
+        if (evt)
+        {
+            err = mdv_ebus_publish(user->ebus, &evt->base, MDV_EVT_DEFAULT);
+            mdv_evt_select_release(evt);
+        }
+
+        mdv_msg_select_free(&select);
+    }
+    else
+        MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_select_id));
+
+    binn_free(&binn_msg);
+
+    if (err != MDV_OK)
+    {
+        mdv_msg_status const status =
+        {
+            .err = err,
+            .message = ""
+        };
+
+        err = mdv_user_status_reply(user, msg->hdr.number, &status);
+    }
+
+    return err;
+}
+
+
 static mdv_errno mdv_user_fetch_handler(mdv_msg const *msg, void *arg)
 {
     MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
@@ -424,21 +505,15 @@ static mdv_errno mdv_user_fetch_handler(mdv_msg const *msg, void *arg)
 
     if (mdv_msg_fetch_unbinn(&binn_msg, &fetch))
     {
-        mdv_evt_rowdata_fetch * evt = mdv_evt_rowdata_fetch_create(&user->session,
-                                                                   msg->hdr.number,
-                                                                   &fetch.table,
-                                                                   fetch.first,
-                                                                   &fetch.rowid,
-                                                                   fetch.count,
-                                                                   fetch.fields);
+        mdv_evt_view_fetch * evt = mdv_evt_view_fetch_create(&user->session,
+                                                             msg->hdr.number,
+                                                             fetch.id);
 
         if (evt)
         {
             err = mdv_ebus_publish(user->ebus, &evt->base, MDV_EVT_DEFAULT);
-            mdv_evt_rowdata_fetch_release(evt);
+            mdv_evt_view_fetch_release(evt);
         }
-
-        mdv_msg_fetch_free(&fetch);
     }
     else
         MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_fetch_id));
@@ -486,10 +561,28 @@ static mdv_errno mdv_user_evt_status(void *arg, mdv_event *event)
 }
 
 
+static mdv_errno mdv_user_evt_view(void *arg, mdv_event *event)
+{
+    mdv_user *user = arg;
+    mdv_evt_view *evt = (mdv_evt_view *)event;
+
+    if (mdv_uuid_cmp(&evt->session, &user->session) != 0)
+        return MDV_OK;
+
+    mdv_msg_view const view =
+    {
+        .id = evt->view_id
+    };
+
+    return mdv_user_view_reply(user, evt->request_id, &view);
+}
+
+
 static const mdv_event_handler_type mdv_user_handlers[] =
 {
     { MDV_EVT_TOPOLOGY,     mdv_user_evt_topology },
     { MDV_EVT_STATUS,       mdv_user_evt_status },
+    { MDV_EVT_VIEW,         mdv_user_evt_view },
 };
 
 
@@ -561,6 +654,7 @@ mdv_user * mdv_user_create(mdv_uuid const *uuid,
         { mdv_message_id(get_table),     &mdv_user_get_table_handler,    user },
         { mdv_message_id(insert_into),   &mdv_user_insert_into_handler,  user },
         { mdv_message_id(get_topology),  &mdv_user_get_topology_handler, user },
+        { mdv_message_id(select),        &mdv_user_select_handler,       user },
         { mdv_message_id(fetch),         &mdv_user_fetch_handler,        user },
     };
 

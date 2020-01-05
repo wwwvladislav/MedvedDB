@@ -231,6 +231,30 @@ static mdv_table_desc * mdv_client_table_desc_handler(mdv_msg const *msg)
 }
 
 
+static mdv_errno mdv_client_view_handler(mdv_msg const *msg, uint32_t *view_id)
+{
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+        return 0;
+
+    mdv_msg_view view;
+
+    if (!mdv_msg_view_unbinn(&binn_msg, &view))
+    {
+        MDV_LOGE("Invalid view");
+        binn_free(&binn_msg);
+        return MDV_FAILED;
+    }
+
+    *view_id = view.id;
+
+    binn_free(&binn_msg);
+
+    return MDV_OK;
+}
+
+
 static mdv_errno mdv_client_status_handler(mdv_msg const *msg, mdv_errno *err)
 {
     mdv_msg_status status;
@@ -673,7 +697,7 @@ mdv_errno mdv_insert_rows(mdv_client *client, mdv_table *table, mdv_rowset *rows
 typedef struct
 {
     mdv_enumerator          base;       ///< Base type for rowset enumerator
-    mdv_objid               rowid;      ///< Next row id for fetching
+    uint32_t                view_id;    ///< View identifier
     mdv_client             *client;     ///< Client descriptor
     mdv_table              *table;      ///< Table descriptor
     mdv_rowset             *rowset;     ///< Current fetched rowset
@@ -716,18 +740,13 @@ static uint32_t mdv_rowset_enumerator_impl_release(mdv_enumerator *enumerator)
 
 static mdv_errno mdv_rowset_enumerator_impl_reset(mdv_enumerator *enumerator)
 {
-    mdv_rowset_enumerator_impl *impl = (mdv_rowset_enumerator_impl *)enumerator;
-    mdv_rowset_release(impl->rowset);
-    mdv_enumerator_release(impl->it);
-    impl->rowset = 0;
-    impl->it = 0;
-    memset(&impl->rowid, 0, sizeof impl->rowid);
-    return MDV_OK;
+    return MDV_NO_IMPL;
 }
 
 
 static mdv_errno mdv_rowset_enumerator_impl_fetch_first(mdv_rowset_enumerator_impl *impl)
 {
+/*
     mdv_client *client = impl->client;
 
     mdv_msg_fetch const msg =
@@ -787,6 +806,8 @@ static mdv_errno mdv_rowset_enumerator_impl_fetch_first(mdv_rowset_enumerator_im
     }
 
     return err;
+*/
+    return MDV_NO_IMPL;
 }
 
 
@@ -825,9 +846,89 @@ static void * mdv_rowset_enumerator_impl_current(mdv_enumerator *enumerator)
 }
 
 
-mdv_enumerator * mdv_get_rows(mdv_client *client, mdv_table *table, mdv_bitset *fields)
+static mdv_errno mdv_select_request(mdv_client *client,
+                                    mdv_table  *table,
+                                    mdv_bitset *fields,
+                                    char const *filter,
+                                    uint32_t   *view_id)
 {
-    mdv_rowset_enumerator_impl *enumerator = mdv_alloc(sizeof(mdv_rowset_enumerator_impl), "rowset_enumerator");
+    mdv_msg_select const select =
+    {
+        .table  = *mdv_table_uuid(table),
+        .fields = fields,
+        .filter = filter
+    };
+
+    binn select_msg;
+
+    if (!mdv_msg_select_binn(&select, &select_msg))
+        return MDV_FAILED;
+
+    mdv_msg req =
+    {
+        .hdr =
+        {
+            .id   = mdv_msg_select_id,
+            .size = binn_size(&select_msg)
+        },
+        .payload = binn_ptr(&select_msg)
+    };
+
+    mdv_msg resp;
+
+    mdv_errno err = mdv_client_send(client, &req, &resp, client->response_timeout);
+
+    binn_free(&select_msg);
+
+    if (err == MDV_OK)
+    {
+        switch(resp.hdr.id)
+        {
+            case mdv_message_id(view):
+            {
+                err = mdv_client_view_handler(&resp, view_id);
+                break;
+            }
+
+            case mdv_message_id(status):
+            {
+                if (mdv_client_status_handler(&resp, &err) == MDV_OK)
+                    break;
+                // fallthrough
+            }
+
+            default:
+                err = MDV_FAILED;
+                MDV_LOGE("Unexpected response");
+                break;
+        }
+
+        mdv_free_msg(&resp);
+    }
+
+    return err;
+}
+
+
+mdv_enumerator * mdv_select(mdv_client *client,
+                            mdv_table  *table,
+                            mdv_bitset *fields,
+                            char const *filter)
+{
+    uint32_t view_id = 0;
+
+    mdv_errno err = mdv_select_request(client,
+                                       table,
+                                       fields,
+                                       filter,
+                                       &view_id);
+
+    if (err != MDV_OK)
+        return 0;
+
+    mdv_rowset_enumerator_impl *enumerator =
+                mdv_alloc(sizeof(mdv_rowset_enumerator_impl),
+                        "rowset_enumerator");
 
     if (!enumerator)
     {
@@ -839,22 +940,21 @@ mdv_enumerator * mdv_get_rows(mdv_client *client, mdv_table *table, mdv_bitset *
 
     static mdv_ienumerator const vtbl =
     {
-        .retain = mdv_rowset_enumerator_impl_retain,
+        .retain  = mdv_rowset_enumerator_impl_retain,
         .release = mdv_rowset_enumerator_impl_release,
-        .reset = mdv_rowset_enumerator_impl_reset,
-        .next = mdv_rowset_enumerator_impl_next,
+        .reset   = mdv_rowset_enumerator_impl_reset,
+        .next    = mdv_rowset_enumerator_impl_next,
         .current = mdv_rowset_enumerator_impl_current
     };
 
     enumerator->base.vptr = &vtbl;
 
-    enumerator->client = client;
-    enumerator->table = mdv_table_retain(table);
-    enumerator->rowset = 0;
-    enumerator->it = 0;
-    enumerator->fields = mdv_bitset_retain(fields);
-
-    memset(&enumerator->rowid, 0, sizeof enumerator->rowid);
+    enumerator->view_id = view_id;
+    enumerator->client  = client;
+    enumerator->table   = mdv_table_retain(table);
+    enumerator->rowset  = 0;
+    enumerator->it      = 0;
+    enumerator->fields  = mdv_bitset_retain(fields);
 
     return &enumerator->base;
 }

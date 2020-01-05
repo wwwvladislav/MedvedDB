@@ -95,19 +95,26 @@ mdv_message_def(insert_into, 9,
 );
 
 
-mdv_message_def(fetch, 10,
+mdv_message_def(select, 10,
     mdv_uuid    table;
-    bool        first;
-    mdv_objid   rowid;
-    uint32_t    count;
     mdv_bitset *fields;
+    char const *filter;
 );
 
 
-mdv_message_def(rowset, 11,
+mdv_message_def(view, 11,
+    uint32_t    id;
+);
+
+
+mdv_message_def(fetch, 12,
+    uint32_t    id;
+);
+
+
+mdv_message_def(rowset, 13,
     binn       *rows;
-    mdv_objid   next_rowid;
-    bool        last;
+    bool        end;
 );
 
 
@@ -147,9 +154,17 @@ bool                        mdv_msg_insert_into_binn        (mdv_msg_insert_into
 bool                        mdv_msg_insert_into_unbinn      (binn const * obj, mdv_msg_insert_into *msg);
 
 
+bool                        mdv_msg_select_binn             (mdv_msg_select const *msg, binn *obj);
+bool                        mdv_msg_select_unbinn           (binn const * obj, mdv_msg_select *msg);
+void                        mdv_msg_select_free             (mdv_msg_select *msg);
+
+
+bool                        mdv_msg_view_binn               (mdv_msg_view const *msg, binn *obj);
+bool                        mdv_msg_view_unbinn             (binn const * obj, mdv_msg_view *msg);
+
+
 bool                        mdv_msg_fetch_binn              (mdv_msg_fetch const *msg, binn *obj);
 bool                        mdv_msg_fetch_unbinn            (binn const * obj, mdv_msg_fetch *msg);
-void                        mdv_msg_fetch_free              (mdv_msg_fetch *msg);
 
 
 bool                        mdv_msg_rowset_binn             (mdv_msg_rowset const *msg, binn *obj);

@@ -111,10 +111,20 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         config->fetcher.queues = atoi(value);
         MDV_LOGI("Fetcher queues: %u", config->fetcher.queues);
     }
+    else if (MDV_CFG_MATCH("fetcher", "batch_size"))
+    {
+        config->fetcher.batch_size = atoi(value);
+        MDV_LOGI("Fetcher batch size: %u", config->fetcher.batch_size);
+    }
     else if (MDV_CFG_MATCH("fetcher", "vm_stack"))
     {
         config->fetcher.vm_stack = atoi(value);
         MDV_LOGI("Fetcher VM stack: %u", config->fetcher.vm_stack);
+    }
+    else if (MDV_CFG_MATCH("fetcher", "views_lifetime"))
+    {
+        config->fetcher.views_lifetime = atoi(value);
+        MDV_LOGI("Fetcher inactive views lifetime: %u seconds", config->fetcher.views_lifetime);
     }
 
     else if (MDV_CFG_MATCH("cluster", "node"))
@@ -193,7 +203,9 @@ static void mdv_set_config_defaults()
 
     MDV_CONFIG.fetcher.workers              = 4;
     MDV_CONFIG.fetcher.queues               = 4;
+    MDV_CONFIG.fetcher.batch_size           = 32;
     MDV_CONFIG.fetcher.vm_stack             = 64;
+    MDV_CONFIG.fetcher.views_lifetime       = 30;
 
     MDV_CONFIG.cluster.size                 = 0;
 }

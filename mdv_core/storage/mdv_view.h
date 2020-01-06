@@ -13,10 +13,10 @@ typedef struct mdv_view mdv_view;
 /**
  * @brief Creates new view
  */
-mdv_view * mdv_view_create(mdv_rowdata  *source,
-                           mdv_table    *table,
-                           mdv_bitset   *fields,
-                           mdv_vector   *filter);
+mdv_view * mdv_view_create(mdv_rowdata      *source,
+                           mdv_table        *table,
+                           mdv_bitset       *fields,
+                           mdv_predicate    *predicate);
 
 
 /**
@@ -33,3 +33,13 @@ mdv_view * mdv_view_retain(mdv_view *view);
  */
 uint32_t mdv_view_release(mdv_view *view);
 
+
+/**
+ * @brief Rowset reading from the table
+ *
+ * @param view [in]     Table slice representation
+ * @param count [in]    Rows number to be fetched
+ *
+ * @return Rows set or NULL
+ */
+mdv_rowset * mdv_view_fetch(mdv_view *view, size_t count);

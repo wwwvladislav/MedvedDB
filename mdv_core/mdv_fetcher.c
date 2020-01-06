@@ -94,6 +94,26 @@ static mdv_table * mdv_fetcher_table(mdv_fetcher *fetcher, mdv_uuid const *table
 }
 
 
+static mdv_view * mdv_fetcher_view_find(mdv_fetcher *fetcher, uint32_t view_id)
+{
+    mdv_view *view = 0;
+
+    if(mdv_mutex_lock(&fetcher->mutex) == MDV_OK)
+    {
+        mdv_fetcher_view *fetcher_view = mdv_hashmap_find(fetcher->views, &view_id);
+
+        if (fetcher_view)
+            view = mdv_view_retain(fetcher_view->view);
+
+        mdv_mutex_unlock(&fetcher->mutex);
+    }
+    else
+        MDV_LOGE("Mutex lock failed");
+
+    return view;
+}
+
+
 static void mdv_fetcher_fn(mdv_job_base *job)
 {
     mdv_fetcher_context *ctx     = (mdv_fetcher_context *)job->data;
@@ -101,30 +121,21 @@ static void mdv_fetcher_fn(mdv_job_base *job)
 
     mdv_errno err = MDV_FAILED;
     char const *err_msg = "";
-/*
-    mdv_table *table = mdv_fetcher_table(fetcher, &ctx->table);
 
-    if(table)
+    mdv_view *view = mdv_fetcher_view_find(fetcher, ctx->view_id);
+
+    if (view)
     {
-        mdv_rowdata *rowdata = mdv_fetcher_rowdata(fetcher, &ctx->table);
+        // TODO:
 
-        if (rowdata)
-        {
-            // TODO
-            MDV_LOGE("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
-            mdv_rowdata_release(rowdata);
-        }
-        else
-            err_msg = "Rowdata not found";
-
-        mdv_table_release(table);
+        mdv_view_release(view);
     }
     else
     {
-        err_msg = "Table not found";
-        MDV_LOGE("Table '%s' not found", mdv_uuid_to_str(&ctx->table).ptr);
+        err_msg = "View not found";
+        MDV_LOGE("View %u not found", ctx->view_id);
     }
-*/
+
     if (err != MDV_OK)
     {
         mdv_evt_status *evt = mdv_evt_status_create(
@@ -229,11 +240,11 @@ static mdv_errno mdv_fetcher_view_create(mdv_fetcher    *fetcher,
 
         if (rowdata)
         {
-            mdv_vector * vm_filter = mdv_predicate_parse(filter);
+            mdv_predicate * predicate = mdv_predicate_parse(filter);
 
-            if (vm_filter)
+            if (predicate)
             {
-                mdv_view *view = mdv_view_create(rowdata, table, fields, vm_filter);
+                mdv_view *view = mdv_view_create(rowdata, table, fields, predicate);
 
                 if (view)
                 {
@@ -247,7 +258,7 @@ static mdv_errno mdv_fetcher_view_create(mdv_fetcher    *fetcher,
                 else
                     *err_msg = "View creation failed";
 
-                mdv_vector_release(vm_filter);
+                mdv_predicate_release(predicate);
             }
             else
                 *err_msg = "Rows filter is incorrect";

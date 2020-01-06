@@ -31,6 +31,8 @@ mdv_errno mdv_mutex_lock(mdv_mutex *mutex)
         MDV_LOGD("Mutex %p locked", mutex);
         return MDV_OK;
     }
+    else
+        MDV_LOGD("Mutex %p lock failed", mutex);
 
     return mdv_error();
 }

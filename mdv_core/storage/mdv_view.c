@@ -1,6 +1,8 @@
 #include "mdv_view.h"
+#include "../mdv_config.h"
 #include <mdv_alloc.h>
 #include <mdv_log.h>
+#include <mdv_vm.h>
 #include <stdatomic.h>
 
 // TODO: Get compiled expressions from cache
@@ -12,14 +14,14 @@ struct mdv_view
     mdv_rowdata          *source;           ///< Rows source
     mdv_table            *table;            ///< Table descriptor
     mdv_bitset           *fields;           ///< Fields mask
-    mdv_vector           *filter;           ///< Predicate for rows filtering
+    mdv_predicate        *filter;           ///< Predicate for rows filtering
 };
 
 
-mdv_view * mdv_view_create(mdv_rowdata  *source,
-                           mdv_table    *table,
-                           mdv_bitset   *fields,
-                           mdv_vector   *filter)
+mdv_view * mdv_view_create(mdv_rowdata      *source,
+                           mdv_table        *table,
+                           mdv_bitset       *fields,
+                           mdv_predicate    *predicate)
 {
     mdv_view *view = (mdv_view *)mdv_alloc(sizeof(mdv_view), "view");
 
@@ -31,7 +33,7 @@ mdv_view * mdv_view_create(mdv_rowdata  *source,
 
     atomic_init(&view->rc, 1);
 
-    view->filter = mdv_vector_retain(filter);
+    view->filter = mdv_predicate_retain(predicate);
     view->source = mdv_rowdata_retain(source);
     view->table  = mdv_table_retain(table);
     view->fields = mdv_bitset_retain(fields);
@@ -42,7 +44,7 @@ mdv_view * mdv_view_create(mdv_rowdata  *source,
 
 static void mdv_view_free(mdv_view *view)
 {
-    mdv_vector_release(view->filter);
+    mdv_predicate_release(view->filter);
     mdv_rowdata_release(view->source);
     mdv_table_release(view->table);
     mdv_bitset_release(view->fields);
@@ -71,3 +73,11 @@ uint32_t mdv_view_release(mdv_view *view)
 
     return rc;
 }
+
+
+mdv_rowset * mdv_view_fetch(mdv_view *view, size_t count)
+{
+    // TODO
+    return 0;
+}
+

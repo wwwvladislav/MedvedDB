@@ -15,6 +15,9 @@ struct mdv_view
     mdv_table            *table;            ///< Table descriptor
     mdv_bitset           *fields;           ///< Fields mask
     mdv_predicate        *filter;           ///< Predicate for rows filtering
+    mdv_objid             rowid;            ///< Last read row identifier
+    mdv_rowset           *rowset;           ///< Current rows set
+    mdv_enumerator       *it;               ///< Current rows enumerator
 };
 
 
@@ -37,6 +40,8 @@ mdv_view * mdv_view_create(mdv_rowdata      *source,
     view->source = mdv_rowdata_retain(source);
     view->table  = mdv_table_retain(table);
     view->fields = mdv_bitset_retain(fields);
+    view->rowset = 0;
+    view->it     = 0;
 
     return view;
 }
@@ -77,7 +82,18 @@ uint32_t mdv_view_release(mdv_view *view)
 
 mdv_rowset * mdv_view_fetch(mdv_view *view, size_t count)
 {
+    if (!view->rowset)
+    {
+//        view->rowset = mdv_rowdata_slice_from_begin(
+//                                view->source,
+//                                view->table,
+//                                view->fields,
+//                                count,
+//                                &view->rowid);
+    }
+
     // TODO
+
     return 0;
 }
 

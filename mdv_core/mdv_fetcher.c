@@ -1,4 +1,5 @@
 #include "mdv_fetcher.h"
+#include "mdv_config.h"
 #include "event/mdv_evt_types.h"
 #include "event/mdv_evt_rowdata.h"
 #include "event/mdv_evt_view.h"
@@ -126,7 +127,14 @@ static void mdv_fetcher_fn(mdv_job_base *job)
 
     if (view)
     {
-        // TODO:
+        mdv_rowset *rowset = mdv_view_fetch(view, MDV_CONFIG.fetcher.batch_size);
+
+        if(rowset)
+        {
+            // TODO:
+            MDV_LOGE("OOOOOOOOOOOOOOOOO");
+            mdv_rowset_release(rowset);
+        }
 
         mdv_view_release(view);
     }

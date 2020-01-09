@@ -746,15 +746,17 @@ static mdv_errno mdv_rowset_enumerator_impl_reset(mdv_enumerator *enumerator)
 
 static mdv_errno mdv_rowset_enumerator_impl_fetch_first(mdv_rowset_enumerator_impl *impl)
 {
-/*
+    return MDV_NO_IMPL;
+}
+
+
+static mdv_errno mdv_rowset_enumerator_impl_fetch(mdv_rowset_enumerator_impl *impl)
+{
     mdv_client *client = impl->client;
 
     mdv_msg_fetch const msg =
     {
-        .table = *mdv_table_uuid(impl->table),
-        .first = true,
-        .count = MDV_FETCH_SIZE,
-        .fields = impl->fields
+        .id = impl->view_id
     };
 
     binn binn_msg;
@@ -806,15 +808,6 @@ static mdv_errno mdv_rowset_enumerator_impl_fetch_first(mdv_rowset_enumerator_im
     }
 
     return err;
-*/
-    return MDV_NO_IMPL;
-}
-
-
-static mdv_errno mdv_rowset_enumerator_impl_fetch_next(mdv_rowset_enumerator_impl *impl)
-{
-    // TODO
-    return MDV_FAILED;
 }
 
 
@@ -822,6 +815,9 @@ static mdv_errno mdv_rowset_enumerator_impl_next(mdv_enumerator *enumerator)
 {
     mdv_rowset_enumerator_impl *impl = (mdv_rowset_enumerator_impl *)enumerator;
 
+    mdv_errno err = mdv_rowset_enumerator_impl_fetch(impl);
+
+/*
     if(!impl->it)
     {
         // Fetch first set of rows
@@ -830,12 +826,13 @@ static mdv_errno mdv_rowset_enumerator_impl_next(mdv_enumerator *enumerator)
     else if (mdv_enumerator_next(impl->it) != MDV_OK)
     {
         // Fetch next set of rows
-        return mdv_rowset_enumerator_impl_fetch_next(impl);
+        return mdv_rowset_enumerator_impl_fetch(impl);
     }
     else
         return MDV_OK;
+*/
 
-    return MDV_FAILED;
+    return err;
 }
 
 

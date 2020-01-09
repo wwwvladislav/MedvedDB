@@ -16,8 +16,7 @@ struct mdv_view
     mdv_bitset           *fields;           ///< Fields mask
     mdv_predicate        *filter;           ///< Predicate for rows filtering
     mdv_objid             rowid;            ///< Last read row identifier
-    mdv_rowset           *rowset;           ///< Current rows set
-    mdv_enumerator       *it;               ///< Current rows enumerator
+    bool                  fetch_from_begin; ///< Flag indicates that data should be fetched from begin
 };
 
 
@@ -40,8 +39,7 @@ mdv_view * mdv_view_create(mdv_rowdata      *source,
     view->source = mdv_rowdata_retain(source);
     view->table  = mdv_table_retain(table);
     view->fields = mdv_bitset_retain(fields);
-    view->rowset = 0;
-    view->it     = 0;
+    view->fetch_from_begin = true;
 
     return view;
 }
@@ -80,20 +78,35 @@ uint32_t mdv_view_release(mdv_view *view)
 }
 
 
-mdv_rowset * mdv_view_fetch(mdv_view *view, size_t count)
+static int mdv_view_data_filter(void *arg, mdv_row const *row_slice)
 {
-    if (!view->rowset)
-    {
-//        view->rowset = mdv_rowdata_slice_from_begin(
-//                                view->source,
-//                                view->table,
-//                                view->fields,
-//                                count,
-//                                &view->rowid);
-    }
-
     // TODO
-
-    return 0;
+    return 1;
 }
 
+
+mdv_rowset * mdv_view_fetch(mdv_view *view, size_t count)
+{
+    if (view->fetch_from_begin)
+    {
+        view->fetch_from_begin = false;
+
+        return mdv_rowdata_slice_from_begin(
+                    view->source,
+                    view->table,
+                    view->fields,
+                    count,
+                    &view->rowid,
+                    mdv_view_data_filter,
+                    view);
+    }
+
+    return mdv_rowdata_slice(
+                view->source,
+                view->table,
+                view->fields,
+                count,
+                &view->rowid,
+                mdv_view_data_filter,
+                view);
+}

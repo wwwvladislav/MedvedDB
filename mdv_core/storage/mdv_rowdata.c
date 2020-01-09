@@ -91,11 +91,14 @@ mdv_errno mdv_rowdata_add_raw(mdv_rowdata *rowdata, mdv_objid const *id, mdv_dat
 }
 
 
-static mdv_rowset * mdv_rowdata_slice_impl(mdv_enumerator   *enumerator,
-                                           mdv_table const  *table,
-                                           mdv_bitset const *fields,
-                                           size_t            count,
-                                           mdv_objid        *rowid)
+static mdv_rowset * mdv_rowdata_slice_impl(mdv_enumerator       *enumerator,
+                                           mdv_table const      *table,
+                                           mdv_bitset const     *fields,
+                                           size_t                count,
+                                           mdv_objid            *rowid,
+                                           mdv_rowdata_filter    filter,
+                                           void                 *arg)
+
 {
     mdv_rowset *rowset = 0;
 
@@ -103,26 +106,26 @@ static mdv_rowset * mdv_rowdata_slice_impl(mdv_enumerator   *enumerator,
 
     if ((rowset = mdv_rowset_create(mdv_bitset_count(fields, true))))
     {
-        for(size_t i = 0; i < count; ++i)
+        for(size_t i = 0; i < count;)
         {
             mdv_objects_entry const *entry = mdv_enumerator_current(enumerator);
 
             binn binn_row;
 
+            mdv_rowlist_entry *row = 0;
+
             if (binn_load(entry->value.ptr, &binn_row))
             {
-                mdv_rowlist_entry *row = mdv_unbinn_row_slice(&binn_row, desc, fields);
+                row = mdv_unbinn_row_slice(&binn_row, desc, fields);
 
-                if(row)
-                    mdv_rowset_emplace(rowset, row);
-                else
+                binn_free(&binn_row);
+
+                if(!row)
                 {
                     MDV_LOGE("Invalid serialized row");
                     binn_free(&binn_row);
                     break;
                 }
-
-                binn_free(&binn_row);
             }
             else
             {
@@ -134,6 +137,21 @@ static mdv_rowset * mdv_rowdata_slice_impl(mdv_enumerator   *enumerator,
 
             *rowid = *(mdv_objid const *)entry->key.ptr;
 
+            int const fst = filter(arg, &row->data);
+
+            if (fst == 1)
+            {
+                mdv_rowset_emplace(rowset, row);
+                ++i;
+            }
+            else if (fst == 0)
+                mdv_free(row, "rowlist_entry");
+            else
+            {
+                MDV_LOGE("Rowdata filter failed");
+                break;
+            }
+
             if (mdv_enumerator_next(enumerator) != MDV_OK)
                 break;
         }
@@ -143,11 +161,14 @@ static mdv_rowset * mdv_rowdata_slice_impl(mdv_enumerator   *enumerator,
 }
 
 
-mdv_rowset * mdv_rowdata_slice_from_begin(mdv_rowdata      *rowdata,
-                                          mdv_table const  *table,
-                                          mdv_bitset const *fields,
-                                          size_t            count,
-                                          mdv_objid        *rowid)
+mdv_rowset * mdv_rowdata_slice_from_begin(mdv_rowdata           *rowdata,
+                                          mdv_table const       *table,
+                                          mdv_bitset const      *fields,
+                                          size_t                 count,
+                                          mdv_objid             *rowid,
+                                          mdv_rowdata_filter     filter,
+                                          void                  *arg)
+
 {
     mdv_rowset *rowset = 0;
 
@@ -155,7 +176,7 @@ mdv_rowset * mdv_rowdata_slice_from_begin(mdv_rowdata      *rowdata,
 
     if (enumerator)
     {
-        rowset = mdv_rowdata_slice_impl(enumerator, table, fields, count, rowid);
+        rowset = mdv_rowdata_slice_impl(enumerator, table, fields, count, rowid, filter, arg);
         mdv_enumerator_release(enumerator);
     }
 
@@ -163,11 +184,14 @@ mdv_rowset * mdv_rowdata_slice_from_begin(mdv_rowdata      *rowdata,
 }
 
 
-mdv_rowset * mdv_rowdata_slice(mdv_rowdata      *rowdata,
-                               mdv_table const  *table,
-                               mdv_bitset const *fields,
-                               size_t            count,
-                               mdv_objid        *rowid)
+mdv_rowset * mdv_rowdata_slice(mdv_rowdata          *rowdata,
+                               mdv_table const      *table,
+                               mdv_bitset const     *fields,
+                               size_t                count,
+                               mdv_objid            *rowid,
+                               mdv_rowdata_filter    filter,
+                               void                 *arg)
+
 {
     mdv_rowset *rowset = 0;
 
@@ -196,7 +220,7 @@ mdv_rowset * mdv_rowdata_slice(mdv_rowdata      *rowdata,
                     break;
             }
 
-            rowset = mdv_rowdata_slice_impl(enumerator, table, fields, count, rowid);
+            rowset = mdv_rowdata_slice_impl(enumerator, table, fields, count, rowid, filter, arg);
         }
         while(0);
 

@@ -20,6 +20,10 @@
 typedef struct mdv_rowdata mdv_rowdata;
 
 
+/// Predicate for rowdata filtering
+typedef int (*mdv_rowdata_filter)(void *arg, mdv_row const *row_slice);
+
+
 /**
  * @brief Creates new or opens existing rowdata storage
  *
@@ -85,15 +89,19 @@ mdv_errno mdv_rowdata_add_raw(mdv_rowdata *rowdata, mdv_objid const *id, mdv_dat
  * @param fields [in]    Fields mask for reading
  * @param count [in]     Rows amount for reading
  * @param rowid [out]    Last row identifier (used to continue reading)
+ * @param filter [in]    Predicate for rowdata filtering
+ * @param arg [in]       Argument which is passed to rowdata filtering predicate
  *
  * @return On success, returns nonzero pointer to rows set
  * @return On error, returns zero pointer
  */
-mdv_rowset * mdv_rowdata_slice_from_begin(mdv_rowdata      *rowdata,
-                                          mdv_table const  *table,
-                                          mdv_bitset const *fields,
-                                          size_t            count,
-                                          mdv_objid        *rowid);
+mdv_rowset * mdv_rowdata_slice_from_begin(mdv_rowdata           *rowdata,
+                                          mdv_table const       *table,
+                                          mdv_bitset const      *fields,
+                                          size_t                 count,
+                                          mdv_objid             *rowid,
+                                          mdv_rowdata_filter     filter,
+                                          void                  *arg);
 
 
 /**
@@ -104,12 +112,17 @@ mdv_rowset * mdv_rowdata_slice_from_begin(mdv_rowdata      *rowdata,
  * @param fields [in]     Fields mask for reading
  * @param count [in]      Rows amount for reading
  * @param rowid [in][out] Last row identifier (used to continue reading)
+ * @param filter [in]     Predicate for rowdata filtering
+ * @param arg [in]        Argument which is passed to rowdata filtering predicate
  *
  * @return On success, returns nonzero pointer to rows set
  * @return On error, returns zero pointer
  */
-mdv_rowset * mdv_rowdata_slice(mdv_rowdata      *rowdata,
-                               mdv_table const  *table,
-                               mdv_bitset const *fields,
-                               size_t            count,
-                               mdv_objid        *rowid);
+mdv_rowset * mdv_rowdata_slice(mdv_rowdata          *rowdata,
+                               mdv_table const      *table,
+                               mdv_bitset const     *fields,
+                               size_t                count,
+                               mdv_objid            *rowid,
+                               mdv_rowdata_filter    filter,
+                               void                 *arg);
+

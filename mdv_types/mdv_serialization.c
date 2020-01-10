@@ -516,11 +516,13 @@ static size_t mdv_calc_row_size(binn const           *list,
         else if (field_type_size == 1)
         {
             int const blob_size = binn_size(&value);
+
             if (blob_size < 0)
             {
                 MDV_LOGE("blob size is negative: %d", blob_size);
                 return 0;
             }
+
             row_size += blob_size;
         }
         else
@@ -554,9 +556,6 @@ mdv_rowlist_entry * mdv_unbinn_row_slice(binn const *list,
                                          mdv_table_desc const *table_desc,
                                          mdv_bitset const *mask)
 {
-    binn_iter iter = {};
-    binn value = {};
-
     uint32_t const cols = table_desc->size;
     mdv_field const *fields = table_desc->fields;
 
@@ -582,6 +581,9 @@ mdv_rowlist_entry * mdv_unbinn_row_slice(binn const *list,
     char *dataspace = (char *)(row->fields + fields_count);
 
     uint32_t n = 0, field_idx = 0;
+
+    binn_iter iter = {};
+    binn value = {};
 
     // Deserialize row
     binn_list_foreach((void*)list, value)
@@ -623,7 +625,9 @@ mdv_rowlist_entry * mdv_unbinn_row_slice(binn const *list,
 
             row->fields[field_idx].ptr = dataspace;
 
-            binn_list_foreach(&value, arr_value)
+            binn_iter_init(&arr_iter, &value, BINN_LIST);
+
+            while (binn_list_next(&arr_iter, &arr_value))
             {
                 if (!binn_get(&arr_value, fields[n].type, dataspace))
                 {

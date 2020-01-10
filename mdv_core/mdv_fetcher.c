@@ -7,6 +7,7 @@
 #include "event/mdv_evt_status.h"
 #include "storage/mdv_view.h"
 #include <mdv_table.h>
+#include <mdv_serialization.h>
 #include <mdv_alloc.h>
 #include <mdv_log.h>
 #include <mdv_rollbacker.h>
@@ -46,7 +47,7 @@ typedef struct mdv_fetcher_context
     mdv_fetcher    *fetcher;        ///< Data fetcher
     mdv_uuid        session;        ///< Session identifier
     uint16_t        request_id;     ///< Request identifier (used to associate requests and responses)
-    uint32_t        view_id;        ///< View identifier
+    mdv_view       *view;           ///< View
 } mdv_fetcher_context;
 
 
@@ -123,25 +124,38 @@ static void mdv_fetcher_fn(mdv_job_base *job)
     mdv_errno err = MDV_FAILED;
     char const *err_msg = "";
 
-    mdv_view *view = mdv_fetcher_view_find(fetcher, ctx->view_id);
+    mdv_rowset *rowset = mdv_view_fetch(ctx->view, MDV_CONFIG.fetcher.batch_size);
 
-    if (view)
+    if(rowset)
     {
-        mdv_rowset *rowset = mdv_view_fetch(view, MDV_CONFIG.fetcher.batch_size);
+        mdv_table *view_desc = mdv_view_desc(ctx->view);
 
-        if(rowset)
+        binn list;
+
+
+        if (mdv_binn_rowset(rowset, &list, mdv_table_description(view_desc)))
         {
-            // TODO:
-            MDV_LOGE("OOOOOOOOOOOOOOOOO");
-            mdv_rowset_release(rowset);
+            mdv_evt_view_data *evt = mdv_evt_view_data_create(
+                                            &ctx->session,
+                                            ctx->request_id,
+                                            &list);
+
+            if (evt)
+            {
+                err = mdv_ebus_publish(fetcher->ebus, &evt->base, MDV_EVT_SYNC);
+                mdv_evt_view_data_release(evt);
+            }
+
+            binn_free(&list);
+        }
+        else
+        {
+            err_msg = "Rowset serialization failed";
+            MDV_LOGE("Rowset serialization failed");
         }
 
-        mdv_view_release(view);
-    }
-    else
-    {
-        err_msg = "View not found";
-        MDV_LOGE("View %u not found", ctx->view_id);
+        mdv_table_release(view_desc);
+        mdv_rowset_release(rowset);
     }
 
     if (err != MDV_OK)
@@ -165,19 +179,31 @@ static void mdv_fetcher_finalize(mdv_job_base *job)
 {
     mdv_fetcher_context *ctx     = (mdv_fetcher_context *)job->data;
     mdv_fetcher         *fetcher = ctx->fetcher;
+    mdv_view_release(ctx->view);
     mdv_fetcher_release(fetcher);
     atomic_fetch_sub_explicit(&fetcher->active_jobs, 1, memory_order_relaxed);
     mdv_free(job, "fetcher_job");
 }
 
 
-static mdv_errno mdv_fetcher_job_emit(mdv_fetcher *fetcher, mdv_evt_view_fetch const *fetch)
+static mdv_errno mdv_fetcher_job_emit(mdv_fetcher *fetcher, mdv_evt_view_fetch const *fetch, char const **err_msg)
 {
+    mdv_view *view = mdv_fetcher_view_find(fetcher, fetch->view_id);
+
+    if (!view)
+    {
+        MDV_LOGE("View %u not found", fetch->view_id);
+        *err_msg = "View not found";
+        return MDV_FAILED;
+    }
+
     mdv_fetcher_job *job = mdv_alloc(sizeof(mdv_fetcher_job), "fetcher_job");
 
     if (!job)
     {
         MDV_LOGE("No memory for data fetcher job");
+        mdv_view_release(view);
+        *err_msg = "No memory for new data fetcher job";
         return MDV_NO_MEM;
     }
 
@@ -186,15 +212,17 @@ static mdv_errno mdv_fetcher_job_emit(mdv_fetcher *fetcher, mdv_evt_view_fetch c
     job->data.fetcher       = mdv_fetcher_retain(fetcher);
     job->data.session       = fetch->session;
     job->data.request_id    = fetch->request_id;
-    job->data.view_id       = fetch->view_id;
+    job->data.view          = view;
 
     mdv_errno err = mdv_jobber_push(fetcher->jobber, (mdv_job_base*)job);
 
     if (err != MDV_OK)
     {
         MDV_LOGE("Data fetch job failed");
+        mdv_view_release(view);
         mdv_fetcher_release(fetcher);
         mdv_free(job, "fetcher_job");
+        *err_msg = "Data fetch job failed";
     }
     else
         atomic_fetch_add_explicit(&fetcher->active_jobs, 1, memory_order_relaxed);
@@ -223,6 +251,8 @@ static mdv_errno mdv_fetcher_view_register(mdv_fetcher  *fetcher,
             err = MDV_NO_MEM;
             mdv_view_release(view);
         }
+        else
+            *view_id = reg_view.id;
 
         mdv_mutex_unlock(&fetcher->mutex);
     }
@@ -341,7 +371,9 @@ static mdv_errno mdv_fetcher_evt_view_fetch(void *arg, mdv_event *event)
     mdv_fetcher *fetcher = arg;
     mdv_evt_view_fetch *fetch = (mdv_evt_view_fetch *)event;
 
-    mdv_errno err = mdv_fetcher_job_emit(fetcher, fetch);
+    char const *err_msg = "";
+
+    mdv_errno err = mdv_fetcher_job_emit(fetcher, fetch, &err_msg);
 
     if (err != MDV_OK)
     {
@@ -349,7 +381,7 @@ static mdv_errno mdv_fetcher_evt_view_fetch(void *arg, mdv_event *event)
                                         &fetch->session,
                                         fetch->request_id,
                                         err,
-                                        "");
+                                        err_msg);
 
         if (evt)
         {

@@ -122,3 +122,35 @@ uint32_t mdv_evt_view_fetch_release(mdv_evt_view_fetch *evt)
 {
     return mdv_event_release(&evt->base);
 }
+
+
+mdv_evt_view_data * mdv_evt_view_data_create(mdv_uuid const  *session,
+                                             uint16_t         request_id,
+                                             binn            *rows)
+{
+    mdv_evt_view_data *event = (mdv_evt_view_data*)
+                                mdv_event_create(
+                                    MDV_EVT_VIEW_DATA,
+                                    sizeof(mdv_evt_view_data));
+
+    if (event)
+    {
+        event->session    = *session;
+        event->request_id = request_id;
+        event->rows       = rows;
+    }
+
+    return event;
+}
+
+
+mdv_evt_view_data * mdv_evt_view_data_retain(mdv_evt_view_data *evt)
+{
+    return (mdv_evt_view_data*)mdv_event_retain(&evt->base);
+}
+
+
+uint32_t mdv_evt_view_data_release(mdv_evt_view_data *evt)
+{
+    return mdv_event_release(&evt->base);
+}

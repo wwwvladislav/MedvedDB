@@ -115,6 +115,32 @@ static mdv_errno mdv_user_view_reply(mdv_user *user, uint16_t id, mdv_msg_view c
 }
 
 
+static mdv_errno mdv_user_view_data_reply(mdv_user *user, uint16_t id, mdv_msg_rowset const *msg)
+{
+    binn rowset;
+
+    if (!mdv_msg_rowset_binn(msg, &rowset))
+        return MDV_FAILED;
+
+    mdv_msg message =
+    {
+        .hdr =
+        {
+            .id = mdv_msg_rowset_id,
+            .number = id,
+            .size = binn_size(&rowset)
+        },
+        .payload = binn_ptr(&rowset)
+    };
+
+    mdv_errno err = mdv_user_reply(user, &message);
+
+    binn_free(&rowset);
+
+    return err;
+}
+
+
 static mdv_errno mdv_user_table_info_reply(mdv_user *user, uint16_t id, mdv_msg_table_info const *msg)
 {
     binn table_info;
@@ -578,11 +604,30 @@ static mdv_errno mdv_user_evt_view(void *arg, mdv_event *event)
 }
 
 
+static mdv_errno mdv_user_evt_view_data(void *arg, mdv_event *event)
+{
+    mdv_user *user = arg;
+    mdv_evt_view_data *evt = (mdv_evt_view_data *)event;
+
+    if (mdv_uuid_cmp(&evt->session, &user->session) != 0)
+        return MDV_OK;
+
+    mdv_msg_rowset const rowset =
+    {
+        .rows = evt->rows,
+        .end = false        // TODO
+    };
+
+    return mdv_user_view_data_reply(user, evt->request_id, &rowset);
+}
+
+
 static const mdv_event_handler_type mdv_user_handlers[] =
 {
     { MDV_EVT_TOPOLOGY,     mdv_user_evt_topology },
     { MDV_EVT_STATUS,       mdv_user_evt_status },
     { MDV_EVT_VIEW,         mdv_user_evt_view },
+    { MDV_EVT_VIEW_DATA,    mdv_user_evt_view_data },
 };
 
 

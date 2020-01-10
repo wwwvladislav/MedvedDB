@@ -35,6 +35,17 @@ uint32_t mdv_view_release(mdv_view *view);
 
 
 /**
+ * @brief Returns view table descriptor
+ * @details View table descriptor is subset of original table which is extracted using fields mask.
+ *
+ * @param view [in]     Table slice representation
+ *
+ * @return table descriptor
+ */
+mdv_table * mdv_view_desc(mdv_view *view);
+
+
+/**
  * @brief Rowset reading from the table
  *
  * @param view [in]     Table slice representation

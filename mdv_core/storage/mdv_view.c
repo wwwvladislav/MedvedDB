@@ -13,6 +13,7 @@ struct mdv_view
     atomic_uint_fast32_t  rc;               ///< References counter
     mdv_rowdata          *source;           ///< Rows source
     mdv_table            *table;            ///< Table descriptor
+    mdv_table            *table_slice;      ///< Table descriptor slice
     mdv_bitset           *fields;           ///< Fields mask
     mdv_predicate        *filter;           ///< Predicate for rows filtering
     mdv_objid             rowid;            ///< Last read row identifier
@@ -33,6 +34,15 @@ mdv_view * mdv_view_create(mdv_rowdata      *source,
         return 0;
     }
 
+    view->table_slice = mdv_table_slice(table, fields);
+
+    if (!view->table_slice)
+    {
+        MDV_LOGE("View creation failed.");
+        mdv_free(view, "view");
+        return 0;
+    }
+
     atomic_init(&view->rc, 1);
 
     view->filter = mdv_predicate_retain(predicate);
@@ -50,6 +60,7 @@ static void mdv_view_free(mdv_view *view)
     mdv_predicate_release(view->filter);
     mdv_rowdata_release(view->source);
     mdv_table_release(view->table);
+    mdv_table_release(view->table_slice);
     mdv_bitset_release(view->fields);
     mdv_free(view, "view");
 }
@@ -75,6 +86,12 @@ uint32_t mdv_view_release(mdv_view *view)
     }
 
     return rc;
+}
+
+
+mdv_table * mdv_view_desc(mdv_view *view)
+{
+    return mdv_table_retain(view->table_slice);
 }
 
 

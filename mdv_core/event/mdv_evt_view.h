@@ -63,3 +63,19 @@ mdv_evt_view_fetch * mdv_evt_view_fetch_create(mdv_uuid const  *session,
                                                uint32_t         view_id);
 mdv_evt_view_fetch * mdv_evt_view_fetch_retain(mdv_evt_view_fetch *evt);
 uint32_t             mdv_evt_view_fetch_release(mdv_evt_view_fetch *evt);
+
+
+typedef struct
+{
+    mdv_event       base;
+    mdv_uuid        session;    ///< Session identifier
+    uint16_t        request_id; ///< Request identifier (used to associate requests and responses)
+    binn           *rows;       ///< Serialized rows
+} mdv_evt_view_data;
+
+
+mdv_evt_view_data * mdv_evt_view_data_create(mdv_uuid const  *session,
+                                             uint16_t         request_id,
+                                             binn            *rows);
+mdv_evt_view_data * mdv_evt_view_data_retain(mdv_evt_view_data *evt);
+uint32_t            mdv_evt_view_data_release(mdv_evt_view_data *evt);

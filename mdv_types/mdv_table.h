@@ -12,6 +12,7 @@
 #include "mdv_types.h"
 #include <mdv_string.h>
 #include <mdv_uuid.h>
+#include <mdv_bitset.h>
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -38,6 +39,17 @@ typedef struct mdv_table mdv_table;
  * @return table desriptor or NULL
  */
 mdv_table * mdv_table_create(mdv_uuid const *id, mdv_table_desc const *desc);
+
+
+/**
+ * @brief Creates table descriptor from table fields subset
+ *
+ * @param table [in]  table desriptor
+ * @param fields [in] fields mask
+ *
+ * @return table desriptor or NULL
+ */
+mdv_table * mdv_table_slice(mdv_table const *table, mdv_bitset const *fields);
 
 
 /**

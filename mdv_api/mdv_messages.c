@@ -403,9 +403,7 @@ bool mdv_msg_rowset_binn(mdv_msg_rowset const *msg, binn *obj)
         return false;
     }
 
-    if (0
-        || !binn_object_set_list(obj, "R", (void *)msg->rows)
-        || !binn_object_set_bool(obj, "E", msg->end))
+    if (!binn_object_set_list(obj, "R", (void *)msg->rows))
     {
         MDV_LOGE("mdv_msg_rowset_binn failed");
         binn_free(obj);
@@ -418,17 +416,11 @@ bool mdv_msg_rowset_binn(mdv_msg_rowset const *msg, binn *obj)
 
 bool mdv_msg_rowset_unbinn(binn const * obj, mdv_msg_rowset *msg)
 {
-    BOOL end = 0;
-
-    if(0
-        || !binn_object_get_list((void*)obj, "R", (void**)&msg->rows)
-        || !binn_object_get_bool((void*)obj, "E", &end))
+    if(!binn_object_get_list((void*)obj, "R", (void**)&msg->rows))
     {
         MDV_LOGE("mdv_msg_rowset_unbinn failed");
         return false;
     }
-
-    msg->end = end ? true : false;
 
     return true;
 }

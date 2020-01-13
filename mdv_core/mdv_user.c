@@ -614,8 +614,7 @@ static mdv_errno mdv_user_evt_view_data(void *arg, mdv_event *event)
 
     mdv_msg_rowset const rowset =
     {
-        .rows = evt->rows,
-        .end = false        // TODO
+        .rows = evt->rows
     };
 
     return mdv_user_view_data_reply(user, evt->request_id, &rowset);

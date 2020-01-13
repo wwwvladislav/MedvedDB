@@ -114,7 +114,6 @@ mdv_message_def(fetch, 12,
 
 mdv_message_def(rowset, 13,
     binn       *rows;
-    bool        end;
 );
 
 

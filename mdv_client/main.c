@@ -196,6 +196,10 @@ static void mdv_show_routes(char const *args)
 }
 
 
+static void mdv_print_table_desc(mdv_table const *table)
+{}
+
+
 static void mdv_test_scenario(char const *args)
 {
     (void)args;
@@ -292,11 +296,31 @@ static void mdv_test_scenario(char const *args)
         {
             while(mdv_enumerator_next(enumerator) == MDV_OK)
             {
-                mdv_row *row = mdv_enumerator_current(enumerator);
+                mdv_rowset *rowset = mdv_enumerator_current(enumerator);
 
-                // TODO
+                if (rowset)
+                {
+                    mdv_enumerator *rows_it = mdv_rowset_enumerator(rowset);
 
-                (void)row;
+                    if (rows_it)
+                    {
+                        while(mdv_enumerator_next(rows_it) == MDV_OK)
+                        {
+                            mdv_row *row = mdv_enumerator_current(rows_it);
+
+                            for(uint32_t i = 0; i < desc.size; ++i)
+                            {
+                                printf("|\t");
+                            }
+
+                            printf("|\n");
+                        }
+
+                        mdv_enumerator_release(rows_it);
+                    }
+
+                    mdv_rowset_release(rowset);
+                }
             }
 
             mdv_enumerator_release(enumerator);

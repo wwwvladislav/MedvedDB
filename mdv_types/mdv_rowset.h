@@ -37,7 +37,6 @@ typedef void             (*mdv_rowset_emplace_fn)   (mdv_rowset *, mdv_rowlist_e
 typedef mdv_enumerator * (*mdv_rowset_enumerator_fn)(mdv_rowset *);
 
 
-
 /// Interface for row sets
 typedef struct
 {

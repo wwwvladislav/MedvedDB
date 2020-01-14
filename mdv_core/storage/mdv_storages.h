@@ -9,7 +9,7 @@
 #define MDV_MAP_NODES                   "NODES"             /// Known nodes list
 
 
-#define MDV_STRG_TABLES                "tables.mdb"
+#define MDV_STRG_TABLES                 "tables.mdb"
 #define MDV_STRG_OBJECTS_MAPS           3
 #define MDV_MAP_OBJECTS                 "OBJECTS"           /// DB objects: tables, views, etc
 #define MDV_MAP_REMOVED                 "REMOVED"           /// Removed objects identifiers

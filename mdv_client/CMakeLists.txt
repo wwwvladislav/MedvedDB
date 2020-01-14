@@ -4,10 +4,12 @@ project(mdv)
 add_definitions(-Wall -Wextra)
 
 set(HEADERS
+    mdv_cout.h
 )
 
 set(SOURCES
     main.c
+    mdv_cout.c
 )
 
 include_directories(

@@ -1,3 +1,4 @@
+#include "mdv_cout.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -196,10 +197,6 @@ static void mdv_show_routes(char const *args)
 }
 
 
-static void mdv_print_table_desc(mdv_table const *table)
-{}
-
-
 static void mdv_test_scenario(char const *args)
 {
     (void)args;
@@ -243,22 +240,23 @@ static void mdv_test_scenario(char const *args)
         return;
     }
 
-    int ints[] = { 42, 43 };
+    int ints1[] = { 42, 43 };
+    int ints2[] = { 44, 45 };
     bool bool_value_0 = true;
     bool bool_value_1 = false;
 
     mdv_data const row0[] =
     {
-        { 5,            "hello" },
-        { sizeof(ints), ints },
-        { 1,            &bool_value_0 }
+        { 5,             "hello" },
+        { sizeof(ints1), ints1 },
+        { 1,             &bool_value_0 }
     };
 
     mdv_data const row1[] =
     {
-        { 5,            "world" },
-        { sizeof(ints), ints },
-        { 1,            &bool_value_1 }
+        { 5,             "world" },
+        { sizeof(ints2), ints2 },
+        { 1,             &bool_value_1 }
     };
 
     mdv_data const *rows[] = { row0, row1 };
@@ -290,39 +288,14 @@ static void mdv_test_scenario(char const *args)
     {
         mdv_bitset_fill(mask, true);
 
-        mdv_enumerator *enumerator = mdv_select(client, table, mask, "");
+        mdv_table *result_table = 0;
+
+        mdv_enumerator *enumerator = mdv_select(client, table, mask, "", &result_table);
 
         if (enumerator)
         {
-            while(mdv_enumerator_next(enumerator) == MDV_OK)
-            {
-                mdv_rowset *rowset = mdv_enumerator_current(enumerator);
-
-                if (rowset)
-                {
-                    mdv_enumerator *rows_it = mdv_rowset_enumerator(rowset);
-
-                    if (rows_it)
-                    {
-                        while(mdv_enumerator_next(rows_it) == MDV_OK)
-                        {
-                            mdv_row *row = mdv_enumerator_current(rows_it);
-
-                            for(uint32_t i = 0; i < desc.size; ++i)
-                            {
-                                printf("|\t");
-                            }
-
-                            printf("|\n");
-                        }
-
-                        mdv_enumerator_release(rows_it);
-                    }
-
-                    mdv_rowset_release(rowset);
-                }
-            }
-
+            mdv_cout_table(result_table, enumerator);
+            mdv_table_release(result_table);
             mdv_enumerator_release(enumerator);
         }
         else

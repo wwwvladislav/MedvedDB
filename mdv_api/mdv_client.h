@@ -127,10 +127,11 @@ mdv_errno mdv_insert_rows(mdv_client *client, mdv_table *table, mdv_rowset *rows
 /**
  * @brief Creates table rows iterator
  *
- * @param client [in]    DB client
- * @param table [in]     table descriptor
- * @param fields [in]    fields mask for reading
- * @param filter [in]    predicate for rows filtering
+ * @param client [in]           DB client
+ * @param table [in]            table descriptor
+ * @param fields [in]           fields mask for reading
+ * @param filter [in]           predicate for rows filtering
+ * @param result_table [out]    result table descriptor
  *
  * @return On success, return nonzero rows enumerator (mdv_rowset's set)
  * @return On error, return NULL pointer
@@ -138,4 +139,5 @@ mdv_errno mdv_insert_rows(mdv_client *client, mdv_table *table, mdv_rowset *rows
 mdv_enumerator * mdv_select(mdv_client *client,
                             mdv_table  *table,
                             mdv_bitset *fields,
-                            char const *filter);
+                            char const *filter,
+                            mdv_table  **result_table);

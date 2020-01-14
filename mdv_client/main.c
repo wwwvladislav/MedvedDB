@@ -53,6 +53,7 @@ static void mdv_commands_list(char const *);
 static void mdv_redirect_output(char const *);
 static void mdv_show_topology(char const *);
 static void mdv_show_routes(char const *);
+static void mdv_show_tables(char const *);
 static void mdv_test_scenario(char const *);
 
 
@@ -62,6 +63,7 @@ static mdv_command const commands[] =
     { "\\o",    "Save an output of query to a text file",   &mdv_redirect_output },
     { "\\t",    "Show network topology",                    &mdv_show_topology },
     { "\\r",    "Show routing table",                       &mdv_show_routes },
+    { "\\dt",   "Show tables in the current database",      &mdv_show_tables },
     { "\\q",    "Quit mdv",                                 0 },
     { "\\test", "Run test scenario",                        &mdv_test_scenario },
 };
@@ -194,6 +196,14 @@ static void mdv_show_routes(char const *args)
     }
     else
         MDV_INF("Routing table request failed\n");
+}
+
+
+static void mdv_show_tables(char const *args)
+{
+    (void)args;
+
+    // TODO
 }
 
 

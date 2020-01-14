@@ -282,7 +282,7 @@ static int mdv_cout_double(char *buff, size_t size, void const *val)
 }
 
 
-void mdv_cout_table_header(mdv_table const *table)
+static void mdv_cout_table_header(mdv_table const *table)
 {
     mdv_table_desc const *desc = mdv_table_description(table);
 
@@ -300,11 +300,11 @@ void mdv_cout_table_header(mdv_table const *table)
 }
 
 
-void mdv_cout_table_separator(mdv_table const *table)
+static void mdv_cout_table_separator(mdv_table const *table)
 {
     mdv_table_desc const *desc = mdv_table_description(table);
 
-    printf("-");
+    printf("+");
 
     for(uint32_t i = 0; i < desc->size; ++i)
     {
@@ -316,11 +316,11 @@ void mdv_cout_table_separator(mdv_table const *table)
             printf("-");
     }
 
-    printf("-\n");
+    printf("+\n");
 }
 
 
-void mdv_cout_table_row(mdv_table const *table, mdv_row const *row)
+static void mdv_cout_table_row(mdv_table const *table, mdv_row const *row)
 {
     mdv_table_desc const *desc = mdv_table_description(table);
 

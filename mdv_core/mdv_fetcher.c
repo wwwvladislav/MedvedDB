@@ -42,12 +42,16 @@ static size_t mdv_u32_hash(uint32_t const *v)                   { return *v; }
 static int mdv_u32_cmp(uint32_t const *a, uint32_t const *b)    { return (int)*a - *b; }
 
 
+static void mdv_fetcher_view_unregister(mdv_fetcher  *fetcher, uint32_t view_id);
+
+
 typedef struct mdv_fetcher_context
 {
     mdv_fetcher    *fetcher;        ///< Data fetcher
     mdv_uuid        session;        ///< Session identifier
     uint16_t        request_id;     ///< Request identifier (used to associate requests and responses)
     mdv_view       *view;           ///< View
+    uint32_t        view_id;        ///< View identifier
 } mdv_fetcher_context;
 
 
@@ -157,6 +161,8 @@ static void mdv_fetcher_fn(mdv_job_base *job)
         mdv_table_release(view_desc);
         mdv_rowset_release(rowset);
     }
+    else
+        mdv_fetcher_view_unregister(fetcher, ctx->view_id);
 
     if (err != MDV_OK)
     {
@@ -213,6 +219,7 @@ static mdv_errno mdv_fetcher_job_emit(mdv_fetcher *fetcher, mdv_evt_view_fetch c
     job->data.session       = fetch->session;
     job->data.request_id    = fetch->request_id;
     job->data.view          = view;
+    job->data.view_id       = fetch->view_id;
 
     mdv_errno err = mdv_jobber_push(fetcher->jobber, (mdv_job_base*)job);
 
@@ -258,6 +265,25 @@ static mdv_errno mdv_fetcher_view_register(mdv_fetcher  *fetcher,
     }
 
     return err;
+}
+
+
+static void mdv_fetcher_view_unregister(mdv_fetcher  *fetcher, uint32_t view_id)
+{
+    if(mdv_mutex_lock(&fetcher->mutex) == MDV_OK)
+    {
+        mdv_fetcher_view *fetcher_view = mdv_hashmap_find(fetcher->views, &view_id);
+
+        if (fetcher_view)
+        {
+            mdv_view_release(fetcher_view->view);
+            mdv_hashmap_erase(fetcher->views, &view_id);
+        }
+        else
+            MDV_LOGE("View with id '%u' not found", view_id);
+
+        mdv_mutex_unlock(&fetcher->mutex);
+    }
 }
 
 

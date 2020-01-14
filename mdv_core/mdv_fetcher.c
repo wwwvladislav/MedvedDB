@@ -5,7 +5,7 @@
 #include "event/mdv_evt_view.h"
 #include "event/mdv_evt_table.h"
 #include "event/mdv_evt_status.h"
-#include "storage/mdv_view.h"
+#include "storage/mdv_rowdata_view.h"
 #include <mdv_table.h>
 #include <mdv_serialization.h>
 #include <mdv_alloc.h>
@@ -308,7 +308,7 @@ static mdv_errno mdv_fetcher_view_create(mdv_fetcher    *fetcher,
 
             if (predicate)
             {
-                mdv_view *view = mdv_view_create(rowdata, table, fields, predicate);
+                mdv_view *view = mdv_rowdata_view_create(rowdata, table, fields, predicate);
 
                 if (view)
                 {

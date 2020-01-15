@@ -203,7 +203,36 @@ static void mdv_show_tables(char const *args)
 {
     (void)args;
 
-    // TODO
+    mdv_table *table = mdv_get_table(client, &MDV_SYSTBL_TABLES);
+
+    if (table)
+    {
+        mdv_bitset *mask = mdv_bitset_create(mdv_table_description(table)->size, &mdv_default_allocator);
+
+        if (mask)
+        {
+            mdv_bitset_fill(mask, true);
+
+            mdv_table *result_table = 0;
+
+            mdv_enumerator *enumerator = mdv_select(client, table, mask, "", &result_table);
+
+            if (enumerator)
+            {
+                mdv_cout_table(result_table, enumerator);
+                mdv_table_release(result_table);
+                mdv_enumerator_release(enumerator);
+            }
+            else
+                MDV_INF("Rows iteration failed\n");
+
+            mdv_bitset_release(mask);
+        }
+        else
+            MDV_INF("Rows iteration failed. No memory for fields mask.\n");
+
+        mdv_table_release(table);
+    }
 }
 
 

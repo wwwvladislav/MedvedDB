@@ -65,3 +65,9 @@ mdv_errno mdv_tables_add_raw(mdv_tables *tables, mdv_uuid const *uuid, mdv_data 
  * @brief Searches the table descriptor by UUID
  */
 mdv_table * mdv_tables_get(mdv_tables *tables, mdv_uuid const *uuid);
+
+
+/**
+ * @brief Returns table descriptor for tables storage
+ */
+mdv_table * mdv_tables_desc(mdv_tables *tables);

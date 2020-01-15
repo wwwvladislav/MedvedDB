@@ -10,6 +10,7 @@
 #include <mdv_topology.h>
 #include <mdv_errno.h>
 #include <mdv_bitset.h>
+#include <mdv_systbls.h>
 
 
 /// Client configuration. All options are mandatory.

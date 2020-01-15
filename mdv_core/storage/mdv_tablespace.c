@@ -4,6 +4,7 @@
 #include "mdv_rowdata.h"
 #include "../mdv_config.h"
 #include "../event/mdv_evt_table.h"
+#include "../event/mdv_evt_tables.h"
 #include "../event/mdv_evt_rowdata.h"
 #include "../event/mdv_evt_topology.h"
 #include "../event/mdv_evt_trlog.h"
@@ -15,6 +16,7 @@
 #include <mdv_hashmap.h>
 #include <mdv_mutex.h>
 #include <mdv_safeptr.h>
+#include <mdv_systbls.h>
 
 
 /// DB tables space
@@ -34,24 +36,24 @@ struct mdv_tablespace
 /// Stroage identifiers map
 typedef struct
 {
-    mdv_uuid    uuid;   ///< Global unique storage identifier
-    uint32_t    id;     ///< local unique storage identifier
+    mdv_uuid    uuid;           ///< Global unique storage identifier
+    uint32_t    id;             ///< local unique storage identifier
 } mdv_storage_id;
 
 
 /// Transaction log storage reference
 typedef struct
 {
-    mdv_uuid   uuid;    ///< Storage UUID
-    mdv_trlog *trlog;   ///< Transaction log storage
+    mdv_uuid   uuid;            ///< Storage UUID
+    mdv_trlog *trlog;           ///< Transaction log storage
 } mdv_trlog_ref;
 
 
 /// Rowdata storage reference
 typedef struct
 {
-    mdv_uuid     uuid;      ///< Storage UUID
-    mdv_rowdata *rowdata;   ///< Rowdata storage
+    mdv_uuid     uuid;          ///< Storage UUID
+    mdv_rowdata *rowdata;       ///< Rowdata storage
 } mdv_rowdata_ref;
 
 
@@ -264,7 +266,10 @@ static mdv_errno mdv_tablespace_evt_table_get(void *arg, mdv_event *event)
     mdv_tablespace  *tablespace = arg;
     mdv_evt_table   *get_table  = (mdv_evt_table *)event;
 
-    get_table->table = mdv_tables_get(tablespace->tables, &get_table->table_id);
+    if (mdv_uuid_cmp(&MDV_SYSTBL_TABLES, &get_table->table_id) == 0)
+        get_table->table = mdv_tables_desc(tablespace->tables);
+    else
+        get_table->table = mdv_tables_get(tablespace->tables, &get_table->table_id);
 
     return get_table->table ? MDV_OK : MDV_FAILED;
 }
@@ -286,6 +291,17 @@ static mdv_errno mdv_tablespace_evt_table_create(void *arg, mdv_event *event)
     }
 
     return MDV_FAILED;
+}
+
+
+static mdv_errno mdv_tablespace_evt_tables_get(void *arg, mdv_event *event)
+{
+    mdv_tablespace  *tablespace = arg;
+    mdv_evt_tables  *get_tables  = (mdv_evt_tables *)event;
+
+    get_tables->tables = mdv_tables_retain(tablespace->tables);
+
+    return MDV_OK;
 }
 
 
@@ -352,6 +368,7 @@ static const mdv_event_handler_type mdv_tablespace_handlers[] =
 {
     { MDV_EVT_TABLE_GET,      mdv_tablespace_evt_table_get },
     { MDV_EVT_TABLE_CREATE,   mdv_tablespace_evt_table_create },
+    { MDV_EVT_TABLES_GET,     mdv_tablespace_evt_tables_get },
     { MDV_EVT_ROWDATA_INSERT, mdv_tablespace_evt_rowdata_insert },
     { MDV_EVT_ROWDATA_GET,    mdv_tablespace_evt_rowdata_get },
     { MDV_EVT_TRLOG_GET,      mdv_tablespace_evt_trlog_get },

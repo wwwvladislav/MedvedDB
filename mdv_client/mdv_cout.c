@@ -3,7 +3,7 @@
 #include <inttypes.h>
 
 
-static const size_t MDV_MAX_FIELD_WIDTH = 30;
+static const size_t MDV_MAX_FIELD_WIDTH = 32;
 static const uint32_t MDV_MAX_FIELD_LIMIT = 100500;
 
 

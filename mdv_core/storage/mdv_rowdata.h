@@ -20,10 +20,6 @@
 typedef struct mdv_rowdata mdv_rowdata;
 
 
-/// Predicate for rowdata filtering
-typedef int (*mdv_rowdata_filter)(void *arg, mdv_row const *row_slice);
-
-
 /**
  * @brief Creates new or opens existing rowdata storage
  *
@@ -100,7 +96,7 @@ mdv_rowset * mdv_rowdata_slice_from_begin(mdv_rowdata           *rowdata,
                                           mdv_bitset const      *fields,
                                           size_t                 count,
                                           mdv_objid             *rowid,
-                                          mdv_rowdata_filter     filter,
+                                          mdv_row_filter         filter,
                                           void                  *arg);
 
 
@@ -123,6 +119,6 @@ mdv_rowset * mdv_rowdata_slice(mdv_rowdata          *rowdata,
                                mdv_bitset const     *fields,
                                size_t                count,
                                mdv_objid            *rowid,
-                               mdv_rowdata_filter    filter,
+                               mdv_row_filter        filter,
                                void                 *arg);
 

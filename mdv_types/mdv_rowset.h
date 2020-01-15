@@ -23,6 +23,10 @@ typedef struct
 } mdv_row;
 
 
+/// Predicate for row filtering
+typedef int (*mdv_row_filter)(void *arg, mdv_row const *row_slice);
+
+
 typedef mdv_list_entry(mdv_row) mdv_rowlist_entry;
 
 

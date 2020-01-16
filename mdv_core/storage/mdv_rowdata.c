@@ -123,7 +123,6 @@ static mdv_rowset * mdv_rowdata_slice_impl(mdv_enumerator       *enumerator,
                 if(!row)
                 {
                     MDV_LOGE("Invalid serialized row");
-                    binn_free(&binn_row);
                     break;
                 }
             }

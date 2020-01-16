@@ -7,6 +7,7 @@
 #include "event/mdv_evt_tables.h"
 #include "event/mdv_evt_status.h"
 #include "storage/mdv_rowdata_view.h"
+#include "storage/mdv_tables_view.h"
 #include <mdv_table.h>
 #include <mdv_serialization.h>
 #include <mdv_alloc.h>
@@ -348,7 +349,10 @@ static mdv_view * mdv_fetcher_tables_view_create(mdv_fetcher    *fetcher,
 
     if (tables)
     {
-        // TODO
+        view = mdv_tables_view_create(tables, fields, predicate);
+
+        if(!view)
+            *err_msg = "View creation failed";
 
         mdv_tables_release(tables);
     }

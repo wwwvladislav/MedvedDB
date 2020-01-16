@@ -12,6 +12,7 @@
 #include <mdv_def.h>
 #include <mdv_types.h>
 #include <mdv_table.h>
+#include <mdv_rowset.h>
 
 
 /// Tables storage
@@ -71,3 +72,46 @@ mdv_table * mdv_tables_get(mdv_tables *tables, mdv_uuid const *uuid);
  * @brief Returns table descriptor for tables storage
  */
 mdv_table * mdv_tables_desc(mdv_tables *tables);
+
+
+/**
+ * @brief Rows subset reading
+ *
+ * @param tables [in]    Tables storage
+ * @param fields [in]    Fields mask for reading
+ * @param count [in]     Rows amount for reading
+ * @param rowid [out]    Last row identifier (used to continue reading)
+ * @param filter [in]    Predicate for rowdata filtering
+ * @param arg [in]       Argument which is passed to rowdata filtering predicate
+ *
+ * @return On success, returns nonzero pointer to rows set
+ * @return On error, returns zero pointer
+ */
+mdv_rowset * mdv_tables_slice_from_begin(mdv_tables         *tables,
+                                         mdv_bitset const   *fields,
+                                         size_t              count,
+                                         mdv_uuid           *rowid,
+                                         mdv_row_filter      filter,
+                                         void               *arg);
+
+
+/**
+ * @brief Rows subset reading from given row identifier
+ *
+ * @param tables [in]     Tables storage
+ * @param fields [in]     Fields mask for reading
+ * @param count [in]      Rows amount for reading
+ * @param rowid [in][out] Last row identifier (used to continue reading)
+ * @param filter [in]     Predicate for rowdata filtering
+ * @param arg [in]        Argument which is passed to rowdata filtering predicate
+ *
+ * @return On success, returns nonzero pointer to rows set
+ * @return On error, returns zero pointer
+ */
+mdv_rowset * mdv_tables_slice(mdv_tables        *tables,
+                              mdv_bitset const  *fields,
+                              size_t             count,
+                              mdv_uuid          *rowid,
+                              mdv_row_filter     filter,
+                              void              *arg);
+

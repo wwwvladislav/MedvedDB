@@ -1,5 +1,4 @@
 #include "mdv_cout.h"
-#include <stdio.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <string.h>
@@ -18,24 +17,6 @@ static int const   MDV_HISTORY_LEN  = 64;
 
 
 static mdv_client *client = 0;
-static char result_file_path[MDV_PATH_MAX] = { 0 };
-
-
-#define MDV_OUT(...)                                    \
-    {                                                   \
-        printf(__VA_ARGS__);                            \
-        if (*result_file_path)                          \
-        {                                               \
-            FILE *f = fopen(result_file_path, "a");     \
-            if (f)                                      \
-            {                                           \
-                fprintf(f, __VA_ARGS__);                \
-                fclose(f);                              \
-            }                                           \
-        }                                               \
-    }
-
-#define MDV_INF(...) printf(__VA_ARGS__)
 
 
 typedef void (*mdv_command_handler)(char const *);

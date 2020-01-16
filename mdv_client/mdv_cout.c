@@ -1,10 +1,51 @@
 #include "mdv_cout.h"
-#include <stdio.h>
 #include <inttypes.h>
+#include <stdarg.h>
 
 
 static const size_t MDV_MAX_FIELD_WIDTH = 32;
 static const uint32_t MDV_MAX_FIELD_LIMIT = 100500;
+
+
+char result_file_path[MDV_PATH_MAX] = { 0 };
+
+
+int MDV_OUT(const char *format, ...)
+{
+    va_list args;
+
+    va_start(args, format);
+    int res = vprintf(format, args);
+    va_end(args);
+
+    if (*result_file_path)
+    {
+        FILE *f = fopen(result_file_path, "a");
+
+        if (f)
+        {
+            va_start(args, format);
+            vfprintf(f, format, args);
+            va_end(args);
+            fclose(f);
+        }
+    }
+
+    return res;
+}
+
+
+int MDV_INF(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+
+    int res = vprintf(format, args);
+
+    va_end(args);
+
+    return res;
+}
 
 
 static size_t mdv_field_width(mdv_field const *field)
@@ -68,17 +109,17 @@ static size_t mdv_field_width(mdv_field const *field)
 static void mdv_cout_spaces(size_t start, size_t end)
 {
     for(size_t i = start; i < end; ++i)
-        printf(" ");
+        MDV_OUT(" ");
 }
 
 
 static void mdv_cout_string(mdv_string const *str, size_t width)
 {
     if(str->size > width)
-        printf("%.*s~", (int)width - 1, str->ptr);
+        MDV_OUT("%.*s~", (int)width - 1, str->ptr);
     else
     {
-        int const ret = printf("%.*s", (int)str->size, str->ptr);
+        int const ret = MDV_OUT("%.*s", (int)str->size, str->ptr);
         if (ret >= 0)
             mdv_cout_spaces(ret, width);
     }
@@ -99,11 +140,11 @@ static void mdv_cout_bool(mdv_data const *data, mdv_field const *field)
     {
         if (len + 1 > width)
         {
-            printf("~");
+            MDV_OUT("~");
             break;
         }
 
-        printf(*ptr ? "1" : "0");
+        MDV_OUT(*ptr ? "1" : "0");
         ++len;
     }
 
@@ -139,11 +180,11 @@ static void mdv_cout_byte(mdv_data const *data, mdv_field const *field)
     {
         if (len + 2 > width)
         {
-            printf("~");
+            MDV_OUT("~");
             break;
         }
 
-        printf("%02x", *ptr);
+        MDV_OUT("%02x", *ptr);
 
         len += 2;
     }
@@ -168,13 +209,13 @@ static void mdv_cout_item(mdv_data const *data, mdv_field const *field, int (*ou
     {
         if (len + 1 > width)
         {
-            printf("~");
+            MDV_OUT("~");
             break;
         }
 
         if(i)
         {
-            printf(",");
+            MDV_OUT(",");
             ++len;
         }
 
@@ -182,18 +223,18 @@ static void mdv_cout_item(mdv_data const *data, mdv_field const *field, int (*ou
 
         if (ret < 0)
         {
-            printf("???");
+            MDV_OUT("???");
             len += 3;
             break;
         }
 
         if (len + ret > width)
         {
-            printf("~");
+            MDV_OUT("~");
             break;
         }
 
-        printf("%s", buff);
+        MDV_OUT("%s", buff);
 
         len += ret;
     }
@@ -286,17 +327,17 @@ static void mdv_cout_table_header(mdv_table const *table)
 {
     mdv_table_desc const *desc = mdv_table_description(table);
 
-    printf("| ");
+    MDV_OUT("| ");
 
     for(uint32_t i = 0; i < desc->size; ++i)
     {
-        if (i) printf(" | ");
+        if (i) MDV_OUT(" | ");
 
         size_t const field_width = mdv_field_width(desc->fields + i);
 
         mdv_cout_string(&desc->fields[i].name, field_width);
     }
-    printf(" |\n");
+    MDV_OUT(" |\n");
 }
 
 
@@ -304,19 +345,19 @@ static void mdv_cout_table_separator(mdv_table const *table)
 {
     mdv_table_desc const *desc = mdv_table_description(table);
 
-    printf("+");
+    MDV_OUT("+");
 
     for(uint32_t i = 0; i < desc->size; ++i)
     {
-        if (i) printf("+");
+        if (i) MDV_OUT("+");
 
         size_t const field_width = mdv_field_width(desc->fields + i);
 
         for(size_t j = 0; j < field_width + 2; ++j)
-            printf("-");
+            MDV_OUT("-");
     }
 
-    printf("+\n");
+    MDV_OUT("+\n");
 }
 
 
@@ -324,11 +365,11 @@ static void mdv_cout_table_row(mdv_table const *table, mdv_row const *row)
 {
     mdv_table_desc const *desc = mdv_table_description(table);
 
-    printf("| ");
+    MDV_OUT("| ");
 
     for(uint32_t i = 0; i < desc->size; ++i)
     {
-        if (i) printf(" | ");
+        if (i) MDV_OUT(" | ");
 
         mdv_field const *field = desc->fields + i;
 
@@ -351,7 +392,7 @@ static void mdv_cout_table_row(mdv_table const *table, mdv_row const *row)
         }
     }
 
-    printf(" |\n");
+    MDV_OUT(" |\n");
 }
 
 

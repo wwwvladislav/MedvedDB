@@ -1,3 +1,13 @@
+/**
+ * @file mdv_view.h
+ * @author Vladislav Volkov (wwwvladislav@gmail.com)
+ * @brief Interface definition for views
+ * @version 0.1
+ * @date 2020-01-16
+ *
+ * @copyright Copyright (c) 2020, Vladislav Volkov
+ *
+ */
 #pragma once
 #include <mdv_table.h>
 #include <mdv_rowset.h>

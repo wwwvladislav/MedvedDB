@@ -385,6 +385,125 @@ mdv_table * mdv_unbinn_table(binn const *obj)
 }
 
 
+mdv_rowlist_entry * mdv_unbinn_table_as_row_slice(binn const        *obj,
+                                                  mdv_bitset const  *mask)
+{
+    mdv_uuid const *uuid = 0;
+    char *name           = 0;
+    size_t name_size     = 0;
+    uint32_t const cols  = 2;
+    uint32_t fields_num  = 0;
+    size_t row_size      = 0;
+
+    // Calculate necessary space for row
+    for(uint32_t n = 0; n < cols; ++n)
+    {
+        if (mask && !mdv_bitset_test(mask, n))
+            continue;
+
+        switch(n)
+        {
+            case 0:
+            {
+                uuid = mdv_unbinn_table_uuid(obj);
+
+                if (!uuid)
+                {
+                    MDV_LOGE("unbinn_table failed");
+                    return 0;
+                }
+
+                row_size += sizeof(mdv_uuid);
+
+                break;
+            }
+
+            case 1:
+            {
+                binn *desc_odj = 0;
+
+                if (!binn_object_get_object((void*)obj, "D", (void**)&desc_odj))
+                {
+                    MDV_LOGE("unbinn_table failed");
+                    return 0;
+                }
+
+                if (!binn_object_get_str((void*)desc_odj, "N", &name))
+                {
+                    MDV_LOGE("unbinn_table_desc failed");
+                    return 0;
+                }
+
+                name_size = strlen(name) + 1;
+
+                row_size += name_size;
+
+                break;
+            }
+
+            default:
+            {
+                MDV_LOGE("Unknown field requested");
+                return 0;
+            }
+        }
+
+        ++fields_num;
+    }
+
+    if (!fields_num ||
+        fields_num > cols)
+    {
+        MDV_LOGE("Serialized row contains invalid number of fields");
+        return 0;
+    }
+
+    row_size += offsetof(mdv_rowlist_entry, data)
+                + offsetof(mdv_row, fields)
+                + sizeof(mdv_data) * fields_num;
+
+    // Memory allocation for new row
+    mdv_rowlist_entry *entry = mdv_alloc(row_size, "rowlist_entry");
+
+    if (!entry)
+    {
+        MDV_LOGE("No memory for new row");
+        return 0;
+    }
+
+    mdv_row *row = &entry->data;
+
+    char *dataspace = (char *)(row->fields + fields_num);
+
+    size_t field_idx = 0;
+
+    if (uuid)
+    {
+        row->fields[field_idx].ptr = dataspace;
+        row->fields[field_idx].size = sizeof(mdv_uuid);
+        memcpy(dataspace, uuid, sizeof(mdv_uuid));
+        ++field_idx;
+        dataspace += sizeof(mdv_uuid);
+    }
+
+    if(name)
+    {
+        row->fields[field_idx].ptr = dataspace;
+        row->fields[field_idx].size = name_size;
+        memcpy(dataspace, name, name_size);
+        ++field_idx;
+        dataspace += name_size;
+    }
+
+    if (dataspace - (char*)entry != row_size)
+        MDV_LOGE("memory corrupted: %p, %zu != %zu", entry, dataspace - (char*)entry, row_size);
+
+    assert(dataspace - (char const*)entry == row_size);
+
+    return entry;
+}
+
+
 bool mdv_binn_table_uuid(mdv_uuid const *uuid, binn *obj)
 {
     return binn_object_set_uint64((void*)obj, "U0", uuid->u64[0])

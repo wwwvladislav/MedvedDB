@@ -6,6 +6,7 @@
 #include <mdv_log.h>
 #include <mdv_serialization.h>
 #include <mdv_systbls.h>
+#include <assert.h>
 
 
 struct mdv_tables
@@ -144,4 +145,135 @@ mdv_table * mdv_tables_get(mdv_tables *tables, mdv_uuid const *uuid)
 mdv_table * mdv_tables_desc(mdv_tables *tables)
 {
     return mdv_table_retain(tables->desc);
+}
+
+
+static mdv_rowset * mdv_tables_slice_impl(mdv_enumerator       *enumerator,
+                                          mdv_bitset const     *fields,
+                                          size_t                count,
+                                          mdv_uuid             *rowid,
+                                          mdv_row_filter        filter,
+                                          void                 *arg)
+
+{
+    mdv_rowset *rowset = 0;
+
+    if ((rowset = mdv_rowset_create(mdv_bitset_count(fields, true))))
+    {
+        for(size_t i = 0; i < count;)
+        {
+            mdv_objects_entry const *entry = mdv_enumerator_current(enumerator);
+
+            binn obj;
+
+            mdv_rowlist_entry *row = 0;
+
+            if (binn_load(entry->value.ptr, &obj))
+            {
+                row = mdv_unbinn_table_as_row_slice(&obj, fields);
+
+                binn_free(&obj);
+
+                if(!row)
+                {
+                    MDV_LOGE("Invalid serialized table");
+                    break;
+                }
+            }
+            else
+            {
+                MDV_LOGE("Invalid serialized table");
+                break;
+            }
+
+            assert(entry->key.size == sizeof(mdv_uuid));
+
+            *rowid = *(mdv_uuid const *)entry->key.ptr;
+
+            int const fst = filter(arg, &row->data);
+
+            if (fst == 1)
+            {
+                mdv_rowset_emplace(rowset, row);
+                ++i;
+            }
+            else if (fst == 0)
+                mdv_free(row, "rowlist_entry");
+            else
+            {
+                MDV_LOGE("Table filter failed");
+                break;
+            }
+
+            if (mdv_enumerator_next(enumerator) != MDV_OK)
+                break;
+        }
+    }
+
+    return rowset;
+}
+
+
+mdv_rowset * mdv_tables_slice_from_begin(mdv_tables         *tables,
+                                         mdv_bitset const   *fields,
+                                         size_t              count,
+                                         mdv_uuid           *rowid,
+                                         mdv_row_filter      filter,
+                                         void               *arg)
+{
+    mdv_rowset *rowset = 0;
+
+    mdv_enumerator *enumerator = mdv_objects_enumerator(tables->objects);
+
+    if (enumerator)
+    {
+        rowset = mdv_tables_slice_impl(enumerator, fields, count, rowid, filter, arg);
+        mdv_enumerator_release(enumerator);
+    }
+
+    return rowset;
+}
+
+
+mdv_rowset * mdv_tables_slice(mdv_tables        *tables,
+                              mdv_bitset const  *fields,
+                              size_t             count,
+                              mdv_uuid          *rowid,
+                              mdv_row_filter     filter,
+                              void              *arg)
+{
+    mdv_rowset *rowset = 0;
+
+    mdv_data const key =
+    {
+        .size = sizeof *rowid,
+        .ptr = rowid
+    };
+
+    mdv_enumerator *enumerator = mdv_objects_enumerator_from(tables->objects, &key);
+
+    if (enumerator)
+    {
+        do
+        {
+            mdv_objects_entry const *entry = mdv_enumerator_current(enumerator);
+
+            assert(entry->key.size == sizeof(mdv_uuid));
+
+            mdv_uuid const *current_rowid = (mdv_uuid const *)entry->key.ptr;
+
+            if (mdv_uuid_cmp(current_rowid, rowid) == 0)
+            {
+                if (mdv_enumerator_next(enumerator) != MDV_OK)
+                    break;
+            }
+
+            rowset = mdv_tables_slice_impl(enumerator, fields, count, rowid, filter, arg);
+        }
+        while(0);
+
+        mdv_enumerator_release(enumerator);
+    }
+
+    return rowset;
 }

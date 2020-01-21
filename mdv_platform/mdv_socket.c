@@ -423,7 +423,7 @@ mdv_errno mdv_socket_connect(mdv_descriptor sock, mdv_sockaddr const *addr)
         mdv_errno err = mdv_error();
 
         if (err != MDV_INPROGRESS)
-            MDV_LOGE("Connection failed (socket: %d)", s);
+            MDV_LOGW("Connection failed (socket: %d)", s);
 
         return err;
     }

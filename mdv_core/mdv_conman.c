@@ -204,13 +204,14 @@ mdv_conman * mdv_conman_create(mdv_conman_config const *conman_config, mdv_ebus 
     {
         .channel =
         {
-            .keepidle   = conman_config->channel.keepidle,
-            .keepcnt    = conman_config->channel.keepcnt,
-            .keepintvl  = conman_config->channel.keepintvl,
-            .select     = mdv_conman_ctx_select,
-            .create     = mdv_conman_ctx_create,
-            .recv       = mdv_conman_ctx_recv,
-            .close      = mdv_conman_ctx_closed
+            .retry_interval = conman_config->channel.retry_interval,
+            .keepidle       = conman_config->channel.keepidle,
+            .keepcnt        = conman_config->channel.keepcnt,
+            .keepintvl      = conman_config->channel.keepintvl,
+            .select         = mdv_conman_ctx_select,
+            .create         = mdv_conman_ctx_create,
+            .recv           = mdv_conman_ctx_recv,
+            .close          = mdv_conman_ctx_closed
         },
         .threadpool =
         {
@@ -299,7 +300,7 @@ mdv_errno mdv_conman_bind(mdv_conman *conman, mdv_string const addr)
 
 mdv_errno mdv_conman_connect(mdv_conman *conman, mdv_string const addr, uint8_t type)
 {
-    mdv_errno err = mdv_chaman_connect(conman->chaman, addr, type);
+    mdv_errno err = mdv_chaman_dial(conman->chaman, addr, type);
 
     if (err != MDV_OK)
         MDV_LOGE("Connection failed with error: %s (%d)", mdv_strerror(err), err);

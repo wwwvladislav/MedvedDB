@@ -909,11 +909,11 @@ static mdv_errno mdv_tracker_linkstate2(mdv_tracker            *tracker,
 
 
 // TODO: remove all links from isolated segment
-static mdv_errno mdv_tracker_linkstate_add(mdv_tracker         *tracker,
-                                          mdv_uuid const      *peer_1,
-                                          mdv_uuid const      *peer_2,
-                                          bool                 connected,
-                                          uint32_t             weight)
+static mdv_errno mdv_tracker_linkstate_add(mdv_tracker      *tracker,
+                                          mdv_uuid const    *peer_1,
+                                          mdv_uuid const    *peer_2,
+                                          bool               connected,
+                                          uint32_t           weight)
 {
     mdv_errno err = MDV_FAILED;
 

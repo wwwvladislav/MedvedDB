@@ -80,3 +80,30 @@ mdv_errno mdv_read(mdv_descriptor fd, void *data, size_t *len)
     return MDV_OK;
 }
 
+
+mdv_errno mdv_skip(mdv_descriptor fd, size_t len)
+{
+    char buf[64];
+
+    size_t skipped_len = 0;
+
+    while(skipped_len < len)
+    {
+        size_t skip_size = sizeof buf > len - skipped_len
+                            ? len - skipped_len
+                            : sizeof buf;
+
+        int res = read(*(int*)&fd, buf, skip_size);
+
+        switch(res)
+        {
+            case -1:    return mdv_error();
+            case 0:     return MDV_CLOSED;
+            default:    break;
+        }
+
+        skipped_len += res;
+    }
+
+    return MDV_OK;
+}

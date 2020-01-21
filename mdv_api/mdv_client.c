@@ -379,13 +379,14 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
     {
         .channel =
         {
-            .keepidle   = config->connection.keepidle,
-            .keepcnt    = config->connection.keepcnt,
-            .keepintvl  = config->connection.keepintvl,
-            .select     = mdv_client_conctx_select,
-            .create     = mdv_client_conctx_create,
-            .recv       = mdv_client_conctx_recv,
-            .close      = mdv_client_conctx_closed
+            .retry_interval = config->connection.retry_interval,
+            .keepidle       = config->connection.keepidle,
+            .keepcnt        = config->connection.keepcnt,
+            .keepintvl      = config->connection.keepintvl,
+            .select         = mdv_client_conctx_select,
+            .create         = mdv_client_conctx_create,
+            .recv           = mdv_client_conctx_recv,
+            .close          = mdv_client_conctx_closed
         },
         .threadpool =
         {
@@ -410,7 +411,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
     mdv_rollbacker_push(rollbacker, mdv_chaman_free, client->chaman);
 
     // Connect to server
-    err = mdv_chaman_connect(client->chaman, mdv_str((char*)config->db.addr), MDV_CTX_USER);
+    err = mdv_chaman_dial(client->chaman, mdv_str((char*)config->db.addr), MDV_CTX_USER);
 
     if (err != MDV_OK)
     {

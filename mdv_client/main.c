@@ -340,6 +340,7 @@ static mdv_client * mdv_connect(char const *addr)
         },
         .connection =
         {
+            .retry_interval     = 5,
             .timeout            = 15,
             .keepidle           = 5,
             .keepcnt            = 10,

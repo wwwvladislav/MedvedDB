@@ -72,13 +72,14 @@ MU_TEST(platform_chaman)
     {
         .channel =
         {
-            .keepidle   = 5,
-            .keepcnt    = 10,
-            .keepintvl  = 5,
-            .select     = mdv_channel_select,
-            .create     = mdv_channel_create,
-            .recv       = mdv_channel_recv,
-            .close      = mdv_channel_close
+            .retry_interval = 5,
+            .keepidle       = 5,
+            .keepcnt        = 10,
+            .keepintvl      = 5,
+            .select         = mdv_channel_select,
+            .create         = mdv_channel_create,
+            .recv           = mdv_channel_recv,
+            .close          = mdv_channel_close
         },
         .threadpool =
         {
@@ -95,13 +96,14 @@ MU_TEST(platform_chaman)
     {
         .channel =
         {
-            .keepidle   = 5,
-            .keepcnt    = 10,
-            .keepintvl  = 5,
-            .select     = mdv_channel_select,
-            .create     = mdv_channel_create,
-            .recv       = mdv_channel_recv,
-            .close      = mdv_channel_close
+            .retry_interval = 5,
+            .keepidle       = 5,
+            .keepcnt        = 10,
+            .keepintvl      = 5,
+            .select         = mdv_channel_select,
+            .create         = mdv_channel_create,
+            .recv           = mdv_channel_recv,
+            .close          = mdv_channel_close
         },
         .threadpool =
         {
@@ -121,7 +123,7 @@ MU_TEST(platform_chaman)
     mdv_chaman *client = mdv_chaman_create(&client_config);
     mu_check(client);
 
-    err = mdv_chaman_connect(client, mdv_str_static("tcp://localhost:55555"), 0);
+    err = mdv_chaman_dial(client, mdv_str_static("tcp://localhost:55555"), 0);
     mu_check(err == MDV_OK);
 
     while(mdv_init_count != 1)

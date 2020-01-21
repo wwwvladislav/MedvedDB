@@ -46,16 +46,17 @@ typedef struct
 {
     struct
     {
-        uint32_t                keepidle;   ///< Start keeplives after this period (in seconds)
-        uint32_t                keepcnt;    ///< Number of keepalives before death
-        uint32_t                keepintvl;  ///< Interval between keepalives (in seconds)
-        mdv_channel_select_fn   select;     ///< channel selecting function (return channel type)
-        mdv_channel_create_fn   create;     ///< channel creation function
-        mdv_channel_recv_fn     recv;       ///< data receiving handler
-        mdv_channel_close_fn    close;      ///< channel closing function
-    } channel;                              ///< channel configuration
-    mdv_threadpool_config   threadpool;     ///< thread pool options
-    void                   *userdata;       ///< userdata passed to channel hadlers
+        uint32_t                retry_interval; ///< Interval between reconnections (in seconds)
+        uint32_t                keepidle;       ///< Start keeplives after this period (in seconds)
+        uint32_t                keepcnt;        ///< Number of keepalives before death
+        uint32_t                keepintvl;      ///< Interval between keepalives (in seconds)
+        mdv_channel_select_fn   select;         ///< channel selecting function (return channel type)
+        mdv_channel_create_fn   create;         ///< channel creation function
+        mdv_channel_recv_fn     recv;           ///< data receiving handler
+        mdv_channel_close_fn    close;          ///< channel closing function
+    } channel;                                  ///< channel configuration
+    mdv_threadpool_config   threadpool;         ///< thread pool options
+    void                   *userdata;           ///< userdata passed to channel hadlers
 } mdv_chaman_config;
 
 
@@ -91,7 +92,7 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr);
 
 
 /**
- * @brief Register new peer
+ * @brief Register new peer dialer
  *
  * @details Channels manager periodically tries to connect to this peer.
  *
@@ -102,5 +103,5 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr);
  * @return On success, return MDV_OK
  * @return On error, return non zero value
  */
-mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_string const addr, uint8_t type);
+mdv_errno mdv_chaman_dial(mdv_chaman *chaman, mdv_string const addr, uint8_t type);
 

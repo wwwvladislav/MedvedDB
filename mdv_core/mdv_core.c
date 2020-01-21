@@ -238,9 +238,10 @@ mdv_core * mdv_core_create()
         .uuid = core->metainf.uuid.value,
         .channel =
         {
-            .keepidle  = MDV_CONFIG.connection.keep_idle,
-            .keepcnt   = MDV_CONFIG.connection.keep_count,
-            .keepintvl = MDV_CONFIG.connection.keep_interval
+            .retry_interval = MDV_CONFIG.connection.retry_interval,
+            .keepidle       = MDV_CONFIG.connection.keep_idle,
+            .keepcnt        = MDV_CONFIG.connection.keep_count,
+            .keepintvl      = MDV_CONFIG.connection.keep_interval
         },
         .threadpool =
         {

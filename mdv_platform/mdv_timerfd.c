@@ -58,7 +58,7 @@ mdv_errno mdv_timerfd_settime(mdv_descriptor fd, size_t start, size_t interval)
 
     int tfd = *(int*)&fd;
 
-    if (timerfd_settime(tfd, TFD_TIMER_ABSTIME, &timerspec, 0) != 0)
+    if (timerfd_settime(tfd, /* TFD_TIMER_ABSTIME */ 0, &timerspec, 0) != 0)
     {
         mdv_errno err = mdv_error();
         MDV_LOGE("timerfd_settime failed with error: '%s' (%d)", mdv_strerror(err), err);

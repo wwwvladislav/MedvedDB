@@ -23,6 +23,7 @@ typedef struct
 
     struct
     {
+        uint32_t    retry_interval;     ///< Interval between reconnections (in seconds)
         uint32_t    timeout;            ///< Connection timeout (in seconds)
         uint32_t    keepidle;           ///< Start keeplives after this period (in seconds)
         uint32_t    keepcnt;            ///< Number of keepalives before death

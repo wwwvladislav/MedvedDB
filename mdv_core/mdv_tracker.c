@@ -41,7 +41,7 @@ struct mdv_tracker
     mdv_hashmap            *ids;            ///< Node identifiers (id -> mdv_node *)
 
     mdv_mutex               links_mutex;    ///< Links guard mutex
-    mdv_hashmap            *links;          ///< Links (id -> id's vector)
+    mdv_hashmap            *links;          ///< Links (mdv_tracker_link)
 };
 
 
@@ -72,6 +72,13 @@ static mdv_errno mdv_tracker_linkstate_add(mdv_tracker     *tracker,
                                            bool             connected,
                                            uint32_t         weight);
 
+/**
+ * @brief Function for links state checking
+ */
+static mdv_errno mdv_tracker_linkstate_get(mdv_tracker      *tracker,
+                                           mdv_uuid const   *peer_1,
+                                           mdv_uuid const   *peer_2,
+                                           bool             *connected);
 
 /**
  * @brief Topology difference applying between two peers.
@@ -329,6 +336,7 @@ static mdv_errno mdv_tracker_evt_link_state(void *arg, mdv_event *event)
         }
         else
         {
+            // TODO: Broadcast link state after the disconnection
 /*
             // Link state broadcasting
             mdv_evt_link_state_broadcast *evt = mdv_evt_link_state_broadcast_create(
@@ -360,6 +368,18 @@ static mdv_errno mdv_tracker_evt_link_state(void *arg, mdv_event *event)
     mdv_topology_release(topology);
 
     return err;
+}
+
+
+static mdv_errno mdv_tracker_evt_link_check(void *arg, mdv_event *event)
+{
+    mdv_tracker *tracker = arg;
+    mdv_evt_link_check *link_check = (mdv_evt_link_check *)event;
+
+    return mdv_tracker_linkstate_get(tracker,
+                                     &link_check->src,
+                                     &link_check->dst,
+                                     &link_check->connected);
 }
 
 
@@ -634,6 +654,7 @@ static mdv_errno mdv_tracker_evt_broadcast(void *arg, mdv_event *event)
 static const mdv_event_handler_type mdv_tracker_handlers[] =
 {
     { MDV_EVT_LINK_STATE,       mdv_tracker_evt_link_state },
+    { MDV_EVT_LINK_CHECK,       mdv_tracker_evt_link_check },
     { MDV_EVT_TOPOLOGY_SYNC,    mdv_tracker_evt_topology_sync },
     { MDV_EVT_BROADCAST,        mdv_tracker_evt_broadcast },
 };
@@ -908,20 +929,15 @@ static mdv_errno mdv_tracker_linkstate2(mdv_tracker            *tracker,
 }
 
 
-// TODO: remove all links from isolated segment
-static mdv_errno mdv_tracker_linkstate_add(mdv_tracker      *tracker,
-                                          mdv_uuid const    *peer_1,
-                                          mdv_uuid const    *peer_2,
-                                          bool               connected,
-                                          uint32_t           weight)
+static mdv_errno mdv_tracker_node_identifiers(mdv_tracker      *tracker,
+                                              mdv_uuid const   *peer_1,
+                                              mdv_uuid const   *peer_2,
+                                              uint32_t          ids[2])
 {
     mdv_errno err = MDV_FAILED;
 
-    mdv_tracker_link link =
-    {
-        .id = { MDV_LOCAL_ID, MDV_LOCAL_ID },
-        .weight = weight
-    };
+    ids[0] = MDV_LOCAL_ID;
+    ids[1] = MDV_LOCAL_ID;
 
     if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
     {
@@ -937,7 +953,7 @@ static mdv_errno mdv_tracker_linkstate_add(mdv_tracker      *tracker,
                     break;
                 }
 
-                link.id[0] = node->id;
+                ids[0] = node->id;
             }
 
             if (mdv_uuid_cmp(peer_2, &tracker->uuid) != 0)
@@ -950,7 +966,7 @@ static mdv_errno mdv_tracker_linkstate_add(mdv_tracker      *tracker,
                     break;
                 }
 
-                link.id[1] = node->id;
+                ids[1] = node->id;
             }
 
             err = MDV_OK;
@@ -960,10 +976,59 @@ static mdv_errno mdv_tracker_linkstate_add(mdv_tracker      *tracker,
         mdv_mutex_unlock(&tracker->nodes_mutex);
     }
 
+    return err;
+}
+
+
+// TODO: remove all links from isolated segment
+static mdv_errno mdv_tracker_linkstate_add(mdv_tracker      *tracker,
+                                          mdv_uuid const    *peer_1,
+                                          mdv_uuid const    *peer_2,
+                                          bool               connected,
+                                          uint32_t           weight)
+{
+    mdv_tracker_link link =
+    {
+        .id = { MDV_LOCAL_ID, MDV_LOCAL_ID },
+        .weight = weight
+    };
+
+    mdv_errno err = mdv_tracker_node_identifiers(tracker, peer_1, peer_2, link.id);
+
     if (err != MDV_OK)
         return err;
 
     return mdv_tracker_linkstate2(tracker, &link, connected);
+}
+
+
+static mdv_errno mdv_tracker_linkstate_get(mdv_tracker      *tracker,
+                                           mdv_uuid const   *peer_1,
+                                           mdv_uuid const   *peer_2,
+                                           bool             *connected)
+{
+    uint32_t ids[2];
+
+    mdv_errno err = mdv_tracker_node_identifiers(tracker, peer_1, peer_2, ids);
+
+    if (err != MDV_OK)
+    {
+        *connected = false;     // Nodes wasn't found. It means that link doesn't exist.
+        return MDV_OK;
+    }
+
+    err = mdv_mutex_lock(&tracker->links_mutex);
+
+    if (err == MDV_OK)
+    {
+        mdv_tracker_link *link = mdv_hashmap_find(tracker->links, ids);
+
+        *connected = link != 0;
+
+        mdv_mutex_unlock(&tracker->links_mutex);
+    }
+
+    return err;
 }
 
 

@@ -160,6 +160,11 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         MDV_CONFIG.connection.keep_interval = atoi(value);
         MDV_LOGI("Interval between keepalives: %u seconds", MDV_CONFIG.connection.keep_interval);
     }
+    else if (MDV_CFG_MATCH("connection", "collision_penalty"))
+    {
+        MDV_CONFIG.connection.collision_penalty = atoi(value);
+        MDV_LOGI("Collision penalty range: %u seconds", MDV_CONFIG.connection.collision_penalty);
+    }
 
     else
     {
@@ -185,6 +190,7 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.connection.keep_idle         = 5;
     MDV_CONFIG.connection.keep_count        = 10;
     MDV_CONFIG.connection.keep_interval     = 5;
+    MDV_CONFIG.connection.collision_penalty = 1;
 
     MDV_CONFIG.storage.path                 = mdv_str_static("./data");
     MDV_CONFIG.storage.trlog                = mdv_str_static("./data/trlog");

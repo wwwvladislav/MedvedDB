@@ -40,12 +40,43 @@ mdv_evt_link_state * mdv_evt_link_state_create(
 
 mdv_evt_link_state * mdv_evt_link_state_retain(mdv_evt_link_state *evt)
 {
-    return (mdv_evt_link_state*)evt->base.vptr->retain(&evt->base);
+    return (mdv_evt_link_state*)mdv_event_retain(&evt->base);
 }
 
 
 uint32_t mdv_evt_link_state_release(mdv_evt_link_state *evt)
 {
-    return evt->base.vptr->release(&evt->base);
+    return mdv_event_release(&evt->base);
 }
 
+
+mdv_evt_link_check * mdv_evt_link_check_create(
+                                mdv_uuid const *src,
+                                mdv_uuid const *dst)
+{
+    mdv_evt_link_check *event = (mdv_evt_link_check*)
+                                mdv_event_create(
+                                    MDV_EVT_LINK_CHECK,
+                                    sizeof(mdv_evt_link_check));
+
+    if (event)
+    {
+        event->src       = *src;
+        event->dst       = *dst;
+        event->connected = false;
+    }
+
+    return event;
+}
+
+
+mdv_evt_link_check * mdv_evt_link_check_retain(mdv_evt_link_check *evt)
+{
+    return (mdv_evt_link_check*)mdv_event_retain(&evt->base);
+}
+
+
+uint32_t mdv_evt_link_check_release(mdv_evt_link_check *evt)
+{
+    return mdv_event_release(&evt->base);
+}

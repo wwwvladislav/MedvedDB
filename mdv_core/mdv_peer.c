@@ -9,12 +9,14 @@
 #include "event/mdv_evt_trlog.h"
 #include <mdv_version.h>
 #include <mdv_alloc.h>
+#include <mdv_threads.h>
 #include <mdv_log.h>
 #include <mdv_dispatcher.h>
 #include <mdv_rollbacker.h>
 #include <mdv_ctypes.h>
 #include <stdatomic.h>
 #include <inttypes.h>
+#include <stdlib.h>
 
 
 struct mdv_peer
@@ -28,6 +30,7 @@ struct mdv_peer
     uint32_t                peer_id;        ///< peer local unique identifier
     mdv_dispatcher         *dispatcher;     ///< Messages dispatcher
     mdv_ebus               *ebus;           ///< Events bus
+    bool                    valid;          ///< Flag indicates the peer context validity, i.e. handshake is completed and all  fields are valid.
 };
 
 
@@ -75,6 +78,23 @@ static char * mdv_string_dup(char const *str, char const *name)
 }
 
 
+static mdv_errno mdv_peer_link_check(mdv_peer *peer, mdv_uuid const *peer_id, bool *connected)
+{
+    mdv_errno err = MDV_FAILED;
+
+    mdv_evt_link_check *evt = mdv_evt_link_check_create(&peer->uuid, peer_id);
+
+    if(evt)
+    {
+        err = mdv_ebus_publish(peer->ebus, &evt->base, MDV_EVT_SYNC);
+        *connected = evt->connected;
+        mdv_evt_link_check_release(evt);
+    }
+
+    return err;
+}
+
+
 static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 {
     mdv_peer *peer = arg;
@@ -106,6 +126,27 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 
     peer->peer_uuid = req.uuid;
 
+    mdv_errno err = MDV_OK;
+
+    bool link_found = false;
+
+    err = mdv_peer_link_check(peer, &peer->peer_uuid, &link_found);
+
+    if(err == MDV_FAILED)
+    {
+        MDV_LOGE("Unable to check the status of links");
+        binn_free(&binn_msg);
+        return MDV_FAILED;
+    }
+
+    if(link_found)
+    {
+        MDV_LOGD("Link with '%s' is already exist. Disconnecting...", mdv_uuid_to_str(&req.uuid).ptr);
+        binn_free(&binn_msg);
+        mdv_sleep(rand() % (MDV_CONFIG.connection.collision_penalty * 1000));
+        return MDV_FAILED;
+    }
+
     mdv_free(peer->peer_addr, "peer_addr");
 
     peer->peer_addr = mdv_string_dup(req.listen, "peer_addr");
@@ -116,8 +157,6 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
         binn_free(&binn_msg);
         return MDV_FAILED;
     }
-
-    mdv_errno err = MDV_OK;
 
     if(peer->dir == MDV_CHIN)
     {
@@ -705,6 +744,7 @@ mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
     peer->uuid = *uuid;
     peer->peer_id = 0;
     peer->peer_addr = 0;
+    peer->valid = false;
 
     peer->ebus = mdv_ebus_retain(ebus);
 
@@ -877,6 +917,8 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer,
                                     mdv_uuid const *uuid,
                                     uint32_t *id)
 {
+    peer->valid = true;
+
     mdv_toponode const remote =
     {
         .uuid = *uuid,
@@ -905,6 +947,9 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer,
 
 static void mdv_peer_disconnected(mdv_peer *peer)
 {
+    if (!peer->valid)
+        return;
+
     mdv_toponode const remote =
     {
         .uuid = peer->peer_uuid,

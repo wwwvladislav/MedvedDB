@@ -32,3 +32,18 @@ mdv_evt_link_state * mdv_evt_link_state_create(
 mdv_evt_link_state * mdv_evt_link_state_retain(mdv_evt_link_state *evt);
 uint32_t             mdv_evt_link_state_release(mdv_evt_link_state *evt);
 
+
+typedef struct
+{
+    mdv_event       base;
+    mdv_uuid        src;        ///< First node (in)
+    mdv_uuid        dst;        ///< Second node (in)
+    bool            connected;  ///< Link state (out)
+} mdv_evt_link_check;
+
+mdv_evt_link_check * mdv_evt_link_check_create(
+                                mdv_uuid const *src,
+                                mdv_uuid const *dst);
+mdv_evt_link_check * mdv_evt_link_check_retain(mdv_evt_link_check *evt);
+uint32_t             mdv_evt_link_check_release(mdv_evt_link_check *evt);
+

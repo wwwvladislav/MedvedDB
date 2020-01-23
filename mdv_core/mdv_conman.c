@@ -1,6 +1,7 @@
 #include "mdv_conman.h"
 #include "mdv_user.h"
 #include "mdv_peer.h"
+#include "mdv_node.h"
 #include "mdv_conctx.h"
 #include "event/mdv_evt_types.h"
 #include "event/mdv_evt_topology.h"
@@ -11,6 +12,7 @@
 #include <mdv_ctypes.h>
 #include <mdv_rollbacker.h>
 #include <mdv_safeptr.h>
+#include <mdv_bitset.h>
 
 
 /// Connections manager
@@ -169,11 +171,59 @@ static void mdv_conman_ctx_closed(void *userdata, void *ctx)
 }
 
 
+static void mdv_conman_connect_to_peers(mdv_conman *conman, mdv_topology *topology)
+{
+    mdv_vector *nodes = mdv_topology_nodes(topology);
+    mdv_vector *links = mdv_topology_links(topology);
+
+    mdv_bitset *linked_nodes = mdv_bitset_create(mdv_vector_size(nodes), &mdv_stallocator);
+
+    if(linked_nodes)
+    {
+        mdv_vector_foreach(links, mdv_topolink, link)
+        {
+            mdv_toponode const *node[2] =
+            {
+                mdv_vector_at(nodes, link->node[0]),
+                mdv_vector_at(nodes, link->node[1])
+            };
+
+            if (node[0]->id == MDV_LOCAL_ID)
+                mdv_bitset_set(linked_nodes, link->node[1]);
+            else if (node[1]->id == MDV_LOCAL_ID)
+                mdv_bitset_set(linked_nodes, link->node[0]);
+        }
+
+        mdv_bitset_set(linked_nodes, MDV_LOCAL_ID);
+
+        MDV_LOGE("SSSSSSSSSSSSSSSSS");
+
+        for(size_t i = 0; i < mdv_bitset_size(linked_nodes); ++i)
+        {
+            if (!mdv_bitset_test(linked_nodes, i))
+            {
+                mdv_toponode const *node = mdv_vector_at(nodes, i);
+                mdv_string const addr = mdv_str(node->addr);
+                MDV_LOGE("OOOOOOOOOOOOOOOOOOO: %u", (unsigned)i);
+                mdv_conman_connect(conman, addr, MDV_CTX_PEER);
+            }
+        }
+
+        mdv_bitset_release(linked_nodes);
+    }
+
+    mdv_vector_release(nodes);
+    mdv_vector_release(links);
+}
+
+
 static mdv_errno mdv_conman_evt_topology(void *arg, mdv_event *event)
 {
     mdv_conman *conman = arg;
     mdv_evt_topology *topo = (mdv_evt_topology *)event;
-    return mdv_safeptr_set(conman->topology, topo->topology);
+    mdv_errno err = mdv_safeptr_set(conman->topology, topo->topology);
+    // mdv_conman_connect_to_peers(conman, topo->topology);
+    return err;
 }
 
 

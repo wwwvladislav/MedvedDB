@@ -948,10 +948,7 @@ static mdv_errno mdv_tracker_node_identifiers(mdv_tracker      *tracker,
                 mdv_node *node = mdv_tracker_find(tracker, peer_1);
 
                 if (!node)
-                {
-                    MDV_LOGE("Link registartion failed. Node '%s' not found.", mdv_uuid_to_str(peer_1).ptr);
                     break;
-                }
 
                 ids[0] = node->id;
             }
@@ -961,10 +958,7 @@ static mdv_errno mdv_tracker_node_identifiers(mdv_tracker      *tracker,
                 mdv_node *node = mdv_tracker_find(tracker, peer_2);
 
                 if (!node)
-                {
-                    MDV_LOGE("Link registartion failed. Node '%s' not found.", mdv_uuid_to_str(peer_2).ptr);
                     break;
-                }
 
                 ids[1] = node->id;
             }
@@ -996,7 +990,10 @@ static mdv_errno mdv_tracker_linkstate_add(mdv_tracker      *tracker,
     mdv_errno err = mdv_tracker_node_identifiers(tracker, peer_1, peer_2, link.id);
 
     if (err != MDV_OK)
+    {
+        MDV_LOGE("Link registartion failed. Nodes not found.");
         return err;
+    }
 
     return mdv_tracker_linkstate2(tracker, &link, connected);
 }

@@ -105,3 +105,17 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr);
  */
 mdv_errno mdv_chaman_dial(mdv_chaman *chaman, mdv_string const addr, uint8_t type);
 
+
+/**
+ * @brief Unegister peer dialer (Not used. Without implementation.)
+ *
+ * @details Channels manager periodically tries to connect to this peer.
+ *
+ * @param chaman [in]   channels manager
+ * @param addr [in]     peer address
+ * @param type [in]     channel type
+ *
+ * @return On success, return MDV_OK
+ * @return On error, return non zero value
+ */
+mdv_errno mdv_chaman_dial_stop(mdv_chaman *chaman, mdv_string const addr, uint8_t type);

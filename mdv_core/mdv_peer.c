@@ -725,9 +725,12 @@ mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
         return 0;
     }
 
+
     mdv_rollbacker_push(rollbacker, mdv_free, peer, "peerctx");
 
     MDV_LOGD("Peer %p initialization", peer);
+
+    memset(peer, 0, sizeof *peer);
 
     static mdv_iconctx iconctx =
     {

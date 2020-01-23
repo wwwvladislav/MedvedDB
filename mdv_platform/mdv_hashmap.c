@@ -73,6 +73,7 @@ static void mdv_hashmap_free(mdv_hashmap *hm)
         mdv_hashmap_clear(hm);
         mdv_free(hm->buckets, "hashmap.buckets");
     }
+    memset(hm, 0, sizeof *hm);
     mdv_free(hm, "hashmap");
 }
 

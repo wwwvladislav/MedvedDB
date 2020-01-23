@@ -189,14 +189,16 @@ static void mdv_conman_connect_to_peers(mdv_conman *conman, mdv_topology *topolo
             };
 
             if (node[0]->id == MDV_LOCAL_ID)
-                mdv_bitset_set(linked_nodes, link->node[1]);
-            else if (node[1]->id == MDV_LOCAL_ID)
+            {
                 mdv_bitset_set(linked_nodes, link->node[0]);
+                mdv_bitset_set(linked_nodes, link->node[1]);
+            }
+            else if (node[1]->id == MDV_LOCAL_ID)
+            {
+                mdv_bitset_set(linked_nodes, link->node[1]);
+                mdv_bitset_set(linked_nodes, link->node[0]);
+            }
         }
-
-        mdv_bitset_set(linked_nodes, MDV_LOCAL_ID);
-
-        MDV_LOGE("SSSSSSSSSSSSSSSSS");
 
         for(size_t i = 0; i < mdv_bitset_size(linked_nodes); ++i)
         {
@@ -204,7 +206,6 @@ static void mdv_conman_connect_to_peers(mdv_conman *conman, mdv_topology *topolo
             {
                 mdv_toponode const *node = mdv_vector_at(nodes, i);
                 mdv_string const addr = mdv_str(node->addr);
-                MDV_LOGE("OOOOOOOOOOOOOOOOOOO: %u", (unsigned)i);
                 mdv_conman_connect(conman, addr, MDV_CTX_PEER);
             }
         }

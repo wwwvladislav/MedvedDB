@@ -1,12 +1,31 @@
 #include "mdv_alloc.h"
 #include "mdv_stack.h"
 #include "mdv_log.h"
-#include <rpmalloc.h>
 #include <stdatomic.h>
 #include <string.h>
+#include <stdlib.h>
 
 
 #define MDV_COUNT_ALLOCS_STAT
+#define MDV_USE_STD_ALLOC
+
+
+#ifdef MDV_USE_STD_ALLOC
+
+#define rpmalloc_initialize() 0
+#define rpmalloc_finalize()
+#define rpmalloc_thread_initialize()
+#define rpmalloc_thread_finalize()
+#define rpmalloc(size)                      malloc(size)
+#define rpaligned_alloc(alignment, size)    aligned_alloc(alignment, size)
+#define rprealloc(ptr, size)                realloc(ptr, size)
+#define rpfree(ptr)                         free(ptr)
+
+#else
+
+#include <rpmalloc.h>
+
+#endif
 
 
 #ifdef MDV_COUNT_ALLOCS_STAT

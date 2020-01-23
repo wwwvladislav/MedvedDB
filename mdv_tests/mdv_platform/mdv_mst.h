@@ -3,7 +3,7 @@
 #include <mdv_mst.h>
 
 
-MU_TEST(platform_mst)
+static void mdv_mst_test_0()
 {
     mdv_mstnode const nodes[] =
     {
@@ -46,4 +46,55 @@ MU_TEST(platform_mst)
     for(size_t i = 0, j = 0; i < sizeof links / sizeof *links; ++i)
         if(links[i].mst)
             mu_check(i == mst_links[j++]);
+}
+
+
+static void mdv_mst_test_1()
+{
+    mdv_mstnode const nodes[] =
+    {
+        { .data = (void *)0 },
+        { .data = (void *)1 },
+        { .data = (void *)2 },
+        { .data = (void *)3 },
+        { .data = (void *)4 },
+        { .data = (void *)5 },
+    };
+
+    mdv_mstlink links[] =
+    {
+        { .src = nodes + 0, .dst = nodes + 1, .weight = 1 },
+        { .src = nodes + 0, .dst = nodes + 2, .weight = 1 },
+        { .src = nodes + 0, .dst = nodes + 3, .weight = 1 },
+        { .src = nodes + 0, .dst = nodes + 4, .weight = 1 },
+        { .src = nodes + 0, .dst = nodes + 5, .weight = 1 },
+        { .src = nodes + 1, .dst = nodes + 2, .weight = 1 },
+        { .src = nodes + 1, .dst = nodes + 3, .weight = 1 },
+        { .src = nodes + 1, .dst = nodes + 4, .weight = 1 },
+        { .src = nodes + 1, .dst = nodes + 5, .weight = 1 },
+        { .src = nodes + 2, .dst = nodes + 3, .weight = 1 },
+        { .src = nodes + 2, .dst = nodes + 4, .weight = 1 },
+        { .src = nodes + 2, .dst = nodes + 5, .weight = 1 },
+        { .src = nodes + 3, .dst = nodes + 4, .weight = 1 },
+        { .src = nodes + 3, .dst = nodes + 5, .weight = 1 },
+        { .src = nodes + 4, .dst = nodes + 5, .weight = 1 },
+    };
+
+    size_t const mst_links[] = { 0, 1, 2, 3, 4 };
+
+    size_t mst_size = mdv_mst_find(nodes, sizeof nodes / sizeof *nodes,
+                                   links, sizeof links / sizeof *links);
+
+    mu_check(mst_size == sizeof mst_links / sizeof *mst_links);
+
+    for(size_t i = 0, j = 0; i < sizeof links / sizeof *links; ++i)
+        if(links[i].mst)
+            mu_check(i == mst_links[j++]);
+}
+
+
+MU_TEST(platform_mst)
+{
+    mdv_mst_test_0();
+    mdv_mst_test_1();
 }

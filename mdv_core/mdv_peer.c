@@ -7,13 +7,13 @@
 #include "event/mdv_evt_topology.h"
 #include "event/mdv_evt_broadcast.h"
 #include "event/mdv_evt_trlog.h"
-#include <mdv_version.h>
 #include <mdv_alloc.h>
 #include <mdv_threads.h>
 #include <mdv_log.h>
 #include <mdv_dispatcher.h>
 #include <mdv_rollbacker.h>
-#include <mdv_ctypes.h>
+#include <mdv_proto.h>
+#include <mdv_version.h>
 #include <stdatomic.h>
 #include <inttypes.h>
 #include <stdlib.h>
@@ -730,7 +730,7 @@ mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
 
     MDV_LOGD("Peer %p initialization", peer);
 
-    memset(peer, 0, sizeof *peer);
+    // memset(peer, 0, sizeof *peer);
 
     static mdv_iconctx iconctx =
     {
@@ -740,7 +740,7 @@ mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
 
     atomic_init(&peer->rc, 1);
 
-    peer->base.type = MDV_CTX_PEER;
+    peer->base.type = MDV_PEER_CHANNEL;
     peer->base.vptr = &iconctx;
 
     peer->dir = dir;

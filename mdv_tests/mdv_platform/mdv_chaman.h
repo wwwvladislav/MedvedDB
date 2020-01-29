@@ -2,7 +2,9 @@
 #include "../minunit.h"
 #include <mdv_chaman.h>
 #include <mdv_threads.h>
+#include <mdv_uuid.h>
 #include <stdio.h>
+#include <string.h>
 
 
 static volatile int mdv_init_count = 0;
@@ -11,33 +13,66 @@ static volatile int mdv_recv_size = 0;
 static volatile mdv_descriptor fds[2];
 
 
-static mdv_errno mdv_channel_select(mdv_descriptor fd, uint8_t *type)
+typedef struct
 {
-    size_t len = 1;
-    char ch;
-    mdv_read(fd, &ch, &len);
-    *type = ch;
-    return MDV_OK;
+    mdv_channel     base;
+    uint32_t        rc;
+    mdv_descriptor  fd;
+    void           *userdata;
+    mdv_channel_t   channel_type;
+    mdv_channel_dir dir;
+    mdv_uuid        id;
+} mdv_test_channel;
+
+
+static mdv_channel * mdv_test_channel_retain_impl(mdv_channel *channel)
+{
+    mdv_test_channel *test_channel = (mdv_test_channel *)channel;
+    ++test_channel->rc;
+    return channel;
 }
 
 
-static void * mdv_channel_create(mdv_descriptor fd, mdv_string const *addr, void *userdata, uint8_t type, mdv_channel_dir dir)
+static uint32_t mdv_test_channel_release_impl(mdv_channel *channel)
 {
-    (void)fd;
-    (void)userdata;
-    (void)addr;
-    (void)type;
-    (void)dir;
-    fds[mdv_init_count++] = fd;
-    return fd;
+    uint32_t rc = 0;
+
+    if (channel)
+    {
+        mdv_test_channel *test_channel = (mdv_test_channel *)channel;
+
+        rc = --test_channel->rc;
+
+        if (!rc)
+        {
+            ++mdv_close_count;
+            mdv_free(channel, "test_channel") ;
+        }
+    }
+
+    return rc;
 }
 
 
-static mdv_errno mdv_channel_recv(void *userdata, void *channel)
+static mdv_channel_t mdv_test_channel_type_impl(mdv_channel const *channel)
 {
-    (void)userdata;
+    mdv_test_channel *test_channel = (mdv_test_channel *)channel;
+    return test_channel->channel_type;
+}
 
-    mdv_descriptor fd = channel;
+
+static mdv_uuid const * mdv_test_channel_id_impl(mdv_channel const *channel)
+{
+    mdv_test_channel *test_channel = (mdv_test_channel *)channel;
+    return &test_channel->id;
+}
+
+
+static mdv_errno mdv_test_channel_recv_impl(mdv_channel *channel)
+{
+    mdv_test_channel *test_channel = (mdv_test_channel *)channel;
+
+    mdv_descriptor fd = test_channel->fd;
 
     static _Thread_local char buffer[1024];
 
@@ -57,12 +92,56 @@ static mdv_errno mdv_channel_recv(void *userdata, void *channel)
 }
 
 
-static void mdv_channel_close(void *userdata, void *channel)
+static mdv_errno mdv_test_channel_handshake_impl(mdv_descriptor fd)
 {
-    (void)userdata;
-    (void)channel;
+    char ch = 'a';
+    size_t len = 1;
+    return mdv_write(fd, &ch, &len);
+}
 
-    ++mdv_close_count;
+
+static mdv_errno mdv_test_channel_accept_impl(mdv_descriptor  fd,
+                                              mdv_channel_t  *channel_type,
+                                              mdv_uuid       *uuid)
+{
+    char ch = 'a';
+    size_t len = 1;
+    mdv_read(fd, &ch, &len);
+    *channel_type = 0;
+    *uuid = mdv_uuid_generate();
+    return MDV_OK;
+}
+
+
+static mdv_channel * mdv_test_channel_create_impl(mdv_descriptor    fd,
+                                                  void             *userdata,
+                                                  mdv_channel_t     channel_type,
+                                                  mdv_channel_dir   dir,
+                                                  mdv_uuid const   *channel_id)
+{
+    mdv_test_channel *channel = mdv_alloc(sizeof(mdv_test_channel), "test_channel");
+
+    static const mdv_ichannel vtbl =
+    {
+        .retain = mdv_test_channel_retain_impl,
+        .release = mdv_test_channel_release_impl,
+        .type = mdv_test_channel_type_impl,
+        .id = mdv_test_channel_id_impl,
+        .recv = mdv_test_channel_recv_impl,
+    };
+
+    channel->base.vptr = &vtbl;
+
+    channel->rc = 1;
+    channel->fd = fd;
+    channel->userdata = userdata;
+    channel->channel_type = channel_type;
+    channel->dir = dir;
+    channel->id = *channel_id;
+
+    fds[mdv_init_count++] = fd;
+
+    return &channel->base;
 }
 
 
@@ -76,10 +155,9 @@ MU_TEST(platform_chaman)
             .keepidle       = 5,
             .keepcnt        = 10,
             .keepintvl      = 5,
-            .select         = mdv_channel_select,
-            .create         = mdv_channel_create,
-            .recv           = mdv_channel_recv,
-            .close          = mdv_channel_close
+            .handshake      = mdv_test_channel_handshake_impl,
+            .accept         = mdv_test_channel_accept_impl,
+            .create         = mdv_test_channel_create_impl,
         },
         .threadpool =
         {
@@ -100,10 +178,9 @@ MU_TEST(platform_chaman)
             .keepidle       = 5,
             .keepcnt        = 10,
             .keepintvl      = 5,
-            .select         = mdv_channel_select,
-            .create         = mdv_channel_create,
-            .recv           = mdv_channel_recv,
-            .close          = mdv_channel_close
+            .handshake      = mdv_test_channel_handshake_impl,
+            .accept         = mdv_test_channel_accept_impl,
+            .create         = mdv_test_channel_create_impl,
         },
         .threadpool =
         {
@@ -126,15 +203,12 @@ MU_TEST(platform_chaman)
     err = mdv_chaman_dial(client, mdv_str_static("tcp://localhost:55555"), 0);
     mu_check(err == MDV_OK);
 
-    while(mdv_init_count != 1)
+    while(mdv_init_count != 2)
         mdv_sleep(10);
 
     char ch = 'a';
     size_t len = 1;
     mu_check(mdv_write(fds[0], &ch, &len) == MDV_OK && len == 1);
-
-    while(mdv_init_count != 2)
-        mdv_sleep(10);
 
     char const msg[] = "The quick brown fox jumps over the lazy dog";
     len = sizeof msg;

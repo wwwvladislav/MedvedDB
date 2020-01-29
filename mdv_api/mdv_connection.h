@@ -10,7 +10,7 @@
 
 /// User connection context used for storing different type of information
 /// about connection
-typedef struct mdv_channel mdv_channel;
+typedef struct mdv_connection mdv_connection;
 
 
 /**
@@ -21,14 +21,14 @@ typedef struct mdv_channel mdv_channel;
  * @return On success, return pointer to new user connection context
  * @return On error, return NULL pointer
  */
-mdv_channel * mdv_channel_create(mdv_descriptor fd);
+mdv_connection * mdv_connection_create(mdv_descriptor fd);
 
 
 /**
  * @brief Retains user connection context.
  * @details Reference counter is increased by one.
  */
-mdv_channel * mdv_channel_retain(mdv_channel *channel);
+mdv_connection * mdv_connection_retain(mdv_connection *channel);
 
 
 /**
@@ -36,13 +36,13 @@ mdv_channel * mdv_channel_retain(mdv_channel *channel);
  * @details Reference counter is decreased by one.
  *          When the reference counter reaches zero, the  user's connection context destructor is called.
  */
-uint32_t mdv_channel_release(mdv_channel *channel);
+uint32_t mdv_connection_release(mdv_connection *channel);
 
 
 /**
  * @brief Returns channel UUID
  */
-mdv_uuid const * mdv_channel_uuid(mdv_channel *channel);
+mdv_uuid const * mdv_connection_uuid(mdv_connection *channel);
 
 
 /**
@@ -57,7 +57,7 @@ mdv_uuid const * mdv_channel_uuid(mdv_channel *channel);
  * @return MDV_BUSY if there is no free slots for request. At this case caller should wait and try again later.
  * @return On error return nonzero error code
  */
-mdv_errno mdv_channel_send(mdv_channel *channel, mdv_msg *req, mdv_msg *resp, size_t timeout);
+mdv_errno mdv_connection_send(mdv_connection *channel, mdv_msg *req, mdv_msg *resp, size_t timeout);
 
 
 /**
@@ -69,7 +69,7 @@ mdv_errno mdv_channel_send(mdv_channel *channel, mdv_msg *req, mdv_msg *resp, si
  * @return On success returns MDV_OK
  * @return On error return nonzero error code.
  */
-mdv_errno mdv_channel_post(mdv_channel *channel, mdv_msg *msg);
+mdv_errno mdv_connection_post(mdv_connection *channel, mdv_msg *msg);
 
 
 /**
@@ -80,7 +80,7 @@ mdv_errno mdv_channel_post(mdv_channel *channel, mdv_msg *msg);
  * @return On success, return MDV_OK
  * @return On error, return non zero error code
  */
-mdv_errno mdv_channel_recv(mdv_channel *channel);
+mdv_errno mdv_connection_recv(mdv_connection *channel);
 
 
 /**
@@ -92,4 +92,4 @@ mdv_errno mdv_channel_recv(mdv_channel *channel);
  * @return On success, return MDV_OK
  * @return On error, return non zero error code
  */
-mdv_errno mdv_channel_wait_connection(mdv_channel *channel, size_t timeout);
+mdv_errno mdv_connection_wait(mdv_connection *channel, size_t timeout);

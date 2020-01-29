@@ -4,6 +4,7 @@
  * @details Channels manager (chaman) is used for incoming and outgoing peers connections handling.
  */
 #pragma once
+#include "mdv_channel.h"
 #include "mdv_string.h"
 #include "mdv_threadpool.h"
 #include "mdv_def.h"
@@ -13,28 +14,22 @@
 typedef struct mdv_chaman mdv_chaman;
 
 
-/// Connection type select handler
-typedef mdv_errno (*mdv_channel_select_fn)(mdv_descriptor fd, uint8_t *type);
+/// Connection handshake
+typedef mdv_errno (*mdv_channel_handshake_fn)(mdv_descriptor fd);
 
 
-/// Channel direction
-typedef enum
-{
-    MDV_CHIN = 0,       ///< Incomming connection
-    MDV_CHOUT           ///< Outgoing connection
-} mdv_channel_dir;
+/// Connection accept handler
+typedef mdv_errno  (*mdv_channel_accept_fn)(mdv_descriptor  fd,
+                                            mdv_channel_t  *channel_type,
+                                            mdv_uuid       *uuid);
 
 
-/// Connection creation handler
-typedef void * (*mdv_channel_create_fn)(mdv_descriptor fd,
-                                        mdv_string const *addr,
-                                        void *userdata,
-                                        uint8_t type,
-                                        mdv_channel_dir dir);
-
-
-/// Data receiving handler
-typedef mdv_errno (*mdv_channel_recv_fn)(void *userdata, void *channel);
+/// Channel creation
+typedef mdv_channel * (*mdv_channel_create_fn)(mdv_descriptor    fd,
+                                               void             *userdata,
+                                               mdv_channel_t     channel_type,
+                                               mdv_channel_dir   dir,
+                                               mdv_uuid const   *channel_id);
 
 
 /// Connection closing handler
@@ -46,17 +41,16 @@ typedef struct
 {
     struct
     {
-        uint32_t                retry_interval; ///< Interval between reconnections (in seconds)
-        uint32_t                keepidle;       ///< Start keeplives after this period (in seconds)
-        uint32_t                keepcnt;        ///< Number of keepalives before death
-        uint32_t                keepintvl;      ///< Interval between keepalives (in seconds)
-        mdv_channel_select_fn   select;         ///< channel selecting function (return channel type)
-        mdv_channel_create_fn   create;         ///< channel creation function
-        mdv_channel_recv_fn     recv;           ///< data receiving handler
-        mdv_channel_close_fn    close;          ///< channel closing function
-    } channel;                                  ///< channel configuration
-    mdv_threadpool_config   threadpool;         ///< thread pool options
-    void                   *userdata;           ///< userdata passed to channel hadlers
+        uint32_t                    retry_interval; ///< Interval between reconnections (in seconds)
+        uint32_t                    keepidle;       ///< Start keeplives after this period (in seconds)
+        uint32_t                    keepcnt;        ///< Number of keepalives before death
+        uint32_t                    keepintvl;      ///< Interval between keepalives (in seconds)
+        mdv_channel_handshake_fn    handshake;      ///< Connection handshake function
+        mdv_channel_accept_fn       accept;         ///< Connection accept handler
+        mdv_channel_create_fn       create;         ///< Channel creation function
+    } channel;                                      ///< channel configuration
+    mdv_threadpool_config   threadpool;             ///< thread pool options
+    void                   *userdata;               ///< userdata passed to channel hadlers
 } mdv_chaman_config;
 
 

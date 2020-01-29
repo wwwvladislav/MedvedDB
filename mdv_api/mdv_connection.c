@@ -1,18 +1,18 @@
-#include "mdv_channel.h"
+#include "mdv_connection.h"
 #include "mdv_messages.h"
-#include <mdv_version.h>
 #include <mdv_log.h>
 #include <mdv_uuid.h>
 #include <mdv_dispatcher.h>
 #include <mdv_socket.h>
 #include <mdv_rollbacker.h>
 #include <mdv_condvar.h>
+#include <mdv_version.h>
 #include <stdatomic.h>
 
 
 /// User connection context used for storing different type of information
 /// about connection
-struct mdv_channel
+struct mdv_connection
 {
     atomic_uint_fast32_t    rc;             ///< references counter
     volatile bool           connected;      ///< connection status
@@ -25,7 +25,7 @@ struct mdv_channel
 /**
  * @brief   Say Hey! to server
  */
-static mdv_errno mdv_user_wave(mdv_channel *channel)
+static mdv_errno mdv_user_wave(mdv_connection *channel)
 {
     mdv_msg_hello const hello =
     {
@@ -48,7 +48,7 @@ static mdv_errno mdv_user_wave(mdv_channel *channel)
         .payload = binn_ptr(&hey)
     };
 
-    mdv_errno err = mdv_channel_post(channel, &message);
+    mdv_errno err = mdv_connection_post(channel, &message);
 
     binn_free(&hey);
 
@@ -60,7 +60,7 @@ static mdv_errno mdv_channel_wave_handler(mdv_msg const *msg, void *arg)
 {
     MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
 
-    mdv_channel *channel = arg;
+    mdv_connection *channel = arg;
 
     binn binn_msg;
 
@@ -104,11 +104,11 @@ static mdv_errno mdv_channel_status_handler(mdv_msg const *msg, void *arg)
 }
 
 
-mdv_channel * mdv_channel_create(mdv_descriptor fd)
+mdv_connection * mdv_connection_create(mdv_descriptor fd)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
-    mdv_channel *channel = mdv_alloc(sizeof(mdv_channel), "channel");
+    mdv_connection *channel = mdv_alloc(sizeof(mdv_connection), "channel");
 
     if (!channel)
     {
@@ -183,7 +183,7 @@ mdv_channel * mdv_channel_create(mdv_descriptor fd)
 }
 
 
-static void mdv_channel_free(mdv_channel *channel)
+static void mdv_channel_free(mdv_connection *channel)
 {
     mdv_dispatcher_free(channel->dispatcher);
     mdv_condvar_free(&channel->conn_signal);
@@ -192,14 +192,14 @@ static void mdv_channel_free(mdv_channel *channel)
 }
 
 
-mdv_channel * mdv_channel_retain(mdv_channel *channel)
+mdv_connection * mdv_connection_retain(mdv_connection *channel)
 {
     atomic_fetch_add_explicit(&channel->rc, 1, memory_order_acquire);
     return channel;
 }
 
 
-uint32_t mdv_channel_release(mdv_channel *channel)
+uint32_t mdv_connection_release(mdv_connection *channel)
 {
     uint32_t rc = 0;
 
@@ -214,49 +214,49 @@ uint32_t mdv_channel_release(mdv_channel *channel)
 }
 
 
-mdv_uuid const * mdv_channel_uuid(mdv_channel *channel)
+mdv_uuid const * mdv_connection_uuid(mdv_connection *channel)
 {
     return &channel->uuid;
 }
 
 
-mdv_errno mdv_channel_send(mdv_channel *channel, mdv_msg *req, mdv_msg *resp, size_t timeout)
+mdv_errno mdv_connection_send(mdv_connection *channel, mdv_msg *req, mdv_msg *resp, size_t timeout)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(req->hdr.id));
 
     mdv_errno err = MDV_CLOSED;
 
-    channel = mdv_channel_retain(channel);
+    channel = mdv_connection_retain(channel);
 
     if (channel)
     {
         err = mdv_dispatcher_send(channel->dispatcher, req, resp, timeout);
-        mdv_channel_release(channel);
+        mdv_connection_release(channel);
     }
 
     return err;
 }
 
 
-mdv_errno mdv_channel_post(mdv_channel *channel, mdv_msg *msg)
+mdv_errno mdv_connection_post(mdv_connection *channel, mdv_msg *msg)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(msg->hdr.id));
 
     mdv_errno err = MDV_CLOSED;
 
-    channel = mdv_channel_retain(channel);
+    channel = mdv_connection_retain(channel);
 
     if (channel)
     {
         err = mdv_dispatcher_post(channel->dispatcher, msg);
-        mdv_channel_release(channel);
+        mdv_connection_release(channel);
     }
 
     return err;
 }
 
 
-mdv_errno mdv_channel_recv(mdv_channel *channel)
+mdv_errno mdv_connection_recv(mdv_connection *channel)
 {
     mdv_errno err = mdv_dispatcher_read(channel->dispatcher);
 
@@ -275,7 +275,7 @@ mdv_errno mdv_channel_recv(mdv_channel *channel)
 }
 
 
-mdv_errno mdv_channel_wait_connection(mdv_channel *channel, size_t timeout)
+mdv_errno mdv_connection_wait(mdv_connection *channel, size_t timeout)
 {
     if (channel->connected)
         return MDV_OK;

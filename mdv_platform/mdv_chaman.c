@@ -11,6 +11,7 @@
 #include "mdv_hash.h"
 #include <string.h>
 #include <stdatomic.h>
+#include <assert.h>
 
 
 /// @cond Doxygen_Suppress
@@ -19,25 +20,37 @@ struct mdv_chaman
 {
     mdv_chaman_config   config;         ///< configuration
     mdv_threadpool     *threadpool;     ///< thread pool
-    mdv_mutex           mutex;          ///< Mutex for dialers guard
+    mdv_mutex           mutex;          ///< Mutex for dialers and channels guard
     mdv_hashmap        *dialers;        ///< Dialers (hashmap<mdv_dialer>)
+    mdv_hashmap        *channels;       ///< Channels (hashmap<mdv_channel_ref>)
 };
 
 
-typedef struct
+typedef enum
 {
-    mdv_sockaddr    addr;
-    mdv_socket_type protocol;
-    uint8_t         channel_type;
-} mdv_dialer_key;
+    MDV_DIALER_DISCONNECTED,
+    MDV_DIALER_CONNECTED,
+    MDV_DIALER_CONNECTING,
+} mdv_dialer_state;
 
 
 typedef struct
 {
-    mdv_dialer_key key;
-    bool           connecting;          ///< Dialer state (true - connecting, false - last connection attempt failed)
-    size_t         attempt_time;        ///< Connection attempt time
+    mdv_sockaddr        addr;           ///< Peer address
+    mdv_socket_type     protocol;       ///< Protocol
+    mdv_dialer_state    state;          ///< Dialer state
+    size_t              attempt_time;   ///< Connection attempt time
+    mdv_uuid            channel_id;     ///< Channel identifier (valid only for MDV_DIALER_CONNECTED state)
+    mdv_channel_t       channel_type;   ///< Channel type
 } mdv_dialer;
+
+
+typedef struct
+{
+    mdv_uuid        id;                 ///< Channel identifier
+    mdv_channel    *channel;            ///< Channel
+    mdv_dialer     *dialer;             ///< Dialer
+} mdv_channel_ref;
 
 
 typedef enum
@@ -45,7 +58,7 @@ typedef enum
     MDV_CT_SELECTOR = 0,
     MDV_CT_LISTENER,
     MDV_CT_DIALER,
-    MDV_CT_PEER,
+    MDV_CT_RECV,
     MDV_CT_TIMER,
 } mdv_context_type;
 
@@ -61,6 +74,7 @@ typedef struct mdv_selector_context
     mdv_context_type type;
     mdv_chaman      *chaman;
     mdv_sockaddr     addr;
+    mdv_channel_dir  dir;
 } mdv_selector_context;
 
 
@@ -77,16 +91,17 @@ typedef struct mdv_dialer_context
     mdv_chaman      *chaman;
     mdv_sockaddr     addr;
     mdv_socket_type  protocol;
-    uint8_t          channel_type;
+    mdv_channel_t    channel_type;
 } mdv_dialer_context;
 
 
-typedef struct mdv_peer_context
+typedef struct mdv_recv_context
 {
     mdv_context_type type;
     mdv_chaman      *chaman;
-    void            *peer;
-} mdv_peer_context;
+    mdv_sockaddr     addr;
+    mdv_channel     *channel;
+} mdv_recv_context;
 
 
 typedef struct mdv_timer_context
@@ -99,12 +114,20 @@ typedef struct mdv_timer_context
 typedef mdv_threadpool_task(mdv_listener_context)   mdv_listener_task;
 typedef mdv_threadpool_task(mdv_selector_context)   mdv_selector_task;
 typedef mdv_threadpool_task(mdv_dialer_context)     mdv_dialer_task;
-typedef mdv_threadpool_task(mdv_peer_context)       mdv_peer_task;
+typedef mdv_threadpool_task(mdv_recv_context)       mdv_recv_task;
 typedef mdv_threadpool_task(mdv_timer_context)      mdv_timer_task;
 
 
-static void mdv_chaman_new_connection(mdv_chaman *chaman, mdv_descriptor sock, mdv_sockaddr const *addr, uint8_t type, mdv_channel_dir dir);
-static mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_sockaddr const *sockaddr, mdv_socket_type socktype, uint8_t channel_type);
+static void mdv_chaman_new_connection(mdv_chaman         *chaman,
+                                      mdv_descriptor      sock,
+                                      mdv_sockaddr const *addr,
+                                      mdv_channel_t       channel_type,
+                                      mdv_channel_dir     dir,
+                                      mdv_uuid const *channel_id);
+static mdv_errno mdv_chaman_connect(mdv_chaman         *chaman,
+                                    mdv_sockaddr const *sockaddr,
+                                    mdv_socket_type     socktype,
+                                    mdv_channel_t       channel_type);
 
 static void mdv_chaman_dialer_handler(uint32_t events, mdv_threadpool_task_base *task_base);
 static void mdv_chaman_recv_handler(uint32_t events, mdv_threadpool_task_base *task_base);
@@ -112,38 +135,39 @@ static void mdv_chaman_accept_handler(uint32_t events, mdv_threadpool_task_base 
 static void mdv_chaman_select_handler(uint32_t events, mdv_threadpool_task_base *task_base);
 static void mdv_chaman_timer_handler(uint32_t events, mdv_threadpool_task_base *task_base);
 
-static mdv_errno mdv_chaman_dialer_reg(mdv_chaman *chaman, mdv_sockaddr const *sockaddr, mdv_socket_type protocol, uint8_t channel_type, mdv_dialer **dialer);
-static void mdv_chaman_dialer_unreg(mdv_chaman *chaman, mdv_dialer_key const *key);
-static void mdv_chaman_dialer_discard(mdv_chaman *chaman, mdv_dialer_key const *key);
+static mdv_errno mdv_chaman_dialer_reg(mdv_chaman         *chaman,
+                                       mdv_sockaddr const *sockaddr,
+                                       mdv_socket_type     protocol,
+                                       mdv_channel_t       channel_type,
+                                       mdv_dialer        **dialer);
+static void mdv_chaman_dialer_unreg(mdv_chaman *chaman,
+                                    mdv_sockaddr const *addr);
+static void mdv_chaman_dialer_state(mdv_chaman *chaman,
+                                    mdv_sockaddr const *addr,
+                                    mdv_dialer_state state);
 
+static mdv_errno mdv_chaman_selector_reg(mdv_chaman         *chaman,
+                                         mdv_descriptor      fd,
+                                         mdv_sockaddr const *addr,
+                                         mdv_channel_dir     dir);
 /// @endcond
 
 
-static size_t mdv_dialer_key_hash(mdv_dialer_key const *a)
+static size_t mdv_sockaddr_hash(mdv_sockaddr const *addr)
 {
-    uint32_t hash = mdv_hash_murmur2a(&a->addr, sizeof a->addr, 0);
-    hash = mdv_hash_murmur2a(&a->protocol, sizeof a->protocol, hash);
-    hash = mdv_hash_murmur2a(&a->channel_type, sizeof a->channel_type, hash);
-    return hash;
+    return mdv_hash_murmur2a(addr, sizeof *addr, 0);
 }
 
 
-static int mdv_dialer_key_cmp(mdv_dialer_key const *a, mdv_dialer_key const *b)
+static int mdv_sockaddr_cmp(mdv_sockaddr const *a, mdv_sockaddr const *b)
 {
-    int const d1 = memcmp(&a->addr, &b->addr, sizeof a->addr);
-    int const d2 = a->protocol - b->protocol;
-    int const d3 = (int)a->channel_type - b->channel_type;
-    return d1
-            ? d1
-            : d2
-                ? d2
-                : d3;
+    return memcmp(a, b, sizeof *a);
 }
 
 
 mdv_chaman * mdv_chaman_create(mdv_chaman_config const *config)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(6);
 
     // Allocate memory
     mdv_chaman *chaman = mdv_alloc(sizeof(mdv_chaman), "chaman");
@@ -173,10 +197,10 @@ mdv_chaman * mdv_chaman_create(mdv_chaman_config const *config)
 
     // Create dialers map
     chaman->dialers = mdv_hashmap_create(mdv_dialer,
-                                         key,
+                                         addr,
                                          4,
-                                         mdv_dialer_key_hash,
-                                         mdv_dialer_key_cmp);
+                                         mdv_sockaddr_hash,
+                                         mdv_sockaddr_cmp);
     if (!chaman->dialers)
     {
         MDV_LOGE("There is no memory for dialers map");
@@ -185,6 +209,21 @@ mdv_chaman * mdv_chaman_create(mdv_chaman_config const *config)
     }
 
     mdv_rollbacker_push(rollbacker, mdv_hashmap_release, chaman->dialers);
+
+    // Create channels map
+    chaman->channels = mdv_hashmap_create(mdv_channel_ref,
+                                         id,
+                                         4,
+                                         mdv_uuid_hash,
+                                         mdv_uuid_cmp);
+    if (!chaman->channels)
+    {
+        MDV_LOGE("There is no memory for channels map");
+        mdv_rollback(rollbacker);
+        return 0;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_hashmap_release, chaman->channels);
 
     // Create and start thread pool
     chaman->threadpool = mdv_threadpool_create(&config->threadpool);
@@ -253,14 +292,9 @@ static void mdv_fd_close(mdv_descriptor fd, void *data)
             mdv_socket_close(fd);
             break;
 
-        case MDV_CT_PEER:
-        {
-            mdv_peer_context *peer_context = data;
-            peer_context->chaman->config.channel.close(peer_context->chaman->config.userdata,
-                                                       peer_context->peer);
+        case MDV_CT_RECV:
             mdv_socket_close(fd);
             break;
-        }
 
         case MDV_CT_TIMER:
             mdv_timerfd_close(fd);
@@ -291,6 +325,11 @@ void mdv_chaman_free(mdv_chaman *chaman)
         // Free dialers map
         mdv_hashmap_release(chaman->dialers);
 
+        // Free channels map
+        mdv_hashmap_foreach(chaman->channels, mdv_channel_ref, entry)
+            mdv_channel_release(entry->channel);
+        mdv_hashmap_release(chaman->channels);
+
         // Free chaman
         mdv_free(chaman, "chaman");
     }
@@ -299,18 +338,13 @@ void mdv_chaman_free(mdv_chaman *chaman)
 
 static void mdv_chaman_dialer_handler(uint32_t events, mdv_threadpool_task_base *task_base)
 {
-    mdv_dialer_task *task = (mdv_dialer_task*)task_base;
-    mdv_descriptor fd = task->fd;
-    mdv_chaman *chaman = task->context.chaman;
-    mdv_threadpool *threadpool = chaman->threadpool;
-
-    mdv_dialer_key const key =
-    {
-        .addr = task->context.addr,
-        .channel_type = task->context.channel_type
-    };
-
-    mdv_string str_addr = mdv_sockaddr2str(task->context.protocol, &key.addr);
+    mdv_dialer_task *task            = (mdv_dialer_task*)task_base;
+    mdv_descriptor fd                = task->fd;
+    mdv_chaman *chaman               = task->context.chaman;
+    mdv_threadpool *threadpool       = chaman->threadpool;
+    mdv_sockaddr const addr          = task->context.addr;
+    mdv_channel_t const channel_type = task->context.channel_type;
+    mdv_string const str_addr        = mdv_sockaddr2str(task->context.protocol, &addr);
 
     mdv_threadpool_remove(threadpool, fd);
 
@@ -319,26 +353,32 @@ static void mdv_chaman_dialer_handler(uint32_t events, mdv_threadpool_task_base 
         if (!mdv_str_empty(str_addr))
             MDV_LOGI("Connection to '%s' failed", str_addr.ptr);
         mdv_socket_close(fd);
-        mdv_chaman_dialer_discard(chaman, &key);
+        mdv_chaman_dialer_state(chaman, &addr, MDV_DIALER_DISCONNECTED);
     }
     else if (events & MDV_EPOLLOUT)
     {
         if (!mdv_str_empty(str_addr))
             MDV_LOGI("Connection to '%s' established", str_addr.ptr);
-        mdv_chaman_new_connection(chaman, fd, &key.addr, key.channel_type, MDV_CHOUT);
-        mdv_chaman_dialer_unreg(chaman, &key);
+
+        if (chaman->config.channel.handshake(fd) != MDV_OK
+            || mdv_chaman_selector_reg(chaman, fd, &addr, MDV_CHOUT) != MDV_OK)
+        {
+            mdv_socket_close(fd);
+            mdv_chaman_dialer_state(chaman, &addr, MDV_DIALER_DISCONNECTED);
+        }
     }
 }
 
 
 static void mdv_chaman_recv_handler(uint32_t events, mdv_threadpool_task_base *task_base)
 {
-    mdv_peer_task *task = (mdv_peer_task*)task_base;
+    mdv_recv_task *task = (mdv_recv_task*)task_base;
     mdv_descriptor fd = task->fd;
     mdv_chaman *chaman = task->context.chaman;
     mdv_threadpool *threadpool = chaman->threadpool;
+    mdv_channel *channel = task->context.channel;
 
-    mdv_errno err = chaman->config.channel.recv(chaman->config.userdata, task->context.peer);
+    mdv_errno err = mdv_channel_recv(channel);
 
     if ((events & MDV_EPOLLERR) == 0 && (err == MDV_EAGAIN || err == MDV_OK))
     {
@@ -349,7 +389,19 @@ static void mdv_chaman_recv_handler(uint32_t events, mdv_threadpool_task_base *t
     else
     {
         MDV_LOGI("Peer %p disconnected", fd);
-        chaman->config.channel.close(chaman->config.userdata, task->context.peer);
+
+        if(mdv_mutex_lock(&chaman->mutex) == MDV_OK)
+        {
+            mdv_hashmap_erase(chaman->channels, mdv_channel_id(channel));
+            mdv_channel_release(channel);
+
+            mdv_dialer *dialer = mdv_hashmap_find(chaman->dialers, &task->context.addr);
+            if(dialer)
+                dialer->state = MDV_DIALER_DISCONNECTED;
+
+            mdv_mutex_unlock(&chaman->mutex);
+        }
+
         mdv_threadpool_remove(threadpool, fd);
         mdv_socket_close(fd);
     }
@@ -371,12 +423,12 @@ static void mdv_chaman_timer_handler(uint32_t events, mdv_threadpool_task_base *
         {
             size_t const time = mdv_gettime();
 
-            if(dialer->attempt_time + chaman->config.channel.retry_interval < time)
+            if(dialer->state == MDV_DIALER_DISCONNECTED
+                && dialer->attempt_time + chaman->config.channel.retry_interval < time)
             {
-                dialer->connecting = true;
+                dialer->state = MDV_DIALER_CONNECTING;
                 dialer->attempt_time = time;
-
-                mdv_chaman_connect(chaman, &dialer->key.addr, dialer->key.protocol, dialer->key.channel_type);
+                mdv_chaman_connect(chaman, &dialer->addr, dialer->protocol, dialer->channel_type);
             }
         }
 
@@ -385,48 +437,110 @@ static void mdv_chaman_timer_handler(uint32_t events, mdv_threadpool_task_base *
 }
 
 
-static void mdv_chaman_new_connection(mdv_chaman *chaman, mdv_descriptor sock, mdv_sockaddr const *addr, uint8_t type, mdv_channel_dir dir)
+static void mdv_chaman_new_connection(mdv_chaman *chaman, mdv_descriptor sock, mdv_sockaddr const *addr, mdv_channel_t channel_type, mdv_channel_dir dir, mdv_uuid const *channel_id)
 {
-    mdv_socket_nonblock(sock);
-    mdv_socket_tcp_keepalive(sock, chaman->config.channel.keepidle,
-                                   chaman->config.channel.keepcnt,
-                                   chaman->config.channel.keepintvl);
+    mdv_errno err = MDV_FAILED;
 
-    mdv_string str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, addr);
+    mdv_string const str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, addr);
 
-    mdv_peer_task task =
+    mdv_channel *channel = 0;
+
+    if(mdv_mutex_lock(&chaman->mutex) == MDV_OK)
     {
-        .fd = sock,
-        .fn = mdv_chaman_recv_handler,
-        .context_size = sizeof(mdv_peer_context),
-        .context =
+        mdv_channel_ref *ref = mdv_hashmap_find(chaman->channels, channel_id);
+        mdv_dialer *dialer = mdv_hashmap_find(chaman->dialers, addr);
+
+        if(ref)
         {
-            .type = MDV_CT_PEER,
-            .chaman = chaman,
-            .peer = chaman->config.channel.create(sock, &str_addr, chaman->config.userdata, type, dir)
-        }
-    };
+            err = MDV_EEXIST;
 
-    if (!task.context.peer
-        || !mdv_threadpool_add(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)&task))
-    {
-        if (mdv_str_empty(str_addr))
-            MDV_LOGE("Connection registration failed");
+            if (dialer)
+            {
+                dialer->state = MDV_DIALER_CONNECTED;
+                dialer->channel_id = *channel_id;
+            }
+        }
         else
-            MDV_LOGE("Connection with '%s' registration failed", str_addr.ptr);
-        if (task.context.peer)
-            chaman->config.channel.close(chaman->config.userdata, task.context.peer);
-        mdv_socket_close(sock);
+        {
+            channel = chaman->config.channel.create(sock,
+                                                    chaman->config.userdata,
+                                                    channel_type,
+                                                    dir,
+                                                    channel_id);
+
+            if (channel)
+            {
+                mdv_channel_ref channel_ref =
+                {
+                    .id = *channel_id,
+                    .channel = channel,
+                    .dialer = dialer
+                };
+
+                if (mdv_hashmap_insert(chaman->channels, &channel_ref, sizeof channel_ref))
+                {
+                    if (dialer)
+                    {
+                        dialer->state = MDV_DIALER_CONNECTED;
+                        dialer->channel_id = *channel_id;
+                    }
+
+                    err = MDV_OK;
+                }
+                else
+                {
+                    MDV_LOGE("Channel registration failed for '%s'", str_addr.ptr);
+                    mdv_channel_release(channel);
+                    channel = 0;
+                }
+            }
+            else
+                MDV_LOGE("Channel creation failed for '%s'", str_addr.ptr);
+        }
+
+        mdv_mutex_unlock(&chaman->mutex);
     }
-    else
+
+    if (err == MDV_OK)
     {
-        if (mdv_str_empty(str_addr))
-            MDV_LOGI("New connection successfully registered");
+        assert(channel);
+
+        mdv_recv_task task =
+        {
+            .fd = sock,
+            .fn = mdv_chaman_recv_handler,
+            .context_size = sizeof(mdv_recv_context),
+            .context =
+            {
+                .type = MDV_CT_RECV,
+                .chaman = chaman,
+                .addr = *addr,
+                .channel = channel
+            }
+        };
+
+        if (!mdv_threadpool_add(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)&task))
+        {
+            MDV_LOGE("Connection with '%s' registration failed", str_addr.ptr);
+
+            if(mdv_mutex_lock(&chaman->mutex) == MDV_OK)
+            {
+                mdv_hashmap_erase(chaman->channels, channel_id);
+                mdv_channel_release(channel);
+
+                mdv_dialer *dialer = mdv_hashmap_find(chaman->dialers, addr);
+                if(dialer)
+                    dialer->state = MDV_DIALER_DISCONNECTED;
+
+                mdv_mutex_unlock(&chaman->mutex);
+            }
+
+            mdv_socket_close(sock);
+        }
         else
             MDV_LOGI("New connection with '%s' successfully registered", str_addr.ptr);
     }
 }
-
 
 
 static void mdv_chaman_select_handler(uint32_t events, mdv_threadpool_task_base *task_base)
@@ -435,10 +549,12 @@ static void mdv_chaman_select_handler(uint32_t events, mdv_threadpool_task_base 
     mdv_chaman *chaman = selector_task->context.chaman;
     mdv_descriptor fd = selector_task->fd;
     mdv_sockaddr const addr = selector_task->context.addr;
+    mdv_channel_dir const dir = selector_task->context.dir;
 
-    uint8_t type = 0;
+    mdv_channel_t type = 0;
+    mdv_uuid channel_id;
 
-    mdv_errno err = chaman->config.channel.select(fd, &type);
+    mdv_errno err = chaman->config.channel.accept(fd, &type, &channel_id);
 
     if ((events & MDV_EPOLLERR) == 0 && err == MDV_EAGAIN)
     {
@@ -456,9 +572,7 @@ static void mdv_chaman_select_handler(uint32_t events, mdv_threadpool_task_base 
         mdv_threadpool_remove(chaman->threadpool, fd);
 
         if (err == MDV_OK)
-        {
-            mdv_chaman_new_connection(chaman, fd, &addr, type, MDV_CHIN);
-        }
+            mdv_chaman_new_connection(chaman, fd, &addr, type, dir, &channel_id);
         else
         {
             mdv_string str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, &addr);
@@ -466,6 +580,36 @@ static void mdv_chaman_select_handler(uint32_t events, mdv_threadpool_task_base 
             mdv_socket_close(fd);
         }
     }
+}
+
+
+static mdv_errno mdv_chaman_selector_reg(mdv_chaman         *chaman,
+                                         mdv_descriptor      fd,
+                                         mdv_sockaddr const *addr,
+                                         mdv_channel_dir     dir)
+{
+    mdv_selector_task selector_task =
+    {
+        .fd = fd,
+        .fn = mdv_chaman_select_handler,
+        .context_size = sizeof(mdv_selector_task),
+        .context =
+        {
+            .type = MDV_CT_SELECTOR,
+            .chaman = chaman,
+            .addr = *addr,
+            .dir = dir
+        }
+    };
+
+    if (!mdv_threadpool_add(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)&selector_task))
+    {
+        mdv_string str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, addr);
+        MDV_LOGE("Connection '%s' accepting failed", str_addr.ptr);
+        return MDV_FAILED;
+    }
+
+    return MDV_OK;
 }
 
 
@@ -486,23 +630,9 @@ static void mdv_chaman_accept_handler(uint32_t events, mdv_threadpool_task_base 
                                        chaman->config.channel.keepcnt,
                                        chaman->config.channel.keepintvl);
 
-        mdv_selector_task selector_task =
+        if (chaman->config.channel.handshake(sock) != MDV_OK
+            || mdv_chaman_selector_reg(chaman, sock, &addr, MDV_CHIN) != MDV_OK)
         {
-            .fd = sock,
-            .fn = mdv_chaman_select_handler,
-            .context_size = sizeof(mdv_selector_task),
-            .context =
-            {
-                .type = MDV_CT_SELECTOR,
-                .chaman = chaman,
-                .addr = addr
-            }
-        };
-
-        if (!mdv_threadpool_add(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)&selector_task))
-        {
-            mdv_string str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, &addr);
-            MDV_LOGE("Connection '%s' accepting failed", str_addr.ptr);
             mdv_socket_close(sock);
         }
     }
@@ -590,7 +720,11 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr)
 }
 
 
-static mdv_errno mdv_chaman_dialer_reg(mdv_chaman *chaman, mdv_sockaddr const *sockaddr, mdv_socket_type protocol, uint8_t channel_type, mdv_dialer **dialer)
+static mdv_errno mdv_chaman_dialer_reg(mdv_chaman         *chaman,
+                                       mdv_sockaddr const *sockaddr,
+                                       mdv_socket_type     protocol,
+                                       mdv_channel_t       channel_type,
+                                       mdv_dialer        **dialer)
 {
     mdv_errno err = MDV_FAILED;
 
@@ -600,17 +734,14 @@ static mdv_errno mdv_chaman_dialer_reg(mdv_chaman *chaman, mdv_sockaddr const *s
     {
         mdv_dialer new_dialer =
         {
-            .key =
-            {
-                .addr = *sockaddr,
-                .protocol = protocol,
-                .channel_type = channel_type
-            },
-            .connecting = true,
-            .attempt_time = mdv_gettime()
+            .addr         = *sockaddr,
+            .protocol     = protocol,
+            .state        = MDV_DIALER_CONNECTING,
+            .attempt_time = mdv_gettime(),
+            .channel_type = channel_type
         };
 
-        *dialer = mdv_hashmap_find(chaman->dialers, &new_dialer.key);
+        *dialer = mdv_hashmap_find(chaman->dialers, sockaddr);
 
         if (!*dialer)
         {
@@ -632,11 +763,11 @@ static mdv_errno mdv_chaman_dialer_reg(mdv_chaman *chaman, mdv_sockaddr const *s
 }
 
 
-static void mdv_chaman_dialer_unreg(mdv_chaman *chaman, mdv_dialer_key const *key)
+static void mdv_chaman_dialer_unreg(mdv_chaman *chaman, mdv_sockaddr const *addr)
 {
     if(mdv_mutex_lock(&chaman->mutex) == MDV_OK)
     {
-        if (!mdv_hashmap_erase(chaman->dialers, key))
+        if (!mdv_hashmap_erase(chaman->dialers, addr))
             MDV_LOGE("Dialer not found");
         mdv_mutex_unlock(&chaman->mutex);
     }
@@ -645,13 +776,13 @@ static void mdv_chaman_dialer_unreg(mdv_chaman *chaman, mdv_dialer_key const *ke
 }
 
 
-static void mdv_chaman_dialer_discard(mdv_chaman *chaman, mdv_dialer_key const *key)
+static void mdv_chaman_dialer_state(mdv_chaman *chaman, mdv_sockaddr const *addr, mdv_dialer_state state)
 {
     if(mdv_mutex_lock(&chaman->mutex) == MDV_OK)
     {
-        mdv_dialer *dialer = mdv_hashmap_find(chaman->dialers, key);
+        mdv_dialer *dialer = mdv_hashmap_find(chaman->dialers, addr);
         if (dialer)
-            dialer->connecting = false;
+            dialer->state = state;
         else
             MDV_LOGE("Dialer not found");
         mdv_mutex_unlock(&chaman->mutex);
@@ -661,7 +792,7 @@ static void mdv_chaman_dialer_discard(mdv_chaman *chaman, mdv_dialer_key const *
 }
 
 
-static mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_sockaddr const *sockaddr, mdv_socket_type socktype, uint8_t channel_type)
+static mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_sockaddr const *sockaddr, mdv_socket_type socktype, mdv_channel_t channel_type)
 {
     mdv_string const addr = mdv_sockaddr2str(socktype, sockaddr);
 
@@ -676,6 +807,9 @@ static mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_sockaddr const *sock
     }
 
     mdv_socket_nonblock(sd);
+    mdv_socket_tcp_keepalive(sd, chaman->config.channel.keepidle,
+                                 chaman->config.channel.keepcnt,
+                                 chaman->config.channel.keepintvl);
 
     mdv_errno err = mdv_socket_connect(sd, sockaddr);
 
@@ -751,7 +885,7 @@ mdv_errno mdv_chaman_dial(mdv_chaman *chaman, mdv_string const addr, uint8_t typ
     if (err != MDV_OK)
     {
         MDV_LOGE("Connection to %s failed", addr.ptr);
-        mdv_chaman_dialer_unreg(chaman, &dialer->key);
+        mdv_chaman_dialer_unreg(chaman, &sockaddr);
         return err;
     }
 

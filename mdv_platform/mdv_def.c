@@ -81,6 +81,40 @@ mdv_errno mdv_read(mdv_descriptor fd, void *data, size_t *len)
 }
 
 
+mdv_errno mdv_read_all(mdv_descriptor fd, void *data, size_t len)
+{
+    if (!len)
+        return MDV_OK;
+
+    size_t total = 0;
+
+    while(total < len)
+    {
+        size_t rlen = len - total;
+
+        mdv_errno err = mdv_read(fd, data, &rlen);
+
+        switch (err)
+        {
+            case MDV_EAGAIN:
+                continue;
+
+            case MDV_OK:
+            {
+                data = (char *)data + rlen;
+                total += rlen;
+                continue;
+            }
+
+            default:
+                return err;
+        }
+    }
+
+    return MDV_OK;
+}
+
+
 mdv_errno mdv_skip(mdv_descriptor fd, size_t len)
 {
     char buf[64];

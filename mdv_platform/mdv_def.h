@@ -87,6 +87,19 @@ mdv_errno mdv_read(mdv_descriptor fd, void *data, size_t *len);
 
 
 /**
+ * @brief Function for reading from a file descriptor.
+ *
+ * @param fd [in]   file descriptor
+ * @param data [in] pointer to the buffer with data
+ * @param len [in]  data buffer size in bytes \n
+ *
+ * @return MDV_OK on success
+ * @return nonzero value on error
+ */
+mdv_errno mdv_read_all(mdv_descriptor fd, void *data, size_t len);
+
+
+/**
  * @brief Function for skiping data from a file descriptor.
  *
  * @param fd [in]   file descriptor

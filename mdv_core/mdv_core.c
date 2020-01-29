@@ -13,7 +13,7 @@
 #include "event/mdv_evt_types.h"
 #include <mdv_log.h>
 #include <mdv_messages.h>
-#include <mdv_ctypes.h>
+#include <mdv_proto.h>
 #include <mdv_rollbacker.h>
 #include <mdv_jobber.h>
 #include <mdv_ebus.h>
@@ -308,7 +308,7 @@ void mdv_core_connect(mdv_core *core)
     {
         mdv_conman_connect(core->conman,
                            mdv_str((char*)MDV_CONFIG.cluster.nodes[i]),
-                           MDV_CTX_PEER);
+                           MDV_PEER_CHANNEL);
     }
 }
 

@@ -9,7 +9,7 @@
 #include <mdv_log.h>
 #include <mdv_alloc.h>
 #include <mdv_socket.h>
-#include <mdv_ctypes.h>
+#include <mdv_proto.h>
 #include <mdv_rollbacker.h>
 #include <mdv_safeptr.h>
 #include <mdv_bitset.h>
@@ -84,24 +84,18 @@ static void * mdv_conman_ctx_create(mdv_descriptor    fd,
 
     void *conctx = 0;
 
-    switch(type)
+    if(type == MDV_USER_CHANNEL)
     {
-        case MDV_CTX_USER:
-        {
-            mdv_topology *topology = mdv_safeptr_get(conman->topology);
-            conctx = mdv_user_create(&conman->uuid, fd, conman->ebus, topology);
-            mdv_topology_release(topology);
-            break;
-        }
-
-        case MDV_CTX_PEER:
-            conctx = mdv_peer_create(&conman->uuid, dir, fd, conman->ebus);
-            break;
-
-        default:
-            MDV_LOGE("Unknown connection context type");
-            break;
+        mdv_topology *topology = mdv_safeptr_get(conman->topology);
+        conctx = mdv_user_create(&conman->uuid, fd, conman->ebus, topology);
+        mdv_topology_release(topology);
     }
+    else if(type == MDV_PEER_CHANNEL)
+    {
+        conctx = mdv_peer_create(&conman->uuid, dir, fd, conman->ebus);
+    }
+    else
+        MDV_LOGE("Unknown connection context type");
 
     if (!conctx)
         mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
@@ -127,22 +121,18 @@ static mdv_errno mdv_conman_ctx_recv(void *userdata, void *ctx)
     mdv_errno err = MDV_FAILED;
     mdv_descriptor fd = 0;
 
-    switch(conctx->type)
+    if(conctx->type == MDV_USER_CHANNEL)
     {
-        case MDV_CTX_USER:
-            fd = mdv_user_fd((mdv_user*)conctx);
-            err = mdv_user_recv((mdv_user*)conctx);
-            break;
-
-        case MDV_CTX_PEER:
-            fd = mdv_peer_fd((mdv_peer*)conctx);
-            err = mdv_peer_recv((mdv_peer*)conctx);
-            break;
-
-        default:
-            MDV_LOGE("Unknown connection context type");
-            break;
+        fd = mdv_user_fd((mdv_user*)conctx);
+        err = mdv_user_recv((mdv_user*)conctx);
     }
+    else if(conctx->type == MDV_PEER_CHANNEL)
+    {
+        fd = mdv_peer_fd((mdv_peer*)conctx);
+        err = mdv_peer_recv((mdv_peer*)conctx);
+    }
+    else
+        MDV_LOGE("Unknown connection context type");
 
     switch(err)
     {
@@ -206,7 +196,7 @@ static void mdv_conman_connect_to_peers(mdv_conman *conman, mdv_topology *topolo
             {
                 mdv_toponode const *node = mdv_vector_at(nodes, i);
                 mdv_string const addr = mdv_str(node->addr);
-                mdv_conman_connect(conman, addr, MDV_CTX_PEER);
+                mdv_conman_connect(conman, addr, MDV_PEER_CHANNEL);
             }
         }
 
@@ -223,7 +213,7 @@ static mdv_errno mdv_conman_evt_topology(void *arg, mdv_event *event)
     mdv_conman *conman = arg;
     mdv_evt_topology *topo = (mdv_evt_topology *)event;
     mdv_errno err = mdv_safeptr_set(conman->topology, topo->topology);
-    // mdv_conman_connect_to_peers(conman, topo->topology);
+    mdv_conman_connect_to_peers(conman, topo->topology);
     return err;
 }
 
@@ -259,10 +249,11 @@ mdv_conman * mdv_conman_create(mdv_conman_config const *conman_config, mdv_ebus 
             .keepidle       = conman_config->channel.keepidle,
             .keepcnt        = conman_config->channel.keepcnt,
             .keepintvl      = conman_config->channel.keepintvl,
-            .select         = mdv_conman_ctx_select,
-            .create         = mdv_conman_ctx_create,
-            .recv           = mdv_conman_ctx_recv,
-            .close          = mdv_conman_ctx_closed
+// TODOOOOOOOOOOOOOOOOOO
+//            .select         = mdv_conman_ctx_select,
+//            .create         = mdv_conman_ctx_create,
+//            .recv           = mdv_conman_ctx_recv,
+//            .close          = mdv_conman_ctx_closed
         },
         .threadpool =
         {

@@ -1,13 +1,12 @@
 #include "mdv_client.h"
 #include "mdv_messages.h"
-#include "mdv_channel.h"
-#include <mdv_version.h>
+#include "mdv_connection.h"
+#include "mdv_proto.h"
 #include <mdv_alloc.h>
 #include <mdv_binn.h>
 #include <mdv_log.h>
 #include <mdv_msg.h>
 #include <mdv_rollbacker.h>
-#include <mdv_ctypes.h>
 #include <mdv_chaman.h>
 #include <mdv_socket.h>
 #include <mdv_mutex.h>
@@ -74,7 +73,7 @@ struct mdv_client
 {
     mdv_chaman         *chaman;             ///< Channels manager
     mdv_mutex           mutex;              ///< Mutex for user guard
-    mdv_channel        *channel;            ///< Connection context
+    mdv_connection     *channel;            ///< Connection context
     uint32_t            response_timeout;   ///< Temeout for responses (in milliseconds)
 };
 
@@ -82,14 +81,14 @@ struct mdv_client
 /// @endcond
 
 
-static mdv_channel * mdv_client_channel_retain(mdv_client *client)
+static mdv_connection * mdv_client_channel_retain(mdv_client *client)
 {
-    mdv_channel *channel = 0;
+    mdv_connection *channel = 0;
 
     if (mdv_mutex_lock(&client->mutex) == MDV_OK)
     {
         if (client->channel)
-            channel = mdv_channel_retain(client->channel);
+            channel = mdv_connection_retain(client->channel);
         mdv_mutex_unlock(&client->mutex);
     }
 
@@ -97,13 +96,13 @@ static mdv_channel * mdv_client_channel_retain(mdv_client *client)
 }
 
 
-static bool mdv_client_channel_set(mdv_client *client, mdv_channel *channel)
+static bool mdv_client_channel_set(mdv_client *client, mdv_connection *channel)
 {
     bool ret = false;
 
     if (mdv_mutex_lock(&client->mutex) == MDV_OK)
     {
-        mdv_channel_release(client->channel);
+        mdv_connection_release(client->channel);
         client->channel = channel;
         ret = true;
         mdv_mutex_unlock(&client->mutex);
@@ -115,14 +114,14 @@ static bool mdv_client_channel_set(mdv_client *client, mdv_channel *channel)
 
 static mdv_errno mdv_client_send(mdv_client *client, mdv_msg *req, mdv_msg *resp, size_t timeout)
 {
-    mdv_channel *channel = mdv_client_channel_retain(client);
+    mdv_connection *channel = mdv_client_channel_retain(client);
 
     if (!channel)
         return MDV_FAILED;
 
-    mdv_errno err = mdv_channel_send(channel, req, resp, timeout);
+    mdv_errno err = mdv_connection_send(channel, req, resp, timeout);
 
-    mdv_channel_release(channel);
+    mdv_connection_release(channel);
 
     return err;
 }
@@ -163,7 +162,7 @@ static void * mdv_client_conctx_create(mdv_descriptor    fd,
         return 0;
     }
 
-    mdv_channel *channel = mdv_channel_create(fd);
+    mdv_connection *channel = mdv_connection_create(fd);
 
     if (!channel)
     {
@@ -173,7 +172,7 @@ static void * mdv_client_conctx_create(mdv_descriptor    fd,
 
     if (!mdv_client_channel_set(client, channel))
     {
-        mdv_channel_release(channel);
+        mdv_connection_release(channel);
         channel = 0;
     }
 
@@ -184,7 +183,7 @@ static void * mdv_client_conctx_create(mdv_descriptor    fd,
 static mdv_errno mdv_client_conctx_recv(void *userdata, void *ctx)
 {
     (void)userdata;
-    return mdv_channel_recv((mdv_channel *)ctx);
+    return mdv_connection_recv((mdv_connection *)ctx);
 }
 
 
@@ -383,10 +382,11 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
             .keepidle       = config->connection.keepidle,
             .keepcnt        = config->connection.keepcnt,
             .keepintvl      = config->connection.keepintvl,
-            .select         = mdv_client_conctx_select,
-            .create         = mdv_client_conctx_create,
-            .recv           = mdv_client_conctx_recv,
-            .close          = mdv_client_conctx_closed
+// TODOOOOOOOOOOOOOOOOOOO
+//            .select         = mdv_client_conctx_select,
+//            .create         = mdv_client_conctx_create,
+//            .recv           = mdv_client_conctx_recv,
+//            .close          = mdv_client_conctx_closed
         },
         .threadpool =
         {
@@ -411,7 +411,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
     mdv_rollbacker_push(rollbacker, mdv_chaman_free, client->chaman);
 
     // Connect to server
-    err = mdv_chaman_dial(client->chaman, mdv_str((char*)config->db.addr), MDV_CTX_USER);
+    err = mdv_chaman_dial(client->chaman, mdv_str((char*)config->db.addr), MDV_USER_CHANNEL);
 
     if (err != MDV_OK)
     {
@@ -421,7 +421,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
     }
 
     // Wait connection
-    mdv_channel *channel = mdv_client_channel_retain(client);
+    mdv_connection *channel = mdv_client_channel_retain(client);
 
     for(uint32_t tiemout = 0;
         !channel && tiemout < client->response_timeout;
@@ -432,15 +432,15 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
     }
 
     if (!channel
-       || mdv_channel_wait_connection(channel, client->response_timeout) != MDV_OK)
+       || mdv_connection_wait(channel, client->response_timeout) != MDV_OK)
     {
         MDV_LOGE("Connection to '%s' failed", config->db.addr);
-        mdv_channel_release(channel);
+        mdv_connection_release(channel);
         mdv_rollback(rollbacker);
         return 0;
     }
 
-    mdv_channel_release(channel);
+    mdv_connection_release(channel);
 
     mdv_rollbacker_free(rollbacker);
 
@@ -453,7 +453,7 @@ void mdv_client_close(mdv_client *client)
     if (client)
     {
         mdv_chaman_free(client->chaman);
-        mdv_channel_release(client->channel);
+        mdv_connection_release(client->channel);
         mdv_mutex_free(&client->mutex);
         mdv_free(client, "client");
         mdv_client_finalize();
@@ -659,7 +659,7 @@ mdv_hashmap * mdv_get_routes(mdv_client *client)
 
     if (err == MDV_OK && topology)
     {
-        routes = mdv_routes_find(topology, mdv_channel_uuid(client->channel));
+        routes = mdv_routes_find(topology, mdv_connection_uuid(client->channel));
         mdv_topology_release(topology);
     }
 

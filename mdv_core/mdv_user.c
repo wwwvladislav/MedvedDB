@@ -8,16 +8,16 @@
 #include "event/mdv_evt_view.h"
 #include "event/mdv_evt_status.h"
 #include <mdv_messages.h>
-#include <mdv_version.h>
 #include <mdv_alloc.h>
 #include <mdv_log.h>
 #include <mdv_dispatcher.h>
 #include <mdv_rollbacker.h>
-#include <mdv_ctypes.h>
+#include <mdv_proto.h>
 #include <mdv_mutex.h>
 #include <mdv_safeptr.h>
 #include <mdv_serialization.h>
 #include <mdv_uuid.h>
+#include <mdv_version.h>
 #include <stdatomic.h>
 
 
@@ -658,7 +658,7 @@ mdv_user * mdv_user_create(mdv_uuid const *uuid,
 
     atomic_init(&user->rc, 1);
 
-    user->base.type = MDV_CTX_USER;
+    user->base.type = MDV_USER_CHANNEL;
     user->base.vptr = &iconctx;
 
     user->session = mdv_uuid_generate();

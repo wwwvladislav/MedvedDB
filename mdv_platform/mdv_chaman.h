@@ -15,11 +15,13 @@ typedef struct mdv_chaman mdv_chaman;
 
 
 /// Connection handshake
-typedef mdv_errno (*mdv_channel_handshake_fn)(mdv_descriptor fd);
+typedef mdv_errno (*mdv_channel_handshake_fn)(mdv_descriptor fd,
+                                              void          *userdata);
 
 
 /// Connection accept handler
 typedef mdv_errno  (*mdv_channel_accept_fn)(mdv_descriptor  fd,
+                                            void           *userdata,
                                             mdv_channel_t  *channel_type,
                                             mdv_uuid       *uuid);
 

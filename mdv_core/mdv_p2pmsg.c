@@ -31,11 +31,7 @@ bool mdv_binn_p2p_hello(mdv_msg_p2p_hello const *msg, binn *obj)
         return false;
     }
 
-    if (0
-        || !binn_object_set_uint32(obj, "V", msg->version)
-        || !binn_object_set_uint64(obj, "U0", msg->uuid.u64[0])
-        || !binn_object_set_uint64(obj, "U1", msg->uuid.u64[1])
-        || !binn_object_set_str(obj, "L", (char*)msg->listen))
+    if (!binn_object_set_str(obj, "L", (char*)msg->listen))
     {
         binn_free(obj);
         MDV_LOGE("binn_p2p_hello failed");
@@ -48,11 +44,7 @@ bool mdv_binn_p2p_hello(mdv_msg_p2p_hello const *msg, binn *obj)
 
 bool mdv_unbinn_p2p_hello(binn const *obj, mdv_msg_p2p_hello *msg)
 {
-    if (0
-        || !binn_object_get_uint32((void*)obj, "V", &msg->version)
-        || !binn_object_get_uint64((void*)obj, "U0", (uint64 *)&msg->uuid.u64[0])
-        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&msg->uuid.u64[1])
-        || !binn_object_get_str((void*)obj, "L", &msg->listen))
+    if (!binn_object_get_str((void*)obj, "L", &msg->listen))
     {
         MDV_LOGE("unbinn_p2p_hello failed");
         return false;

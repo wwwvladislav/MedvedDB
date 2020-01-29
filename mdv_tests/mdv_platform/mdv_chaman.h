@@ -92,8 +92,9 @@ static mdv_errno mdv_test_channel_recv_impl(mdv_channel *channel)
 }
 
 
-static mdv_errno mdv_test_channel_handshake_impl(mdv_descriptor fd)
+static mdv_errno mdv_test_channel_handshake_impl(mdv_descriptor fd, void *userdata)
 {
+    (void)userdata;
     char ch = 'a';
     size_t len = 1;
     return mdv_write(fd, &ch, &len);
@@ -101,9 +102,11 @@ static mdv_errno mdv_test_channel_handshake_impl(mdv_descriptor fd)
 
 
 static mdv_errno mdv_test_channel_accept_impl(mdv_descriptor  fd,
+                                              void           *userdata,
                                               mdv_channel_t  *channel_type,
                                               mdv_uuid       *uuid)
 {
+    (void)userdata;
     char ch = 'a';
     size_t len = 1;
     mdv_read(fd, &ch, &len);

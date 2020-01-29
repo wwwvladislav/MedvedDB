@@ -360,7 +360,7 @@ static void mdv_chaman_dialer_handler(uint32_t events, mdv_threadpool_task_base 
         if (!mdv_str_empty(str_addr))
             MDV_LOGI("Connection to '%s' established", str_addr.ptr);
 
-        if (chaman->config.channel.handshake(fd) != MDV_OK
+        if (chaman->config.channel.handshake(fd, chaman->config.userdata) != MDV_OK
             || mdv_chaman_selector_reg(chaman, fd, &addr, MDV_CHOUT) != MDV_OK)
         {
             mdv_socket_close(fd);
@@ -459,6 +459,8 @@ static void mdv_chaman_new_connection(mdv_chaman *chaman, mdv_descriptor sock, m
                 dialer->state = MDV_DIALER_CONNECTED;
                 dialer->channel_id = *channel_id;
             }
+
+            mdv_socket_close(sock);
         }
         else
         {
@@ -491,11 +493,15 @@ static void mdv_chaman_new_connection(mdv_chaman *chaman, mdv_descriptor sock, m
                 {
                     MDV_LOGE("Channel registration failed for '%s'", str_addr.ptr);
                     mdv_channel_release(channel);
+                    mdv_socket_close(sock);
                     channel = 0;
                 }
             }
             else
+            {
                 MDV_LOGE("Channel creation failed for '%s'", str_addr.ptr);
+                mdv_socket_close(sock);
+            }
         }
 
         mdv_mutex_unlock(&chaman->mutex);
@@ -554,7 +560,7 @@ static void mdv_chaman_select_handler(uint32_t events, mdv_threadpool_task_base 
     mdv_channel_t type = 0;
     mdv_uuid channel_id;
 
-    mdv_errno err = chaman->config.channel.accept(fd, &type, &channel_id);
+    mdv_errno err = chaman->config.channel.accept(fd, chaman->config.userdata, &type, &channel_id);
 
     if ((events & MDV_EPOLLERR) == 0 && err == MDV_EAGAIN)
     {
@@ -630,7 +636,7 @@ static void mdv_chaman_accept_handler(uint32_t events, mdv_threadpool_task_base 
                                        chaman->config.channel.keepcnt,
                                        chaman->config.channel.keepintvl);
 
-        if (chaman->config.channel.handshake(sock) != MDV_OK
+        if (chaman->config.channel.handshake(sock, chaman->config.userdata) != MDV_OK
             || mdv_chaman_selector_reg(chaman, sock, &addr, MDV_CHIN) != MDV_OK)
         {
             mdv_socket_close(sock);

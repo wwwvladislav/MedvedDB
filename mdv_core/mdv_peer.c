@@ -1,7 +1,6 @@
 #include "mdv_peer.h"
 #include "mdv_p2pmsg.h"
 #include "mdv_config.h"
-#include "mdv_conctx.h"
 #include "event/mdv_evt_types.h"
 #include "event/mdv_evt_link.h"
 #include "event/mdv_evt_topology.h"
@@ -19,53 +18,132 @@
 #include <stdlib.h>
 
 
-struct mdv_peer
+typedef struct
 {
-    mdv_conctx              base;           ///< connection context base type
+    mdv_channel             base;           ///< connection context base type
     atomic_uint             rc;             ///< References counter
     mdv_channel_dir         dir;            ///< Channel direction
     mdv_uuid                uuid;           ///< current node uuid
     mdv_uuid                peer_uuid;      ///< peer global uuid
     char                   *peer_addr;      ///< peer address
-    uint32_t                peer_id;        ///< peer local unique identifier
     mdv_dispatcher         *dispatcher;     ///< Messages dispatcher
     mdv_ebus               *ebus;           ///< Events bus
-    bool                    valid;          ///< Flag indicates the peer context validity, i.e. handshake is completed and all  fields are valid.
-};
+} mdv_peer;
 
 
-static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid const *uuid, uint32_t *id);
+/**
+ * @brief Send message and wait response.
+ *
+ * @param peer [in]     peer connection context
+ * @param req [in]      request to be sent
+ * @param resp [out]    received response
+ * @param timeout [in]  timeout for response wait (in milliseconds)
+ *
+ * @return MDV_OK if message is successfully sent and 'resp' contains response from remote peer
+ * @return MDV_BUSY if there is no free slots for request. At this case caller should wait and try again later.
+ * @return On error return nonzero error code
+ */
+static mdv_errno mdv_peer_send(mdv_peer *peer, mdv_msg *req, mdv_msg *resp, size_t timeout);
+
+
+/**
+ * @brief Send message but response isn't required.
+ *
+ * @param peer [in]     peer connection context
+ * @param msg [in]      message to be sent
+ *
+ * @return On success returns MDV_OK
+ * @return On error return nonzero error code.
+ */
+static mdv_errno mdv_peer_post(mdv_peer *peer, mdv_msg *msg);
+
+
+/**
+ * @brief Frees peer connection context
+ *
+ * @param peer [in]     peer connection context
+ */
+static void mdv_peer_free(mdv_peer *peer);
+
+
+static mdv_channel * mdv_peer_retain_impl(mdv_channel *channel)
+{
+    if (channel)
+    {
+        mdv_peer *peer = (mdv_peer*)channel;
+
+        uint32_t rc = atomic_load_explicit(&peer->rc, memory_order_relaxed);
+
+        if (!rc)
+            return 0;
+
+        while(!atomic_compare_exchange_weak(&peer->rc, &rc, rc + 1))
+        {
+            if (!rc)
+                return 0;
+        }
+    }
+
+    return channel;
+}
+
+
+static mdv_peer * mdv_peer_retain(mdv_peer *peer)
+{
+    return (mdv_peer *)mdv_peer_retain_impl(&peer->base);
+}
+
+
+static uint32_t mdv_peer_release_impl(mdv_channel *channel)
+{
+    if (channel)
+    {
+        mdv_peer *peer = (mdv_peer*)channel;
+
+        uint32_t rc = atomic_fetch_sub_explicit(&peer->rc, 1, memory_order_relaxed) - 1;
+
+        if (!rc)
+            mdv_peer_free(peer);
+
+        return rc;
+    }
+
+    return 0;
+}
+
+
+static uint32_t mdv_peer_release(mdv_peer *peer)
+{
+    return mdv_peer_release_impl(&peer->base);
+}
+
+static mdv_channel_t mdv_peer_type_impl(mdv_channel const *channel)
+{
+    (void)channel;
+    return MDV_PEER_CHANNEL;
+}
+
+
+static mdv_uuid const * mdv_peer_id_impl(mdv_channel const *channel)
+{
+    mdv_peer *peer = (mdv_peer*)channel;
+    return &peer->peer_uuid;
+}
+
+
+static mdv_errno mdv_peer_recv_impl(mdv_channel *channel)
+{
+    mdv_peer *peer = (mdv_peer*)channel;
+    return mdv_dispatcher_read(peer->dispatcher);
+}
+
+
+static mdv_errno mdv_peer_connected(mdv_peer *peer, char const *addr, mdv_uuid const *uuid);
 
 static void      mdv_peer_disconnected(mdv_peer *peer);
 
 
 static mdv_errno mdv_peer_reply(mdv_peer *peer, mdv_msg const *msg);
-
-
-static mdv_errno mdv_peer_hello_reply(mdv_peer *peer, uint16_t id, mdv_msg_p2p_hello const *msg)
-{
-    binn hey;
-
-    if (!mdv_binn_p2p_hello(msg, &hey))
-        return MDV_FAILED;
-
-    mdv_msg const message =
-    {
-        .hdr =
-        {
-            .id     = mdv_message_id(p2p_hello),
-            .number = id,
-            .size   = binn_size(&hey)
-        },
-        .payload = binn_ptr(&hey)
-    };
-
-    mdv_errno err = mdv_peer_reply(peer, &message);
-
-    binn_free(&hey);
-
-    return err;
-}
 
 
 static char * mdv_string_dup(char const *str, char const *name)
@@ -115,37 +193,7 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
         return MDV_FAILED;
     }
 
-    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&req.uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
-
-    if(req.version != MDV_VERSION)
-    {
-        MDV_LOGE("Invalid peer version");
-        binn_free(&binn_msg);
-        return MDV_FAILED;
-    }
-
-    peer->peer_uuid = req.uuid;
-
-    mdv_errno err = MDV_OK;
-
-    bool link_found = false;
-
-    err = mdv_peer_link_check(peer, &peer->peer_uuid, &link_found);
-
-    if(err == MDV_FAILED)
-    {
-        MDV_LOGE("Unable to check the status of links");
-        binn_free(&binn_msg);
-        return MDV_FAILED;
-    }
-
-    if(link_found)
-    {
-        MDV_LOGD("Link with '%s' is already exist. Disconnecting...", mdv_uuid_to_str(&req.uuid).ptr);
-        binn_free(&binn_msg);
-        mdv_sleep(rand() % (MDV_CONFIG.connection.collision_penalty * 1000));
-        return MDV_FAILED;
-    }
+    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
     mdv_free(peer->peer_addr, "peer_addr");
 
@@ -158,24 +206,9 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
         return MDV_FAILED;
     }
 
-    if(peer->dir == MDV_CHIN)
-    {
-        mdv_msg_p2p_hello const hello =
-        {
-            .version = MDV_VERSION,
-            .uuid    = peer->uuid,
-            .listen  = MDV_CONFIG.server.listen.ptr
-        };
-
-        err = mdv_peer_hello_reply(peer, msg->hdr.number, &hello);
-    }
-
-    if (err == MDV_OK)
-        err = mdv_peer_connected(peer, req.listen, &req.uuid, &peer->peer_id);
-    else
-        MDV_LOGE("Peer reply failed with error '%s' (%d)", mdv_strerror(err), err);
-
     binn_free(&binn_msg);
+
+    mdv_errno err = mdv_peer_connected(peer, peer->peer_addr, &peer->peer_uuid);
 
     if (err != MDV_OK)
         MDV_LOGE("Peer registration failed with error '%s' (%d)", mdv_strerror(err), err);
@@ -426,8 +459,6 @@ static mdv_errno mdv_peer_hello(mdv_peer *peer)
 {
     mdv_msg_p2p_hello hello =
     {
-        .version = MDV_VERSION,
-        .uuid    = peer->uuid,
         .listen  = MDV_CONFIG.server.listen.ptr
     };
 
@@ -709,10 +740,11 @@ static const mdv_event_handler_type mdv_peer_handlers[] =
 };
 
 
-mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
-                           mdv_channel_dir dir,
-                           mdv_descriptor fd,
-                           mdv_ebus *ebus)
+mdv_channel * mdv_peer_create(mdv_descriptor  fd,
+                              mdv_uuid const *uuid,
+                              mdv_uuid const *peer_uuid,
+                              mdv_channel_dir dir,
+                              mdv_ebus       *ebus)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
@@ -725,29 +757,29 @@ mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
         return 0;
     }
 
-
     mdv_rollbacker_push(rollbacker, mdv_free, peer, "peerctx");
 
     MDV_LOGD("Peer %p initialization", peer);
 
+    static const mdv_ichannel vtbl =
+    {
+        .retain = mdv_peer_retain_impl,
+        .release = mdv_peer_release_impl,
+        .type = mdv_peer_type_impl,
+        .id = mdv_peer_id_impl,
+        .recv = mdv_peer_recv_impl,
+    };
+
     // memset(peer, 0, sizeof *peer);
 
-    static mdv_iconctx iconctx =
-    {
-        .retain = (mdv_conctx * (*)(mdv_conctx *)) mdv_peer_retain,
-        .release = (uint32_t (*)(mdv_conctx *))    mdv_peer_release
-    };
+    peer->base.vptr = &vtbl;
 
     atomic_init(&peer->rc, 1);
 
-    peer->base.type = MDV_PEER_CHANNEL;
-    peer->base.vptr = &iconctx;
-
     peer->dir = dir;
     peer->uuid = *uuid;
-    peer->peer_id = 0;
+    peer->peer_uuid = *peer_uuid;
     peer->peer_addr = 0;
-    peer->valid = false;
 
     peer->ebus = mdv_ebus_retain(ebus);
 
@@ -794,25 +826,22 @@ mdv_peer * mdv_peer_create(mdv_uuid const *uuid,
         return 0;
     }
 
-    if (dir == MDV_CHOUT)
+    if (mdv_peer_hello(peer) != MDV_OK)
     {
-        if (mdv_peer_hello(peer) != MDV_OK)
-        {
-            MDV_LOGD("Peer handshake message failed");
-            mdv_ebus_unsubscribe_all(peer->ebus,
-                                     peer,
-                                     mdv_peer_handlers,
-                                     sizeof mdv_peer_handlers / sizeof *mdv_peer_handlers);
-            mdv_rollback(rollbacker);
-            return 0;
-        }
+        MDV_LOGD("Peer handshake message failed");
+        mdv_ebus_unsubscribe_all(peer->ebus,
+                                    peer,
+                                    mdv_peer_handlers,
+                                    sizeof mdv_peer_handlers / sizeof *mdv_peer_handlers);
+        mdv_rollback(rollbacker);
+        return 0;
     }
 
     MDV_LOGD("Peer %p initialized", peer);
 
     mdv_rollbacker_free(rollbacker);
 
-    return peer;
+    return &peer->base;
 }
 
 
@@ -834,43 +863,7 @@ static void mdv_peer_free(mdv_peer *peer)
 }
 
 
-mdv_peer * mdv_peer_retain(mdv_peer *peer)
-{
-    if (peer)
-    {
-        uint32_t rc = atomic_load_explicit(&peer->rc, memory_order_relaxed);
-
-        if (!rc)
-            return 0;
-
-        while(!atomic_compare_exchange_weak(&peer->rc, &rc, rc + 1))
-        {
-            if (!rc)
-                return 0;
-        }
-    }
-
-    return peer;
-}
-
-
-uint32_t mdv_peer_release(mdv_peer *peer)
-{
-    if (peer)
-    {
-        uint32_t rc = atomic_fetch_sub_explicit(&peer->rc, 1, memory_order_relaxed) - 1;
-
-        if (!rc)
-            mdv_peer_free(peer);
-
-        return rc;
-    }
-
-    return 0;
-}
-
-
-mdv_errno mdv_peer_send(mdv_peer *peer, mdv_msg *req, mdv_msg *resp, size_t timeout)
+static mdv_errno mdv_peer_send(mdv_peer *peer, mdv_msg *req, mdv_msg *resp, size_t timeout)
 {
     MDV_LOGI(">>>>> %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(req->hdr.id));
 
@@ -888,7 +881,7 @@ mdv_errno mdv_peer_send(mdv_peer *peer, mdv_msg *req, mdv_msg *resp, size_t time
 }
 
 
-mdv_errno mdv_peer_post(mdv_peer *peer, mdv_msg *msg)
+static mdv_errno mdv_peer_post(mdv_peer *peer, mdv_msg *msg)
 {
     MDV_LOGI(">>>>> %s '%s'", mdv_uuid_to_str(&peer->peer_uuid).ptr, mdv_p2p_msg_name(msg->hdr.id));
 
@@ -917,11 +910,8 @@ static mdv_errno mdv_peer_reply(mdv_peer *peer, mdv_msg const *msg)
 
 static mdv_errno mdv_peer_connected(mdv_peer *peer,
                                     char const *addr,
-                                    mdv_uuid const *uuid,
-                                    uint32_t *id)
+                                    mdv_uuid const *uuid)
 {
-    peer->valid = true;
-
     mdv_toponode const remote =
     {
         .uuid = *uuid,
@@ -950,7 +940,7 @@ static mdv_errno mdv_peer_connected(mdv_peer *peer,
 
 static void mdv_peer_disconnected(mdv_peer *peer)
 {
-    if (!peer->valid)
+    if (!peer->peer_addr)
         return;
 
     mdv_toponode const remote =
@@ -973,16 +963,3 @@ static void mdv_peer_disconnected(mdv_peer *peer)
         mdv_evt_link_state_release(event);
     }
 }
-
-
-mdv_errno mdv_peer_recv(mdv_peer *peer)
-{
-    return mdv_dispatcher_read(peer->dispatcher);
-}
-
-
-mdv_descriptor mdv_peer_fd(mdv_peer *peer)
-{
-    return mdv_dispatcher_fd(peer->dispatcher);
-}
-

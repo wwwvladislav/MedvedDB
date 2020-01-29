@@ -9,7 +9,9 @@ const mdv_channel_t MDV_USER_CHANNEL = 0;
 const mdv_channel_t MDV_PEER_CHANNEL = 1;
 
 
-static const char MDV_SIGNATURE[3] = { 'M', 'D', 'V' };     /// Protocol signature
+#define MDV_SIGNATURE_INIT { 'M', 'D', 'V' }
+
+static const char MDV_SIGNATURE[3] = MDV_SIGNATURE_INIT;    /// Protocol signature
 
 
 static const uint32_t MDV_VERSION = 1u;                     /// Protocol version
@@ -31,7 +33,7 @@ mdv_errno mdv_handshake_write(mdv_descriptor fd, mdv_channel_t type, mdv_uuid co
 {
     mdv_handshake const handshake =
     {
-        .signature = MDV_SIGNATURE,
+        .signature = MDV_SIGNATURE_INIT,
         .type      = type,
         .version   = htonl(MDV_VERSION),
         .uuid      = *uuid
@@ -63,6 +65,7 @@ mdv_errno mdv_handshake_read(mdv_descriptor fd, mdv_channel_t *type, mdv_uuid *u
             return MDV_FAILED;
         }
 
+        *type = handshake.type;
         *uuid = handshake.uuid;
     }
 

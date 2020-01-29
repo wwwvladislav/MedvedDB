@@ -1,6 +1,5 @@
 #include "mdv_user.h"
 #include "mdv_config.h"
-#include "mdv_conctx.h"
 #include "event/mdv_evt_types.h"
 #include "event/mdv_evt_topology.h"
 #include "event/mdv_evt_table.h"
@@ -21,9 +20,9 @@
 #include <stdatomic.h>
 
 
-struct mdv_user
+typedef struct
 {
-    mdv_conctx              base;           ///< connection context base type
+    mdv_channel             base;           ///< connection context base type
     atomic_uint             rc;             ///< References counter
     mdv_uuid                session;        ///< Current session identifier
     mdv_uuid                uuid;           ///< Current node uuid
@@ -31,7 +30,114 @@ struct mdv_user
     mdv_ebus               *ebus;           ///< Events bus
     mdv_mutex               topomutex;      ///< Mutex for topology guard
     mdv_safeptr            *topology;       ///< Current network topology
-};
+} mdv_user;
+
+
+/**
+ * @brief Send message and wait response.
+ *
+ * @param user [in]     user context
+ * @param req [in]      request to be sent
+ * @param resp [out]    received response
+ * @param timeout [in]  timeout for response wait (in milliseconds)
+ *
+ * @return MDV_OK if message is successfully sent and 'resp' contains response from remote user
+ * @return MDV_BUSY if there is no free slots for request. At this case caller should wait and try again later.
+ * @return On error return nonzero error code
+ */
+static mdv_errno mdv_user_send(mdv_user *user, mdv_msg *req, mdv_msg *resp, size_t timeout);
+
+
+/**
+ * @brief Send message but response isn't required.
+ *
+ * @param user [in]     user context
+ * @param msg [in]      message to be sent
+ *
+ * @return On success returns MDV_OK
+ * @return On error return nonzero error code.
+ */
+static mdv_errno mdv_user_post(mdv_user *user, mdv_msg *msg);
+
+
+/**
+ * @brief Frees user connection context
+ *
+ * @param user [in]     user connection context
+ */
+static void mdv_user_free(mdv_user *user);
+
+
+static mdv_channel * mdv_user_retain_impl(mdv_channel *channel)
+{
+    if (channel)
+    {
+        mdv_user *user = (mdv_user*)channel;
+
+        uint32_t rc = atomic_load_explicit(&user->rc, memory_order_relaxed);
+
+        if (!rc)
+            return 0;
+
+        while(!atomic_compare_exchange_weak(&user->rc, &rc, rc + 1))
+        {
+            if (!rc)
+                return 0;
+        }
+    }
+
+    return channel;
+}
+
+
+static mdv_user * mdv_user_retain(mdv_user *user)
+{
+    return (mdv_user *)mdv_user_retain_impl(&user->base);
+}
+
+static uint32_t mdv_user_release_impl(mdv_channel *channel)
+{
+    if (channel)
+    {
+        mdv_user *user = (mdv_user*)channel;
+
+        uint32_t rc = atomic_fetch_sub_explicit(&user->rc, 1, memory_order_relaxed) - 1;
+
+        if (!rc)
+            mdv_user_free(user);
+
+        return rc;
+    }
+
+    return 0;
+}
+
+
+static uint32_t mdv_user_release(mdv_user *user)
+{
+    return mdv_user_release_impl(&user->base);
+}
+
+
+static mdv_channel_t mdv_user_type_impl(mdv_channel const *channel)
+{
+    (void)channel;
+    return MDV_USER_CHANNEL;
+}
+
+
+static mdv_uuid const * mdv_user_id_impl(mdv_channel const *channel)
+{
+    mdv_user *user = (mdv_user*)channel;
+    return &user->session;
+}
+
+
+static mdv_errno mdv_user_recv_impl(mdv_channel *channel)
+{
+    mdv_user *user = (mdv_user*)channel;
+    return mdv_dispatcher_read(user->dispatcher);
+}
 
 
 static mdv_errno mdv_user_reply(mdv_user *user, mdv_msg const *msg);
@@ -630,10 +736,11 @@ static const mdv_event_handler_type mdv_user_handlers[] =
 };
 
 
-mdv_user * mdv_user_create(mdv_uuid const *uuid,
-                           mdv_descriptor fd,
-                           mdv_ebus *ebus,
-                           mdv_topology *topology)
+mdv_channel * mdv_user_create(mdv_descriptor  fd,
+                              mdv_uuid const *uuid,
+                              mdv_uuid const *session,
+                              mdv_ebus       *ebus,
+                              mdv_topology   *topology)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
@@ -650,18 +757,20 @@ mdv_user * mdv_user_create(mdv_uuid const *uuid,
 
     MDV_LOGD("User %p initialization", user);
 
-    static mdv_iconctx iconctx =
+    static const mdv_ichannel vtbl =
     {
-        .retain = (mdv_conctx * (*)(mdv_conctx *)) mdv_user_retain,
-        .release = (uint32_t (*)(mdv_conctx *))    mdv_user_release
+        .retain = mdv_user_retain_impl,
+        .release = mdv_user_release_impl,
+        .type = mdv_user_type_impl,
+        .id = mdv_user_id_impl,
+        .recv = mdv_user_recv_impl,
     };
+
+    user->base.vptr = &vtbl;
 
     atomic_init(&user->rc, 1);
 
-    user->base.type = MDV_USER_CHANNEL;
-    user->base.vptr = &iconctx;
-
-    user->session = mdv_uuid_generate();
+    user->session = *session;
     user->uuid = *uuid;
 
     user->ebus = mdv_ebus_retain(ebus);
@@ -726,7 +835,7 @@ mdv_user * mdv_user_create(mdv_uuid const *uuid,
 
     mdv_rollbacker_free(rollbacker);
 
-    return user;
+    return &user->base;
 }
 
 
@@ -747,44 +856,7 @@ static void mdv_user_free(mdv_user *user)
 }
 
 
-mdv_user * mdv_user_retain(mdv_user *user)
-{
-    if (user)
-    {
-        uint32_t rc = atomic_load_explicit(&user->rc, memory_order_relaxed);
-
-        if (!rc)
-            return 0;
-
-        while(!atomic_compare_exchange_weak(&user->rc, &rc, rc + 1))
-        {
-            if (!rc)
-                return 0;
-        }
-    }
-
-    return user;
-
-}
-
-
-uint32_t mdv_user_release(mdv_user *user)
-{
-    if (user)
-    {
-        uint32_t rc = atomic_fetch_sub_explicit(&user->rc, 1, memory_order_relaxed) - 1;
-
-        if (!rc)
-            mdv_user_free(user);
-
-        return rc;
-    }
-
-    return 0;
-}
-
-
-mdv_errno mdv_user_send(mdv_user *user, mdv_msg *req, mdv_msg *resp, size_t timeout)
+static mdv_errno mdv_user_send(mdv_user *user, mdv_msg *req, mdv_msg *resp, size_t timeout)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(req->hdr.id));
 
@@ -802,7 +874,7 @@ mdv_errno mdv_user_send(mdv_user *user, mdv_msg *req, mdv_msg *resp, size_t time
 }
 
 
-mdv_errno mdv_user_post(mdv_user *user, mdv_msg *msg)
+static mdv_errno mdv_user_post(mdv_user *user, mdv_msg *msg)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(msg->hdr.id));
 
@@ -824,17 +896,5 @@ static mdv_errno mdv_user_reply(mdv_user *user, mdv_msg const *msg)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(msg->hdr.id));
     return mdv_dispatcher_reply(user->dispatcher, msg);
-}
-
-
-mdv_errno mdv_user_recv(mdv_user *user)
-{
-    return mdv_dispatcher_read(user->dispatcher);
-}
-
-
-mdv_descriptor mdv_user_fd(mdv_user *user)
-{
-    return mdv_dispatcher_fd(user->dispatcher);
 }
 

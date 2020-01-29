@@ -25,8 +25,6 @@
 
 
 mdv_message_def(p2p_hello, 1000 + 0,
-    uint32_t    version;            ///< Version
-    mdv_uuid    uuid;               ///< Unique identifier
     char       *listen;             ///< Listening address
 );
 

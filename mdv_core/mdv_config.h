@@ -36,7 +36,6 @@ typedef struct
         uint32_t keep_idle;         ///< Start keeplives after this period (in seconds)
         uint32_t keep_count;        ///< Number of keepalives before death
         uint32_t keep_interval;     ///< Interval between keepalives (in seconds)
-        uint32_t collision_penalty; ///< Collision penalty range for simultaneous connection (in seconds)
     } connection;                   ///< Connection settings
 
     struct

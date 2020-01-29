@@ -147,7 +147,7 @@ static mdv_channel * mdv_test_channel_create_impl(mdv_descriptor    fd,
 
 MU_TEST(platform_chaman)
 {
-    mdv_chaman_config server_config =
+    mdv_chaman_config config =
     {
         .channel =
         {
@@ -170,34 +170,11 @@ MU_TEST(platform_chaman)
         .userdata = 0
     };
 
-    mdv_chaman_config client_config =
-    {
-        .channel =
-        {
-            .retry_interval = 5,
-            .keepidle       = 5,
-            .keepcnt        = 10,
-            .keepintvl      = 5,
-            .handshake      = mdv_test_channel_handshake_impl,
-            .accept         = mdv_test_channel_accept_impl,
-            .create         = mdv_test_channel_create_impl,
-        },
-        .threadpool =
-        {
-            .size = 2,
-            .thread_attrs =
-            {
-                .stack_size = MDV_THREAD_STACK_SIZE
-            }
-        },
-        .userdata = 0
-    };
-
-    mdv_chaman *server = mdv_chaman_create(&server_config);
+    mdv_chaman *server = mdv_chaman_create(&config);
     mdv_errno err = mdv_chaman_listen(server, mdv_str_static("tcp://localhost:55555"));
     mu_check(server && err == MDV_OK);
 
-    mdv_chaman *client = mdv_chaman_create(&client_config);
+    mdv_chaman *client = mdv_chaman_create(&config);
     mu_check(client);
 
     err = mdv_chaman_dial(client, mdv_str_static("tcp://localhost:55555"), 0);
@@ -206,12 +183,8 @@ MU_TEST(platform_chaman)
     while(mdv_init_count != 2)
         mdv_sleep(10);
 
-    char ch = 'a';
-    size_t len = 1;
-    mu_check(mdv_write(fds[0], &ch, &len) == MDV_OK && len == 1);
-
     char const msg[] = "The quick brown fox jumps over the lazy dog";
-    len = sizeof msg;
+    size_t len = sizeof msg;
 
     mu_check(mdv_write(fds[0], msg, &len) == MDV_OK && len == sizeof msg);
     mu_check(mdv_write(fds[1], msg, &len) == MDV_OK && len == sizeof msg);

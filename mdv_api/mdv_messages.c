@@ -7,7 +7,6 @@ char const * mdv_msg_name(uint32_t id)
 {
     switch(id)
     {
-        case mdv_message_id(hello):         return "HELLO";
         case mdv_message_id(status):        return "STATUS";
         case mdv_message_id(create_table):  return "CREATE TABLE";
         case mdv_message_id(get_table):     return "GET TABLE";
@@ -22,43 +21,6 @@ char const * mdv_msg_name(uint32_t id)
         case mdv_message_id(rowset):        return "ROWSET";
     }
     return "UNKOWN";
-}
-
-
-bool mdv_msg_hello_binn(mdv_msg_hello const *msg, binn *obj)
-{
-    if (!binn_create_object(obj))
-    {
-        MDV_LOGE("binn_hello failed");
-        return false;
-    }
-
-    if (0
-        || !binn_object_set_uint32(obj, "V", msg->version)
-        || !binn_object_set_uint64(obj, "U0", msg->uuid.u64[0])
-        || !binn_object_set_uint64(obj, "U1", msg->uuid.u64[1]))
-    {
-        binn_free(obj);
-        MDV_LOGE("binn_hello failed");
-        return false;
-    }
-
-    return true;
-}
-
-
-bool mdv_msg_hello_unbinn(binn const *obj, mdv_msg_hello *msg)
-{
-    if (0
-        || !binn_object_get_uint32((void*)obj, "V", &msg->version)
-        || !binn_object_get_uint64((void*)obj, "U0", (uint64 *)(msg->uuid.u64 + 0))
-        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)(msg->uuid.u64 + 1)))
-    {
-        MDV_LOGE("unbinn_hello failed");
-        return false;
-    }
-
-    return true;
 }
 
 

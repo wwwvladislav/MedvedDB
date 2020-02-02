@@ -143,32 +143,6 @@ static mdv_errno mdv_user_recv_impl(mdv_channel *channel)
 static mdv_errno mdv_user_reply(mdv_user *user, mdv_msg const *msg);
 
 
-static mdv_errno mdv_user_wave_reply(mdv_user *user, uint16_t id, mdv_msg_hello const *msg)
-{
-    binn hey;
-
-    if (!mdv_msg_hello_binn(msg, &hey))
-        return MDV_FAILED;
-
-    mdv_msg message =
-    {
-        .hdr =
-        {
-            .id     = mdv_msg_hello_id,
-            .number = id,
-            .size   = binn_size(&hey)
-        },
-        .payload = binn_ptr(&hey)
-    };
-
-    mdv_errno err = mdv_user_reply(user, &message);
-
-    binn_free(&hey);
-
-    return err;
-}
-
-
 static mdv_errno mdv_user_status_reply(mdv_user *user, uint16_t id, mdv_msg_status const *msg)
 {
     binn status;
@@ -322,47 +296,6 @@ static mdv_errno mdv_user_topology_reply(mdv_user *user, uint16_t id, mdv_msg_to
     binn_free(&obj);
 
     return err;
-}
-
-
-static mdv_errno mdv_user_wave_handler(mdv_msg const *msg, void *arg)
-{
-    MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
-
-    mdv_user *user = arg;
-
-    binn binn_msg;
-
-    if(!binn_load(msg->payload, &binn_msg))
-    {
-        MDV_LOGW("Message '%s' reading failed", mdv_msg_name(msg->hdr.id));
-        return MDV_FAILED;
-    }
-
-    mdv_msg_hello client_hello = {};
-
-    if (!mdv_msg_hello_unbinn(&binn_msg, &client_hello))
-    {
-        MDV_LOGE("Invalid '%s' message", mdv_msg_name(msg->hdr.id));
-        binn_free(&binn_msg);
-        return MDV_FAILED;
-    }
-
-    binn_free(&binn_msg);
-
-    if(client_hello.version != MDV_VERSION)
-    {
-        MDV_LOGE("Invalid client version");
-        return MDV_FAILED;
-    }
-
-    mdv_msg_hello hello =
-    {
-        .version = MDV_VERSION,
-        .uuid = user->uuid
-    };
-
-    return mdv_user_wave_reply(user, msg->hdr.number, &hello);
 }
 
 
@@ -802,7 +735,6 @@ mdv_channel * mdv_user_create(mdv_descriptor  fd,
 
     mdv_dispatcher_handler const handlers[] =
     {
-        { mdv_message_id(hello),         &mdv_user_wave_handler,         user },
         { mdv_message_id(create_table),  &mdv_user_create_table_handler, user },
         { mdv_message_id(get_table),     &mdv_user_get_table_handler,    user },
         { mdv_message_id(insert_into),   &mdv_user_insert_into_handler,  user },

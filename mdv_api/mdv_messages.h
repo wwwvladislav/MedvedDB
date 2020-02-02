@@ -54,12 +54,6 @@ mdv_message_def(status, 1,
 );
 
 
-mdv_message_def(hello, 2,
-    uint32_t    version;
-    mdv_uuid    uuid;
-);
-
-
 mdv_message_def(create_table, 3,
     mdv_table_desc *desc;
 );
@@ -118,10 +112,6 @@ mdv_message_def(rowset, 13,
 
 
 char const *                mdv_msg_name                    (uint32_t id);
-
-
-bool                        mdv_msg_hello_binn              (mdv_msg_hello const *msg, binn *obj);
-bool                        mdv_msg_hello_unbinn            (binn const *obj, mdv_msg_hello *msg);
 
 
 bool                        mdv_msg_status_binn             (mdv_msg_status const *msg, binn *obj);

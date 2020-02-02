@@ -34,10 +34,6 @@ typedef mdv_channel * (*mdv_channel_create_fn)(mdv_descriptor    fd,
                                                mdv_uuid const   *channel_id);
 
 
-/// Connection closing handler
-typedef void (*mdv_channel_close_fn)(void *userdata, void *channel);
-
-
 /// Channels manager configuration. All options are mandatory.
 typedef struct
 {

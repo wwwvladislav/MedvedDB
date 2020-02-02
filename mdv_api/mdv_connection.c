@@ -1,11 +1,11 @@
 #include "mdv_connection.h"
 #include "mdv_messages.h"
+#include "mdv_proto.h"
 #include <mdv_log.h>
 #include <mdv_uuid.h>
 #include <mdv_dispatcher.h>
 #include <mdv_socket.h>
 #include <mdv_rollbacker.h>
-#include <mdv_condvar.h>
 #include <mdv_version.h>
 #include <stdatomic.h>
 
@@ -14,84 +14,64 @@
 /// about connection
 struct mdv_connection
 {
+    mdv_channel             base;           ///< connection context base type
     atomic_uint_fast32_t    rc;             ///< references counter
-    volatile bool           connected;      ///< connection status
-    mdv_condvar             conn_signal;    ///< CV for connection signalization
-    mdv_dispatcher         *dispatcher;     ///< Messages dispatcher
     mdv_uuid                uuid;           ///< server uuid
+    mdv_dispatcher         *dispatcher;     ///< Messages dispatcher
 };
 
 
-/**
- * @brief   Say Hey! to server
- */
-static mdv_errno mdv_user_wave(mdv_connection *channel)
+static mdv_channel * mdv_connection_retain_impl(mdv_channel *channel)
 {
-    mdv_msg_hello const hello =
-    {
-        .uuid    = {},
-        .version = MDV_VERSION
-    };
-
-    binn hey;
-
-    if (!mdv_msg_hello_binn(&hello, &hey))
-        return MDV_FAILED;
-
-    mdv_msg message =
-    {
-        .hdr =
-        {
-            .id = mdv_message_id(hello),
-            .size = binn_size(&hey)
-        },
-        .payload = binn_ptr(&hey)
-    };
-
-    mdv_errno err = mdv_connection_post(channel, &message);
-
-    binn_free(&hey);
-
-    return err;
+    mdv_connection *con = (mdv_connection*)channel;
+    atomic_fetch_add_explicit(&con->rc, 1, memory_order_acquire);
+    return channel;
 }
 
 
-static mdv_errno mdv_channel_wave_handler(mdv_msg const *msg, void *arg)
+static void mdv_connection_free(mdv_connection *con)
 {
-    MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
+    mdv_dispatcher_free(con->dispatcher);
+    mdv_free(con, "connection");
+    MDV_LOGD("Connection %p freed", con);
+}
 
-    mdv_connection *channel = arg;
 
-    binn binn_msg;
+static uint32_t mdv_connection_release_impl(mdv_channel *channel)
+{
+    mdv_connection *con = (mdv_connection*)channel;
 
-    if(!binn_load(msg->payload, &binn_msg))
+    uint32_t rc = 0;
+
+    if (channel)
     {
-        MDV_LOGW("Message '%s' reading failed", mdv_msg_name(msg->hdr.id));
-        return MDV_FAILED;
+        rc = atomic_fetch_sub_explicit(&con->rc, 1, memory_order_release) - 1;
+        if (!rc)
+            mdv_connection_free(con);
     }
 
-    mdv_msg_hello client_hello = {};
+    return rc;
+}
 
-    if (!mdv_msg_hello_unbinn(&binn_msg, &client_hello))
-    {
-        MDV_LOGE("Invalid '%s' message", mdv_msg_name(msg->hdr.id));
-        binn_free(&binn_msg);
-        return MDV_FAILED;
-    }
 
-    binn_free(&binn_msg);
+static mdv_channel_t mdv_connection_type_impl(mdv_channel const *channel)
+{
+    (void)channel;
+    return MDV_USER_CHANNEL;
+}
 
-    if(client_hello.version != MDV_VERSION)
-    {
-        MDV_LOGE("Invalid client version");
-        return MDV_FAILED;
-    }
 
-    channel->uuid = client_hello.uuid;
+static mdv_uuid const * mdv_connection_id_impl(mdv_channel const *channel)
+{
+    mdv_connection *con = (mdv_connection*)channel;
+    return &con->uuid;
+}
 
-    channel->connected = true;
 
-    return mdv_condvar_signal(&channel->conn_signal);
+static mdv_errno mdv_connection_recv_impl(mdv_channel *channel)
+{
+    mdv_connection *con = (mdv_connection*)channel;
+    return mdv_dispatcher_read(con->dispatcher);
 }
 
 
@@ -104,13 +84,13 @@ static mdv_errno mdv_channel_status_handler(mdv_msg const *msg, void *arg)
 }
 
 
-mdv_connection * mdv_connection_create(mdv_descriptor fd)
+mdv_connection * mdv_connection_create(mdv_descriptor fd, mdv_uuid const *uuid)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
-    mdv_connection *channel = mdv_alloc(sizeof(mdv_connection), "channel");
+    mdv_connection *con = mdv_alloc(sizeof(mdv_connection), "connection");
 
-    if (!channel)
+    if (!con)
     {
         MDV_LOGE("No memory for user connection context");
         mdv_rollback(rollbacker);
@@ -118,29 +98,28 @@ mdv_connection * mdv_connection_create(mdv_descriptor fd)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, channel, "channel");
+    mdv_rollbacker_push(rollbacker, mdv_free, con, "connection");
 
-    MDV_LOGD("Channel %p initialization", channel);
+    MDV_LOGD("Connection %p initialization", con);
 
-    atomic_init(&channel->rc, 1);
-
-    channel->connected = false;
-
-    // Create conditional variable for connection status waiting
-
-    if (mdv_condvar_create(&channel->conn_signal) != MDV_OK)
+    static const mdv_ichannel vtbl =
     {
-        MDV_LOGE("Conditional variable not created");
-        mdv_rollback(rollbacker);
-        mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-        return 0;
-    }
+        .retain = mdv_connection_retain_impl,
+        .release = mdv_connection_release_impl,
+        .type = mdv_connection_type_impl,
+        .id = mdv_connection_id_impl,
+        .recv = mdv_connection_recv_impl,
+    };
 
-    mdv_rollbacker_push(rollbacker, mdv_condvar_free, &channel->conn_signal);
+    con->base.vptr = &vtbl;
 
-    channel->dispatcher = mdv_dispatcher_create(fd);
+    atomic_init(&con->rc, 1);
 
-    if (!channel->dispatcher)
+    con->uuid = *uuid;
+
+    con->dispatcher = mdv_dispatcher_create(fd);
+
+    if (!con->dispatcher)
     {
         MDV_LOGE("Messages dispatcher not created");
         mdv_rollback(rollbacker);
@@ -148,17 +127,16 @@ mdv_connection * mdv_connection_create(mdv_descriptor fd)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_dispatcher_free, channel->dispatcher);
+    mdv_rollbacker_push(rollbacker, mdv_dispatcher_free, con->dispatcher);
 
     mdv_dispatcher_handler const handlers[] =
     {
-        { mdv_message_id(hello),    &mdv_channel_wave_handler,   channel },
-        { mdv_message_id(status),   &mdv_channel_status_handler, channel }
+        { mdv_message_id(status),   &mdv_channel_status_handler, con }
     };
 
     for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)
     {
-        if (mdv_dispatcher_reg(channel->dispatcher, handlers + i) != MDV_OK)
+        if (mdv_dispatcher_reg(con->dispatcher, handlers + i) != MDV_OK)
         {
             MDV_LOGE("Messages dispatcher handler not registered");
             mdv_rollback(rollbacker);
@@ -167,117 +145,63 @@ mdv_connection * mdv_connection_create(mdv_descriptor fd)
         }
     }
 
-    if (mdv_user_wave(channel) != MDV_OK)
-    {
-        MDV_LOGD("User handshake message failed");
-        mdv_rollback(rollbacker);
-        mdv_socket_shutdown(fd, MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-        return 0;
-    }
-
-    MDV_LOGD("Channel %p initialized", channel);
+    MDV_LOGD("Connection context %p initialized", con);
 
     mdv_rollbacker_free(rollbacker);
 
-    return channel;
+    return con;
 }
 
 
-static void mdv_channel_free(mdv_connection *channel)
+mdv_connection * mdv_connection_retain(mdv_connection *con)
 {
-    mdv_dispatcher_free(channel->dispatcher);
-    mdv_condvar_free(&channel->conn_signal);
-    mdv_free(channel, "channel");
-    MDV_LOGD("Channel %p freed", channel);
+    return (mdv_connection *)mdv_connection_retain_impl(&con->base);
 }
 
 
-mdv_connection * mdv_connection_retain(mdv_connection *channel)
+uint32_t mdv_connection_release(mdv_connection *con)
 {
-    atomic_fetch_add_explicit(&channel->rc, 1, memory_order_acquire);
-    return channel;
+    return mdv_connection_release_impl(&con->base);
 }
 
 
-uint32_t mdv_connection_release(mdv_connection *channel)
+mdv_uuid const * mdv_connection_uuid(mdv_connection *con)
 {
-    uint32_t rc = 0;
-
-    if (channel)
-    {
-        rc = atomic_fetch_sub_explicit(&channel->rc, 1, memory_order_release) - 1;
-        if (!rc)
-            mdv_channel_free(channel);
-    }
-
-    return rc;
+    return mdv_connection_id_impl(&con->base);
 }
 
 
-mdv_uuid const * mdv_connection_uuid(mdv_connection *channel)
-{
-    return &channel->uuid;
-}
-
-
-mdv_errno mdv_connection_send(mdv_connection *channel, mdv_msg *req, mdv_msg *resp, size_t timeout)
+mdv_errno mdv_connection_send(mdv_connection *con, mdv_msg *req, mdv_msg *resp, size_t timeout)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(req->hdr.id));
 
     mdv_errno err = MDV_CLOSED;
 
-    channel = mdv_connection_retain(channel);
+    con = mdv_connection_retain(con);
 
-    if (channel)
+    if (con)
     {
-        err = mdv_dispatcher_send(channel->dispatcher, req, resp, timeout);
-        mdv_connection_release(channel);
+        err = mdv_dispatcher_send(con->dispatcher, req, resp, timeout);
+        mdv_connection_release(con);
     }
 
     return err;
 }
 
 
-mdv_errno mdv_connection_post(mdv_connection *channel, mdv_msg *msg)
+mdv_errno mdv_connection_post(mdv_connection *con, mdv_msg *msg)
 {
     MDV_LOGI(">>>>> '%s'", mdv_msg_name(msg->hdr.id));
 
     mdv_errno err = MDV_CLOSED;
 
-    channel = mdv_connection_retain(channel);
+    con = mdv_connection_retain(con);
 
-    if (channel)
+    if (con)
     {
-        err = mdv_dispatcher_post(channel->dispatcher, msg);
-        mdv_connection_release(channel);
+        err = mdv_dispatcher_post(con->dispatcher, msg);
+        mdv_connection_release(con);
     }
 
     return err;
-}
-
-
-mdv_errno mdv_connection_recv(mdv_connection *channel)
-{
-    mdv_errno err = mdv_dispatcher_read(channel->dispatcher);
-
-    switch(err)
-    {
-        case MDV_OK:
-        case MDV_EAGAIN:
-            break;
-
-        default:
-            mdv_socket_shutdown(mdv_dispatcher_fd(channel->dispatcher),
-                                MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
-    }
-
-    return err;
-}
-
-
-mdv_errno mdv_connection_wait(mdv_connection *channel, size_t timeout)
-{
-    if (channel->connected)
-        return MDV_OK;
-    return mdv_condvar_timedwait(&channel->conn_signal, timeout);
 }

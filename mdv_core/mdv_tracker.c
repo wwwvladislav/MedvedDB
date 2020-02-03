@@ -303,12 +303,11 @@ static mdv_errno mdv_tracker_evt_link_state(void *arg, mdv_event *event)
         return MDV_FAILED;
     }
 
-
-    bool const is_current_node_connection_initiated =
+    bool const is_current_node_event =
         mdv_uuid_cmp(&tracker->uuid, &link_state->from) == 0
         && mdv_uuid_cmp(&tracker->uuid, &link_state->src.uuid) == 0;
 
-    if (is_current_node_connection_initiated && topology)
+    if (is_current_node_event)
     {
         if (link_state->connected)
         {
@@ -336,7 +335,7 @@ static mdv_errno mdv_tracker_evt_link_state(void *arg, mdv_event *event)
         }
         else
         {
-            // TODO: Broadcast link state after the disconnection
+            // Broadcast link state after the disconnection
 /*
             // Link state broadcasting
             mdv_evt_link_state_broadcast *evt = mdv_evt_link_state_broadcast_create(

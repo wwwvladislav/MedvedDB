@@ -100,12 +100,10 @@ bool mdv_binn_p2p_linkstate(mdv_msg_p2p_linkstate const *msg, binn *obj)
     }
 
     if (0
-        || !binn_object_set_uint64(obj, "U1", msg->src.uuid.u64[0])
-        || !binn_object_set_uint64(obj, "U2", msg->src.uuid.u64[1])
-        || !binn_object_set_uint64(obj, "U3", msg->dst.uuid.u64[0])
-        || !binn_object_set_uint64(obj, "U4", msg->dst.uuid.u64[1])
-        || !binn_object_set_str(obj,    "A1", (char*)msg->src.addr)
-        || !binn_object_set_str(obj,    "A2", (char*)msg->dst.addr)
+        || !binn_object_set_uint64(obj, "U1", msg->src.u64[0])
+        || !binn_object_set_uint64(obj, "U2", msg->src.u64[1])
+        || !binn_object_set_uint64(obj, "U3", msg->dst.u64[0])
+        || !binn_object_set_uint64(obj, "U4", msg->dst.u64[1])
         || !binn_object_set_bool(obj,   "F",  msg->connected))
     {
         binn_free(obj);
@@ -119,26 +117,19 @@ bool mdv_binn_p2p_linkstate(mdv_msg_p2p_linkstate const *msg, binn *obj)
 
 bool mdv_unbinn_p2p_linkstate(binn const *obj, mdv_msg_p2p_linkstate *msg)
 {
-    char *src_addr = 0,
-         *dst_addr = 0;
-
     BOOL connected = 0;
 
     if (0
-        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&msg->src.uuid.u64[0])
-        || !binn_object_get_uint64((void*)obj, "U2", (uint64 *)&msg->src.uuid.u64[1])
-        || !binn_object_get_uint64((void*)obj, "U3", (uint64 *)&msg->dst.uuid.u64[0])
-        || !binn_object_get_uint64((void*)obj, "U4", (uint64 *)&msg->dst.uuid.u64[1])
-        || !binn_object_get_str((void*)obj,    "A1", &src_addr)
-        || !binn_object_get_str((void*)obj,    "A2", &dst_addr)
-        || !binn_object_get_bool((void*)obj,   "F2", &connected))
+        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&msg->src.u64[0])
+        || !binn_object_get_uint64((void*)obj, "U2", (uint64 *)&msg->src.u64[1])
+        || !binn_object_get_uint64((void*)obj, "U3", (uint64 *)&msg->dst.u64[0])
+        || !binn_object_get_uint64((void*)obj, "U4", (uint64 *)&msg->dst.u64[1])
+        || !binn_object_get_bool((void*)obj,   "F", &connected))
     {
         MDV_LOGE("unbinn_p2p_linkstate failed");
         return false;
     }
 
-    msg->src.addr = src_addr;
-    msg->dst.addr = dst_addr;
     msg->connected = !!connected;
 
     return true;

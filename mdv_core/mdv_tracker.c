@@ -87,6 +87,17 @@ static mdv_errno mdv_tracker_topodiff_add(mdv_tracker  *tracker,
                                           mdv_topology *diff);
 
 
+/**
+ * @brief Link state broadcasting
+ */
+static mdv_errno mdv_tracker_linkstate_broadcast(
+                                mdv_tracker    *tracker,
+                                mdv_topology   *topology,
+                                mdv_uuid const *src,
+                                mdv_uuid const *dst,
+                                bool            connected);
+
+
 static size_t mdv_u32_hash(uint32_t const *id)
 {
     return *id;
@@ -336,31 +347,12 @@ static mdv_errno mdv_tracker_evt_link_state(void *arg, mdv_event *event)
         else
         {
             // Broadcast link state after the disconnection
-/*
-            // Link state broadcasting
-            mdv_evt_link_state_broadcast *evt = mdv_evt_link_state_broadcast_create(
-                                                    routes,
-                                                    &link_state->from,
-                                                    &link_state->src,
-                                                    &link_state->dst,
-                                                    link_state->connected);
-
-            if (evt)
-            {
-                if (mdv_ebus_publish(tracker->ebus, &evt->base, MDV_EVT_DEFAULT) != MDV_OK)
-                {
-                    err = MDV_FAILED;
-                    MDV_LOGE("Link state broadcasting failed");
-                }
-
-                mdv_evt_link_state_broadcast_release(evt);
-            }
-            else
-            {
-                err = MDV_FAILED;
-                MDV_LOGE("Link state broadcasting failed");
-            }
-*/
+            err = mdv_tracker_linkstate_broadcast(
+                                tracker,
+                                topology,
+                                &link_state->src.uuid,
+                                &link_state->dst.uuid,
+                                link_state->connected);
         }
     }
 
@@ -379,6 +371,69 @@ static mdv_errno mdv_tracker_evt_link_check(void *arg, mdv_event *event)
                                      &link_check->src,
                                      &link_check->dst,
                                      &link_check->connected);
+}
+
+
+static mdv_errno mdv_tracker_linkstate_broadcast(
+                                mdv_tracker    *tracker,
+                                mdv_topology   *topology,
+                                mdv_uuid const *src,
+                                mdv_uuid const *dst,
+                                bool            connected)
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
+
+    mdv_hashmap *peers = mdv_topology_peers(topology, &tracker->uuid);
+
+    if (!peers)
+    {
+        MDV_LOGE("Link state broadcasting request failed. No memory for peers map.");
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_hashmap_release, peers);
+
+    mdv_msg_p2p_linkstate const linkstate =
+    {
+        .src = *src,
+        .dst = *dst,
+        .connected = connected
+    };
+
+    binn obj;
+
+    mdv_errno err = MDV_FAILED;
+
+    if (mdv_binn_p2p_linkstate(&linkstate, &obj))
+    {
+        mdv_rollbacker_push(rollbacker, binn_free, &obj);
+
+        mdv_evt_broadcast_post *evt = mdv_evt_broadcast_post_create(
+                                                        mdv_message_id(p2p_linkstate),
+                                                        binn_size(&obj),
+                                                        binn_ptr(&obj),
+                                                        peers,
+                                                        peers);
+
+        if (evt)
+        {
+            err = mdv_ebus_publish(tracker->ebus, &evt->base, MDV_EVT_DEFAULT);
+            mdv_evt_broadcast_post_release(evt);
+        }
+        else
+        {
+            err = MDV_NO_MEM;
+            MDV_LOGE("No memory for broadcast message");
+        }
+    }
+
+    mdv_rollback(rollbacker);
+
+    if (err != MDV_OK)
+        MDV_LOGE("Topology broadcasting request failed");
+
+    return err;
 }
 
 
@@ -549,6 +604,8 @@ static mdv_errno mdv_tracker_evt_broadcast(void *arg, mdv_event *event)
 
     binn binn_msg;
 
+    bool topology_changed = false;
+
     if (binn_load(evt->data, &binn_msg))
     {
         switch(evt->msg_id)
@@ -560,14 +617,7 @@ static mdv_errno mdv_tracker_evt_broadcast(void *arg, mdv_event *event)
                 if (mdv_unbinn_p2p_topodiff(&binn_msg, &topodiff))
                 {
                     if (mdv_tracker_topodiff_add(tracker, topodiff.topology) == MDV_OK)
-                    {
-                        mdv_topology *topology = mdv_tracker_topology_changed(tracker);
-
-                        if (topology)
-                            mdv_topology_release(topology);
-                        else
-                            MDV_LOGE("Topology calculation failed");
-                    }
+                        topology_changed = true;
                     else
                         MDV_LOGE("Network topology difference was not applied");
 
@@ -575,6 +625,27 @@ static mdv_errno mdv_tracker_evt_broadcast(void *arg, mdv_event *event)
                 }
                 else
                     MDV_LOGE("Serialized p2p_topodiff message is invalid");
+
+                break;
+            }
+
+            case mdv_message_id(p2p_linkstate):
+            {
+                mdv_msg_p2p_linkstate linkstate;
+
+                if (mdv_unbinn_p2p_linkstate(&binn_msg, &linkstate))
+                {
+                    if (mdv_tracker_linkstate_add(tracker,
+                                                  &linkstate.src,
+                                                  &linkstate.dst,
+                                                  linkstate.connected,
+                                                  1) == MDV_OK)
+                        topology_changed = true;
+                    else
+                        MDV_LOGE("Link state was not saved");
+                }
+                else
+                    MDV_LOGE("Serialized p2p_linkstate message is invalid");
 
                 break;
             }
@@ -587,7 +658,9 @@ static mdv_errno mdv_tracker_evt_broadcast(void *arg, mdv_event *event)
         binn_free(&binn_msg);
     }
 
-    mdv_topology *topology = mdv_tracker_topology(tracker);
+    mdv_topology *topology = topology_changed
+                                ? mdv_tracker_topology_changed(tracker)
+                                : mdv_tracker_topology(tracker);
 
     if (!topology)
     {

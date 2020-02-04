@@ -36,9 +36,9 @@ mdv_message_def(p2p_status, 1000 + 1,
 
 
 mdv_message_def(p2p_linkstate, 1000 + 2,
-    mdv_toponode    src;            ///< First peer unique identifier
-    mdv_toponode    dst;            ///< Second peer unique identifier
-    bool            connected;      ///< true, if first peer connected to second peer
+    mdv_uuid    src;                ///< First peer unique identifier
+    mdv_uuid    dst;                ///< Second peer unique identifier
+    bool        connected;          ///< true, if first peer connected to second peer
 );
 
 

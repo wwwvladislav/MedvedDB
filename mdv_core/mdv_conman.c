@@ -232,13 +232,12 @@ void mdv_conman_free(mdv_conman *conman)
 {
     if(conman)
     {
-        mdv_chaman_free(conman->chaman);
-
         mdv_ebus_unsubscribe_all(conman->ebus,
                                  conman,
                                  mdv_conman_handlers,
                                  sizeof mdv_conman_handlers / sizeof *mdv_conman_handlers);
 
+        mdv_chaman_free(conman->chaman);
         mdv_safeptr_free(conman->topology);
         mdv_ebus_release(conman->ebus);
 

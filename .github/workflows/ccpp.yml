@@ -1,0 +1,19 @@
+name: C/C++ CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    - name: configure
+      run: mkdir build
+      run: cd ./build
+      run: cmake ..
+    - name: make
+      run: cmake --build .
+    - name: test
+      run: ./mdv_tests/mdv_tests

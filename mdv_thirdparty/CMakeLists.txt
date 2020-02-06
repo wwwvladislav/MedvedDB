@@ -12,3 +12,9 @@ add_subdirectory(rpmalloc)
 add_subdirectory(uuid4)
 
 add_subdirectory(linenoise)
+
+add_subdirectory(aes)
+
+add_subdirectory(ecdh)
+
+add_subdirectory(sha3)

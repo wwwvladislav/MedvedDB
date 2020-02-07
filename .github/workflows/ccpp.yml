@@ -13,13 +13,4 @@ jobs:
       run: cmake --build .
     - name: test
       run: ./mdv_tests/mdv_tests
-  build-android:
-    runs-on: ubuntu-latest
-    container:
-      image: ekreative/android:latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: configure
-      run: cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_NATIVE_API_LEVEL=23 .
-    - name: make
-      run: cmake --build .
+

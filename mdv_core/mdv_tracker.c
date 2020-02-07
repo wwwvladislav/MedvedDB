@@ -32,7 +32,7 @@ struct mdv_tracker
 {
     atomic_uint_fast32_t    rc;             ///< References counter
     mdv_uuid                uuid;           ///< Global unique identifier for current node (i.e. self UUID)
-    atomic_uint_fast32_t    max_id;         ///< Maximum node identifier
+    atomic_uint             max_id;         ///< Maximum node identifier
     mdv_storage            *storage;        ///< Nodes storage
     mdv_ebus               *ebus;           ///< Events bus
 
@@ -124,8 +124,8 @@ static size_t mdv_tracker_link_hash(mdv_tracker_link const *link)
         b = link->id[0];
     }
 
-    static size_t const FNV_offset_basis = 0xcbf29ce484222325;
-    static size_t const FNV_prime = 0x100000001b3;
+    static size_t const FNV_offset_basis = 0x811c9dc5;
+    static size_t const FNV_prime = 0x01000193;
 
     size_t hash = FNV_offset_basis;
 
@@ -217,7 +217,7 @@ static uint32_t mdv_tracker_new_id(mdv_tracker *tracker)
 
 static void mdv_tracker_id_maximize(mdv_tracker *tracker, uint32_t id)
 {
-    for(uint64_t top_id = atomic_load(&tracker->max_id); id > top_id;)
+    for(uint32_t top_id = atomic_load(&tracker->max_id); id > top_id;)
     {
         if(atomic_compare_exchange_weak(&tracker->max_id, &top_id, id))
             break;

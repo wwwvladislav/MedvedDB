@@ -16,14 +16,14 @@ struct mdv_tables
 };
 
 
-static const mdv_field const MDV_TABLES_FIELDS[] =
+static mdv_field const MDV_TABLES_FIELDS[] =
 {
     { MDV_FLD_TYPE_BYTE, 16, mdv_str_static("ID") },      // UUID
     { MDV_FLD_TYPE_CHAR,  0, mdv_str_static("Name") },    // char *
 };
 
 
-static const mdv_table_desc MDV_TABLES_DESC =
+static mdv_table_desc const MDV_TABLES_DESC =
 {
     .name = mdv_str_static("mdv_tables"),
     .size = 2,

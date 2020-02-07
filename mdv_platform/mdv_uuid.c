@@ -33,8 +33,8 @@ int mdv_uuid_cmp(mdv_uuid const *a, mdv_uuid const *b)
 
 size_t mdv_uuid_hash(mdv_uuid const *a)
 {
-    static size_t const FNV_offset_basis = 0xcbf29ce484222325;
-    static size_t const FNV_prime = 0x100000001b3;
+    static size_t const FNV_offset_basis = 0x811c9dc5;
+    static size_t const FNV_prime = 0x01000193;
 
     uint64_t hash = FNV_offset_basis;
 

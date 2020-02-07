@@ -121,14 +121,20 @@ mdv_storage * mdv_storage_retain(mdv_storage *pstorage)
 
 uint32_t mdv_storage_release(mdv_storage *pstorage)
 {
+    uint32_t rc = 0;
+
     if (pstorage)
     {
-        if (atomic_fetch_sub_explicit(&pstorage->ref_counter, 1, memory_order_relaxed) == 1)
+        rc = atomic_fetch_sub_explicit(&pstorage->ref_counter, 1, memory_order_relaxed) - 1;
+
+        if (!rc)
         {
             mdb_env_close(pstorage->env);
             mdv_free(pstorage, "storage");
         }
     }
+
+    return rc;
 }
 
 

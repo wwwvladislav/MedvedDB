@@ -11,7 +11,7 @@
 # cpack ..
 
 cmake_minimum_required(VERSION 3.2)
-project(MedvedDB)
+project(MedvedDB C)
 cmake_policy(SET CMP0015 NEW)
 
 SET(MAJOR_VERSION 1)

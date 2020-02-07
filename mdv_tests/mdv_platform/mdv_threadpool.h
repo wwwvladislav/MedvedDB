@@ -8,7 +8,7 @@
 #include <stdatomic.h>
 
 
-static atomic_int_fast32_t test_fd_data_sum = 0;
+static atomic_uint_fast64_t test_fd_data_sum = 0;
 static atomic_int_fast32_t test_fd_events_num = 0;
 
 
@@ -82,7 +82,7 @@ MU_TEST(platform_threadpool)
 
     while(atomic_load_explicit(&test_fd_events_num, memory_order_acquire) < 3);
 
-    mu_check(atomic_load_explicit(&test_fd_data_sum, memory_order_acquire) == (uint32_t)(3 * fddata));
+    mu_check(atomic_load_explicit(&test_fd_data_sum, memory_order_acquire) == (uint64_t)(3 * fddata));
     mu_check(atomic_load_explicit(&test_fd_events_num, memory_order_acquire) == 3);
 
     mdv_eventfd_close(fd[0]);

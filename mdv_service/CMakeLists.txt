@@ -12,6 +12,7 @@ set(SOURCES
 
 include_directories(
     ${ROOT_DIR}/mdv_platform
+    ${ROOT_DIR}/mdv_net
     ${ROOT_DIR}/mdv_core
     ${ROOT_DIR}/mdv_api
     ${ROOT_DIR}/mdv_types
@@ -23,6 +24,6 @@ use_c11()
 
 add_executable(medved ${HEADERS} ${SOURCES})
 
-add_dependencies(medved mdv_platform mdv_core mdv_types)
+add_dependencies(medved mdv_platform mdv_net mdv_core mdv_types)
 
-target_link_libraries(medved mdv_platform mdv_core mdv_types)
+target_link_libraries(medved mdv_platform mdv_net mdv_core mdv_types)

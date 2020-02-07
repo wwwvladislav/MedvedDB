@@ -3,7 +3,7 @@
  * @brief Message format for transmission over the network.
  */
 #pragma once
-#include "mdv_def.h"
+#include <mdv_def.h>
 
 
 /// Message header description

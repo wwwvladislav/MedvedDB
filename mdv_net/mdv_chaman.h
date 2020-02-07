@@ -5,9 +5,9 @@
  */
 #pragma once
 #include "mdv_channel.h"
-#include "mdv_string.h"
-#include "mdv_threadpool.h"
-#include "mdv_def.h"
+#include <mdv_string.h>
+#include <mdv_threadpool.h>
+#include <mdv_def.h>
 
 
 /// Channels manager descriptor

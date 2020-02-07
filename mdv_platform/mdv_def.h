@@ -46,6 +46,14 @@ int mdv_descriptor_cmp(mdv_descriptor const *fd1, mdv_descriptor const *fd2);
 
 
 /**
+ * @brief Function for closing a file descriptor.
+ *
+ * @param fd [in]   file descriptor
+ */
+void mdv_descriptor_close(mdv_descriptor fd);
+
+
+/**
  * @brief Function for writing to a file descriptor.
  *
  * @param fd [in]   file descriptor

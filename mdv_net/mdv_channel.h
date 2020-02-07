@@ -9,8 +9,8 @@
  *
  */
 #pragma once
-#include "mdv_def.h"
-#include "mdv_uuid.h"
+#include <mdv_def.h>
+#include <mdv_uuid.h>
 
 
 /// Channel

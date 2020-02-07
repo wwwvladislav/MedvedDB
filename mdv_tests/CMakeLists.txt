@@ -7,6 +7,7 @@ file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 
 include_directories(
     ${ROOT_DIR}/mdv_platform
+    ${ROOT_DIR}/mdv_net
     ${ROOT_DIR}/mdv_core
     ${ROOT_DIR}/mdv_types
     ${LIBS_DIR}/zf_log

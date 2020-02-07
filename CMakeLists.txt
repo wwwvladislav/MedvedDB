@@ -90,6 +90,7 @@ include(cmake/doxygen.cmake)
 
 add_subdirectory(${ROOT_DIR}/mdv_thirdparty)
 add_subdirectory(${ROOT_DIR}/mdv_platform)
+add_subdirectory(${ROOT_DIR}/mdv_net)
 add_subdirectory(${ROOT_DIR}/mdv_types)
 add_subdirectory(${ROOT_DIR}/mdv_core)
 add_subdirectory(${ROOT_DIR}/mdv_service)
@@ -102,6 +103,7 @@ set(DOXY_INPUT
     ${ROOT_DIR}/mdv_client
     ${ROOT_DIR}/mdv_core
     ${ROOT_DIR}/mdv_platform
+    ${ROOT_DIR}/mdv_net
     ${ROOT_DIR}/mdv_service
     ${ROOT_DIR}/mdv_types
 )

@@ -11,12 +11,13 @@ include_directories(
     ${LIBS_DIR}/zf_log
     ${LIBS_DIR}/lmdb
     ${ROOT_DIR}/mdv_platform
+    ${ROOT_DIR}/mdv_net
     ${ROOT_DIR}/mdv_api
     ${ROOT_DIR}/mdv_types
 )
 
 add_library(mdv_core STATIC ${SOURCES})
 
-add_dependencies(mdv_core inih mdv_platform mdv_api mdv_types lmdb)
+add_dependencies(mdv_core inih mdv_platform mdv_net mdv_api mdv_types lmdb)
 
-target_link_libraries(mdv_core inih zf_log mdv_platform mdv_api mdv_types lmdb)
+target_link_libraries(mdv_core inih zf_log mdv_platform mdv_net mdv_api mdv_types lmdb)

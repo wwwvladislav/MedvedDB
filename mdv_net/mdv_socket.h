@@ -1,6 +1,6 @@
 #pragma once
-#include "mdv_def.h"
-#include "mdv_string.h"
+#include <mdv_def.h>
+#include <mdv_string.h>
 
 #ifdef MDV_PLATFORM_LINUX
     #include <sys/socket.h>         // sockaddr_storage

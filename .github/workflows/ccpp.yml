@@ -3,7 +3,7 @@ name: C/C++ CI
 on: [push]
 
 jobs:
-  ubuntu_build:
+  build-ubuntu:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -13,8 +13,10 @@ jobs:
       run: cmake --build .
     - name: test
       run: ./mdv_tests/mdv_tests
-  android_build:
-    container: ekreative/android:latest
+  build-android:
+    runs-on: ubuntu-latest
+    container:
+      image: ekreative/android:latest
     steps:
     - uses: actions/checkout@v2
     - name: configure

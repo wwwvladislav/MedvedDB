@@ -13,7 +13,7 @@
     #elif TARGET_OS_IPHONE == 1
         #define MDV_PLATFORM_IOS                        // iOS on iPhone, iPad, etc.
     #elif TARGET_OS_MAC == 1
-	#define MDV_PLATFORM_OSX                        // OSX
+	#define MDV_PLATFORM_OSX                            // OSX
     #endif
 #elif defined(__sun) && defined(__SVR4)
     #define MDV_PLATFORM_SOLARIS                        // Solaris

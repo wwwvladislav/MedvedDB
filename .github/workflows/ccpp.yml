@@ -18,4 +18,4 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: echo
-      run: ls -l $ANDROID_HOME
+      run: ls -l $ANDROID_HOME/ndk-bundle

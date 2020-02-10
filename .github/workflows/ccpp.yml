@@ -17,5 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: echo
-      run: ls -l $ANDROID_HOME/ndk-bundle
+    - name: configure
+      run: cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_NATIVE_API_LEVEL=23 .
+    - name: make
+      run: cmake --build .

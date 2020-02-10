@@ -1,4 +1,8 @@
-![C/C++ CI](https://github.com/wwwVladislav/MedvedDB/workflows/C/C++%20CI/badge.svg?branch=master)
+[![ci][badge.ci]][ci]
+
+[badge.ci]: https://github.com/wwwVladislav/MedvedDB/workflows/C/C++%20CI/badge.svg?branch=master
+
+[ci]: https://github.com/wwwVladislav/MedvedDB/actions
 
 # MedvedDB
 MedvedDB is NoSQL distributed database.

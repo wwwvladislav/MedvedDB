@@ -15,6 +15,6 @@ add_subdirectory(linenoise)
 
 add_subdirectory(aes)
 
-add_subdirectory(ecc)
-
 add_subdirectory(sha3)
+
+add_subdirectory(ecc)

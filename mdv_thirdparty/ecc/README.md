@@ -1,100 +1,41 @@
-easy-ecc
-=====
+micro-ecc
+==========
 
-A simple and secure ECDH and ECDSA library.
+A small and fast ECDH and ECDSA implementation for 8-bit, 32-bit, and 64-bit processors.
+
+The static version of micro-ecc (ie, where the curve was selected at compile-time) can be found in the "static" branch.
 
 Features
 --------
 
- * Supports Windows and Linux/*nix (needs /dev/urandom).
  * Resistant to known side-channel attacks.
- * Twice as fast as OpenSSL for ECDSA verify and ECDH.
- * Written in C.
+ * Written in C, with optional GCC inline assembly for AVR, ARM and Thumb platforms.
+ * Supports 8, 32, and 64-bit architectures.
+ * Small code size.
  * No dynamic memory allocation.
- * Support for 4 standard curves: secp128r1, secp192r1, secp256r1, and secp384r1
+ * Support for 5 standard curves: secp160r1, secp192r1, secp224r1, secp256r1, and secp256k1.
  * BSD 2-clause license.
 
-Usage
------
+Usage Notes
+-----------
+### Point Representation ###
+Compressed points are represented in the standard format as defined in http://www.secg.org/sec1-v2.pdf; uncompressed points are represented in standard format, but without the `0x04` prefix. All functions except `uECC_compress()` only accept uncompressed points; use `uECC_compress()` and `uECC_decompress()` to convert between compressed and uncompressed point representations.
 
-I recommend just copying (or symlink) ecc.h and ecc.c into your project. Then just `#include "ecc.h"` to use the easy-ecc functions.
+Private keys are represented in the standard format.
 
-Function documentation
-----------------------
+### Using the Code ###
 
-#### ecc_make_key
-```c
-int ecc_make_key(
-	uint8_t p_publicKey[ECC_BYTES+1],
-	uint8_t p_privateKey[ECC_BYTES]
-);
-```
-Create a public/private key pair.
-    
-Outputs:
- * `p_publicKey`  - Will be filled in with the public key.
- * `p_privateKey` - Will be filled in with the private key.
+I recommend just copying (or symlink) the uECC files into your project. Then just `#include "uECC.h"` to use the micro-ecc functions.
 
-Returns 1 if the key pair was generated successfully, 0 if an error occurred.
+For use with Arduino, you can use the Library Manager to download micro-ecc (**Sketch**=>**Include Library**=>**Manage Libraries**). You can then use uECC just like any other Arduino library (uECC should show up in the **Sketch**=>**Import Library** submenu).
 
-#### ecdh_shared_secret
-```c
-int ecdh_shared_secret(
-	const uint8_t p_publicKey[ECC_BYTES+1],
-	const uint8_t p_privateKey[ECC_BYTES],
-	uint8_t p_secret[ECC_BYTES]
-);
-```
-Compute a shared secret given your secret key and someone else's public key.
-Note: It is recommended that you hash the result of `ecdh_shared_secret` before using it for symmetric encryption or HMAC.
+See uECC.h for documentation for each function.
 
-Inputs:
- * `p_publicKey`  - The public key of the remote party.
- * `p_privateKey` - Your private key.
+### Compilation Notes ###
 
-Outputs:
- * `p_secret` - Will be filled in with the shared secret value.
-
-Returns 1 if the shared secret was generated successfully, 0 if an error occurred.
-
-#### ecdsa_sign
-```c
-int ecdsa_sign(
-	const uint8_t p_privateKey[ECC_BYTES],
-	const uint8_t p_hash[ECC_BYTES],
-	uint8_t p_signature[ECC_BYTES*2]
-);
-```
-Generate an ECDSA signature for a given hash value.
-
-Usage: Compute a hash of the data you wish to sign (SHA-2 is recommended) and pass it in to
-this function along with your private key.
-
-Inputs:
- * `p_privateKey` - Your private key.
- * `p_hash`       - The message hash to sign.
-
-Outputs:
- * `p_signature`  - Will be filled in with the signature value.
-
-Returns 1 if the signature generated successfully, 0 if an error occurred.
-
-#### ecdsa_verify
-```c
-int ecdsa_verify(
-	const uint8_t p_publicKey[ECC_BYTES+1],
-	const uint8_t p_hash[ECC_BYTES],
-	const uint8_t p_signature[ECC_BYTES*2]
-);
-```
-Verify an ECDSA signature.
-
-Usage: Compute the hash of the signed data using the same hash as the signer and
-pass it to this function along with the signer's public key and the signature values (r and s).
-
-Inputs:
-    `p_publicKey` - The signer's public key
-    `p_hash`      - The hash of the signed data.
-    `p_signature` - The signature value.
-
-Returns 1 if the signature is valid, 0 if it is invalid.
+ * Should compile with any C/C++ compiler that supports stdint.h (this includes Visual Studio 2013).
+ * If you want to change the defaults for any of the uECC compile-time options (such as `uECC_OPTIMIZATION_LEVEL`), you must change them in your Makefile or similar so that uECC.c is compiled with the desired values (ie, compile uECC.c with `-DuECC_OPTIMIZATION_LEVEL=3` or whatever).
+ * When compiling for a Thumb-1 platform, you must use the `-fomit-frame-pointer` GCC option (this is enabled by default when compiling with `-O1` or higher).
+ * When compiling for an ARM/Thumb-2 platform with `uECC_OPTIMIZATION_LEVEL` >= 3, you must use the `-fomit-frame-pointer` GCC option (this is enabled by default when compiling with `-O1` or higher).
+ * When compiling for AVR, you must have optimizations enabled (compile with `-O1` or higher).
+ * When building for Windows, you will need to link in the `advapi32.lib` system library.

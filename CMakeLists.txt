@@ -90,6 +90,7 @@ include(cmake/doxygen.cmake)
 
 add_subdirectory(${ROOT_DIR}/mdv_thirdparty)
 add_subdirectory(${ROOT_DIR}/mdv_platform)
+add_subdirectory(${ROOT_DIR}/mdv_crypto)
 add_subdirectory(${ROOT_DIR}/mdv_net)
 add_subdirectory(${ROOT_DIR}/mdv_types)
 add_subdirectory(${ROOT_DIR}/mdv_core)

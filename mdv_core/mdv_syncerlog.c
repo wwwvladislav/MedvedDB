@@ -195,6 +195,7 @@ static mdv_errno mdv_syncerlog_start(mdv_syncerlog *syncerlog)
     return err;
 }
 
+
 static mdv_errno mdv_syncerlog_evt_changed(void *arg, mdv_event *event)
 {
     mdv_syncerlog *syncerlog = arg;

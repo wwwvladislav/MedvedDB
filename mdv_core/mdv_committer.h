@@ -33,20 +33,3 @@ mdv_committer * mdv_committer_retain(mdv_committer *committer);
  *          When the reference counter reaches zero, the data committer is stopped and freed.
  */
 uint32_t mdv_committer_release(mdv_committer *committer);
-
-
-/**
- * @brief Start data committer
- *
- * @param committer [in] Data committer
- *
- */
-void mdv_committer_start(mdv_committer *committer);
-
-
-/**
- * @brief Stop data committer
- *
- * @param committer [in] Data committer
- */
-void mdv_committer_stop(mdv_committer *committer);

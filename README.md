@@ -14,3 +14,11 @@ The main properties are following:
 ### Supported platforms:
 1. Linux (Ubuntu)
 2. Android
+
+### Building MedvedDB from Source
+```
+mkdir build
+cd build
+cmake ..
+make
+```

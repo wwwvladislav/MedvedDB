@@ -14,6 +14,7 @@
 #include <mdv_table.h>
 #include <mdv_rowset.h>
 #include <mdv_bitset.h>
+#include <mdv_binn.h>
 
 
 /// Rowdata storage
@@ -75,6 +76,20 @@ mdv_errno mdv_rowdata_reserve(mdv_rowdata *rowdata, uint32_t range, uint64_t *id
  * @return On error, returns non zero value
  */
 mdv_errno mdv_rowdata_add_raw(mdv_rowdata *rowdata, mdv_objid const *id, mdv_data const *row);
+
+
+/**
+ * @brief Stores rows set within one transaction
+ *
+ * @param rowdata [in] Rowdata storage
+ * @param id [in]      First row identifier
+ * @param row [in]     Serialized rows set
+ *
+ * @return On success, returns MDV_OK.
+ * @return On error, returns non zero value
+ */
+
+mdv_errno mdv_rowdata_add_raw_rowset(mdv_rowdata *rowdata, mdv_objid const *id, binn *rowset);
 
 
 /**

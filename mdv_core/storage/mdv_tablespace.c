@@ -736,32 +736,13 @@ static bool mdv_tablespace_trlog_apply(void *arg, mdv_trlog_op *op)
 
             if (rowdata)
             {
-                binn_iter iter;
-                binn item;
-
-                binn_list_foreach(&rowset, item)
+                mdv_objid const rowid =
                 {
-                    mdv_objid const rowid =
-                    {
-                        .node = context->node_id,
-                        .id = id++
-                    };
+                    .node = context->node_id,
+                    .id = id
+                };
 
-                    mdv_data const row =
-                    {
-                        .size = binn_size(&item),
-                        .ptr = binn_ptr(&item)
-                    };
-
-                    mdv_errno err = mdv_rowdata_add_raw(rowdata, &rowid, &row);
-
-                    if (err != MDV_OK)
-                    {
-                        MDV_LOGE("Row insertion failed with error %d (%s)", err, mdv_strerror(err));
-                        ret = false;
-                        break;
-                    }
-                }
+                ret = mdv_rowdata_add_raw_rowset(rowdata, &rowid, &rowset) == MDV_OK;
 
                 mdv_rowdata_release(rowdata);
             }

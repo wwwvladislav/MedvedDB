@@ -298,6 +298,90 @@ mdv_errno mdv_objects_add(mdv_objects *objs, mdv_data const *id, mdv_data const 
 }
 
 
+mdv_errno mdv_objects_add_batch(mdv_objects *objs, void *arg, bool (*next)(void *arg, mdv_data *id, mdv_data *obj))
+{
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
+
+    // Start transaction
+    mdv_transaction transaction = mdv_transaction_start(objs->storage);
+
+    if (!mdv_transaction_ok(transaction))
+    {
+        MDV_LOGE("CFstorage transaction not started");
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_transaction_abort, &transaction);
+
+    // Open objects map
+    mdv_map objs_map = mdv_map_open(&transaction,
+                                    MDV_MAP_OBJECTS,
+                                    MDV_MAP_CREATE);
+
+    if (!mdv_map_ok(objs_map))
+    {
+        MDV_LOGE("Table '%s' not opened", MDV_MAP_OBJECTS);
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &objs_map);
+
+    // Open removed objects table
+    mdv_map rem_map = mdv_map_open(&transaction, MDV_MAP_REMOVED, MDV_MAP_CREATE);
+
+    if (!mdv_map_ok(rem_map))
+    {
+        MDV_LOGE("Table '%s' not opened", MDV_MAP_REMOVED);
+        mdv_rollback(rollbacker);
+        return MDV_FAILED;
+    }
+
+    mdv_rollbacker_push(rollbacker, mdv_map_close, &rem_map);
+
+    bool commit = false;
+
+    mdv_data id, obj;
+
+    while(next(arg, &id, &obj))
+    {
+        if (!mdv_objects_is_deleted(objs,
+                                    &rem_map,
+                                    &transaction,
+                                    &id))    // Delete op has priority
+        {
+            if (mdv_map_put_unique(&objs_map, &transaction, &id, &obj))
+                commit = true;
+            else
+                MDV_LOGW("Object is already exist.");
+        }
+        else
+            mdv_transaction_abort(&transaction);
+
+    }
+
+    if (commit)
+    {
+        if (!mdv_transaction_commit(&transaction))
+        {
+            MDV_LOGE("Objects insertion failed.");
+            mdv_rollback(rollbacker);
+            return MDV_FAILED;
+        }
+    }
+    else
+        mdv_transaction_abort(&transaction);
+
+    mdv_map_close(&objs_map);
+    mdv_map_close(&rem_map);
+
+    mdv_rollbacker_free(rollbacker);
+
+    return MDV_OK;
+}
+
+
 void * mdv_objects_get(mdv_objects *objs, mdv_data const *id, void * (*restore)(mdv_data const *))
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);

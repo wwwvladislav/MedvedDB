@@ -91,6 +91,58 @@ mdv_errno mdv_rowdata_add_raw(mdv_rowdata *rowdata, mdv_objid const *id, mdv_dat
 }
 
 
+typedef struct
+{
+    binn_iter iter;
+    binn      item;
+    mdv_objid rowid;
+    uint64_t  id;
+} mdv_rowdata_batch_iterator;
+
+
+static bool mdv_rowdata_batch_next(void *arg, mdv_data *id, mdv_data *obj)
+{
+    mdv_rowdata_batch_iterator *it = arg;
+
+    if (!binn_list_next(&it->iter, &it->item))
+        return false;
+
+    it->rowid.id = it->id++;
+
+    id->size = sizeof it->rowid;
+    id->ptr = &it->rowid;
+
+    obj->size = binn_size(&it->item);
+    obj->ptr = binn_ptr(&it->item);
+
+    return true;
+}
+
+
+// Insert rows within one transaction
+mdv_errno mdv_rowdata_add_raw_rowset(mdv_rowdata *rowdata, mdv_objid const *id, binn *rowset)
+{
+    mdv_rowdata_batch_iterator it =
+    {
+        .rowid =
+        {
+            .node = id->node,
+            .id = id->id
+        },
+        .id = id->id
+    };
+
+    binn_iter_init(&it.iter, rowset, BINN_LIST);
+
+    mdv_errno err = mdv_objects_add_batch(rowdata->objects, &it, mdv_rowdata_batch_next);
+
+    if (err != MDV_OK)
+        MDV_LOGE("Row insertion failed with error %d (%s)", err, mdv_strerror(err));
+
+    return err;
+}
+
+
 static mdv_rowset * mdv_rowdata_slice_impl(mdv_enumerator       *enumerator,
                                            mdv_table const      *table,
                                            mdv_bitset const     *fields,

@@ -84,6 +84,19 @@ mdv_errno mdv_objects_add(mdv_objects *objs, mdv_data const *id, mdv_data const 
 
 
 /**
+ * @brief Stores object batch.
+ *
+ * @param objs [in]     DB objects storage
+ * @param arg [in]      Pointer which is provided as argument to batch items generator
+ * @param next [in]     batch items generator
+ *
+ * @return On success, return MDV_OK.
+ * @return On error, return non zero value
+ */
+mdv_errno mdv_objects_add_batch(mdv_objects *objs, void *arg, bool (*next)(void *arg, mdv_data *id, mdv_data *obj));
+
+
+/**
  * @brief Reads and returns the stored object
  *
  * @param objs [in]     DB objects storage

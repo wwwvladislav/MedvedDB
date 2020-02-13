@@ -20,5 +20,5 @@ The main properties are following:
 mkdir build
 cd build
 cmake ..
-make
+cmake --build .
 ```

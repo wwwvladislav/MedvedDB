@@ -86,7 +86,7 @@ macro(use_c11)
 endmacro(use_c11)
 
 
-include(cmake/doxygen.cmake)
+include(assets/cmake/doxygen.cmake)
 
 add_subdirectory(${ROOT_DIR}/mdv_thirdparty)
 add_subdirectory(${ROOT_DIR}/mdv_platform)

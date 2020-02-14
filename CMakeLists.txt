@@ -85,6 +85,8 @@ macro(use_c11)
     set(CMAKE_C_STANDARD_REQUIRED ON)
 endmacro(use_c11)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 
 #*********************************************************
 # Libraries and executables

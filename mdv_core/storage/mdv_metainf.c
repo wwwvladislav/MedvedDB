@@ -1,4 +1,5 @@
 #include "mdv_metainf.h"
+#include "../mdv_config.h"
 #include "mdv_storages.h"
 #include <mdv_log.h>
 #include <mdv_string.h>
@@ -13,7 +14,12 @@ void mdv_metainf_init(mdv_metainf *m)
 
 mdv_storage * mdv_metainf_storage_open(char const *path)
 {
-    mdv_storage *storage = mdv_storage_open(path, MDV_STRG_METAINF, MDV_STRG_METAINF_MAPS, MDV_STRG_NOSUBDIR);
+    mdv_storage *storage = mdv_storage_open(
+                                path,
+                                MDV_STRG_METAINF,
+                                MDV_STRG_METAINF_MAPS,
+                                MDV_STRG_NOSUBDIR,
+                                MDV_CONFIG.storage.max_size);
 
     if (!storage)
     {

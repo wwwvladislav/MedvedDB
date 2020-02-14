@@ -26,7 +26,7 @@ struct mdv_storage
 /// @endcond
 
 
-mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_num, uint32_t flags)
+mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_num, uint32_t flags, size_t mapsize)
 {
     if (!path || !name)
     {
@@ -93,6 +93,7 @@ mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_
 
     MDV_DB_CALL(mdb_env_create(&env));
     MDV_DB_CALL(mdb_env_set_maxdbs(env, dbs_num));
+    MDV_DB_CALL(mdb_env_set_mapsize(env, mapsize));
     MDV_DB_CALL(mdb_env_open(env, db_path.ptr, mdb_flags, 0664));
 
     #undef MDV_DB_CALL

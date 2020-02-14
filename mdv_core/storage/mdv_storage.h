@@ -34,15 +34,16 @@ typedef enum
 /**
  * @brief Open new key-value storage
  *
- * @param path [in] Directory where storage placed
- * @param name [in] Storage name
- * @param dbs_num [in] Maximum number of named databases
- * @param flags [in] Flags for key-value storage opening (see mdv_storage_flags)
+ * @param path [in]     Directory where storage placed
+ * @param name [in]     Storage name
+ * @param dbs_num [in]  Maximum number of named databases
+ * @param flags [in]    Flags for key-value storage opening (see mdv_storage_flags)
+ * @param mapsize [in]  The size of the memory map (is also the maximum size of the database)
  *
  * @return On success, return nonzero pointer to opened storage
  * @return On error, return NULL pointer
  */
-mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_num, uint32_t flags);
+mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_num, uint32_t flags, size_t mapsize);
 
 
 /**

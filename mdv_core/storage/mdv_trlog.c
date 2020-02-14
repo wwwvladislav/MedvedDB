@@ -1,6 +1,7 @@
 #include "mdv_trlog.h"
 #include "mdv_storage.h"
 #include "mdv_storages.h"
+#include "../mdv_config.h"
 #include "../event/mdv_evt_types.h"
 #include "../event/mdv_evt_trlog.h"
 #include <mdv_rollbacker.h>
@@ -126,7 +127,8 @@ mdv_trlog * mdv_trlog_open(mdv_ebus *ebus, char const *dir, mdv_uuid const *uuid
     trlog->storage = mdv_storage_open(dir,
                                       MDV_STRG_UUID(uuid),
                                       MDV_STRG_TRLOG_MAPS,
-                                      MDV_STRG_NOSUBDIR);
+                                      MDV_STRG_NOSUBDIR,
+                                      MDV_CONFIG.storage.max_size);
 
     if (!trlog->storage)
     {

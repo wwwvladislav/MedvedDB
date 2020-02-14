@@ -43,6 +43,7 @@ typedef struct
         mdv_string path;            ///< Directory where the database is placed
         mdv_string trlog;           ///< Directory where the database transaction logs are placed
         mdv_string rowdata;         ///< Directory where the database rowdata is placed
+        size_t     max_size;        ///< The maximum size of the LMDB map size.
     } storage;                      ///< Storage settings
 
     struct

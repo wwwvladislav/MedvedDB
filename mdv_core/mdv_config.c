@@ -8,6 +8,18 @@
 mdv_config MDV_CONFIG;
 
 
+static size_t mdv_str2size(char const *str)
+{
+    #if UINTPTR_MAX == 0xffffffff
+        return strtoul(str, 0, 10);
+    #elif UINTPTR_MAX == 0xffffffffffffffff
+        return strtoull(str, 0, 10);
+    #else
+        #error Unknown architecture
+    #endif
+}
+
+
 static int mdv_cfg_handler(void* user, const char* section, const char* name, const char* value)
 {
     mdv_config *config = (mdv_config *)user;
@@ -49,6 +61,11 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         MDV_CFG_CHECK(config->storage.rowdata);
 
         MDV_LOGI("Storage path: %s", config->storage.path.ptr);
+    }
+    else if (MDV_CFG_MATCH("storage", "max_size"))
+    {
+        config->storage.max_size = mdv_str2size(value);
+        MDV_LOGI("Storage maximum size: %zu", config->storage.max_size);
     }
 
     else if (MDV_CFG_MATCH("ebus", "workers"))
@@ -189,6 +206,7 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.storage.path                 = mdv_str_static("./data");
     MDV_CONFIG.storage.trlog                = mdv_str_static("./data/trlog");
     MDV_CONFIG.storage.rowdata              = mdv_str_static("./data/rowdata");
+    MDV_CONFIG.storage.max_size             = 4294967296u;
 
     MDV_CONFIG.ebus.workers                 = 4;
     MDV_CONFIG.ebus.queues                  = 4;

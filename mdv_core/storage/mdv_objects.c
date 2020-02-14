@@ -1,6 +1,7 @@
 #include "mdv_objects.h"
 #include "mdv_storage.h"
 #include "mdv_storages.h"
+#include "../mdv_config.h"
 #include <mdv_rollbacker.h>
 #include <mdv_alloc.h>
 #include <mdv_mutex.h>
@@ -86,7 +87,8 @@ mdv_objects * mdv_objects_open(char const *root_dir, char const *storage_name)
     objs->storage = mdv_storage_open(root_dir,
                                      storage_name,
                                      MDV_STRG_OBJECTS_MAPS,
-                                     MDV_STRG_NOSUBDIR);
+                                     MDV_STRG_NOSUBDIR,
+                                     MDV_CONFIG.storage.max_size);
 
     if (!objs->storage)
     {

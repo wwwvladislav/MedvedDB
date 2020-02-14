@@ -27,7 +27,7 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
     #define MDV_CFG_MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
 
     #define MDV_CFG_CHECK(v)                                                                    \
-        if(mdv_str_empty(v))                                                                 \
+        if(mdv_str_empty(v))                                                                    \
         {                                                                                       \
             MDV_LOGI("No memory for configuration parameter %s:%s '%s'", section, name, value); \
             return 0;                                                                           \
@@ -206,7 +206,7 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.storage.path                 = mdv_str_static("./data");
     MDV_CONFIG.storage.trlog                = mdv_str_static("./data/trlog");
     MDV_CONFIG.storage.rowdata              = mdv_str_static("./data/rowdata");
-    MDV_CONFIG.storage.max_size             = 4294967296u;
+    MDV_CONFIG.storage.max_size             = 4294963200u;
 
     MDV_CONFIG.ebus.workers                 = 4;
     MDV_CONFIG.ebus.queues                  = 4;

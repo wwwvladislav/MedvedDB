@@ -129,19 +129,26 @@ find_package(SWIG)
 if(SWIG_FOUND)
     include(UseSWIG)
 
+    set(CMAKE_SWIG_OUTDIR mdv_swig)
+
     #*********************************************************
     # Java
     #*********************************************************
-    find_package(JNI REQUIRED)
+    find_package(JNI)
 
-    set(CMAKE_SWIG_OUTDIR mdv_swig)
+    if(JNI_FOUND)
+        swig_add_library(mdv4j
+                         LANGUAGE java
+                         OUTPUT_DIR mdv_swig
+                         OUTFILE_DIR mdv_swig
+                         SOURCES ${ROOT_DIR}/assets/swig/mdv.i)
 
-    swig_add_library(mdvClient
-                     LANGUAGE java
-                     OUTPUT_DIR mdv_swig
-                     OUTFILE_DIR mdv_swig
-                     SOURCES ${ROOT_DIR}/assets/swig/mdv.i)
+        set_property(TARGET mdv4j PROPERTY LIBRARY_OUTPUT_DIRECTORY mdv_swig)
 
-    set_property(TARGET mdvClient PROPERTY INCLUDE_DIRECTORIES ${JNI_INCLUDE_DIRS})
-    set_property(TARGET mdvClient PROPERTY LIBRARY_OUTPUT_DIRECTORY mdv_swig/java)
+        target_include_directories(mdv4j
+                                   PRIVATE ${ROOT_DIR}/mdv_api
+                                   PRIVATE ${ROOT_DIR}/mdv_types
+                                   PRIVATE ${ROOT_DIR}/mdv_platform
+                                   PRIVATE ${JNI_INCLUDE_DIRS})
+    endif()
 endif()

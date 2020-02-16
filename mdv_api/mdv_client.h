@@ -4,6 +4,7 @@
  * @details Client provides API for DB accessing.
  */
 #pragma once
+#include "mdv_client_config.h"
 #include <mdv_types.h>
 #include <mdv_table.h>
 #include <mdv_rowset.h>
@@ -11,31 +12,6 @@
 #include <mdv_errno.h>
 #include <mdv_bitset.h>
 #include <mdv_systbls.h>
-
-
-/// Client configuration. All options are mandatory.
-typedef struct
-{
-    struct
-    {
-        char const *addr;               ///< DB address
-    } db;                               ///< DB settings
-
-    struct
-    {
-        uint32_t    retry_interval;     ///< Interval between reconnections (in seconds)
-        uint32_t    timeout;            ///< Connection timeout (in seconds)
-        uint32_t    keepidle;           ///< Start keeplives after this period (in seconds)
-        uint32_t    keepcnt;            ///< Number of keepalives before death
-        uint32_t    keepintvl;          ///< Interval between keepalives (in seconds)
-        uint32_t    response_timeout;   ///< Timeout for responses (in seconds)
-    } connection;                       ///< connection configuration
-
-    struct
-    {
-        size_t      size;               ///< threads count in thread pool
-    } threadpool;                       ///< thread pool options
-} mdv_client_config;
 
 
 /// Client descriptor
@@ -88,7 +64,7 @@ mdv_table * mdv_get_table(mdv_client *client, mdv_uuid const *uuid);
 
 /**
  * @brief Request network topology.
- * @details This function should be used only for diagnostic purposes. Use mdv_free() to free the allocated links array.
+ * @details This function should be used only for diagnostic purposes.
  *
  * @param client [in]       DB client
  * @param topology [out]    Topology

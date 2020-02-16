@@ -147,13 +147,16 @@ if(SWIG_FOUND)
             -outdir     ${SWIG_OUTDIR}
             -o          ${SWIG_OUT}
             -package    mdv
-            -I${ROOT_DIR}/mdv_api)
+            -I${ROOT_DIR}/mdv_api
+            -I${ROOT_DIR}/mdv_platform)
 
         set(SWIG_FILE ${ROOT_DIR}/assets/swig/mdv.i)
 
         set(JAVA_SOURCES
             ${SWIG_OUTDIR}/mdv.java
             ${SWIG_OUTDIR}/mdvJNI.java
+            ${SWIG_OUTDIR}/String.java
+            ${SWIG_OUTDIR}/UUID.java
             ${SWIG_OUTDIR}/Client.java
             ${SWIG_OUTDIR}/ClientConfig.java
             ${SWIG_OUTDIR}/ClientConfigConnection.java

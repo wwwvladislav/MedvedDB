@@ -13,3 +13,5 @@
 
 %include "mdv_client_config.h"
 %include "mdv_client.i"
+%include "mdv_string.i"
+%include "mdv_uuid.i"

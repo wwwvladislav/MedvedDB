@@ -57,7 +57,7 @@ mdv_table * mdv_create_table(mdv_client *client, mdv_table_desc *table);
  * @param uuid [in]     Table identifier
  *
  * @return On success, returns nonzero table descriptor.
- * @return On error, returns NULL
+ * @return On error, returns NULL pointer
  */
 mdv_table * mdv_get_table(mdv_client *client, mdv_uuid const *uuid);
 
@@ -67,12 +67,11 @@ mdv_table * mdv_get_table(mdv_client *client, mdv_uuid const *uuid);
  * @details This function should be used only for diagnostic purposes.
  *
  * @param client [in]       DB client
- * @param topology [out]    Topology
  *
- * @return On success, return MDV_OK.
- * @return On error, return non zero value
+ * @return On success, returns nonzero topology.
+ * @return On error, returns NULL pointer
  */
-mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology);
+mdv_topology * mdv_get_topology(mdv_client *client);
 
 
 /**

@@ -121,11 +121,9 @@ static void mdv_show_topology(char const *args)
 {
     (void)args;
 
-    mdv_topology *topology = 0;
+    mdv_topology *topology = mdv_get_topology(client);
 
-    mdv_errno err = mdv_get_topology(client, &topology);
-
-    if (err == MDV_OK && topology)
+    if (topology)
     {
         // Display topology
         MDV_INF("Usage: sfdp topology.dot -O -Tpng\n\n");
@@ -151,7 +149,7 @@ static void mdv_show_topology(char const *args)
         mdv_topology_release(topology);
     }
     else
-        MDV_INF("Topology request failed with error '%s' (%d)\n", mdv_strerror(err), err);
+        MDV_INF("Topology request failed\n");
 }
 
 

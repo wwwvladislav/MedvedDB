@@ -553,16 +553,16 @@ mdv_table * mdv_get_table(mdv_client *client, mdv_uuid const *uuid)
 }
 
 
-mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
+mdv_topology * mdv_get_topology(mdv_client *client)
 {
-    *topology = 0;
+    mdv_topology *topology = 0;
 
     mdv_msg_get_topology get_topology = {};
 
     binn binn_msg;
 
     if (!mdv_msg_get_topology_binn(&get_topology, &binn_msg))
-        return MDV_FAILED;
+        return 0;
 
     mdv_msg req =
     {
@@ -586,7 +586,7 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
         {
             case mdv_message_id(topology):
             {
-                err = mdv_client_topology_handler(&resp, topology);
+                err = mdv_client_topology_handler(&resp, &topology);
                 break;
             }
 
@@ -606,18 +606,17 @@ mdv_errno mdv_get_topology(mdv_client *client, mdv_topology **topology)
         mdv_free_msg(&resp);
     }
 
-    return err;
+    return topology;
 }
 
 
 mdv_hashmap * mdv_get_routes(mdv_client *client)
 {
-    mdv_topology *topology = 0;
-    mdv_errno err = mdv_get_topology(client, &topology);
+    mdv_topology *topology = mdv_get_topology(client);
 
     mdv_hashmap *routes = 0;
 
-    if (err == MDV_OK && topology)
+    if (topology)
     {
         mdv_connection *con = mdv_client_channel_retain(client);
 

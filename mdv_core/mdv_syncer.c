@@ -229,13 +229,13 @@ static mdv_errno mdv_syncer_topology_changed(mdv_syncer *syncer, mdv_topology *t
                     {
                         err = MDV_FAILED;
                         mdv_syncerino_release(syncer_peer.syncerino);
-                        MDV_LOGE("Synchronizer creation for '%s' peer failed", mdv_uuid_to_str(&route->uuid).ptr);
+                        MDV_LOGE("Synchronizer creation for '%s' peer failed", mdv_uuid_to_str(&route->uuid));
                     }
                 }
                 else
                 {
                     err = MDV_FAILED;
-                    MDV_LOGE("Synchronizer creation for '%s' peer failed", mdv_uuid_to_str(&route->uuid).ptr);
+                    MDV_LOGE("Synchronizer creation for '%s' peer failed", mdv_uuid_to_str(&route->uuid));
                 }
             }
 

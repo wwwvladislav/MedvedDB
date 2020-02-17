@@ -10,7 +10,7 @@
  */
 #pragma once
 #include <mdv_def.h>
-#include <mdv_types.h>
+#include <mdv_objid.h>
 #include <mdv_table.h>
 #include <mdv_rowset.h>
 #include <mdv_bitset.h>

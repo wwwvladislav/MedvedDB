@@ -1,5 +1,6 @@
 #include "mdv_config.h"
 #include <mdv_log.h>
+#include <mdv_string.h>
 #include <ini.h>
 #include <string.h>
 #include <stdlib.h>
@@ -27,7 +28,7 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
     #define MDV_CFG_MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
 
     #define MDV_CFG_CHECK(v)                                                                    \
-        if(mdv_str_empty(v))                                                                    \
+        if(!v)                                                                                  \
         {                                                                                       \
             MDV_LOGI("No memory for configuration parameter %s:%s '%s'", section, name, value); \
             return 0;                                                                           \
@@ -35,9 +36,9 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
 
     if (MDV_CFG_MATCH("server", "listen"))
     {
-        config->server.listen = mdv_str_pdup(config->mempool, value);
+        config->server.listen = mdv_str_pdup(config->mempool, value).ptr;
         MDV_CFG_CHECK(config->server.listen);
-        MDV_LOGI("Listen: %s", config->server.listen.ptr);
+        MDV_LOGI("Listen: %s", config->server.listen);
     }
     else if (MDV_CFG_MATCH("server", "workers"))
     {
@@ -47,20 +48,26 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
 
     else if (MDV_CFG_MATCH("storage", "path"))
     {
-        mdv_string const trlog = mdv_str_static("/trlog");
-        mdv_string const rowdata = mdv_str_static("/rowdata");
+        mdv_string const trlog_subdir = mdv_str_static("/trlog");
+        mdv_string const rowdata_subdir = mdv_str_static("/rowdata");
 
-        config->storage.path = mdv_str_pdup(config->mempool, value);
-        config->storage.trlog = mdv_str_pdup(config->mempool, value);
-        config->storage.trlog = mdv_str_pcat(config->mempool, config->storage.trlog, trlog);
-        config->storage.rowdata = mdv_str_pdup(config->mempool, value);
-        config->storage.rowdata = mdv_str_pcat(config->mempool, config->storage.rowdata, rowdata);
+        mdv_string const path = mdv_str_pdup(config->mempool, value);
+
+        mdv_string trlog = mdv_str_pdup(config->mempool, value);
+        mdv_str_pcat(config->mempool, trlog, trlog_subdir);
+
+        mdv_string rowdata = mdv_str_pdup(config->mempool, value);
+        mdv_str_pcat(config->mempool, rowdata, rowdata_subdir);
+
+        config->storage.path = path.ptr;
+        config->storage.trlog = trlog.ptr;
+        config->storage.rowdata = rowdata.ptr;
 
         MDV_CFG_CHECK(config->storage.path);
         MDV_CFG_CHECK(config->storage.trlog);
         MDV_CFG_CHECK(config->storage.rowdata);
 
-        MDV_LOGI("Storage path: %s", config->storage.path.ptr);
+        MDV_LOGI("Storage path: %s", config->storage.path);
     }
     else if (MDV_CFG_MATCH("storage", "max_size"))
     {
@@ -97,9 +104,9 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
 
     else if (MDV_CFG_MATCH("log", "level"))
     {
-        config->log.level = mdv_str_pdup(config->mempool, value);
+        config->log.level = mdv_str_pdup(config->mempool, value).ptr;
         MDV_CFG_CHECK(config->log.level);
-        MDV_LOGI("Log level: %s", config->log.level.ptr);
+        MDV_LOGI("Log level: %s", config->log.level);
     }
 
     else if (MDV_CFG_MATCH("datasync", "workers"))
@@ -146,15 +153,15 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
 
     else if (MDV_CFG_MATCH("cluster", "node"))
     {
-        mdv_string node = mdv_str_pdup(config->mempool, value);
+        char const *node = mdv_str_pdup(config->mempool, value).ptr;
         MDV_CFG_CHECK(node);
         if (config->cluster.size >= MDV_MAX_CLUSTER_SIZE)
         {
             MDV_LOGI("No space for node '%s'", value);
             return 0;
         }
-        config->cluster.nodes[config->cluster.size++] = node.ptr;
-        MDV_LOGI("Cluster node: %s", node.ptr);
+        config->cluster.nodes[config->cluster.size++] = node;
+        MDV_LOGI("Cluster node: %s", node);
     }
 
     else if (MDV_CFG_MATCH("connection", "retry_interval"))
@@ -193,9 +200,9 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
 
 static void mdv_set_config_defaults()
 {
-    MDV_CONFIG.log.level                    = mdv_str_static("error");
+    MDV_CONFIG.log.level                    = "error";
 
-    MDV_CONFIG.server.listen                = mdv_str_static("tcp://localhost:54222");
+    MDV_CONFIG.server.listen                = "tcp://localhost:54222";
     MDV_CONFIG.server.workers               = 8;
 
     MDV_CONFIG.connection.retry_interval    = 5;
@@ -203,9 +210,9 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.connection.keep_count        = 10;
     MDV_CONFIG.connection.keep_interval     = 5;
 
-    MDV_CONFIG.storage.path                 = mdv_str_static("./data");
-    MDV_CONFIG.storage.trlog                = mdv_str_static("./data/trlog");
-    MDV_CONFIG.storage.rowdata              = mdv_str_static("./data/rowdata");
+    MDV_CONFIG.storage.path                 = "./data";
+    MDV_CONFIG.storage.trlog                = "./data/trlog";
+    MDV_CONFIG.storage.rowdata              = "./data/rowdata";
     MDV_CONFIG.storage.max_size             = 4294963200u;
 
     MDV_CONFIG.ebus.workers                 = 4;
@@ -241,8 +248,8 @@ bool mdv_load_config(char const *path)
         return false;
     }
 
-    if (mdv_str_empty(MDV_CONFIG.server.listen)
-        || mdv_str_empty(MDV_CONFIG.storage.path))
+    if (!MDV_CONFIG.server.listen
+        || !MDV_CONFIG.storage.path)
     {
         MDV_LOGE("Mandatory configuration parameters weren't not provided\n");
         return false;

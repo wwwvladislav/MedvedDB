@@ -6,7 +6,6 @@
 #pragma once
 #include <stdbool.h>
 #include <stdint.h>
-#include <mdv_string.h>
 #include <mdv_stack.h>
 
 
@@ -21,13 +20,13 @@ typedef struct
 {
     struct
     {
-        mdv_string level;       ///< Log output level
-    } log;                      ///< Log settings
+        char const *level;          ///< Log output level
+    } log;                          ///< Log settings
 
     struct
     {
-        mdv_string listen;          ///< Server IP and port for listening
-        uint32_t   workers;         ///< Number of thread pool workers for incoming requests processing
+        char const *listen;         ///< Server IP and port for listening
+        uint32_t    workers;        ///< Number of thread pool workers for incoming requests processing
     } server;                       ///< Server settings
 
     struct
@@ -40,10 +39,10 @@ typedef struct
 
     struct
     {
-        mdv_string path;            ///< Directory where the database is placed
-        mdv_string trlog;           ///< Directory where the database transaction logs are placed
-        mdv_string rowdata;         ///< Directory where the database rowdata is placed
-        size_t     max_size;        ///< The maximum size of the LMDB map size.
+        char const *path;           ///< Directory where the database is placed
+        char const *trlog;          ///< Directory where the database transaction logs are placed
+        char const *rowdata;        ///< Directory where the database rowdata is placed
+        size_t      max_size;       ///< The maximum size of the LMDB map size.
     } storage;                      ///< Storage settings
 
     struct

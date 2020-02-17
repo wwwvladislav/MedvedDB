@@ -2,6 +2,7 @@
 #include <mdv_alloc.h>
 #include <mdv_log.h>
 #include <assert.h>
+#include <string.h>
 
 
 /// Set of rows

@@ -25,7 +25,7 @@
 
 
 mdv_message_def(p2p_hello, 1000 + 0,
-    char       *listen;             ///< Listening address
+    char const *listen;             ///< Listening address
 );
 
 

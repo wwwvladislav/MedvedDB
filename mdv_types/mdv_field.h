@@ -1,35 +1,5 @@
 #pragma once
-#include <mdv_string.h>
-#include <mdv_uuid.h>
 #include <mdv_def.h>
-
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Data
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-typedef struct
-{
-    uint32_t    size;       ///< Data size
-    void       *ptr;        ///< Data pointer
-} mdv_data;
-
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Object ID
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-typedef union __attribute__((packed))
-{
-    uint8_t  u8[12];    ///< representation as u8 array
-
-    struct __attribute__((packed))
-    {
-        uint32_t node;  ///< Node identifier
-        uint64_t id;    ///< Object identifier
-    };
-} mdv_objid;
-
-
-mdv_string mdv_objid_to_str(mdv_objid const *objid);
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -64,7 +34,7 @@ typedef struct
      * N - field items count is limited by N
      */
     uint32_t        limit;      // field limit
-    mdv_string      name;       // field name
+    char const     *name;       // field name
 } mdv_field;
 
 

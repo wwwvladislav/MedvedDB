@@ -1,5 +1,4 @@
 #pragma once
-#include "mdv_types.h"
 #include "mdv_table.h"
 #include "mdv_rowset.h"
 #include <mdv_binn.h>

@@ -9,14 +9,14 @@ MU_TEST(types_rowset)
 {
     mdv_field const fields[] =
     {
-        { MDV_FLD_TYPE_CHAR, 0, mdv_str_static("Col1") },   // char *
-        { MDV_FLD_TYPE_CHAR, 0, mdv_str_static("Col2") },   // char *
-        { MDV_FLD_TYPE_CHAR, 0, mdv_str_static("Col3") }    // char *
+        { MDV_FLD_TYPE_CHAR, 0, "Col1" },       // char *
+        { MDV_FLD_TYPE_CHAR, 0, "Col2" },       // char *
+        { MDV_FLD_TYPE_CHAR, 0, "Col3" }        // char *
     };
 
     mdv_table_desc desc =
     {
-        .name = mdv_str_static("MyTable"),
+        .name = "MyTable",
         .size = 3,
         .fields = fields
     };

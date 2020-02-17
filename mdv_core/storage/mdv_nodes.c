@@ -102,7 +102,7 @@ mdv_errno mdv_nodes_foreach(mdv_storage *storage,
 
         if(!binn_load(entry.value.ptr, &obj))
         {
-            MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(uuid).ptr);
+            MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(uuid));
             continue;
         }
 
@@ -110,11 +110,11 @@ mdv_errno mdv_nodes_foreach(mdv_storage *storage,
 
         if (node)
         {
-            MDV_LOGI("Node: [%u] %s, %s", node->id, mdv_uuid_to_str(&node->uuid).ptr, node->addr);
+            MDV_LOGI("Node: [%u] %s, %s", node->id, mdv_uuid_to_str(&node->uuid), node->addr);
             fn(arg, node);
         }
         else
-            MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(uuid).ptr);
+            MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(uuid));
 
         binn_free(&obj);
     }

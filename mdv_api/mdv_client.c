@@ -374,7 +374,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
     mdv_rollbacker_push(rollbacker, mdv_chaman_free, client->chaman);
 
     // Connect to server
-    mdv_errno err = mdv_chaman_dial(client->chaman, mdv_str((char*)config->db.addr), MDV_USER_CHANNEL);
+    mdv_errno err = mdv_chaman_dial(client->chaman, config->db.addr, MDV_USER_CHANNEL);
 
     if (err != MDV_OK)
     {

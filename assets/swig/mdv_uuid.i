@@ -11,4 +11,4 @@
 
 typedef struct {} mdv_uuid;
 
-mdv_string mdv_uuid_to_str(mdv_uuid const *uuid);
+char const * mdv_uuid_to_str(mdv_uuid const *uuid);

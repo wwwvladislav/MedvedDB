@@ -17,7 +17,7 @@ static bool binn_field(mdv_field const *field, binn *obj)
     if (0
         || !binn_object_set_uint32(obj, "T", (unsigned int)field->type)
         || !binn_object_set_uint32(obj, "L", (unsigned int)field->limit)
-        || !binn_object_set_str(obj, "N", field->name.ptr))
+        || !binn_object_set_str(obj, "N", (char *)field->name))
     {
         MDV_LOGE("binn_field failed");
         binn_free(obj);
@@ -170,12 +170,13 @@ bool mdv_binn_table_desc(mdv_table_desc const *table, binn *obj)
 
     // Calculate size
     uint32_t size = sizeof(mdv_table_desc) + table->size * sizeof(mdv_field);
-    size += table->name.size;
+    size += strlen(table->name) + 1;
+
     for(uint32_t i = 0; i < table->size; ++i)
-        size += table->fields[i].name.size;
+        size += strlen(table->fields[i].name) + 1;
 
     if (0
-        || !binn_object_set_str(obj, "N", table->name.ptr)
+        || !binn_object_set_str(obj, "N", (char*)table->name)
         || !binn_object_set_uint32(obj, "S", table->size)
         || !binn_object_set_uint32(obj, "B", size))
     {
@@ -256,10 +257,10 @@ mdv_table_desc * mdv_unbinn_table_desc(binn const *obj)
 
     char *buff = (char *)(fields + table->size);
 
-    table->name.size = strlen(name) + 1;
-    table->name.ptr = buff;
-    buff += table->name.size;
-    memcpy(table->name.ptr, name, table->name.size);
+    size_t const table_name_size = strlen(name) + 1;
+    memcpy(buff, name, table_name_size);
+    table->name = buff;
+    buff += table_name_size;
 
     binn *binn_fields = 0;
 
@@ -295,10 +296,10 @@ mdv_table_desc * mdv_unbinn_table_desc(binn const *obj)
             return 0;
         }
 
-        field->name.size = strlen(field_name) + 1;
-        field->name.ptr = buff;
-        buff += field->name.size;
-        memcpy(field->name.ptr, field_name, field->name.size);
+        size_t const field_name_size = strlen(field_name) + 1;
+        memcpy(buff, field_name, field_name_size);
+        field->name = buff;
+        buff += field_name_size;
 
         ++i;
     }

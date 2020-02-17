@@ -54,11 +54,11 @@ mdv_core * mdv_core_create()
 
 
     // DB meta information storage
-    core->storage.metainf = mdv_metainf_storage_open(MDV_CONFIG.storage.path.ptr);
+    core->storage.metainf = mdv_metainf_storage_open(MDV_CONFIG.storage.path);
 
     if (!core->storage.metainf)
     {
-        MDV_LOGE("Service initialization failed. Can't create metainf storage '%s'", MDV_CONFIG.storage.path.ptr);
+        MDV_LOGE("Service initialization failed. Can't create metainf storage '%s'", MDV_CONFIG.storage.path);
         mdv_rollback(rollbacker);
         return 0;
     }
@@ -68,7 +68,7 @@ mdv_core * mdv_core_create()
 
     if (!mdv_metainf_load(&core->metainf, core->storage.metainf))
     {
-        MDV_LOGE("DB meta information loading failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
+        MDV_LOGE("DB meta information loading failed. Path: '%s'", MDV_CONFIG.storage.path);
         mdv_rollback(rollbacker);
         return 0;
     }
@@ -131,7 +131,7 @@ mdv_core * mdv_core_create()
 
     if (!core->storage.tablespace)
     {
-        MDV_LOGE("DB tables space creation failed. Path: '%s'", MDV_CONFIG.storage.path.ptr);
+        MDV_LOGE("DB tables space creation failed. Path: '%s'", MDV_CONFIG.storage.path);
         mdv_rollback(rollbacker);
         return 0;
     }
@@ -267,7 +267,7 @@ mdv_core * mdv_core_create()
 
     MDV_LOGI("Storage version: %u", core->metainf.version.value);
 
-    MDV_LOGI("Node UUID: %s", mdv_uuid_to_str(&core->metainf.uuid.value).ptr);
+    MDV_LOGI("Node UUID: %s", mdv_uuid_to_str(&core->metainf.uuid.value));
 
     mdv_rollbacker_free(rollbacker);
 
@@ -306,7 +306,7 @@ void mdv_core_connect(mdv_core *core)
     for(uint32_t i = 0; i < MDV_CONFIG.cluster.size; ++i)
     {
         mdv_conman_connect(core->conman,
-                           mdv_str((char*)MDV_CONFIG.cluster.nodes[i]),
+                           MDV_CONFIG.cluster.nodes[i],
                            MDV_PEER_CHANNEL);
     }
 }

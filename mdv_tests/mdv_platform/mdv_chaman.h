@@ -174,13 +174,13 @@ MU_TEST(platform_chaman)
     };
 
     mdv_chaman *server = mdv_chaman_create(&config);
-    mdv_errno err = mdv_chaman_listen(server, mdv_str_static("tcp://localhost:55555"));
+    mdv_errno err = mdv_chaman_listen(server, "tcp://localhost:55555");
     mu_check(server && err == MDV_OK);
 
     mdv_chaman *client = mdv_chaman_create(&config);
     mu_check(client);
 
-    err = mdv_chaman_dial(client, mdv_str_static("tcp://localhost:55555"), 0);
+    err = mdv_chaman_dial(client, "tcp://localhost:55555", 0);
     mu_check(err == MDV_OK);
 
     while(mdv_init_count != 2)

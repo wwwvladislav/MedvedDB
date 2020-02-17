@@ -5,7 +5,6 @@
  */
 #pragma once
 #include "mdv_client_config.h"
-#include <mdv_types.h>
 #include <mdv_table.h>
 #include <mdv_rowset.h>
 #include <mdv_topology.h>

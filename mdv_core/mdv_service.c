@@ -7,9 +7,9 @@
 
 static void mdv_service_configure_logging()
 {
-    if (!mdv_str_empty(MDV_CONFIG.log.level))
+    if (!!MDV_CONFIG.log.level)
     {
-        switch(*MDV_CONFIG.log.level.ptr)
+        switch(*MDV_CONFIG.log.level)
         {
             case 'f':   mdv_logf_set_level(ZF_LOG_FATAL);   break;
             case 'e':   mdv_logf_set_level(ZF_LOG_ERROR);   break;

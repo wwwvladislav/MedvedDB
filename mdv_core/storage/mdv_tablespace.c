@@ -9,7 +9,7 @@
 #include "../event/mdv_evt_topology.h"
 #include "../event/mdv_evt_trlog.h"
 #include "../event/mdv_evt_types.h"
-#include <mdv_types.h>
+#include <mdv_objid.h>
 #include <mdv_serialization.h>
 #include <mdv_alloc.h>
 #include <mdv_rollbacker.h>
@@ -140,7 +140,7 @@ static bool mdv_tablespace_storage_id(mdv_tablespace *tablespace, mdv_uuid const
         res = true;
     }
     else
-        MDV_LOGE("Storage idntifier %s not found", mdv_uuid_to_str(uuid).ptr);
+        MDV_LOGE("Storage idntifier %s not found", mdv_uuid_to_str(uuid));
 
     mdv_hashmap_release(idmap);
 
@@ -182,7 +182,7 @@ static mdv_trlog * mdv_tablespace_trlog_create(mdv_tablespace *tablespace, mdv_u
                 mdv_trlog_ref new_ref =
                 {
                     .uuid = *uuid,
-                    .trlog = mdv_trlog_open(tablespace->ebus, MDV_CONFIG.storage.trlog.ptr, uuid, id)
+                    .trlog = mdv_trlog_open(tablespace->ebus, MDV_CONFIG.storage.trlog, uuid, id)
                 };
 
                 if (new_ref.trlog)
@@ -218,7 +218,7 @@ static mdv_rowdata * mdv_tablespace_rowdata_create(mdv_tablespace *tablespace, m
             mdv_rowdata_ref new_ref =
             {
                 .uuid = *table_id,
-                .rowdata = mdv_rowdata_open(MDV_CONFIG.storage.rowdata.ptr, table_id)
+                .rowdata = mdv_rowdata_open(MDV_CONFIG.storage.rowdata, table_id)
             };
 
             if (new_ref.rowdata)
@@ -284,7 +284,7 @@ static mdv_errno mdv_tablespace_evt_table_create(void *arg, mdv_event *event)
 
     if (table)
     {
-        MDV_LOGI("New table '%s' is created", mdv_uuid_to_str(mdv_table_uuid(table)).ptr);
+        MDV_LOGI("New table '%s' is created", mdv_uuid_to_str(mdv_table_uuid(table)));
         create_table->table_id = *mdv_table_uuid(table);
         mdv_table_release(table);
         return MDV_OK;
@@ -419,7 +419,7 @@ mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid, mdv_ebus *ebus, mdv_t
 
     mdv_hashmap_release(idmap);
 
-    tablespace->tables = mdv_tables_open(MDV_CONFIG.storage.path.ptr);
+    tablespace->tables = mdv_tables_open(MDV_CONFIG.storage.path);
 
     if (!tablespace->tables)
     {

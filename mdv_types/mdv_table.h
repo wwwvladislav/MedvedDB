@@ -9,21 +9,9 @@
  *
  */
 #pragma once
-#include "mdv_types.h"
-#include <mdv_string.h>
+#include "mdv_table_desc.h"
 #include <mdv_uuid.h>
 #include <mdv_bitset.h>
-
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Table Description
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-typedef struct mdv_table_desc
-{
-    mdv_string       name;      ///< Table name
-    uint32_t         size;      ///< Fields count
-    mdv_field const *fields;    ///< Fields
-} mdv_table_desc;
 
 
 /// Table descriptor

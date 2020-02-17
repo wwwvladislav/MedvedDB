@@ -442,7 +442,7 @@ static mdv_errno mdv_fetcher_evt_select(void *arg, mdv_event *event)
     else
     {
         MDV_LOGE("Selection reqiest failed for table '%s' with error '%s'",
-                    mdv_uuid_to_str(&select->table).ptr,
+                    mdv_uuid_to_str(&select->table),
                     err_msg);
 
         mdv_evt_status *evt = mdv_evt_status_create(

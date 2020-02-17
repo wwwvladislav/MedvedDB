@@ -1,7 +1,6 @@
 #include "mdv_uuid.h"
 #include "mdv_log.h"
-#include <stdlib.h>
-#include <time.h>
+#include <string.h>
 #include <uuid4.h>
 
 
@@ -45,10 +44,9 @@ size_t mdv_uuid_hash(mdv_uuid const *a)
 }
 
 
-mdv_string mdv_uuid_to_str(mdv_uuid const *uuid)
+char const * mdv_uuid_to_str(mdv_uuid const *uuid)
 {
-    static _Thread_local char buff[33];
-    mdv_string dst = mdv_str_static(buff);
+    static _Thread_local char dst[33];
 
     static char const hex[] = "0123456789ABCDEF";
     size_t const size = 2 * sizeof uuid->u8;
@@ -56,18 +54,20 @@ mdv_string mdv_uuid_to_str(mdv_uuid const *uuid)
     for(size_t i = 0; i < size; ++i)
     {
         uint8_t const d = (uuid->u8[i / 2] >> ((1 - i % 2) * 4)) & 0xF;
-        dst.ptr[i] = hex[d];
+        dst[i] = hex[d];
     }
 
-    dst.ptr[size] = 0;
+    dst[size] = 0;
 
     return dst;
 }
 
 
-bool mdv_uuid_from_str(mdv_uuid *uuid, mdv_string const *str)
+bool mdv_uuid_from_str(mdv_uuid *uuid, char const *str)
 {
-    if (str->size != 2 * sizeof uuid->u8 + 1)
+    size_t const str_len = strlen(str);
+
+    if (str_len != 2 * sizeof uuid->u8)
     {
         MDV_LOGE("uuid_from_str failed. String is too small.");
         return false;
@@ -76,11 +76,11 @@ bool mdv_uuid_from_str(mdv_uuid *uuid, mdv_string const *str)
     uuid->u64[0] = 0ull;
     uuid->u64[1] = 0ull;
 
-    for(size_t i = 0; i < str->size - 1; ++i)
+    for(size_t i = 0; i < str_len; ++i)
     {
         int const sh = (1 - i % 2) * 4;
 
-        switch(str->ptr[i])
+        switch(str[i])
         {
             case '0': break;
             case '1': uuid->u8[i / 2] |= 1 << sh; break;
@@ -106,7 +106,7 @@ bool mdv_uuid_from_str(mdv_uuid *uuid, mdv_string const *str)
             case 'F': uuid->u8[i / 2] |= 15 << sh; break;
             default:
             {
-                MDV_LOGE("uuid_from_str failed. String contains invalid character: '%c'.", str->ptr[i]);
+                MDV_LOGE("uuid_from_str failed. String contains invalid character: '%c'.", str[i]);
                 return false;
             }
         }

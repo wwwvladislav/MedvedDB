@@ -10,7 +10,6 @@
  */
 #pragma once
 #include <mdv_ebus.h>
-#include <mdv_types.h>
 #include <mdv_rowset.h>
 #include <mdv_uuid.h>
 #include <mdv_binn.h>

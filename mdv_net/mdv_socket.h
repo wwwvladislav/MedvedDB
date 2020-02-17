@@ -1,6 +1,5 @@
 #pragma once
 #include <mdv_def.h>
-#include <mdv_string.h>
 
 #ifdef MDV_PLATFORM_LINUX
     #include <sys/socket.h>         // sockaddr_storage
@@ -27,8 +26,8 @@ typedef enum
 } mdv_socket_shutdown_type;
 
 
-mdv_errno      mdv_str2sockaddr(mdv_string const str, mdv_socket_type *protocol, mdv_sockaddr *addr);
-mdv_string     mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr);
+mdv_errno      mdv_str2sockaddr(char const *str, mdv_socket_type *protocol, mdv_sockaddr *addr);
+char const *   mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr);
 
 
 mdv_descriptor mdv_socket(mdv_socket_type type);

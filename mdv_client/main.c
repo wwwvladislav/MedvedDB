@@ -137,8 +137,8 @@ static void mdv_show_topology(char const *args)
         {
             mdv_toponode const *src_node = mdv_vector_at(toponodes, link->node[0]);
             mdv_toponode const *dst_node = mdv_vector_at(toponodes, link->node[1]);
-            MDV_OUT("  \"%s\" -- ", mdv_uuid_to_str(&src_node->uuid).ptr);
-            MDV_OUT("\"%s\"\n", mdv_uuid_to_str(&dst_node->uuid).ptr);
+            MDV_OUT("  \"%s\" -- ", mdv_uuid_to_str(&src_node->uuid));
+            MDV_OUT("\"%s\"\n", mdv_uuid_to_str(&dst_node->uuid));
         }
 
         MDV_OUT("}\n");
@@ -166,7 +166,7 @@ static void mdv_show_routes(char const *args)
 
         mdv_hashmap_foreach(routes, mdv_uuid, uuid)
         {
-            MDV_OUT("  \"%s\"\n", mdv_uuid_to_str(uuid).ptr);
+            MDV_OUT("  \"%s\"\n", mdv_uuid_to_str(uuid));
         }
 
         MDV_OUT("}\n");
@@ -223,14 +223,14 @@ static void mdv_test_scenario(char const *args)
 
     mdv_field const fields[] =
     {
-        { MDV_FLD_TYPE_CHAR,  0, mdv_str_static("Col1") },  // char *
-        { MDV_FLD_TYPE_INT32, 2, mdv_str_static("Col2") },  // pair { int, int }
-        { MDV_FLD_TYPE_BOOL,  1, mdv_str_static("Col3") }   // bool
+        { MDV_FLD_TYPE_CHAR,  0, "Col1" },  // char *
+        { MDV_FLD_TYPE_INT32, 2, "Col2" },  // pair { int, int }
+        { MDV_FLD_TYPE_BOOL,  1, "Col3" }   // bool
     };
 
     mdv_table_desc desc =
     {
-        .name = mdv_str_static("MyTable"),
+        .name = "MyTable",
         .size = 3,
         .fields = fields
     };
@@ -241,11 +241,11 @@ static void mdv_test_scenario(char const *args)
 
     if (!table)
     {
-        MDV_INF("Table '%s' creation failed\n", desc.name.ptr);
+        MDV_INF("Table '%s' creation failed\n", desc.name);
         return;
     }
 
-    MDV_INF("New table '%s' with ID '%s' successfully created\n", desc.name.ptr, mdv_uuid_to_str(mdv_table_uuid(table)).ptr);
+    MDV_INF("New table '%s' with ID '%s' successfully created\n", desc.name, mdv_uuid_to_str(mdv_table_uuid(table)));
 
     // Rowset creation
 
@@ -253,7 +253,7 @@ static void mdv_test_scenario(char const *args)
 
     if (!rowset)
     {
-        MDV_INF("Rowset creation failed for table '%s'\n", desc.name.ptr);
+        MDV_INF("Rowset creation failed for table '%s'\n", desc.name);
         mdv_table_release(table);
         return;
     }
@@ -281,7 +281,7 @@ static void mdv_test_scenario(char const *args)
 
     if (mdv_rowset_append(rowset, rows, 2) != 2)
     {
-        MDV_INF("Rowset creation failed for table '%s'\n", desc.name.ptr);
+        MDV_INF("Rowset creation failed for table '%s'\n", desc.name);
         mdv_rowset_release(rowset);
         mdv_table_release(table);
         return;

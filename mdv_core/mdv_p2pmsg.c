@@ -2,6 +2,7 @@
 #include <mdv_log.h>
 #include <mdv_serialization.h>
 #include <assert.h>
+#include <string.h>
 
 
 char const * mdv_p2p_msg_name(uint32_t id)
@@ -44,11 +45,15 @@ bool mdv_binn_p2p_hello(mdv_msg_p2p_hello const *msg, binn *obj)
 
 bool mdv_unbinn_p2p_hello(binn const *obj, mdv_msg_p2p_hello *msg)
 {
-    if (!binn_object_get_str((void*)obj, "L", &msg->listen))
+    char *listen = 0;
+
+    if (!binn_object_get_str((void*)obj, "L", &listen))
     {
         MDV_LOGE("unbinn_p2p_hello failed");
         return false;
     }
+
+    msg->listen = listen;
 
     return true;
 }

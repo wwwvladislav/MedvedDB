@@ -5,7 +5,6 @@
  */
 #pragma once
 #include "mdv_channel.h"
-#include <mdv_string.h>
 #include <mdv_threadpool.h>
 #include <mdv_def.h>
 
@@ -80,7 +79,7 @@ void mdv_chaman_free(mdv_chaman *chaman);
  * @return On success, return MDV_OK
  * @return On error, return non zero value
  */
-mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr);
+mdv_errno mdv_chaman_listen(mdv_chaman *chaman, char const *addr);
 
 
 /**
@@ -95,7 +94,7 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, mdv_string const addr);
  * @return On success, return MDV_OK
  * @return On error, return non zero value
  */
-mdv_errno mdv_chaman_dial(mdv_chaman *chaman, mdv_string const addr, uint8_t type);
+mdv_errno mdv_chaman_dial(mdv_chaman *chaman, char const *addr, uint8_t type);
 
 
 /**
@@ -110,4 +109,4 @@ mdv_errno mdv_chaman_dial(mdv_chaman *chaman, mdv_string const addr, uint8_t typ
  * @return On success, return MDV_OK
  * @return On error, return non zero value
  */
-mdv_errno mdv_chaman_dial_stop(mdv_chaman *chaman, mdv_string const addr, uint8_t type);
+mdv_errno mdv_chaman_dial_stop(mdv_chaman *chaman, char const *addr, uint8_t type);

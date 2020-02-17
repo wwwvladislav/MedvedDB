@@ -6,12 +6,7 @@
 
 %include "stdint.i"
 
-%rename(ClientConfig) mdv_client_config;
-%rename(ClientConfigDb) mdv_client_config_db;
-%rename(ClientConfigConnection) mdv_client_config_connection;
-%rename(ClientConfigThreadpool) mdv_client_config_threadpool;
-
-%include "mdv_client_config.h"
 %include "mdv_client.i"
-%include "mdv_string.i"
 %include "mdv_uuid.i"
+%include "mdv_bitset.i"
+%include "mdv_field.i"

@@ -1,6 +1,7 @@
 #include "mdv_cout.h"
 #include <inttypes.h>
 #include <stdarg.h>
+#include <string.h>
 
 
 static const size_t MDV_MAX_FIELD_WIDTH = 32;
@@ -54,55 +55,56 @@ static size_t mdv_field_width(mdv_field const *field)
                             ? MDV_MAX_FIELD_LIMIT
                             : field->limit;
 
-    size_t field_len = field->name.size;
+    size_t const field_name_len = strlen(field->name);
+    size_t width = field_name_len;
 
     switch(field->type)
     {
-        case MDV_FLD_TYPE_BOOL:     field_len = limit;              break;          // 01010110101
-        case MDV_FLD_TYPE_CHAR:     field_len = limit;              break;          // Text
-        case MDV_FLD_TYPE_BYTE:     field_len = 2 * limit;          break;          // 0102030405060708090A0B...
-        case MDV_FLD_TYPE_INT8:     field_len = limit > 1
-                                                    ? 5 * limit - 1
-                                                    : 4 * limit;    break;          // -XXX,-XXX,-XXX
-        case MDV_FLD_TYPE_UINT8:    field_len = limit > 1
-                                                    ? 4 * limit - 1
-                                                    : 3 * limit;    break;          // XXX,XXX,XXX
+        case MDV_FLD_TYPE_BOOL:     width = limit;              break;          // 01010110101
+        case MDV_FLD_TYPE_CHAR:     width = limit;              break;          // Text
+        case MDV_FLD_TYPE_BYTE:     width = 2 * limit;          break;          // 0102030405060708090A0B...
+        case MDV_FLD_TYPE_INT8:     width = limit > 1
+                                                ? 5 * limit - 1
+                                                : 4 * limit;    break;          // -XXX,-XXX,-XXX
+        case MDV_FLD_TYPE_UINT8:    width = limit > 1
+                                                ? 4 * limit - 1
+                                                : 3 * limit;    break;          // XXX,XXX,XXX
 
-        case MDV_FLD_TYPE_INT16:    field_len = limit > 1
-                                                    ? 7 * limit - 1
-                                                    : 6 * limit;    break;          // -XXXXX,-XXXXX,-XXXXX
-        case MDV_FLD_TYPE_UINT16:   field_len = limit > 1
-                                                    ? 6 * limit - 1
-                                                    : 5 * limit;    break;          // XXXXX,XXXXX,XXXXX
-        case MDV_FLD_TYPE_INT32:    field_len = limit > 1
-                                                    ? 12 * limit - 1
-                                                    : 11 * limit;   break;          // -XXXXXXXXXX,-XXXXXXXXXX,-XXXXXXXXXX
-        case MDV_FLD_TYPE_UINT32:   field_len = limit > 1
-                                                    ? 11 * limit - 1
-                                                    : 10 * limit;   break;          // XXXXXXXXXX,XXXXXXXXXX,XXXXXXXXXX
-        case MDV_FLD_TYPE_INT64:    field_len = limit > 1
-                                                    ? 21 * limit - 1
-                                                    : 20 * limit;   break;          // -XXXXXXXXXXXXXXXXXXX,-XXXXXXXXXXXXXXXXXXX,-XXXXXXXXXXXXXXXXXXX
-        case MDV_FLD_TYPE_UINT64:   field_len = limit > 1
-                                                    ? 20 * limit - 1
-                                                    : 19 * limit;   break;          // XXXXXXXXXXXXXXXXXXX,XXXXXXXXXXXXXXXXXXX,XXXXXXXXXXXXXXXXXXX
-        case MDV_FLD_TYPE_FLOAT:    field_len = limit > 1
-                                                    ? 12 * limit - 1
-                                                    : 11 * limit;   break;          // -XXXXXXXXXX,-XXXXXXXXXX,-XXXXXXXXXX
-        case MDV_FLD_TYPE_DOUBLE:   field_len = limit > 1
-                                                    ? 21 * limit - 1
-                                                    : 20 * limit;   break;          // -XXXXXXXXXXXXXXXXXXX,-XXXXXXXXXXXXXXXXXXX,-XXXXXXXXXXXXXXXXXXX
+        case MDV_FLD_TYPE_INT16:    width = limit > 1
+                                                ? 7 * limit - 1
+                                                : 6 * limit;    break;          // -XXXXX,-XXXXX,-XXXXX
+        case MDV_FLD_TYPE_UINT16:   width = limit > 1
+                                                ? 6 * limit - 1
+                                                : 5 * limit;    break;          // XXXXX,XXXXX,XXXXX
+        case MDV_FLD_TYPE_INT32:    width = limit > 1
+                                                ? 12 * limit - 1
+                                                : 11 * limit;   break;          // -XXXXXXXXXX,-XXXXXXXXXX,-XXXXXXXXXX
+        case MDV_FLD_TYPE_UINT32:   width = limit > 1
+                                                ? 11 * limit - 1
+                                                : 10 * limit;   break;          // XXXXXXXXXX,XXXXXXXXXX,XXXXXXXXXX
+        case MDV_FLD_TYPE_INT64:    width = limit > 1
+                                                ? 21 * limit - 1
+                                                : 20 * limit;   break;          // -XXXXXXXXXXXXXXXXXXX,-XXXXXXXXXXXXXXXXXXX,-XXXXXXXXXXXXXXXXXXX
+        case MDV_FLD_TYPE_UINT64:   width = limit > 1
+                                                ? 20 * limit - 1
+                                                : 19 * limit;   break;          // XXXXXXXXXXXXXXXXXXX,XXXXXXXXXXXXXXXXXXX,XXXXXXXXXXXXXXXXXXX
+        case MDV_FLD_TYPE_FLOAT:    width = limit > 1
+                                                ? 12 * limit - 1
+                                                : 11 * limit;   break;          // -XXXXXXXXXX,-XXXXXXXXXX,-XXXXXXXXXX
+        case MDV_FLD_TYPE_DOUBLE:   width = limit > 1
+                                                ? 21 * limit - 1
+                                                : 20 * limit;   break;          // -XXXXXXXXXXXXXXXXXXX,-XXXXXXXXXXXXXXXXXXX,-XXXXXXXXXXXXXXXXXXX
     }
 
-    field_len = field_len > field->name.size
-                    ? field_len
-                    : field->name.size;
+    width = width > field_name_len
+                    ? width
+                    : field_name_len;
 
-    field_len = field_len > MDV_MAX_FIELD_WIDTH
+    width = width > MDV_MAX_FIELD_WIDTH
                     ? MDV_MAX_FIELD_WIDTH:
-                    field_len;
+                    width;
 
-    return field_len;
+    return width;
 }
 
 
@@ -113,13 +115,13 @@ static void mdv_cout_spaces(size_t start, size_t end)
 }
 
 
-static void mdv_cout_string(mdv_string const *str, size_t width)
+static void mdv_cout_string(char const *str, size_t str_len, size_t width)
 {
-    if(str->size > width)
-        MDV_OUT("%.*s~", (int)width - 1, str->ptr);
+    if(str_len > width)
+        MDV_OUT("%.*s~", (int)width - 1, str);
     else
     {
-        int const ret = MDV_OUT("%.*s", (int)str->size, str->ptr);
+        int const ret = MDV_OUT("%.*s", (int)str_len, str);
         if (ret >= 0)
             mdv_cout_spaces(ret, width);
     }
@@ -155,14 +157,7 @@ static void mdv_cout_bool(mdv_data const *data, mdv_field const *field)
 static void mdv_cout_char(mdv_data const *data, mdv_field const *field)
 {
     size_t const width = mdv_field_width(field);
-
-    mdv_string const str =
-    {
-        .size = data->size,
-        .ptr = data->ptr
-    };
-
-    mdv_cout_string(&str, width);
+    mdv_cout_string(data->ptr, data->size, width);
 }
 
 
@@ -334,8 +329,9 @@ static void mdv_cout_table_header(mdv_table const *table)
         if (i) MDV_OUT(" | ");
 
         size_t const field_width = mdv_field_width(desc->fields + i);
+        size_t const field_name_len = strlen(desc->fields[i].name);
 
-        mdv_cout_string(&desc->fields[i].name, field_width);
+        mdv_cout_string(desc->fields[i].name, field_name_len, field_width);
     }
     MDV_OUT(" |\n");
 }

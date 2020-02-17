@@ -24,14 +24,14 @@ static void test_table_serialization()
 {
     mdv_field const fields[] =
     {
-        { MDV_FLD_TYPE_CHAR,   0, mdv_str_static("string") },   // char *
-        { MDV_FLD_TYPE_BOOL,   1, mdv_str_static("bool") },     // bool
-        { MDV_FLD_TYPE_UINT64, 2, mdv_str_static("u64pair") }   // uint64[2]
+        { MDV_FLD_TYPE_CHAR,   0, "string" },   // char *
+        { MDV_FLD_TYPE_BOOL,   1, "bool" },     // bool
+        { MDV_FLD_TYPE_UINT64, 2, "u64pair" }   // uint64[2]
     };
 
     mdv_table_desc desc =
     {
-        .name = mdv_str_static("my_table"),
+        .name = "my_table",
         .size = 3,
         .fields = fields
     };
@@ -51,15 +51,13 @@ static void test_table_serialization()
     mdv_table_desc const *deserialized_desc = mdv_table_description(deserialized_table);
 
     mu_check(deserialized_desc->size == desc.size);
-    mu_check(deserialized_desc->name.size == desc.name.size);
-    mu_check(memcmp(deserialized_desc->name.ptr, desc.name.ptr, desc.name.size) == 0);
+    mu_check(strcmp(deserialized_desc->name, desc.name) == 0);
 
     for(uint32_t i = 0; i < desc.size; ++i)
     {
         mu_check(deserialized_desc->fields[i].type == desc.fields[i].type);
         mu_check(deserialized_desc->fields[i].limit == desc.fields[i].limit);
-        mu_check(deserialized_desc->fields[i].name.size == desc.fields[i].name.size);
-        mu_check(memcmp(deserialized_desc->fields[i].name.ptr, desc.fields[i].name.ptr, desc.fields[i].name.size) == 0);
+        mu_check(strcmp(deserialized_desc->fields[i].name, desc.fields[i].name) == 0);
     }
 
     binn_free(&obj);
@@ -72,14 +70,14 @@ static void test_rowset_serialization()
 {
     mdv_field fields[] =
     {
-        { MDV_FLD_TYPE_CHAR,  1, mdv_str_static("col1") },
-        { MDV_FLD_TYPE_CHAR,  2, mdv_str_static("col2") },
-        { MDV_FLD_TYPE_INT32, 3, mdv_str_static("col3") }
+        { MDV_FLD_TYPE_CHAR,  1, "col1" },
+        { MDV_FLD_TYPE_CHAR,  2, "col2" },
+        { MDV_FLD_TYPE_INT32, 3, "col3" }
     };
 
     mdv_table_desc desc =
     {
-        .name = mdv_str_static("MyTable"),
+        .name = "MyTable",
         .size = 3,
         .fields = fields
     };
@@ -147,14 +145,14 @@ static void test_row_slice_serialization()
 {
     mdv_field fields[] =
     {
-        { MDV_FLD_TYPE_CHAR,  1, mdv_str_static("col1") },
-        { MDV_FLD_TYPE_CHAR,  2, mdv_str_static("col2") },
-        { MDV_FLD_TYPE_INT32, 3, mdv_str_static("col3") }
+        { MDV_FLD_TYPE_CHAR,  1, "col1" },
+        { MDV_FLD_TYPE_CHAR,  2, "col2" },
+        { MDV_FLD_TYPE_INT32, 3, "col3" }
     };
 
     mdv_table_desc desc =
     {
-        .name = mdv_str_static("MyTable"),
+        .name = "MyTable",
         .size = 3,
         .fields = fields
     };

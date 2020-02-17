@@ -14,12 +14,25 @@ cmake_minimum_required(VERSION 3.10)
 project(MedvedDB C)
 cmake_policy(SET CMP0015 NEW)
 
+#*********************************************************
+# Options
+#*********************************************************
+option(BUILD_JNI "Build java native interface" ON)
+
+
+#*********************************************************
+# Version
+#*********************************************************
 SET(MAJOR_VERSION 1)
 SET(MINOR_VERSION 0)
 SET(PATCH_VERSION 0)
 
 set(VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION})
 
+
+#*********************************************************
+# Paths to root and libraries directories
+#*********************************************************
 set(ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(LIBS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mdv_thirdparty)
 
@@ -129,59 +142,64 @@ add_documentation(doc Doxyfile)
 find_package(SWIG)
 
 if(SWIG_FOUND)
-    #*********************************************************
-    # Java
-    #*********************************************************
-    find_package(JNI)
-    find_package(Java COMPONENTS Runtime Development)
+    if(BUILD_JNI)
+        #*********************************************************
+        # Java
+        #*********************************************************
+        find_package(JNI)
+        find_package(Java COMPONENTS Runtime Development)
 
-    if(JNI_FOUND AND Java_FOUND)
-        include(UseJava)
+        if(JNI_FOUND AND Java_FOUND)
+            include(UseJava)
 
-        set(SWIG_OUTDIR ${BIN_DIR}/mdv_api4j)
+            set(SWIG_OUTDIR ${BIN_DIR}/mdv_api4j)
 
-        set(SWIG_OUT ${SWIG_OUTDIR}/mdv_wrap.c)
+            set(SWIG_OUT ${SWIG_OUTDIR}/mdv_wrap.c)
 
-        set(SWIG_FLAGS
-            -java
-            -outdir     ${SWIG_OUTDIR}
-            -o          ${SWIG_OUT}
-            -package    mdv
-            -I${ROOT_DIR}/mdv_api
-            -I${ROOT_DIR}/mdv_platform)
+            set(SWIG_FLAGS
+                -java
+                -outdir     ${SWIG_OUTDIR}
+                -o          ${SWIG_OUT}
+                -package    mdv
+                -I${ROOT_DIR}/mdv_api
+                -I${ROOT_DIR}/mdv_types
+                -I${ROOT_DIR}/mdv_platform)
 
-        set(SWIG_FILE ${ROOT_DIR}/assets/swig/mdv.i)
+            set(SWIG_FILE ${ROOT_DIR}/assets/swig/mdv.i)
 
-        set(JAVA_SOURCES
-            ${SWIG_OUTDIR}/mdv.java
-            ${SWIG_OUTDIR}/mdvJNI.java
-            ${SWIG_OUTDIR}/String.java
-            ${SWIG_OUTDIR}/UUID.java
-            ${SWIG_OUTDIR}/Client.java
-            ${SWIG_OUTDIR}/ClientConfig.java
-            ${SWIG_OUTDIR}/ClientConfigConnection.java
-            ${SWIG_OUTDIR}/ClientConfigDb.java
-            ${SWIG_OUTDIR}/ClientConfigThreadpool.java
-        )
+            set(JAVA_SOURCES
+                ${SWIG_OUTDIR}/mdv.java
+                ${SWIG_OUTDIR}/mdvJNI.java
+                ${SWIG_OUTDIR}/UUID.java
+                ${SWIG_OUTDIR}/BitSet.java
+                ${SWIG_OUTDIR}/Field.java
+                ${SWIG_OUTDIR}/FieldType.java 
+                ${SWIG_OUTDIR}/Client.java
+                ${SWIG_OUTDIR}/ClientConfig.java
+                ${SWIG_OUTDIR}/ClientDbConfig.java
+                ${SWIG_OUTDIR}/ClientConnectionConfig.java
+                ${SWIG_OUTDIR}/ClientThreadpoolConfig.java
+            )
 
-        add_custom_target(swig4j ALL
-            COMMAND     ${SWIG_EXECUTABLE} ${SWIG_FLAGS} ${SWIG_FILE}
-            BYPRODUCTS  ${SWIG_OUT} ${JAVA_SOURCES})
+            add_custom_target(swig4j ALL
+                COMMAND     ${SWIG_EXECUTABLE} ${SWIG_FLAGS} ${SWIG_FILE}
+                BYPRODUCTS  ${SWIG_OUT} ${JAVA_SOURCES})
 
-        add_library(mdv4j SHARED ${SWIG_OUT})
-        target_include_directories(mdv4j
-                                   PRIVATE ${ROOT_DIR}/mdv_api
-                                   PRIVATE ${ROOT_DIR}/mdv_types
-                                   PRIVATE ${ROOT_DIR}/mdv_platform
-                                   PRIVATE ${JNI_INCLUDE_DIRS})
-        target_link_libraries(mdv4j mdv_api)
-        set_property(TARGET mdv4j PROPERTY LIBRARY_OUTPUT_DIRECTORY ${SWIG_OUTDIR})
+            add_library(mdv4j SHARED ${SWIG_OUT})
+            target_include_directories(mdv4j
+                                       PRIVATE ${ROOT_DIR}/mdv_api
+                                       PRIVATE ${ROOT_DIR}/mdv_types
+                                       PRIVATE ${ROOT_DIR}/mdv_platform
+                                       PRIVATE ${JNI_INCLUDE_DIRS})
+            target_link_libraries(mdv4j mdv_api)
+            set_property(TARGET mdv4j PROPERTY LIBRARY_OUTPUT_DIRECTORY ${SWIG_OUTDIR})
 
-        set(CMAKE_JNI_TARGET TRUE)
+            set(CMAKE_JNI_TARGET TRUE)
 
-        add_jar(mdv_java ${JAVA_SOURCES}
-                VERSION 1.0.0
-                OUTPUT_NAME mdv4j
-                OUTPUT_DIR ${SWIG_OUTDIR})
-    endif()
-endif()
+            add_jar(mdv_java ${JAVA_SOURCES}
+                    VERSION 1.0.0
+                    OUTPUT_NAME mdv4j
+                    OUTPUT_DIR ${SWIG_OUTDIR})
+        endif()
+    endif(BUILD_JNI)
+endif(SWIG_FOUND)

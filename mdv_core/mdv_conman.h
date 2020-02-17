@@ -60,7 +60,7 @@ void mdv_conman_free(mdv_conman *conman);
  * @return On success, return MDV_OK
  * @return On error, return nonzero error code
  */
-mdv_errno mdv_conman_bind(mdv_conman *conman, mdv_string const addr);
+mdv_errno mdv_conman_bind(mdv_conman *conman, char const *addr);
 
 
 /**
@@ -73,4 +73,4 @@ mdv_errno mdv_conman_bind(mdv_conman *conman, mdv_string const addr);
  * @return On success, return MDV_OK
  * @return On error, return nonzero error code
  */
-mdv_errno mdv_conman_connect(mdv_conman *conman, mdv_string const addr, uint8_t type);
+mdv_errno mdv_conman_connect(mdv_conman *conman, char const *addr, uint8_t type);

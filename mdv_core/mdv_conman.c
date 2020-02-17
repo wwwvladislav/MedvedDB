@@ -115,8 +115,7 @@ static void mdv_conman_connect_to_peers(mdv_conman *conman, mdv_topology *topolo
             if (!mdv_bitset_test(linked_nodes, i))
             {
                 mdv_toponode const *node = mdv_vector_at(nodes, i);
-                mdv_string const addr = mdv_str(node->addr);
-                mdv_conman_connect(conman, addr, MDV_PEER_CHANNEL);
+                mdv_conman_connect(conman, node->addr, MDV_PEER_CHANNEL);
             }
         }
 
@@ -246,7 +245,7 @@ void mdv_conman_free(mdv_conman *conman)
 }
 
 
-mdv_errno mdv_conman_bind(mdv_conman *conman, mdv_string const addr)
+mdv_errno mdv_conman_bind(mdv_conman *conman, char const *addr)
 {
     mdv_errno err = mdv_chaman_listen(conman->chaman, addr);
 
@@ -257,7 +256,7 @@ mdv_errno mdv_conman_bind(mdv_conman *conman, mdv_string const addr)
 }
 
 
-mdv_errno mdv_conman_connect(mdv_conman *conman, mdv_string const addr, uint8_t type)
+mdv_errno mdv_conman_connect(mdv_conman *conman, char const *addr, uint8_t type)
 {
     mdv_errno err = mdv_chaman_dial(conman->chaman, addr, type);
 

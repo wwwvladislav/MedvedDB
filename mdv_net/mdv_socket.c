@@ -56,19 +56,21 @@ static char const * mdv_socket_type2str(mdv_socket_type t)
         default:
             break;
     }
-    return "";
+    return 0;
 }
 
 
-mdv_errno mdv_str2sockaddr(mdv_string const str, mdv_socket_type *protocol, mdv_sockaddr *addr)
+mdv_errno mdv_str2sockaddr(char const *str, mdv_socket_type *protocol, mdv_sockaddr *addr)
 {
-    if (mdv_str_empty(str) || !addr)
+    if (!str || !addr)
     {
         MDV_LOGE("Invalid argument");
         return MDV_INVALID_ARG;
     }
 
-    if (str.size > MDV_ADDR_LEN_MAX)
+    size_t const str_size = strlen(str) + 1;
+
+    if (str_size > MDV_ADDR_LEN_MAX)
     {
         MDV_LOGE("Address length is too long");
         return MDV_INVALID_ARG;
@@ -76,8 +78,8 @@ mdv_errno mdv_str2sockaddr(mdv_string const str, mdv_socket_type *protocol, mdv_
 
     memset(addr, 0, sizeof *addr);
 
-    char buf[str.size];
-    memcpy(buf, str.ptr, str.size);
+    char buf[str_size];
+    memcpy(buf, str, str_size);
 
     char *host = buf;
 
@@ -135,37 +137,40 @@ mdv_errno mdv_str2sockaddr(mdv_string const str, mdv_socket_type *protocol, mdv_
 }
 
 
-mdv_string mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr)
+char const * mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr)
 {
     if (!addr)
     {
         MDV_LOGE("Invalid argument");
-        return mdv_str_null;
+        return 0;
     }
 
-    static _Thread_local char buf[MDV_ADDR_LEN_MAX];
+    static _Thread_local char str[MDV_ADDR_LEN_MAX];
 
-    buf[0] = 0;
+    str[0] = 0;
 
-    mdv_string str = mdv_str_static(buf);
+    unsigned addr_len = 0;
 
     char const *proto = mdv_socket_type2str(protocol);
 
-    unsigned proto_len = strlen(proto);
+    if (proto)
+    {
+        snprintf(str, sizeof str, "%s://", proto);
+        addr_len += strlen(proto) + 3;
+    }
 
-    if (proto_len && proto_len + 3 < str.size)
-        snprintf(str.ptr, str.size, "%s://", proto);
-
-    proto_len += 3;
-
-    int err = getnameinfo((struct sockaddr const *)addr, sizeof *addr, str.ptr + proto_len, str.size - proto_len, 0, 0, NI_NUMERICHOST | NI_NUMERICSERV);
+    int err = getnameinfo((struct sockaddr const *)addr, sizeof *addr,
+                          str + addr_len, sizeof str - addr_len,
+                          0, 0,
+                          NI_NUMERICHOST | NI_NUMERICSERV);
 
     if (err)
-        return mdv_str_null;
+        return 0;
 
-    unsigned addr_len = strlen(str.ptr);
-    if (addr_len < str.size)
-        snprintf(str.ptr + addr_len, str.size - addr_len, ":%u", ntohs(((struct sockaddr_in const *)addr)->sin_port));
+    addr_len = strlen(str);
+
+    if (addr_len < sizeof str)
+        snprintf(str + addr_len, sizeof str - addr_len, ":%u", ntohs(((struct sockaddr_in const *)addr)->sin_port));
 
     return str;
 }

@@ -4,7 +4,6 @@
  */
 
 #pragma once
-#include "mdv_string.h"
 #include "mdv_def.h"
 
 
@@ -68,7 +67,7 @@ size_t mdv_uuid_hash(mdv_uuid const *a);
  *
  * @return string representation of UUID
  */
-mdv_string mdv_uuid_to_str(mdv_uuid const *uuid);
+char const * mdv_uuid_to_str(mdv_uuid const *uuid);
 
 
 /**
@@ -80,4 +79,4 @@ mdv_string mdv_uuid_to_str(mdv_uuid const *uuid);
  * @return On success, return true and UUID is placed to UUID pointer
  * @return On error, return false
  */
-bool mdv_uuid_from_str(mdv_uuid *uuid, mdv_string const *str);
+bool mdv_uuid_from_str(mdv_uuid *uuid, char const *str);

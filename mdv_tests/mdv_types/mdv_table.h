@@ -8,14 +8,14 @@ MU_TEST(types_table)
 {
     mdv_field const fields[] =
     {
-        { MDV_FLD_TYPE_CHAR, 0, mdv_str_static("Col1") },   // char *
-        { MDV_FLD_TYPE_CHAR, 0, mdv_str_static("Col2") },   // char *
-        { MDV_FLD_TYPE_CHAR, 0, mdv_str_static("Col3") }    // char *
+        { MDV_FLD_TYPE_CHAR, 0, "Col1" },   // char *
+        { MDV_FLD_TYPE_CHAR, 0, "Col2" },   // char *
+        { MDV_FLD_TYPE_CHAR, 0, "Col3" }    // char *
     };
 
     mdv_table_desc desc =
     {
-        .name = mdv_str_static("MyTable"),
+        .name = "MyTable",
         .size = 3,
         .fields = fields
     };
@@ -31,23 +31,23 @@ MU_TEST(types_table)
     mdv_table *slice = mdv_table_slice(table, mask);
 
     mu_check(mdv_uuid_cmp(mdv_table_uuid(table), mdv_table_uuid(slice)) == 0);
-    mu_check(strcmp(mdv_table_description(table)->name.ptr,
-                    mdv_table_description(slice)->name.ptr) == 0);
+    mu_check(strcmp(mdv_table_description(table)->name,
+                    mdv_table_description(slice)->name) == 0);
     mu_check(mdv_table_description(slice)->size == 2);
 
     mu_check(mdv_table_description(table)->fields[0].type ==
              mdv_table_description(slice)->fields[0].type);
     mu_check(mdv_table_description(table)->fields[0].limit ==
              mdv_table_description(slice)->fields[0].limit);
-    mu_check(strcmp(mdv_table_description(table)->fields[0].name.ptr,
-                    mdv_table_description(slice)->fields[0].name.ptr) == 0);
+    mu_check(strcmp(mdv_table_description(table)->fields[0].name,
+                    mdv_table_description(slice)->fields[0].name) == 0);
 
     mu_check(mdv_table_description(table)->fields[2].type ==
              mdv_table_description(slice)->fields[1].type);
     mu_check(mdv_table_description(table)->fields[2].limit ==
              mdv_table_description(slice)->fields[1].limit);
-    mu_check(strcmp(mdv_table_description(table)->fields[2].name.ptr,
-                    mdv_table_description(slice)->fields[1].name.ptr) == 0);
+    mu_check(strcmp(mdv_table_description(table)->fields[2].name,
+                    mdv_table_description(slice)->fields[1].name) == 0);
 
     mu_check(mdv_bitset_release(mask) == 0);
     mu_check(mdv_table_release(table) == 0);

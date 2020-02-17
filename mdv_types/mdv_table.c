@@ -3,6 +3,7 @@
 #include <mdv_log.h>
 #include <stdatomic.h>
 #include <assert.h>
+#include <string.h>
 
 
 struct mdv_table
@@ -27,12 +28,12 @@ static size_t mdv_table_size(mdv_table_desc const *desc, mdv_bitset const *mask,
         if (mask && !mdv_bitset_test(mask, i))
             continue;
 
-        size += desc->fields[i].name.size;
+        size += strlen(desc->fields[i].name) + 1;
         ++*fields_count;
     }
 
     size += sizeof(mdv_table)
-            + desc->name.size
+            + strlen(desc->name) + 1
             + *fields_count * sizeof(mdv_field);
 
     return size;
@@ -63,10 +64,10 @@ static mdv_table * mdv_table_create_impl(mdv_uuid const       *id,
 
     table->id = *id;
 
-    table->desc.name.size = desc->name.size;
-    table->desc.name.ptr = strings;
-    memcpy(strings, desc->name.ptr, desc->name.size);
-    strings += desc->name.size;
+    size_t const table_name_size = strlen(desc->name) + 1;
+    memcpy(strings, desc->name, table_name_size);
+    table->desc.name = strings;
+    strings += table_name_size;
 
     table->desc.size = fields_count;
     table->desc.fields = fields;
@@ -79,13 +80,13 @@ static mdv_table * mdv_table_create_impl(mdv_uuid const       *id,
         mdv_field       *dst = fields + n;
         mdv_field const *src = desc->fields + i;
 
-        dst->type = src->type;
+        dst->type  = src->type;
         dst->limit = src->limit;
-        dst->name.size = src->name.size;
-        dst->name.ptr = strings;
+        dst->name  = strings;
 
-        memcpy(strings, src->name.ptr, src->name.size);
-        strings += src->name.size;
+        size_t const src_name_size = strlen(src->name) + 1;
+        memcpy(strings, src->name, src_name_size);
+        strings += src_name_size;
 
         ++n;
     }

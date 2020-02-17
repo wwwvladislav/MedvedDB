@@ -23,6 +23,14 @@ struct mdv_client_threadpool_config;
 %clearnodefault;
 
 
+%extend mdv_client_db_config
+{
+    ~mdv_client_db_config()
+    {
+        free((void*)self->addr);
+    }
+}
+
 %include "mdv_client_config.h"
 
 

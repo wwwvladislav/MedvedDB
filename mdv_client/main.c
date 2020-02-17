@@ -330,11 +330,15 @@ static void mdv_test_scenario(char const *args)
 
 static mdv_client * mdv_connect(char const *addr)
 {
+    size_t const addr_len = strlen(addr);
+    char tmp[addr_len + 1];
+    memcpy(tmp, addr, addr_len + 1);
+
     mdv_client_config config =
     {
         .db =
         {
-            .addr = addr
+            .addr = tmp
         },
         .connection =
         {

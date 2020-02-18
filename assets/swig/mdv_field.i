@@ -10,4 +10,11 @@
 %rename(FieldType)          mdv_field_type;
 %rename(fieldTypeSize)      mdv_field_type_size;
 
+%ignore mdv_field::mdv_field();
+%ignore mdv_field::~mdv_field();
+
+%immutable mdv_field::name;
+
 %include "mdv_field.h"
+
+

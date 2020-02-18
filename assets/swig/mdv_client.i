@@ -23,11 +23,31 @@ struct mdv_client_threadpool_config;
 %clearnodefault;
 
 
-%extend mdv_client_db_config
+%ignore mdv_client_config::mdv_client_config();
+%ignore mdv_client_db_config::mdv_client_db_config();
+
+%immutable mdv_client_config::db;
+%immutable mdv_client_config::connection;
+%immutable mdv_client_config::threadpool;
+
+%immutable mdv_client_db_config::addr;
+
+%extend mdv_client_config
 {
-    ~mdv_client_db_config()
+    mdv_client_config(char const *addr)
     {
-        free((void*)self->addr);
+        size_t const addr_len = strlen(addr);
+
+        mdv_client_config *cfg = malloc(sizeof(mdv_client_config) + addr_len + 1);
+
+        if(!cfg)
+            return 0;
+
+        char *buff = (char *)(cfg + 1);
+        memcpy(buff, addr, addr_len + 1);
+        cfg->db.addr = buff;
+
+        return cfg;
     }
 }
 

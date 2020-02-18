@@ -11,7 +11,7 @@
 /// DB settings
 typedef struct mdv_client_db_config
 {
-    char *addr;                     ///< DB address
+    char const *addr;               ///< DB address
 } mdv_client_db_config;
 
 

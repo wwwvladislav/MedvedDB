@@ -23,7 +23,7 @@ typedef enum
 } mdv_field_type;
 
 
-typedef struct
+typedef struct mdv_field
 {
     mdv_field_type  type;       // field type
 

@@ -174,6 +174,7 @@ if(SWIG_FOUND)
                 ${SWIG_OUTDIR}/BitSet.java
                 ${SWIG_OUTDIR}/Field.java
                 ${SWIG_OUTDIR}/FieldType.java 
+                ${SWIG_OUTDIR}/TableDesc.java
                 ${SWIG_OUTDIR}/Client.java
                 ${SWIG_OUTDIR}/ClientConfig.java
                 ${SWIG_OUTDIR}/ClientDbConfig.java

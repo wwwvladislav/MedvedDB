@@ -14,7 +14,9 @@ mdv_descriptor mdv_timerfd()
     if (ret == -1)
     {
         int err = mdv_error();
-        MDV_LOGE("timerfd creation failed with error: '%s' (%d)", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("timerfd creation failed with error: '%s' (%d)",
+                    mdv_strerror(err, err_msg, sizeof err_msg), err);
         return MDV_INVALID_DESCRIPTOR;
     }
 
@@ -61,7 +63,9 @@ mdv_errno mdv_timerfd_settime(mdv_descriptor fd, size_t start, size_t interval)
     if (timerfd_settime(tfd, /* TFD_TIMER_ABSTIME */ 0, &timerspec, 0) != 0)
     {
         mdv_errno err = mdv_error();
-        MDV_LOGE("timerfd_settime failed with error: '%s' (%d)", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("timerfd_settime failed with error: '%s' (%d)",
+                    mdv_strerror(err, err_msg, sizeof err_msg), err);
         return err;
     }
 

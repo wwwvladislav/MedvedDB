@@ -60,14 +60,18 @@ int mdv_uuid_cmp(mdv_uuid const *a, mdv_uuid const *b);
 size_t mdv_uuid_hash(mdv_uuid const *a);
 
 
+enum { MDV_UUID_STR_LEN = 33 };
+
+
 /**
  * @brief Convert UUID to string
  *
  * @param uuid [in] UUID
+ * @param buf [out] desination buffer for string representation of UUID
  *
  * @return string representation of UUID
  */
-char const * mdv_uuid_to_str(mdv_uuid const *uuid);
+char const * mdv_uuid_to_str(mdv_uuid const *uuid, char buf[MDV_UUID_STR_LEN]);
 
 
 /**

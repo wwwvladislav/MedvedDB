@@ -5,7 +5,7 @@
 
 MU_TEST(platform_bitset)
 {
-    mdv_bitset *bitset = mdv_bitset_create(33, &mdv_stallocator);
+    mdv_bitset *bitset = mdv_bitset_create(33, &mdv_default_allocator);
 
     mu_check(mdv_bitset_set(bitset, 0));
     mu_check(mdv_bitset_set(bitset, 32));

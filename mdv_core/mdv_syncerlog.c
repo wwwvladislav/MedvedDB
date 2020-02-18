@@ -237,8 +237,9 @@ static mdv_errno mdv_syncerlog_schedule(mdv_syncerlog *syncerlog, mdv_trlog *trl
 
             if (synced < rrange)
             {
+                char uuid_str[MDV_UUID_STR_LEN];
                 MDV_LOGI("Sync job for peer \'%s\': %" PRId64 "-%" PRId64,
-                        mdv_uuid_to_str(&syncerlog->peer),
+                        mdv_uuid_to_str(&syncerlog->peer, uuid_str),
                         synced,
                         rrange);
 
@@ -334,9 +335,12 @@ mdv_syncerlog * mdv_syncerlog_create(mdv_uuid const *uuid, mdv_uuid const *peer,
 
     mdv_syncerlog_start(syncerlog);
 
-    char peer_uuid[33];
-    memcpy(peer_uuid, mdv_uuid_to_str(peer), sizeof peer_uuid);
-    MDV_LOGI("Transaction log synchronizer created for peer \'%s\' and log \'%s\'", peer_uuid, mdv_uuid_to_str(trlog));
+    char peer_uuid_str[MDV_UUID_STR_LEN];
+    char trlog_uuid_str[MDV_UUID_STR_LEN];
+
+    MDV_LOGI("Transaction log synchronizer created for peer \'%s\' and log \'%s\'",
+                mdv_uuid_to_str(peer, peer_uuid_str),
+                mdv_uuid_to_str(trlog, trlog_uuid_str));
 
     return syncerlog;
 }
@@ -363,9 +367,12 @@ static void mdv_syncerlog_free(mdv_syncerlog *syncerlog)
 
     mdv_jobber_release(syncerlog->jobber);
 
-    char peer_uuid[33];
-    memcpy(peer_uuid, mdv_uuid_to_str(&syncerlog->peer), sizeof peer_uuid);
-    MDV_LOGI("Transaction log synchronizer deleted for peer \'%s\' and log \'%s\'", peer_uuid, mdv_uuid_to_str(&syncerlog->trlog));
+    char peer_uuid_str[MDV_UUID_STR_LEN];
+    char trlog_uuid_str[MDV_UUID_STR_LEN];
+
+    MDV_LOGI("Transaction log synchronizer deleted for peer \'%s\' and log \'%s\'",
+                mdv_uuid_to_str(&syncerlog->peer, peer_uuid_str),
+                mdv_uuid_to_str(&syncerlog->trlog, trlog_uuid_str));
 
     memset(syncerlog, 0, sizeof(*syncerlog));
     mdv_free(syncerlog, "syncerlog");

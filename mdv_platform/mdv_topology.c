@@ -64,7 +64,7 @@ static mdv_vector * mdv_topology_linked_nodes(mdv_vector *topolinks, mdv_vector 
                                  sizeof(mdv_toponode),
                                  &mdv_default_allocator);
 
-    uint32_t *node_idxs = mdv_stalloc(sizeof(uint32_t) * mdv_vector_size(toponodes), "node_idxs");
+    uint32_t *node_idxs = mdv_alloc(sizeof(uint32_t) * mdv_vector_size(toponodes), "node_idxs");
 
     if (!node_idxs)
         return 0;
@@ -95,7 +95,7 @@ static mdv_vector * mdv_topology_linked_nodes(mdv_vector *topolinks, mdv_vector 
 
     if (!linked_nodes)
     {
-        mdv_stfree(node_idxs, "node_idxs");
+        mdv_free(node_idxs, "node_idxs");
         return 0;
     }
 
@@ -118,7 +118,7 @@ static mdv_vector * mdv_topology_linked_nodes(mdv_vector *topolinks, mdv_vector 
         link->node[1] = node_idxs[link->node[1]];
     }
 
-    mdv_stfree(node_idxs, "node_idxs");
+    mdv_free(node_idxs, "node_idxs");
 
     return linked_nodes;
 }

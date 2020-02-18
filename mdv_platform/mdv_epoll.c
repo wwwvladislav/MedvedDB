@@ -15,7 +15,8 @@ mdv_descriptor mdv_epoll_create()
     if (epoll_fd < 0)
     {
         int err = mdv_error();
-        MDV_LOGE("Epoll creation failed with error: '%s' %d", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("Epoll creation failed with error: '%s' %d", mdv_strerror(err, err_msg, sizeof err_msg), err);
         return MDV_INVALID_DESCRIPTOR;
     }
 
@@ -85,7 +86,8 @@ mdv_errno mdv_epoll_add(mdv_descriptor epfd, mdv_descriptor fd, mdv_epoll_event 
     if(err == -1)
     {
         err = mdv_error();
-        MDV_LOGE("epoll_add failed due the error '%s' (%d)", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("epoll_add failed due the error '%s' (%d)", mdv_strerror(err, err_msg, sizeof err_msg), err);
         return err;
     }
 
@@ -106,7 +108,8 @@ mdv_errno mdv_epoll_mod(mdv_descriptor epfd, mdv_descriptor fd, mdv_epoll_event 
     if(err == -1)
     {
         err = mdv_error();
-        MDV_LOGE("epoll_add failed due the error '%s' (%d)", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("epoll_add failed due the error '%s' (%d)", mdv_strerror(err, err_msg, sizeof err_msg), err);
         return err;
     }
 
@@ -123,7 +126,8 @@ mdv_errno mdv_epoll_del(mdv_descriptor epfd, mdv_descriptor fd)
     if(err == -1)
     {
         err = mdv_error();
-        MDV_LOGE("epoll_del failed due the error '%s' (%d)", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("epoll_del failed due the error '%s' (%d)", mdv_strerror(err, err_msg, sizeof err_msg), err);
         return err;
     }
 
@@ -142,7 +146,8 @@ mdv_errno mdv_epoll_wait(mdv_descriptor epfd, mdv_epoll_event *events, uint32_t 
     if (err == -1)
     {
         err = mdv_error();
-        MDV_LOGE("epoll_wait failed due the error '%s' (%d)", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("epoll_wait failed due the error '%s' (%d)", mdv_strerror(err, err_msg, sizeof err_msg), err);
         return err;
     }
 

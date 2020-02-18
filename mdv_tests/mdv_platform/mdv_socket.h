@@ -14,7 +14,9 @@ MU_TEST(platform_socket)
 
     mu_check(protocol == MDV_SOCK_STREAM);
 
-    char const *tmp = mdv_sockaddr2str(protocol, &addr);
+    char addr_str[MDV_ADDR_LEN_MAX];
+
+    char const *tmp = mdv_sockaddr2str(protocol, &addr, addr_str, sizeof addr_str);
 
     mu_check(!!tmp);
 

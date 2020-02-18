@@ -19,7 +19,8 @@ mdv_descriptor mdv_eventfd(bool semaphore)
     if (ret == -1)
     {
         int err = mdv_error();
-        MDV_LOGE("eventfd creation failed with error: '%s' (%d)", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("eventfd creation failed with error: '%s' (%d)", mdv_strerror(err, err_msg, sizeof err_msg), err);
         return MDV_INVALID_DESCRIPTOR;
     }
 

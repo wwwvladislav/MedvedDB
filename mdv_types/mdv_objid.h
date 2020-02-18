@@ -17,4 +17,7 @@ typedef union __attribute__((packed))
 } mdv_objid;
 
 
-char const * mdv_objid_to_str(mdv_objid const *objid);
+enum { MDV_OBJID_STR_LEN = 25 };
+
+
+char const * mdv_objid_to_str(mdv_objid const *objid, char buf[MDV_OBJID_STR_LEN]);

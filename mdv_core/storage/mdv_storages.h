@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <stddef.h>
 #include <mdv_uuid.h>
 
 
@@ -16,7 +17,7 @@
 #define MDV_MAP_IDGEN                   "IDGEN"             /// Identifiers generator for objects
 
 
-char const *MDV_STRG_UUID(mdv_uuid const *uuid);
+char const *MDV_STRG_UUID(mdv_uuid const *uuid, char *name, size_t size);
 #define MDV_STRG_TRLOG_MAPS             2
 #define MDV_MAP_TRLOG                   "TRLOG"             /// Transaction log
 #define MDV_MAP_APPLIED                 "APPLIED"           /// Transaction logs applied position

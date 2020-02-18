@@ -44,22 +44,20 @@ size_t mdv_uuid_hash(mdv_uuid const *a)
 }
 
 
-char const * mdv_uuid_to_str(mdv_uuid const *uuid)
+char const * mdv_uuid_to_str(mdv_uuid const *uuid, char buf[MDV_UUID_STR_LEN])
 {
-    static _Thread_local char dst[33];
-
     static char const hex[] = "0123456789ABCDEF";
     size_t const size = 2 * sizeof uuid->u8;
 
     for(size_t i = 0; i < size; ++i)
     {
         uint8_t const d = (uuid->u8[i / 2] >> ((1 - i % 2) * 4)) & 0xF;
-        dst[i] = hex[d];
+        buf[i] = hex[d];
     }
 
-    dst[size] = 0;
+    buf[MDV_UUID_STR_LEN - 1] = 0;
 
-    return dst;
+    return buf;
 }
 
 

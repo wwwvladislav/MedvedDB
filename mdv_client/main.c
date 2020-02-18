@@ -137,8 +137,13 @@ static void mdv_show_topology(char const *args)
         {
             mdv_toponode const *src_node = mdv_vector_at(toponodes, link->node[0]);
             mdv_toponode const *dst_node = mdv_vector_at(toponodes, link->node[1]);
-            MDV_OUT("  \"%s\" -- ", mdv_uuid_to_str(&src_node->uuid));
-            MDV_OUT("\"%s\"\n", mdv_uuid_to_str(&dst_node->uuid));
+
+            char src_uuid_str[MDV_UUID_STR_LEN];
+            char dst_uuid_str[MDV_UUID_STR_LEN];
+
+            MDV_OUT("  \"%s\" -- \"%s\"\n",
+                    mdv_uuid_to_str(&src_node->uuid, src_uuid_str),
+                    mdv_uuid_to_str(&dst_node->uuid, dst_uuid_str));
         }
 
         MDV_OUT("}\n");
@@ -166,7 +171,8 @@ static void mdv_show_routes(char const *args)
 
         mdv_hashmap_foreach(routes, mdv_uuid, uuid)
         {
-            MDV_OUT("  \"%s\"\n", mdv_uuid_to_str(uuid));
+            char uuid_str[MDV_UUID_STR_LEN];
+            MDV_OUT("  \"%s\"\n", mdv_uuid_to_str(uuid, uuid_str));
         }
 
         MDV_OUT("}\n");
@@ -245,7 +251,11 @@ static void mdv_test_scenario(char const *args)
         return;
     }
 
-    MDV_INF("New table '%s' with ID '%s' successfully created\n", desc.name, mdv_uuid_to_str(mdv_table_uuid(table)));
+    char uuid_str[MDV_UUID_STR_LEN];
+
+    MDV_INF("New table '%s' with ID '%s' successfully created\n",
+                desc.name,
+                mdv_uuid_to_str(mdv_table_uuid(table), uuid_str));
 
     // Rowset creation
 
@@ -293,8 +303,12 @@ static void mdv_test_scenario(char const *args)
 
     if (err == MDV_OK)
         MDV_INF("New row was successfully inserted\n");
-     else
-        MDV_INF("New row insertion failed with error '%s' (%d)\n", mdv_strerror(err), err);
+    else
+    {
+        char err_msg[128];
+        MDV_INF("New row insertion failed with error '%s' (%d)\n",
+                        mdv_strerror(err, err_msg, sizeof err_msg), err);
+    }
 
     mdv_rowset_release(rowset);
 

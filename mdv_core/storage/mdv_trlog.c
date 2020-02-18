@@ -124,15 +124,17 @@ mdv_trlog * mdv_trlog_open(mdv_ebus *ebus, char const *dir, mdv_uuid const *uuid
     trlog->uuid = *uuid;
     trlog->id = id;
 
+    char storage_name[64];
+
     trlog->storage = mdv_storage_open(dir,
-                                      MDV_STRG_UUID(uuid),
+                                      MDV_STRG_UUID(uuid, storage_name, sizeof storage_name),
                                       MDV_STRG_TRLOG_MAPS,
                                       MDV_STRG_NOSUBDIR,
                                       MDV_CONFIG.storage.max_size);
 
     if (!trlog->storage)
     {
-        MDV_LOGE("Storage '%s' wasn't created", MDV_STRG_UUID(uuid));
+        MDV_LOGE("Storage '%s' wasn't created", storage_name);
         mdv_rollback(rollbacker);
         return 0;
     }

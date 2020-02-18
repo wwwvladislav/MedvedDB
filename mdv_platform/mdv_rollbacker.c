@@ -12,7 +12,7 @@ struct mdv_rollbacker
 
 mdv_rollbacker * mdv_rollbacker_create(size_t capacity)
 {
-    mdv_rollbacker *rbr = mdv_stalloc(offsetof(mdv_rollbacker, ops) + sizeof(mdv_rollback_op) * (capacity + 1), "rollbacker");
+    mdv_rollbacker *rbr = mdv_alloc(offsetof(mdv_rollbacker, ops) + sizeof(mdv_rollback_op) * (capacity + 1), "rollbacker");
 
     if (rbr)
     {
@@ -29,7 +29,7 @@ mdv_rollbacker * mdv_rollbacker_create(size_t capacity)
 void mdv_rollbacker_free(mdv_rollbacker *rbr)
 {
     if (rbr)
-        mdv_stfree(rbr, "rollbacker");
+        mdv_free(rbr, "rollbacker");
 }
 
 

@@ -32,11 +32,13 @@ mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_uuid const *table)
 
     rowdata->table = *table;
 
-    rowdata->objects = mdv_objects_open(dir, MDV_STRG_UUID(table));
+    char storage_name[64];
+
+    rowdata->objects = mdv_objects_open(dir, MDV_STRG_UUID(table, storage_name, sizeof storage_name));
 
     if (!rowdata->objects)
     {
-        MDV_LOGE("Rowdata storage '%s' wasn't created", MDV_STRG_UUID(table));
+        MDV_LOGE("Rowdata storage '%s' wasn't created", storage_name);
         mdv_rollback(rollbacker);
         return 0;
     }
@@ -137,7 +139,11 @@ mdv_errno mdv_rowdata_add_raw_rowset(mdv_rowdata *rowdata, mdv_objid const *id, 
     mdv_errno err = mdv_objects_add_batch(rowdata->objects, &it, mdv_rowdata_batch_next);
 
     if (err != MDV_OK)
-        MDV_LOGE("Row insertion failed with error %d (%s)", err, mdv_strerror(err));
+    {
+        char err_msg[128];
+        MDV_LOGE("Row insertion failed with error %d (%s)",
+                err, mdv_strerror(err, err_msg, sizeof err_msg));
+    }
 
     return err;
 }

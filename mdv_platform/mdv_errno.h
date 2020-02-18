@@ -5,6 +5,7 @@
 */
 
 #pragma once
+#include <stddef.h>
 
 
 /// Common error definitions
@@ -39,7 +40,9 @@ mdv_errno mdv_error();
  * @brief return string description for error number
  *
  * @param err [in]  error number
+ * @param buf [out] desination buffer for error message
+ * @param size [in] desination buffer size
  *
  * @return string description for error number
  */
-char const * mdv_strerror(mdv_errno err);
+char const * mdv_strerror(mdv_errno err, char *buf, size_t size);

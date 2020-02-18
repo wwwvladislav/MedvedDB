@@ -344,7 +344,8 @@ static void mdv_chaman_dialer_handler(uint32_t events, mdv_threadpool_task_base 
     mdv_threadpool     *threadpool      = chaman->threadpool;
     mdv_sockaddr const  addr            = task->context.addr;
     mdv_channel_t const channel_type    = task->context.channel_type;
-    char const         *str_addr        = mdv_sockaddr2str(task->context.protocol, &addr);
+    char addr_str[MDV_ADDR_LEN_MAX];
+    char const         *str_addr        = mdv_sockaddr2str(task->context.protocol, &addr, addr_str, sizeof addr_str);
 
     mdv_threadpool_remove(threadpool, fd);
 
@@ -382,7 +383,11 @@ static void mdv_chaman_recv_handler(uint32_t events, mdv_threadpool_task_base *t
     {
         err = mdv_threadpool_rearm(threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base*)task);
         if (err != MDV_OK)
-            MDV_LOGE("Connection modification failed with error '%s' (%u)", mdv_strerror(err), err);
+        {
+            char err_msg[128];
+            MDV_LOGE("Connection modification failed with error '%s' (%u)",
+                                mdv_strerror(err, err_msg, sizeof err_msg), err);
+        }
     }
     else
     {
@@ -439,7 +444,9 @@ static void mdv_chaman_new_connection(mdv_chaman *chaman, mdv_descriptor sock, m
 {
     mdv_errno err = MDV_FAILED;
 
-    char const *str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, addr);
+    char addr_str[MDV_ADDR_LEN_MAX];
+
+    char const *str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, addr, addr_str, sizeof addr_str);
 
     mdv_channel *channel = 0;
 
@@ -566,7 +573,8 @@ static void mdv_chaman_select_handler(uint32_t events, mdv_threadpool_task_base 
 
         if (err != MDV_OK)
         {
-            MDV_LOGE("Connection modification failed with error '%s' (%u)", mdv_strerror(err), err);
+            char err_msg[128];
+            MDV_LOGE("Connection modification failed with error '%s' (%u)", mdv_strerror(err, err_msg, sizeof err_msg), err);
             mdv_threadpool_remove(chaman->threadpool, fd);
             mdv_socket_close(fd);
         }
@@ -579,7 +587,8 @@ static void mdv_chaman_select_handler(uint32_t events, mdv_threadpool_task_base 
             mdv_chaman_new_connection(chaman, fd, &addr, type, dir, &channel_id);
         else
         {
-            char const *str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, &addr);
+            char addr_str[MDV_ADDR_LEN_MAX];
+            char const *str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, &addr, addr_str, sizeof addr_str);
             MDV_LOGE("Channel selection failed for %s", str_addr ? str_addr : "???");
             mdv_socket_close(fd);
         }
@@ -608,7 +617,8 @@ static mdv_errno mdv_chaman_selector_reg(mdv_chaman         *chaman,
 
     if (!mdv_threadpool_add(chaman->threadpool, MDV_EPOLLET | MDV_EPOLLONESHOT | MDV_EPOLLIN | MDV_EPOLLERR, (mdv_threadpool_task_base const *)&selector_task))
     {
-        char const *str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, addr);
+        char addr_str[MDV_ADDR_LEN_MAX];
+        char const *str_addr = mdv_sockaddr2str(MDV_SOCK_STREAM, addr, addr_str, sizeof addr_str);
         MDV_LOGE("Connection '%s' accepting failed", str_addr ? str_addr : "???");
         return MDV_FAILED;
     }
@@ -654,7 +664,8 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, char const *addr)
 
     if (err != MDV_OK)
     {
-        MDV_LOGE("Address resolution failed with error '%s' (%d)", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("Address resolution failed with error '%s' (%d)", mdv_strerror(err, err_msg, sizeof err_msg), err);
         mdv_rollback(rollbacker);
         return err;
     }
@@ -683,7 +694,9 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, char const *addr)
 
     if(err != MDV_OK)
     {
-        MDV_LOGE("Binding to address '%s' failed with error '%s' (%u)", addr, mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("Binding to address '%s' failed with error '%s' (%u)",
+                        addr, mdv_strerror(err, err_msg, sizeof err_msg), err);
         mdv_rollback(rollbacker);
         return err;
     }
@@ -693,7 +706,9 @@ mdv_errno mdv_chaman_listen(mdv_chaman *chaman, char const *addr)
 
     if(err != MDV_OK)
     {
-        MDV_LOGE("Address '%s' listening failed with error '%s' (%u)", addr, mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("Address '%s' listening failed with error '%s' (%u)",
+                        addr, mdv_strerror(err, err_msg, sizeof err_msg), err);
         mdv_rollback(rollbacker);
         return err;
     }
@@ -798,7 +813,9 @@ static void mdv_chaman_dialer_state(mdv_chaman *chaman, mdv_sockaddr const *addr
 
 static mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_sockaddr const *sockaddr, mdv_socket_type socktype, mdv_channel_t channel_type)
 {
-    char const *addr = mdv_sockaddr2str(socktype, sockaddr);
+    char addr_str[MDV_ADDR_LEN_MAX];
+
+    char const *addr = mdv_sockaddr2str(socktype, sockaddr, addr_str, sizeof addr_str);
 
     MDV_LOGD("Connecting to '%s'", addr ? addr : "???");
 
@@ -819,7 +836,9 @@ static mdv_errno mdv_chaman_connect(mdv_chaman *chaman, mdv_sockaddr const *sock
 
     if (err != MDV_INPROGRESS)
     {
-        MDV_LOGW("Connection to %s failed with error '%s' (%d)", addr ? addr : "???", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGW("Connection to %s failed with error '%s' (%d)",
+            addr ? addr : "???", mdv_strerror(err, err_msg, sizeof err_msg), err);
         mdv_socket_close(sd);
         return err;
     }
@@ -859,7 +878,9 @@ mdv_errno mdv_chaman_dial(mdv_chaman *chaman, char const *addr, uint8_t type)
 
     if (err != MDV_OK)
     {
-        MDV_LOGE("Address resolution failed with error '%s' (%d)", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("Address resolution failed with error '%s' (%d)",
+                        mdv_strerror(err, err_msg, sizeof err_msg), err);
         return err;
     }
 

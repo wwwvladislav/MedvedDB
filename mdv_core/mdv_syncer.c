@@ -178,7 +178,7 @@ static mdv_errno mdv_syncer_topology_changed(mdv_syncer *syncer, mdv_topology *t
                 mdv_vector *removed_peers = mdv_vector_create(
                                                 mdv_hashmap_size(syncer->peers),
                                                 sizeof(mdv_uuid),
-                                                &mdv_stallocator);
+                                                &mdv_default_allocator);
 
                 if (removed_peers)
                 {
@@ -229,13 +229,15 @@ static mdv_errno mdv_syncer_topology_changed(mdv_syncer *syncer, mdv_topology *t
                     {
                         err = MDV_FAILED;
                         mdv_syncerino_release(syncer_peer.syncerino);
-                        MDV_LOGE("Synchronizer creation for '%s' peer failed", mdv_uuid_to_str(&route->uuid));
+                        char uuid_str[MDV_UUID_STR_LEN];
+                        MDV_LOGE("Synchronizer creation for '%s' peer failed", mdv_uuid_to_str(&route->uuid, uuid_str));
                     }
                 }
                 else
                 {
                     err = MDV_FAILED;
-                    MDV_LOGE("Synchronizer creation for '%s' peer failed", mdv_uuid_to_str(&route->uuid));
+                    char uuid_str[MDV_UUID_STR_LEN];
+                    MDV_LOGE("Synchronizer creation for '%s' peer failed", mdv_uuid_to_str(&route->uuid, uuid_str));
                 }
             }
 

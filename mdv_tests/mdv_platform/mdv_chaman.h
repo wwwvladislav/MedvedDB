@@ -74,7 +74,7 @@ static mdv_errno mdv_test_channel_recv_impl(mdv_channel *channel)
 
     mdv_descriptor fd = test_channel->fd;
 
-    static _Thread_local char buffer[1024];
+    char buffer[1024];
 
     size_t len = sizeof(buffer) - 1;
 

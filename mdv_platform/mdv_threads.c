@@ -62,14 +62,18 @@ mdv_errno mdv_thread_create(mdv_thread *thread, mdv_thread_attrs const *attrs, m
     if (pthread_attr_init(&attr))
     {
         mdv_errno err = mdv_error();
-        MDV_LOGE("Thread attributes initialization failed with error '%s' (%d)", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("Thread attributes initialization failed with error '%s' (%d)",
+                                    mdv_strerror(err, err_msg, sizeof err_msg), err);
         return err;
     }
 
     if (pthread_attr_setstacksize(&attr, attrs->stack_size))
     {
         mdv_errno err = mdv_error();
-        MDV_LOGE("Thread stack size changing failed with error '%s' (%d)", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("Thread stack size changing failed with error '%s' (%d)",
+                                mdv_strerror(err, err_msg, sizeof err_msg), err);
         pthread_attr_destroy(&attr);
         return err;
     }

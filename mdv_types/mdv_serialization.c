@@ -346,15 +346,13 @@ bool mdv_binn_table(mdv_table const *table, binn *obj)
 
 mdv_table * mdv_unbinn_table(binn const *obj)
 {
-    mdv_uuid const *puuid = mdv_unbinn_table_uuid(obj);
+    mdv_uuid id;
 
-    if (!puuid)
+    if (!mdv_unbinn_table_uuid(obj, &id))
     {
         MDV_LOGE("unbinn_table failed");
         return 0;
     }
-
-    mdv_uuid const id = *puuid;
 
     binn *desc_odj = 0;
 
@@ -389,7 +387,7 @@ mdv_table * mdv_unbinn_table(binn const *obj)
 mdv_rowlist_entry * mdv_unbinn_table_as_row_slice(binn const        *obj,
                                                   mdv_bitset const  *mask)
 {
-    mdv_uuid const *uuid = 0;
+    mdv_uuid uuid        = {};
     char *name           = 0;
     size_t name_size     = 0;
     uint32_t const cols  = 2;
@@ -406,9 +404,7 @@ mdv_rowlist_entry * mdv_unbinn_table_as_row_slice(binn const        *obj,
         {
             case 0:
             {
-                uuid = mdv_unbinn_table_uuid(obj);
-
-                if (!uuid)
+                if (!mdv_unbinn_table_uuid(obj, &uuid))
                 {
                     MDV_LOGE("unbinn_table failed");
                     return 0;
@@ -478,16 +474,14 @@ mdv_rowlist_entry * mdv_unbinn_table_as_row_slice(binn const        *obj,
 
     size_t field_idx = 0;
 
-    if (uuid)
     {
         row->fields[field_idx].ptr = dataspace;
         row->fields[field_idx].size = sizeof(mdv_uuid);
-        memcpy(dataspace, uuid, sizeof(mdv_uuid));
+        memcpy(dataspace, &uuid, sizeof(mdv_uuid));
         ++field_idx;
         dataspace += sizeof(mdv_uuid);
     }
 
-    if(name)
     {
         row->fields[field_idx].ptr = dataspace;
         row->fields[field_idx].size = name_size;
@@ -512,19 +506,17 @@ bool mdv_binn_table_uuid(mdv_uuid const *uuid, binn *obj)
 }
 
 
-mdv_uuid const * mdv_unbinn_table_uuid(binn const *obj)
+bool mdv_unbinn_table_uuid(binn const *obj, mdv_uuid *uuid)
 {
-    static _Thread_local mdv_uuid uuid;
-
     if (0
-        || !binn_object_get_uint64((void*)obj, "U0", (uint64 *)&uuid.u64[0])
-        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&uuid.u64[1]))
+        || !binn_object_get_uint64((void*)obj, "U0", (uint64 *)&uuid->u64[0])
+        || !binn_object_get_uint64((void*)obj, "U1", (uint64 *)&uuid->u64[1]))
     {
         MDV_LOGE("unbinn_table failed");
-        return 0;
+        return false;
     }
 
-    return &uuid;
+    return true;
 }
 
 
@@ -1119,9 +1111,7 @@ mdv_topology * mdv_topology_deserialize(binn const *obj)
 
 bool mdv_binn_uuid(mdv_uuid const *uuid, binn *obj)
 {
-    static _Thread_local char buff[64];
-
-    if (!binn_create(obj, BINN_OBJECT, sizeof buff, buff))
+    if (!binn_create_object(obj))
     {
         MDV_LOGE("binn_uuid failed");
         return false;

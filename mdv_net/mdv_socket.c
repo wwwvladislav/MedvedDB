@@ -137,17 +137,15 @@ mdv_errno mdv_str2sockaddr(char const *str, mdv_socket_type *protocol, mdv_socka
 }
 
 
-char const * mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr)
+char const * mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr, char *buf, size_t size)
 {
-    if (!addr)
+    if (!addr || !buf || !size)
     {
         MDV_LOGE("Invalid argument");
         return 0;
     }
 
-    static _Thread_local char str[MDV_ADDR_LEN_MAX];
-
-    str[0] = 0;
+    buf[0] = 0;
 
     unsigned addr_len = 0;
 
@@ -155,24 +153,24 @@ char const * mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr
 
     if (proto)
     {
-        snprintf(str, sizeof str, "%s://", proto);
+        snprintf(buf, size, "%s://", proto);
         addr_len += strlen(proto) + 3;
     }
 
     int err = getnameinfo((struct sockaddr const *)addr, sizeof *addr,
-                          str + addr_len, sizeof str - addr_len,
+                          buf + addr_len, size - addr_len,
                           0, 0,
                           NI_NUMERICHOST | NI_NUMERICSERV);
 
     if (err)
         return 0;
 
-    addr_len = strlen(str);
+    addr_len = strlen(buf);
 
-    if (addr_len < sizeof str)
-        snprintf(str + addr_len, sizeof str - addr_len, ":%u", ntohs(((struct sockaddr_in const *)addr)->sin_port));
+    if (addr_len < size)
+        snprintf(buf + addr_len, size - addr_len, ":%u", ntohs(((struct sockaddr_in const *)addr)->sin_port));
 
-    return str;
+    return buf;
 }
 
 
@@ -188,7 +186,9 @@ mdv_descriptor mdv_socket(mdv_socket_type type)
     if (s == -1)
     {
         int err = mdv_error();
-        MDV_LOGE("Socket creation failed with error: '%s' (%d)", mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("Socket creation failed with error: '%s' (%d)",
+                    mdv_strerror(err, err_msg, sizeof err_msg), err);
         return MDV_INVALID_DESCRIPTOR;
     }
 
@@ -388,7 +388,11 @@ mdv_descriptor mdv_socket_accept(mdv_descriptor sock, mdv_sockaddr *peer)
         mdv_errno err = mdv_error();
 
         if (err != MDV_EAGAIN)
-            MDV_LOGE("Peer accepting failed with error '%s' (%d) (socket: %d)", mdv_strerror(err), err, s);
+        {
+            char err_msg[128];
+            MDV_LOGE("Peer accepting failed with error '%s' (%d) (socket: %d)",
+                                mdv_strerror(err, err_msg, sizeof err_msg), err, s);
+        }
 
         return MDV_INVALID_DESCRIPTOR;
     }

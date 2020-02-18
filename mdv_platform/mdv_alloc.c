@@ -1,5 +1,4 @@
 #include "mdv_alloc.h"
-#include "mdv_stack.h"
 #include "mdv_log.h"
 #include <stdatomic.h>
 #include <string.h>
@@ -62,19 +61,6 @@
             MDV_LOGD("%s(%p) '%s'", #fn, ptr, name);
 
 #endif
-
-
-enum
-{
-    MDV_THREAD_LOCAL_STORAGE_SIZE = 256 * 1024
-};
-
-
-static _Thread_local mdv_stack(uint8_t, MDV_THREAD_LOCAL_STORAGE_SIZE) _thread_local_buff =
-{
-    .capacity = MDV_THREAD_LOCAL_STORAGE_SIZE,
-    .size = 0
-};
 
 
 int mdv_alloc_initialize()
@@ -153,105 +139,9 @@ void mdv_free(void *ptr, char const *name)
 }
 
 
-void *mdv_stalloc(size_t size, char const *name)
-{
-    return mdv_staligned_alloc(1, size, name);
-}
-
-
-void *mdv_staligned_alloc(size_t alignment, size_t size, char const *name)
-{
-    if (size + alignment < mdv_stack_free_space(_thread_local_buff))
-    {
-        void *ptr = _thread_local_buff.data + _thread_local_buff.size;
-
-        size_t align = (size_t)ptr % alignment;
-
-        if (align)
-            align = alignment - align;
-
-        ptr = (char*)ptr + align;
-
-        MDV_LOGD("stalloc(%p:%zu) '%s'", ptr, size, name);
-
-        _thread_local_buff.size += size + align;
-
-        return ptr;
-    }
-
-    MDV_LOGW("Thread local buffer is busy. Dynamic allocation is performed.");
-
-    return mdv_aligned_alloc(alignment, size, name);
-}
-
-
-void *mdv_strealloc(void *ptr, size_t size, char const *name)
-{
-    if ((uint8_t*)ptr >= _thread_local_buff.data
-        && (uint8_t*)ptr < _thread_local_buff.data + _thread_local_buff.size)
-    {
-        if ((uint8_t*)ptr + size < _thread_local_buff.data + _thread_local_buff.capacity)
-        {
-            _thread_local_buff.size = (uint8_t*)ptr + size - _thread_local_buff.data;
-            return ptr;
-        }
-
-        // No memory in threadlocal storage
-
-        void *new_ptr = mdv_alloc(size, name);
-        if (!new_ptr)
-            return 0;
-
-        size_t const data_size = _thread_local_buff.data + _thread_local_buff.size - (uint8_t*)ptr;
-
-        memcpy(new_ptr, ptr, data_size);
-
-        mdv_stfree(ptr, name);
-
-        return new_ptr;
-    }
-
-    return mdv_realloc(ptr, size, name);
-}
-
-
-void *mdv_strealloc2(void **ptr, size_t size, char const *name)
-{
-    void *new_ptr = mdv_strealloc(*ptr, size, name);
-    if (new_ptr)
-        *ptr = new_ptr;
-    return new_ptr;
-}
-
-
-void mdv_stfree(void *ptr, char const *name)
-{
-    if (ptr)
-    {
-        MDV_LOGD("stfree(%p) '%s'", ptr, name);
-
-        if ((uint8_t*)ptr >= _thread_local_buff.data
-            && (uint8_t*)ptr < _thread_local_buff.data + _thread_local_buff.size)
-        {
-            _thread_local_buff.size = (uint8_t*)ptr - _thread_local_buff.data;
-        }
-        else
-            mdv_free(ptr, name);
-    }
-}
-
-
 mdv_allocator const mdv_default_allocator =
 {
     .alloc      = &mdv_alloc,
     .realloc    = &mdv_realloc2,
     .free       = &mdv_free
-};
-
-
-mdv_allocator const mdv_stallocator =
-{
-    .alloc      = &mdv_stalloc,
-    .realloc    = &mdv_strealloc2,
-    .free       = &mdv_stfree
 };

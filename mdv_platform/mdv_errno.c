@@ -16,8 +16,11 @@ mdv_errno mdv_error()
 }
 
 
-char const * mdv_strerror(mdv_errno err)
+char const * mdv_strerror(mdv_errno err, char *buf, size_t size)
 {
+    if (!buf || !size)
+        return "Unknown error";
+
     switch(err)
     {
         case MDV_OK:                return "Operation successfully completed";
@@ -33,10 +36,8 @@ char const * mdv_strerror(mdv_errno err)
         case MDV_STACK_OVERFLOW:    return "Stack overflow";
     }
 
-    static _Thread_local char buf[1024];
-
-    strerror_r(err, buf, sizeof buf);
-    buf[sizeof buf - 1] = 0;
+    strerror_r(err, buf, size);
+    buf[size - 1] = 0;
 
     return buf;
 }

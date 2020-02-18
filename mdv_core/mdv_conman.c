@@ -86,7 +86,7 @@ static void mdv_conman_connect_to_peers(mdv_conman *conman, mdv_topology *topolo
     mdv_vector *nodes = mdv_topology_nodes(topology);
     mdv_vector *links = mdv_topology_links(topology);
 
-    mdv_bitset *linked_nodes = mdv_bitset_create(mdv_vector_size(nodes), &mdv_stallocator);
+    mdv_bitset *linked_nodes = mdv_bitset_create(mdv_vector_size(nodes), &mdv_default_allocator);
 
     if(linked_nodes)
     {
@@ -250,7 +250,11 @@ mdv_errno mdv_conman_bind(mdv_conman *conman, char const *addr)
     mdv_errno err = mdv_chaman_listen(conman->chaman, addr);
 
     if (err != MDV_OK)
-        MDV_LOGE("Listener failed with error: %s (%d)", mdv_strerror(err), err);
+    {
+        char err_msg[128];
+        MDV_LOGE("Listener failed with error: %s (%d)",
+                    mdv_strerror(err, err_msg, sizeof err_msg), err);
+    }
 
     return err;
 }
@@ -261,7 +265,11 @@ mdv_errno mdv_conman_connect(mdv_conman *conman, char const *addr, uint8_t type)
     mdv_errno err = mdv_chaman_dial(conman->chaman, addr, type);
 
     if (err != MDV_OK)
-        MDV_LOGE("Connection failed with error: %s (%d)", mdv_strerror(err), err);
+    {
+        char err_msg[128];
+        MDV_LOGE("Connection failed with error: %s (%d)",
+                mdv_strerror(err, err_msg, sizeof err_msg), err);
+    }
 
     return err;
 }

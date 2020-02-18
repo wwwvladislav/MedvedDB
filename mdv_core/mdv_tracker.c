@@ -187,10 +187,16 @@ static mdv_node * mdv_tracker_insert(mdv_tracker *tracker, mdv_node const *node)
             return entry;
 
         mdv_hashmap_erase(tracker->nodes, &node->uuid);
-        MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(&node->uuid));
+
+        char uuid_str[MDV_UUID_STR_LEN];
+
+        MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(&node->uuid, uuid_str));
     }
     else
-        MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(&node->uuid));
+    {
+        char uuid_str[MDV_UUID_STR_LEN];
+        MDV_LOGW("Node '%s' discarded", mdv_uuid_to_str(&node->uuid, uuid_str));
+    }
 
     return 0;
 }
@@ -945,7 +951,10 @@ static mdv_errno mdv_tracker_register(mdv_tracker *tracker, mdv_uuid const *uuid
                     err = MDV_FAILED;
             }
             else
-                MDV_LOGD("Connection with '%s' is already exist", mdv_uuid_to_str(&node->uuid));
+            {
+                char uuid_str[MDV_UUID_STR_LEN];
+                MDV_LOGD("Connection with '%s' is already exist", mdv_uuid_to_str(&node->uuid, uuid_str));
+            }
         }
         else
         {

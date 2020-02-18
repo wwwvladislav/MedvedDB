@@ -27,7 +27,7 @@ typedef enum
 
 
 mdv_errno      mdv_str2sockaddr(char const *str, mdv_socket_type *protocol, mdv_sockaddr *addr);
-char const *   mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr);
+char const *   mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr, char *buf, size_t size);
 
 
 mdv_descriptor mdv_socket(mdv_socket_type type);

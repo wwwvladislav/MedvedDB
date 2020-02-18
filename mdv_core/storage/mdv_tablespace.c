@@ -140,7 +140,10 @@ static bool mdv_tablespace_storage_id(mdv_tablespace *tablespace, mdv_uuid const
         res = true;
     }
     else
-        MDV_LOGE("Storage idntifier %s not found", mdv_uuid_to_str(uuid));
+    {
+        char uuid_str[MDV_UUID_STR_LEN];
+        MDV_LOGE("Storage idntifier %s not found", mdv_uuid_to_str(uuid, uuid_str));
+    }
 
     mdv_hashmap_release(idmap);
 
@@ -284,7 +287,8 @@ static mdv_errno mdv_tablespace_evt_table_create(void *arg, mdv_event *event)
 
     if (table)
     {
-        MDV_LOGI("New table '%s' is created", mdv_uuid_to_str(mdv_table_uuid(table)));
+        char uuid_str[MDV_UUID_STR_LEN];
+        MDV_LOGI("New table '%s' is created", mdv_uuid_to_str(mdv_table_uuid(table), uuid_str));
         create_table->table_id = *mdv_table_uuid(table);
         mdv_table_release(table);
         return MDV_OK;
@@ -566,7 +570,7 @@ static mdv_table * mdv_tablespace_log_create_table(mdv_tablespace *tablespace, m
     size_t const op_size = offsetof(mdv_trlog_op, payload)
                             + binn_obj_size;
 
-    mdv_trlog_op *op = mdv_staligned_alloc(sizeof(uint64_t), op_size, "trlog_op");
+    mdv_trlog_op *op = mdv_aligned_alloc(sizeof(uint64_t), op_size, "trlog_op");
 
     if (!op)
     {
@@ -574,7 +578,7 @@ static mdv_table * mdv_tablespace_log_create_table(mdv_tablespace *tablespace, m
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_stfree, op, "trlog_op");
+    mdv_rollbacker_push(rollbacker, mdv_free, op, "trlog_op");
 
     op->size = op_size;
     op->type = MDV_OP_TABLE_CREATE;
@@ -635,7 +639,7 @@ static mdv_errno mdv_tablespace_log_rowset(mdv_tablespace *tablespace, mdv_uuid 
                             + sizeof *table_id
                             + binn_rowset_size;
 
-    mdv_trlog_op *op = mdv_staligned_alloc(sizeof(uint64_t), op_size, "trlog_op");
+    mdv_trlog_op *op = mdv_aligned_alloc(sizeof(uint64_t), op_size, "trlog_op");
 
     if (!op)
     {
@@ -643,7 +647,7 @@ static mdv_errno mdv_tablespace_log_rowset(mdv_tablespace *tablespace, mdv_uuid 
         return MDV_NO_MEM;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_stfree, op, "trlog_op");
+    mdv_rollbacker_push(rollbacker, mdv_free, op, "trlog_op");
 
     op->size = op_size;
     op->type = MDV_OP_ROW_INSERT;
@@ -692,9 +696,9 @@ static bool mdv_tablespace_trlog_apply(void *arg, mdv_trlog_op *op)
                 return false;
             }
 
-            mdv_uuid const *uuid = mdv_unbinn_table_uuid(&obj);
+            mdv_uuid uuid;
 
-            if (uuid)
+            if (mdv_unbinn_table_uuid(&obj, &uuid))
             {
                 mdv_data const data =
                 {
@@ -702,7 +706,7 @@ static bool mdv_tablespace_trlog_apply(void *arg, mdv_trlog_op *op)
                     .ptr = binn_ptr(&obj)
                 };
 
-                ret = mdv_tables_add_raw(tablespace->tables, uuid, &data) == MDV_OK;
+                ret = mdv_tables_add_raw(tablespace->tables, &uuid, &data) == MDV_OK;
             }
             else
                 MDV_LOGE("Table creation failed. Invalid TR log operation.");

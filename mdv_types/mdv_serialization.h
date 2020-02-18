@@ -15,7 +15,7 @@ mdv_table      *    mdv_unbinn_table(binn const *obj);
 mdv_rowlist_entry * mdv_unbinn_table_as_row_slice(binn const *obj, mdv_bitset const *mask);
 
 bool                mdv_binn_table_uuid(mdv_uuid const *uuid, binn *obj);
-mdv_uuid const *    mdv_unbinn_table_uuid(binn const *obj);
+bool                mdv_unbinn_table_uuid(binn const *obj, mdv_uuid *uuid);
 
 bool                mdv_binn_row(mdv_row const *row, mdv_table_desc const *table_desc, binn *list);
 mdv_rowlist_entry * mdv_unbinn_row(binn const *list, mdv_table_desc const *table_desc);

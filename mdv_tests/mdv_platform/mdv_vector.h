@@ -12,7 +12,7 @@ static bool mdv_int_equ(void const *a, void const *b)
 
 MU_TEST(platform_vector)
 {
-    mdv_vector *v = mdv_vector_create(2, sizeof(int), &mdv_stallocator);
+    mdv_vector *v = mdv_vector_create(2, sizeof(int), &mdv_default_allocator);
 
     mu_check(v);
 

@@ -193,7 +193,9 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
         return MDV_FAILED;
     }
 
-    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid), mdv_p2p_msg_name(msg->hdr.id));
+    char uuid_str[MDV_UUID_STR_LEN];
+
+    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid, uuid_str), mdv_p2p_msg_name(msg->hdr.id));
 
     mdv_free(peer->peer_addr, "peer_addr");
 
@@ -211,7 +213,11 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
     mdv_errno err = mdv_peer_connected(peer, peer->peer_addr, &peer->peer_uuid);
 
     if (err != MDV_OK)
-        MDV_LOGE("Peer registration failed with error '%s' (%d)", mdv_strerror(err), err);
+    {
+        char err_msg[128];
+        MDV_LOGE("Peer registration failed with error '%s' (%d)",
+                    mdv_strerror(err, err_msg, sizeof err_msg), err);
+    }
 
     return err;
 }
@@ -221,7 +227,9 @@ static mdv_errno mdv_peer_toposync_handler(mdv_msg const *msg, void *arg)
 {
     mdv_peer *peer = arg;
 
-    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid), mdv_p2p_msg_name(msg->hdr.id));
+    char uuid_str[MDV_UUID_STR_LEN];
+
+    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid, uuid_str), mdv_p2p_msg_name(msg->hdr.id));
 
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
@@ -268,7 +276,9 @@ static mdv_errno mdv_peer_broadcast_handler(mdv_msg const *msg, void *arg)
 {
     mdv_peer *peer = arg;
 
-    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid), mdv_p2p_msg_name(msg->hdr.id));
+    char uuid_str[MDV_UUID_STR_LEN];
+
+    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid, uuid_str), mdv_p2p_msg_name(msg->hdr.id));
 
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
@@ -317,7 +327,9 @@ static mdv_errno mdv_peer_trlog_sync_handler(mdv_msg const *msg, void *arg)
 {
     mdv_peer *peer = arg;
 
-    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid), mdv_p2p_msg_name(msg->hdr.id));
+    char uuid_str[MDV_UUID_STR_LEN];
+
+    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid, uuid_str), mdv_p2p_msg_name(msg->hdr.id));
 
     binn binn_msg;
 
@@ -360,7 +372,9 @@ static mdv_errno mdv_peer_trlog_state_handler(mdv_msg const *msg, void *arg)
 {
     mdv_peer *peer = arg;
 
-    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid), mdv_p2p_msg_name(msg->hdr.id));
+    char uuid_str[MDV_UUID_STR_LEN];
+
+    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid, uuid_str), mdv_p2p_msg_name(msg->hdr.id));
 
     binn binn_msg;
 
@@ -380,7 +394,7 @@ static mdv_errno mdv_peer_trlog_state_handler(mdv_msg const *msg, void *arg)
     }
 
     MDV_LOGI("RECV %s '%s': TR log top: %" PRId64,
-             mdv_uuid_to_str(&peer->peer_uuid),
+             mdv_uuid_to_str(&peer->peer_uuid, uuid_str),
              mdv_p2p_msg_name(msg->hdr.id),
              req.trlog_top);
 
@@ -408,7 +422,9 @@ static mdv_errno mdv_peer_trlog_data_handler(mdv_msg const *msg, void *arg)
 {
     mdv_peer *peer = arg;
 
-    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid), mdv_p2p_msg_name(msg->hdr.id));
+    char uuid_str[MDV_UUID_STR_LEN];
+
+    MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid, uuid_str), mdv_p2p_msg_name(msg->hdr.id));
 
     binn binn_msg;
 
@@ -428,7 +444,7 @@ static mdv_errno mdv_peer_trlog_data_handler(mdv_msg const *msg, void *arg)
     }
 
     MDV_LOGI("RECV %s '%s': count: %u",
-             mdv_uuid_to_str(&peer->peer_uuid),
+             mdv_uuid_to_str(&peer->peer_uuid, uuid_str),
              mdv_p2p_msg_name(msg->hdr.id),
              req.count);
 
@@ -865,7 +881,9 @@ static void mdv_peer_free(mdv_peer *peer)
 
 static mdv_errno mdv_peer_send(mdv_peer *peer, mdv_msg *req, mdv_msg *resp, size_t timeout)
 {
-    MDV_LOGI(">>>>> %s '%s'", mdv_uuid_to_str(&peer->peer_uuid), mdv_p2p_msg_name(req->hdr.id));
+    char uuid_str[MDV_UUID_STR_LEN];
+
+    MDV_LOGI(">>>>> %s '%s'", mdv_uuid_to_str(&peer->peer_uuid, uuid_str), mdv_p2p_msg_name(req->hdr.id));
 
     mdv_errno err = MDV_CLOSED;
 
@@ -883,7 +901,9 @@ static mdv_errno mdv_peer_send(mdv_peer *peer, mdv_msg *req, mdv_msg *resp, size
 
 static mdv_errno mdv_peer_post(mdv_peer *peer, mdv_msg *msg)
 {
-    MDV_LOGI(">>>>> %s '%s'", mdv_uuid_to_str(&peer->peer_uuid), mdv_p2p_msg_name(msg->hdr.id));
+    char uuid_str[MDV_UUID_STR_LEN];
+
+    MDV_LOGI(">>>>> %s '%s'", mdv_uuid_to_str(&peer->peer_uuid, uuid_str), mdv_p2p_msg_name(msg->hdr.id));
 
     mdv_errno err = MDV_CLOSED;
 
@@ -901,8 +921,9 @@ static mdv_errno mdv_peer_post(mdv_peer *peer, mdv_msg *msg)
 
 static mdv_errno mdv_peer_reply(mdv_peer *peer, mdv_msg const *msg)
 {
+    char uuid_str[MDV_UUID_STR_LEN];
     MDV_LOGI(">>>>> %s '%s'",
-             mdv_uuid_to_str(&peer->peer_uuid),
+             mdv_uuid_to_str(&peer->peer_uuid, uuid_str),
              mdv_p2p_msg_name(msg->hdr.id));
     return mdv_dispatcher_reply(peer->dispatcher, msg);
 }

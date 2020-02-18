@@ -302,9 +302,9 @@ static mdv_errno mdv_client_topology_handler(mdv_msg const *msg, mdv_topology **
 
 mdv_client * mdv_client_connect(mdv_client_config const *config)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
-
     mdv_client_init();
+
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
     mdv_rollbacker_push(rollbacker, mdv_client_finalize);
 
@@ -378,7 +378,9 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
 
     if (err != MDV_OK)
     {
-        MDV_LOGE("Connection to '%s' failed with error: %s (%d)", config->db.addr, mdv_strerror(err), err);
+        char err_msg[128];
+        MDV_LOGE("Connection to '%s' failed with error: %s (%d)",
+                    config->db.addr, mdv_strerror(err, err_msg, sizeof err_msg), err);
         mdv_rollback(rollbacker);
         return 0;
     }

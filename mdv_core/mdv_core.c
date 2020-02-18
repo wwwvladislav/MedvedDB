@@ -267,7 +267,9 @@ mdv_core * mdv_core_create()
 
     MDV_LOGI("Storage version: %u", core->metainf.version.value);
 
-    MDV_LOGI("Node UUID: %s", mdv_uuid_to_str(&core->metainf.uuid.value));
+    char uuid_str[MDV_UUID_STR_LEN];
+
+    MDV_LOGI("Node UUID: %s", mdv_uuid_to_str(&core->metainf.uuid.value, uuid_str));
 
     mdv_rollbacker_free(rollbacker);
 

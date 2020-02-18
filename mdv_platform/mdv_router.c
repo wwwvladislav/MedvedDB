@@ -85,7 +85,7 @@ mdv_hashmap * mdv_routes_find(mdv_topology *topology, mdv_uuid const *src)
 
     mdv_rollbacker_push(rollbacker, mdv_hashmap_release, unique_nodes);
 
-    mdv_mstnode *mst_nodes = mdv_stalloc(mdv_vector_size(toponodes) * sizeof(mdv_mstnode), "mst_nodes");
+    mdv_mstnode *mst_nodes = mdv_alloc(mdv_vector_size(toponodes) * sizeof(mdv_mstnode), "mst_nodes");
 
     if (!mst_nodes)
     {
@@ -94,12 +94,12 @@ mdv_hashmap * mdv_routes_find(mdv_topology *topology, mdv_uuid const *src)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_stfree, mst_nodes, "mst_nodes");
+    mdv_rollbacker_push(rollbacker, mdv_free, mst_nodes, "mst_nodes");
 
     mdv_hashmap_foreach(unique_nodes, mdv_router_node, node)
         mst_nodes[node->idx].data = mdv_vector_at(toponodes, node->id);
 
-    mdv_mstlink *mst_links = mdv_stalloc(mdv_vector_size(topolinks) * sizeof(mdv_mstlink), "mst_links");
+    mdv_mstlink *mst_links = mdv_alloc(mdv_vector_size(topolinks) * sizeof(mdv_mstlink), "mst_links");
 
     if (!mst_links)
     {
@@ -108,7 +108,7 @@ mdv_hashmap * mdv_routes_find(mdv_topology *topology, mdv_uuid const *src)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_stfree, mst_links, "mst_links");
+    mdv_rollbacker_push(rollbacker, mdv_free, mst_links, "mst_links");
 
     size_t i = 0;
 

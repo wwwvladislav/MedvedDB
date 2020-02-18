@@ -200,7 +200,10 @@ void mdv_threadpool_stop(mdv_threadpool *threadpool)
         {
             mdv_errno err = mdv_thread_join(threadpool->threads[i]);
             if (err != MDV_OK)
-                MDV_LOGE("Thread join failed with error '%s' (%d)", mdv_strerror(err), err);
+            {
+                char err_msg[128];
+                MDV_LOGE("Thread join failed with error '%s' (%d)", mdv_strerror(err, err_msg, sizeof err_msg), err);
+            }
         }
     }
 }
@@ -241,7 +244,10 @@ mdv_threadpool_task_base * mdv_threadpool_add(mdv_threadpool *threadpool, uint32
             else
             {
                 mdv_hashmap_erase(threadpool->tasks, &task->fd);
-                MDV_LOGE("Threadpool task registration failed with error '%s' (%d)", mdv_strerror(err), err);
+
+                char err_msg[128];
+                MDV_LOGE("Threadpool task registration failed with error '%s' (%d)",
+                                        mdv_strerror(err, err_msg, sizeof err_msg), err);
             }
         }
         else
@@ -263,7 +269,11 @@ mdv_errno mdv_threadpool_rearm(mdv_threadpool *threadpool, uint32_t events, mdv_
     mdv_errno err = mdv_epoll_mod(threadpool->epollfd, task->fd, evt);
 
     if (err != MDV_OK)
-        MDV_LOGE("Threadpool task rearming failed with error '%s' (%d)", mdv_strerror(err), err);
+    {
+        char err_msg[128];
+        MDV_LOGE("Threadpool task rearming failed with error '%s' (%d)",
+                            mdv_strerror(err, err_msg, sizeof err_msg), err);
+    }
 
     return err;
 }
@@ -282,7 +292,11 @@ mdv_errno mdv_threadpool_remove(mdv_threadpool *threadpool, mdv_descriptor fd)
             mdv_hashmap_erase(threadpool->tasks, &fd);
         }
         else
-            MDV_LOGE("Threadpool task removing failed with error '%s' (%d)", mdv_strerror(err), err);
+        {
+            char err_msg[128];
+            MDV_LOGE("Threadpool task removing failed with error '%s' (%d)",
+                                mdv_strerror(err, err_msg, sizeof err_msg), err);
+        }
 
         mdv_mutex_unlock(&threadpool->tasks_mtx);
     }

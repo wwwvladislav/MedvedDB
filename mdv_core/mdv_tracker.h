@@ -83,28 +83,6 @@ void mdv_tracker_links_foreach(mdv_tracker *tracker,
 
 
 /**
- * @brief Returns node uuid by local numeric id
- *
- * @param tracker [in]  Topology tracker
- * @param id [in]       Node identifier
- *
- * @return On success, returns non NULL node pointer.
- */
-mdv_node * mdv_tracker_node_by_id(mdv_tracker *tracker, uint32_t id);
-
-
-/**
- * @brief Returns node uuid by local numeric id
- *
- * @param tracker [in]  Topology tracker
- * @param uuid [in]     Node UUID
- *
- * @return On success, returns non NULL node pointer.
- */
-mdv_node * mdv_tracker_node_by_uuid(mdv_tracker *tracker, mdv_uuid const *uuid);
-
-
-/**
  * @brief Return links vector
  *
  * @param tracker [in]  Topology tracker

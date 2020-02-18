@@ -233,7 +233,12 @@ static void mdv_tracker_id_maximize(mdv_tracker *tracker, uint32_t id)
 
 static mdv_errno mdv_tracker_load(mdv_tracker *tracker)
 {
-    mdv_node const *node = mdv_nodes_current(&tracker->uuid, MDV_CONFIG.server.listen);
+    char buff[MDV_NODE_MAX_SIZE];
+
+    mdv_node *node = (mdv_node *)buff;
+
+    if (!mdv_node_init(node, &tracker->uuid, MDV_LOCAL_ID, MDV_CONFIG.server.listen))
+        return MDV_FAILED;
 
     mdv_tracker_id_maximize(tracker, node->id);
 
@@ -901,28 +906,6 @@ mdv_uuid const * mdv_tracker_uuid(mdv_tracker *tracker)
 }
 
 
-static mdv_node * mdv_tracker_new_node(mdv_uuid const *uuid, uint32_t id, char const *addr)
-{
-    size_t const addr_len = strlen(addr);
-
-    if (addr_len > MDV_ADDR_LEN_MAX)
-    {
-        MDV_LOGE("Invalid node address length");
-        return 0;
-    }
-
-    static _Thread_local char buf[sizeof(mdv_node) + MDV_ADDR_LEN_MAX];
-
-    mdv_node *new_node = (mdv_node *)buf;
-
-    new_node->uuid = *uuid;
-    new_node->id = id;
-    memcpy(new_node->addr, addr, addr_len + 1);
-
-    return new_node;
-}
-
-
 static mdv_errno mdv_tracker_register(mdv_tracker *tracker, mdv_uuid const *uuid, char const *addr)
 {
     mdv_errno err = mdv_mutex_lock(&tracker->nodes_mutex);
@@ -935,9 +918,11 @@ static mdv_errno mdv_tracker_register(mdv_tracker *tracker, mdv_uuid const *uuid
         {
             if (strcmp(addr, node->addr) != 0)
             {
-                mdv_node *new_node = mdv_tracker_new_node(uuid, node->id, addr);
+                char buff[MDV_NODE_MAX_SIZE];
 
-                if (new_node)
+                mdv_node *new_node = (mdv_node *)buff;
+
+                if (mdv_node_init(new_node, uuid, node->id, addr))
                 {
                     // Error is supressed because changed address is not very big problem
                     mdv_nodes_store(tracker->storage, new_node);
@@ -958,12 +943,11 @@ static mdv_errno mdv_tracker_register(mdv_tracker *tracker, mdv_uuid const *uuid
         }
         else
         {
-            mdv_node *new_node = mdv_tracker_new_node(
-                                        uuid,
-                                        mdv_tracker_new_id(tracker),
-                                        addr);
+            char buff[MDV_NODE_MAX_SIZE];
 
-            if (new_node)
+            mdv_node *new_node = (mdv_node *)buff;
+
+            if (mdv_node_init(new_node, uuid, mdv_tracker_new_id(tracker), addr))
             {
                 err = mdv_nodes_store(tracker->storage, new_node);
 
@@ -1187,66 +1171,6 @@ void mdv_tracker_links_foreach(mdv_tracker *tracker, void *arg, void (*fn)(mdv_t
         }
         mdv_mutex_unlock(&tracker->links_mutex);
     }
-}
-
-
-mdv_node * mdv_tracker_node_by_id(mdv_tracker *tracker, uint32_t id)
-{
-    mdv_node *node = 0;
-
-    if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
-    {
-        mdv_node_id *node_id = mdv_hashmap_find(tracker->ids, &id);
-
-        if (node_id)
-        {
-            static _Thread_local char buff[offsetof(mdv_node, addr) + MDV_ADDR_LEN_MAX + 1];
-
-            size_t const node_size = mdv_node_size(node_id->node);
-
-            if (node_size <= sizeof buff)
-            {
-                node = (mdv_node *)buff;
-                memcpy(node, node_id->node, node_size);
-            }
-            else
-                MDV_LOGE("Incorrect node size: %zd", node_size);
-        }
-
-        mdv_mutex_unlock(&tracker->nodes_mutex);
-    }
-
-    return node;
-}
-
-
-mdv_node * mdv_tracker_node_by_uuid(mdv_tracker *tracker, mdv_uuid const *uuid)
-{
-    mdv_node *ret = 0;
-
-    if (mdv_mutex_lock(&tracker->nodes_mutex) == MDV_OK)
-    {
-        mdv_node *node = mdv_hashmap_find(tracker->nodes, uuid);
-
-        if (node)
-        {
-            static _Thread_local char buff[offsetof(mdv_node, addr) + MDV_ADDR_LEN_MAX + 1];
-
-            size_t const node_size = mdv_node_size(node);
-
-            if (node_size <= sizeof buff)
-            {
-                ret = (mdv_node *)buff;
-                memcpy(ret, node, node_size);
-            }
-            else
-                MDV_LOGE("Incorrect node size: %zd", node_size);
-        }
-
-        mdv_mutex_unlock(&tracker->nodes_mutex);
-    }
-
-    return ret;
 }
 
 

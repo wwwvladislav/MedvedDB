@@ -32,14 +32,3 @@ mdv_errno mdv_nodes_foreach(mdv_storage *storage,
  * @return On error, return nonzero value
  */
 mdv_errno mdv_nodes_store(mdv_storage *storage, mdv_node const *node);
-
-
-/**
- * @brief Returns current node description
- *
- * @param uuid [in] node uuid
- * @param addr [in] node address
- *
- * @return current node description
- */
-mdv_node const * mdv_nodes_current(mdv_uuid const *uuid, char const *addr);

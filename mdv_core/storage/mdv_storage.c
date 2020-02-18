@@ -235,13 +235,13 @@ void mdv_map_close(mdv_map *pmap)
 }
 
 
-static char const * mdv_array_to_hexstr(uint8_t const *ptr, size_t size)
+enum { MDV_HEXSTR_LEN = 65 };
+
+static char const * mdv_array_to_hexstr(uint8_t const *ptr, size_t size, char buff[MDV_HEXSTR_LEN])
 {
     size *= 2;
 
-    static _Thread_local char buff[65];
-
-    size = size > sizeof buff - 1 ? sizeof buff - 1 : size;
+    size = size > MDV_HEXSTR_LEN - 1 ? MDV_HEXSTR_LEN - 1 : size;
 
     static char const hex[] = "0123456789ABCDEF";
 
@@ -278,8 +278,10 @@ static bool mdv_map_put_impl(mdv_map *pmap, mdv_transaction *ptransaction, mdv_d
     {
         if (!(MDV_MAP_SILENT & flags))
         {
+            char hexstr[MDV_HEXSTR_LEN];
+
             MDV_LOGE("Unable to put data with key \'%s\' into the LMDB database: '%s' (%d)",
-                            mdv_array_to_hexstr(key->ptr, key->size),
+                            mdv_array_to_hexstr(key->ptr, key->size, hexstr),
                             mdb_strerror(rc),
                             rc);
         }

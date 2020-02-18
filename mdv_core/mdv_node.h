@@ -11,6 +11,7 @@
 #pragma once
 #include <mdv_def.h>
 #include <mdv_uuid.h>
+#include <mdv_limits.h>
 
 
 enum
@@ -28,7 +29,23 @@ typedef struct
 } mdv_node;
 
 
+enum { MDV_NODE_MAX_SIZE = offsetof(mdv_node, addr) + MDV_ADDR_LEN_MAX + 1 };
+
+
 /**
  * @brief Calculates memory size required for node
  */
 size_t mdv_node_size(mdv_node const *node);
+
+
+/**
+ * @brief Node initialization
+ *
+ * @param node [out] node
+ * @param uuid [in]  node uuid
+ * @param id [in]    node identifier
+ * @param addr [in]  node address
+ *
+ * @return current node description
+ */
+bool mdv_node_init(mdv_node *node, mdv_uuid const *uuid, uint32_t id, char const *addr);

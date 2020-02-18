@@ -28,7 +28,7 @@ static bool mdv_binn_node(mdv_node const *node, binn *obj)
 }
 
 
-static mdv_node const * mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid)
+static bool mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid, mdv_node *node)
 {
     char *addr = 0;
     uint32_t id;
@@ -38,7 +38,7 @@ static mdv_node const * mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid)
         || !binn_object_get_str((void*)obj, "A", &addr))
     {
         MDV_LOGE("unbinn_node failed");
-        return 0;
+        return false;
     }
 
     size_t const addr_len = strlen(addr);
@@ -46,12 +46,8 @@ static mdv_node const * mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid)
     if (addr_len >= MDV_ADDR_LEN_MAX)
     {
         MDV_LOGE("unbinn_node failed");
-        return 0;
+        return false;
     }
-
-    static _Thread_local char buff[offsetof(mdv_node, addr) + MDV_ADDR_LEN_MAX + 1];
-
-    mdv_node *node = (mdv_node *)buff;
 
     memset(node, 0, sizeof *node);
 
@@ -60,7 +56,7 @@ static mdv_node const * mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid)
 
     memcpy(node->addr, addr, addr_len + 1);
 
-    return node;
+    return true;
 }
 
 
@@ -94,6 +90,10 @@ mdv_errno mdv_nodes_foreach(mdv_storage *storage,
 
     mdv_rollbacker_push(rollbacker, mdv_map_close, &nodes_map);
 
+    char buff[offsetof(mdv_node, addr) + MDV_ADDR_LEN_MAX + 1];
+
+    mdv_node *node = (mdv_node *)buff;
+
     mdv_map_foreach(transaction, nodes_map, entry)
     {
         mdv_uuid const *uuid = (mdv_uuid const *)entry.key.ptr;
@@ -108,9 +108,7 @@ mdv_errno mdv_nodes_foreach(mdv_storage *storage,
             continue;
         }
 
-        mdv_node const *node = mdv_unbinn_node(&obj, uuid);
-
-        if (node)
+        if (mdv_unbinn_node(&obj, uuid, node))
         {
             MDV_LOGI("Node: [%u] %s, %s", node->id, mdv_uuid_to_str(&node->uuid, uuid_str), node->addr);
             fn(arg, node);
@@ -211,27 +209,3 @@ mdv_errno mdv_nodes_store(mdv_storage *storage, mdv_node const *node)
     return MDV_OK;
 }
 
-
-mdv_node const * mdv_nodes_current(mdv_uuid const *uuid, char const *addr)
-{
-    size_t const addr_len = strlen(addr);
-
-    if (addr_len >= MDV_ADDR_LEN_MAX)
-    {
-        MDV_LOGE("Invalid address");
-        return 0;
-    }
-
-    static _Thread_local char buff[offsetof(mdv_node, addr) + MDV_ADDR_LEN_MAX + 1];
-
-    mdv_node *node = (mdv_node *)buff;
-
-    memset(node, 0, sizeof *node);
-
-    node->uuid      = *uuid;
-    node->id        = MDV_LOCAL_ID;
-
-    memcpy(node->addr, addr, addr_len + 1);
-
-    return node;
-}

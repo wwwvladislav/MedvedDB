@@ -6,7 +6,7 @@
 
 
 #define MDV_COUNT_ALLOCS_STAT
-//#define MDV_USE_STD_ALLOC
+// #define MDV_USE_STD_ALLOC
 
 
 #ifdef MDV_USE_STD_ALLOC

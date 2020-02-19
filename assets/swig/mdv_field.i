@@ -13,8 +13,8 @@
 %ignore mdv_field::mdv_field();
 %ignore mdv_field::~mdv_field();
 
+%immutable mdv_field::type;
+%immutable mdv_field::limit;
 %immutable mdv_field::name;
 
 %include "mdv_field.h"
-
-

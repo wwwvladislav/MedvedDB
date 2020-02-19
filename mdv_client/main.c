@@ -404,6 +404,8 @@ int main(int argc, char *argv[])
     linenoiseHistorySetMaxLen(MDV_HISTORY_LEN);
     linenoiseSetCompletionCallback(mdv_command_completion);
 
+    mdv_initialize();
+
     client = mdv_connect(argv[argc - 1]);
 
     if (client)
@@ -437,6 +439,8 @@ int main(int argc, char *argv[])
 
         mdv_client_close(client);
     }
+
+    mdv_finalize();
 
     return 0;
 }

@@ -20,49 +20,29 @@
 enum { MDV_FETCH_SIZE = 64 };       // limit for rows fetching
 
 
-static               int total_connections = 0;
-static _Thread_local int thread_connections = 0;
-
-
-static void mdv_client_init()
+bool mdv_initialize()
 {
-    static bool is_init = false;
-
-    if (!is_init)
-    {
-        is_init = true;
-        signal(SIGPIPE, SIG_IGN);
-        //mdv_logf_set_level(ZF_LOG_VERBOSE);
-    }
-
-    if (total_connections++ == 0)
-    {
-        mdv_alloc_initialize();
-        mdv_binn_set_allocator();
-        thread_connections++;
-    }
-    else if (thread_connections++ == 0)
-    {
-        mdv_alloc_thread_initialize();
-    }
+    // mdv_logf_set_level(ZF_LOG_VERBOSE);
+    signal(SIGPIPE, SIG_IGN);
+    mdv_binn_set_allocator();
+    return !mdv_alloc_initialize();
 }
 
 
-static void mdv_client_finalize()
+void mdv_finalize()
 {
-    if (!thread_connections
-        || !total_connections)
-        return;
+    mdv_alloc_finalize();
+}
 
-    if (--total_connections == 0)
-    {
-        mdv_alloc_finalize();
-        thread_connections--;
-    }
-    else if (--thread_connections == 0)
-    {
-        mdv_alloc_thread_finalize();
-    }
+
+void mdv_thread_initialize()
+{
+    mdv_alloc_thread_initialize();
+}
+
+void mdv_thread_finalize()
+{
+    mdv_alloc_thread_finalize();
 }
 
 
@@ -302,11 +282,7 @@ static mdv_errno mdv_client_topology_handler(mdv_msg const *msg, mdv_topology **
 
 mdv_client * mdv_client_connect(mdv_client_config const *config)
 {
-    mdv_client_init();
-
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
-
-    mdv_rollbacker_push(rollbacker, mdv_client_finalize);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
     // Allocate memory for client
 
@@ -418,7 +394,6 @@ void mdv_client_close(mdv_client *client)
         mdv_chaman_free(client->chaman);
         mdv_safeptr_free(client->connection);
         mdv_free(client, "client");
-        mdv_client_finalize();
     }
 }
 

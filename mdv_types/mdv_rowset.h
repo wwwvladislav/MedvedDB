@@ -10,17 +10,11 @@
  */
 #pragma once
 #include "mdv_data.h"
+#include "mdv_row.h"
 #include <mdv_def.h>
 #include <mdv_enumerator.h>
 #include <mdv_list.h>
 #include <stdatomic.h>
-
-
-/// Row definition
-typedef struct
-{
-    mdv_data fields[1];
-} mdv_row;
 
 
 /// Predicate for row filtering

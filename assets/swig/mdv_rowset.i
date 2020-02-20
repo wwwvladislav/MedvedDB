@@ -26,4 +26,9 @@ typedef struct {} mdv_rowset;
     {
         return mdv_rowset_columns($self);
     }
+
+    bool add()
+    {
+        return true;
+    }
 }

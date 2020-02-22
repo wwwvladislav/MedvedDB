@@ -5,16 +5,17 @@
 
 struct mdv_datum
 {
-    mdv_field_type  type;   ///< Field type
-    uint32_t        count;  ///< Data items count
+    mdv_field_type       type;      ///< Field type
+    uint32_t             count;     ///< Data items count
+    mdv_allocator const *allocator; ///< Memory allocator
 };
 
 
 #define mdv_datum_type(T, name, field_type)             \
     typedef struct                                      \
     {                                                   \
-        mdv_datum   base;                               \
-        T           data[1];                            \
+        mdv_datum            base;                      \
+        T                    data[1];                   \
     } mdv_datum_##name;                                 \
                                                         \
     mdv_datum_constructor(T, name)                      \
@@ -32,9 +33,15 @@ struct mdv_datum
                                                         \
         datum->base.type = field_type;                  \
         datum->base.count = count;                      \
+        datum->base.allocator = allocator;              \
         memcpy(datum->data, v, sizeof(T) * count);      \
                                                         \
         return &datum->base;                            \
+    }                                                   \
+                                                        \
+    mdv_datum_destructor(name)                          \
+    {                                                   \
+        datum->allocator->free(datum, #name);           \
     }
 
 

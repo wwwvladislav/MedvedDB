@@ -4,6 +4,8 @@
 #include <mdv_rowset.h>
 %}
 
+%include "mdv_row.i"
+
 %rename(RowSet) mdv_rowset;
 
 %nodefault;

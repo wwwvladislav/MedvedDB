@@ -236,9 +236,10 @@ static void mdv_test_scenario(char const *args)
 
     mdv_table_desc desc =
     {
-        .name = "MyTable",
-        .size = 3,
-        .fields = fields
+        .name          = "MyTable",
+        .size          = 3,
+        .dynamic_alloc = false,
+        .fields        = fields
     };
 
     // Table creation

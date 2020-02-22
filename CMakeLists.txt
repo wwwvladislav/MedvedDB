@@ -176,7 +176,21 @@ if(SWIG_FOUND)
                 ${SWIG_OUTDIR}/FieldType.java 
                 ${SWIG_OUTDIR}/TableDesc.java
                 ${SWIG_OUTDIR}/Table.java
+                ${SWIG_OUTDIR}/Row.java
                 ${SWIG_OUTDIR}/RowSet.java
+                ${SWIG_OUTDIR}/ArrayOfBool.java
+                ${SWIG_OUTDIR}/ArrayOfChar.java
+                ${SWIG_OUTDIR}/ArrayOfByte.java
+                ${SWIG_OUTDIR}/ArrayOfUint8.java
+                ${SWIG_OUTDIR}/ArrayOfInt8.java
+                ${SWIG_OUTDIR}/ArrayOfUint16.java
+                ${SWIG_OUTDIR}/ArrayOfInt16.java
+                ${SWIG_OUTDIR}/ArrayOfUint32.java
+                ${SWIG_OUTDIR}/ArrayOfInt32.java
+                ${SWIG_OUTDIR}/ArrayOfUint64.java
+                ${SWIG_OUTDIR}/ArrayOfInt64.java
+                ${SWIG_OUTDIR}/ArrayOfFloat.java
+                ${SWIG_OUTDIR}/ArrayOfDouble.java
                 ${SWIG_OUTDIR}/Client.java
                 ${SWIG_OUTDIR}/ClientConfig.java
                 ${SWIG_OUTDIR}/ClientDbConfig.java

@@ -29,8 +29,21 @@ typedef struct {} mdv_rowset;
         return mdv_rowset_columns($self);
     }
 
-    bool add()
+    bool add(mdv_datums const *row)
     {
-        return true;
+        if(row->size != mdv_rowset_columns($self))
+            return false;
+
+        mdv_data data[row->size];
+
+        for(uint32_t i = 0; i < row->size; ++i)
+        {
+            data[i].size = mdv_datum_size(row->data[i]);
+            data[i].ptr = mdv_datum_ptr(row->data[i]);
+        }
+
+        mdv_data const *rows[] = { data };
+
+        return mdv_rowset_append($self, rows, 1) == 1;
     }
 }

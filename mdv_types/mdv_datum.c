@@ -8,6 +8,7 @@ struct mdv_datum
     mdv_field_type       type;      ///< Field type
     uint32_t             count;     ///< Data items count
     mdv_allocator const *allocator; ///< Memory allocator
+    void                *ptr;       ///< Data pointer
 };
 
 
@@ -34,6 +35,7 @@ struct mdv_datum
         datum->base.type = field_type;                  \
         datum->base.count = count;                      \
         datum->base.allocator = allocator;              \
+        datum->base.ptr = &datum->data;                 \
         memcpy(datum->data, v, sizeof(T) * count);      \
                                                         \
         return &datum->base;                            \
@@ -58,3 +60,17 @@ mdv_datum_type(int64_t,     int64,  MDV_FLD_TYPE_INT64);
 mdv_datum_type(uint64_t,    uint64, MDV_FLD_TYPE_UINT64);
 mdv_datum_type(float,       float,  MDV_FLD_TYPE_FLOAT);
 mdv_datum_type(double,      double, MDV_FLD_TYPE_DOUBLE);
+
+
+uint32_t mdv_datum_size(mdv_datum *datum)
+{
+    return mdv_field_type_size(datum->type)
+                * datum->count;
+}
+
+
+void * mdv_datum_ptr(mdv_datum *datum)
+{
+    return datum->ptr;
+}
+

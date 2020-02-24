@@ -15,6 +15,9 @@
 %ignore mdv_table_desc::size;
 %ignore mdv_table_desc::fields;
 
+%nodefault;
+typedef struct mdv_table_desc {} mdv_table_desc;
+%clearnodefault;
 
 %extend mdv_table_desc
 {
@@ -40,6 +43,3 @@
         return mdv_table_desc_append($self, &field);
     }
 }
-
-
-%include "mdv_table_desc.h"

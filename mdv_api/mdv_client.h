@@ -7,6 +7,7 @@
 #include "mdv_client_config.h"
 #include <mdv_table.h>
 #include <mdv_rowset.h>
+#include <mdv_resultset.h>
 #include <mdv_topology.h>
 #include <mdv_errno.h>
 #include <mdv_bitset.h>
@@ -133,11 +134,10 @@ mdv_errno mdv_insert_rows(mdv_client *client, mdv_table *table, mdv_rowset *rows
  * @param filter [in]           predicate for rows filtering
  * @param result_table [out]    result table descriptor
  *
- * @return On success, return nonzero rows enumerator (mdv_rowset's set)
+ * @return On success, return nonzero pointer to result set (mdv_rowset's set)
  * @return On error, return NULL pointer
  */
-mdv_enumerator * mdv_select(mdv_client *client,
-                            mdv_table  *table,
-                            mdv_bitset *fields,
-                            char const *filter,
-                            mdv_table  **result_table);
+mdv_resultset * mdv_select(mdv_client *client,
+                           mdv_table  *table,
+                           mdv_bitset *fields,
+                           char const *filter);

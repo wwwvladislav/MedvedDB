@@ -6,7 +6,6 @@
 
 %include "mdv_client.i"
 %include "mdv_uuid.i"
-%include "mdv_bitset.i"
 
 %rename(clientInitialize)       mdv_initialize;
 %rename(clientFinalize)         mdv_finalize;

@@ -859,11 +859,10 @@ static mdv_errno mdv_select_request(mdv_client *client,
 }
 
 
-mdv_enumerator * mdv_select(mdv_client *client,
-                            mdv_table  *table,
-                            mdv_bitset *fields,
-                            char const *filter,
-                            mdv_table  **result_table)
+mdv_resultset * mdv_select(mdv_client *client,
+                           mdv_table  *table,
+                           mdv_bitset *fields,
+                           char const *filter)
 {
     mdv_table *table_slice = mdv_table_slice(table, fields);
 
@@ -918,8 +917,10 @@ mdv_enumerator * mdv_select(mdv_client *client,
     enumerator->rowset      = 0;
     enumerator->fields      = mdv_bitset_retain(fields);
 
-    if (result_table)
-        *result_table = mdv_table_retain(table_slice);
+    mdv_resultset *resultset = mdv_resultset_create(table_slice, &enumerator->base);
 
-    return &enumerator->base;
+    mdv_table_release(table_slice);
+    mdv_enumerator_release(&enumerator->base);
+
+    return resultset;
 }

@@ -178,8 +178,9 @@ if(SWIG_FOUND)
                 ${SWIG_OUTDIR}/Table.java
                 ${SWIG_OUTDIR}/Row.java
                 ${SWIG_OUTDIR}/RowSet.java
+                ${SWIG_OUTDIR}/RowSetEnumerator.java
                 ${SWIG_OUTDIR}/ResultSet.java
-#                ${SWIG_OUTDIR}/ResultSetEnumerator.java
+                ${SWIG_OUTDIR}/ResultSetEnumerator.java
                 ${SWIG_OUTDIR}/ArrayOfBool.java
                 ${SWIG_OUTDIR}/ArrayOfChar.java
                 ${SWIG_OUTDIR}/ArrayOfByte.java

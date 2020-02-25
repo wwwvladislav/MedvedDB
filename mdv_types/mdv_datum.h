@@ -10,6 +10,7 @@
  */
 #pragma once
 #include "mdv_field.h"
+#include "mdv_data.h"
 #include <mdv_alloc.h>
 
 
@@ -43,6 +44,8 @@ mdv_datum_functions(float,        float);
 mdv_datum_functions(double,       double);
 
 
-uint32_t mdv_datum_size(mdv_datum *datum);
-void *   mdv_datum_ptr(mdv_datum *datum);
+mdv_datum * mdv_datum_create(mdv_data const *data, mdv_allocator const *allocator);
+void        mdv_datum_free(mdv_datum *datum);
+uint32_t    mdv_datum_size(mdv_datum *datum);
+void *      mdv_datum_ptr(mdv_datum *datum);
 

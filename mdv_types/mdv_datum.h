@@ -19,30 +19,23 @@ typedef struct mdv_datum mdv_datum;
 
 
 #define mdv_datum_constructor(T, name)  \
-    mdv_datum * mdv_datum_##name##_create(T const *v, uint32_t count, mdv_allocator const *allocator)
+        mdv_datum * mdv_datum_##name##_create(T const *v, uint32_t count, mdv_allocator const *allocator);
 
-#define mdv_datum_destructor(name)  \
-    void mdv_datum_##name##_free(mdv_datum *datum)
+mdv_datum_constructor(bool,         bool);
+mdv_datum_constructor(char,         char);
+mdv_datum_constructor(uint8_t,      byte);
+mdv_datum_constructor(int8_t,       int8);
+mdv_datum_constructor(uint8_t,      uint8);
+mdv_datum_constructor(int16_t,      int16);
+mdv_datum_constructor(uint16_t,     uint16);
+mdv_datum_constructor(int32_t,      int32);
+mdv_datum_constructor(uint32_t,     uint32);
+mdv_datum_constructor(int64_t,      int64);
+mdv_datum_constructor(uint64_t,     uint64);
+mdv_datum_constructor(float,        float);
+mdv_datum_constructor(double,       double);
 
-#define mdv_datum_functions(T, name)  \
-        mdv_datum * mdv_datum_##name##_create(T const *v, uint32_t count, mdv_allocator const *allocator);  \
-        void mdv_datum_##name##_free(mdv_datum *datum);
-
-
-mdv_datum_functions(bool,         bool);
-mdv_datum_functions(char,         char);
-mdv_datum_functions(uint8_t,      byte);
-mdv_datum_functions(int8_t,       int8);
-mdv_datum_functions(uint8_t,      uint8);
-mdv_datum_functions(int16_t,      int16);
-mdv_datum_functions(uint16_t,     uint16);
-mdv_datum_functions(int32_t,      int32);
-mdv_datum_functions(uint32_t,     uint32);
-mdv_datum_functions(int64_t,      int64);
-mdv_datum_functions(uint64_t,     uint64);
-mdv_datum_functions(float,        float);
-mdv_datum_functions(double,       double);
-
+#undef mdv_datum_constructor
 
 mdv_datum * mdv_datum_create(mdv_data const *data, mdv_allocator const *allocator);
 void        mdv_datum_free(mdv_datum *datum);

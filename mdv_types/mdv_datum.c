@@ -17,7 +17,10 @@ struct mdv_datum
         T                    data[1];                   \
     } mdv_datum_##name;                                 \
                                                         \
-    mdv_datum_constructor(T, name)                      \
+    mdv_datum * mdv_datum_##name##_create(              \
+                    T const *v,                         \
+                    uint32_t count,                     \
+                    mdv_allocator const *allocator)     \
     {                                                   \
         mdv_datum_##name *datum =                       \
             allocator->alloc(                           \
@@ -36,13 +39,7 @@ struct mdv_datum
         memcpy(datum->data, v, sizeof(T) * count);      \
                                                         \
         return &datum->base;                            \
-    }                                                   \
-                                                        \
-    mdv_datum_destructor(name)                          \
-    {                                                   \
-        datum->allocator->free(datum, #name);           \
     }
-
 
 mdv_datum_type(bool,        bool,   MDV_FLD_TYPE_BOOL);
 mdv_datum_type(char,        char,   MDV_FLD_TYPE_CHAR);
@@ -58,6 +55,8 @@ mdv_datum_type(uint64_t,    uint64, MDV_FLD_TYPE_UINT64);
 mdv_datum_type(float,       float,  MDV_FLD_TYPE_FLOAT);
 mdv_datum_type(double,      double, MDV_FLD_TYPE_DOUBLE);
 
+#undef mdv_datum_type
+
 
 mdv_datum * mdv_datum_create(mdv_data const *data, mdv_allocator const *allocator)
 {
@@ -67,7 +66,8 @@ mdv_datum * mdv_datum_create(mdv_data const *data, mdv_allocator const *allocato
 
 void mdv_datum_free(mdv_datum *datum)
 {
-    mdv_datum_byte_free(datum);
+    if (datum)
+        datum->allocator->free(datum, "datum");
 }
 
 

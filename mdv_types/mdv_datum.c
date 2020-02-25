@@ -35,7 +35,7 @@ struct mdv_datum
                                                         \
         datum->base.allocator = allocator;              \
         datum->base.data.size = sizeof(T) * count;      \
-        datum->base.data.ptr = &datum->data;            \
+        datum->base.data.ptr = datum->data;             \
         memcpy(datum->data, v, sizeof(T) * count);      \
                                                         \
         return &datum->base;                            \

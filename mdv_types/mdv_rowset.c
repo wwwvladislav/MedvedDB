@@ -9,6 +9,8 @@
 typedef struct
 {
     mdv_rowset              base;       ///< Base type for rowset
+    atomic_uint_fast32_t    rc;         ///< References counter
+    mdv_table              *table;      ///< Table associated with rowset
     mdv_list                rows;       ///< Rows list (list<mdv_row>)
 } mdv_rowset_impl;
 
@@ -24,7 +26,8 @@ typedef struct
 
 static mdv_rowset * mdv_rowset_impl_retain(mdv_rowset *rowset)
 {
-    atomic_fetch_add_explicit(&rowset->rc, 1, memory_order_acquire);
+    mdv_rowset_impl *impl = (mdv_rowset_impl *)rowset;
+    atomic_fetch_add_explicit(&impl->rc, 1, memory_order_acquire);
     return rowset;
 }
 
@@ -37,11 +40,12 @@ static uint32_t mdv_rowset_impl_release(mdv_rowset *rowset)
     {
         mdv_rowset_impl *impl = (mdv_rowset_impl *)rowset;
 
-        rc = atomic_fetch_sub_explicit(&rowset->rc, 1, memory_order_release) - 1;
+        rc = atomic_fetch_sub_explicit(&impl->rc, 1, memory_order_release) - 1;
 
         if (!rc)
         {
             mdv_list_clear(&impl->rows);
+            mdv_table_release(impl->table);
             mdv_free(impl, "mem_rowset");
         }
     }
@@ -57,13 +61,21 @@ static void mdv_rowset_impl_emplace(mdv_rowset *rowset, mdv_rowlist_entry *entry
 }
 
 
+static mdv_table * mdv_rowset_impl_table(mdv_rowset *rowset)
+{
+    mdv_rowset_impl *impl = (mdv_rowset_impl *)rowset;
+    return mdv_table_retain(impl->table);
+}
+
+
 static size_t mdv_rowset_impl_append(mdv_rowset *rowset, mdv_data const **rows, size_t count)
 {
     mdv_rowset_impl *impl = (mdv_rowset_impl *)rowset;
+    mdv_table_desc const *desc = mdv_table_description(impl->table);
 
     size_t appended = 0;
 
-    uint32_t const cols = mdv_rowset_columns(rowset);
+    uint32_t const cols = desc->size;
 
     for(size_t i = 0; i < count; ++i)
     {
@@ -201,7 +213,7 @@ static mdv_enumerator * mdv_rowset_impl_enumerator(mdv_rowset *rowset)
 }
 
 
-mdv_rowset * mdv_rowset_create(uint32_t columns)
+mdv_rowset * mdv_rowset_create(mdv_table *table)
 {
     mdv_rowset_impl *impl = mdv_alloc(sizeof(mdv_rowset_impl), "mem_rowset");
 
@@ -215,16 +227,17 @@ mdv_rowset * mdv_rowset_create(uint32_t columns)
     {
         .retain = mdv_rowset_impl_retain,
         .release = mdv_rowset_impl_release,
+        .table = mdv_rowset_impl_table,
         .append = mdv_rowset_impl_append,
         .emplace = mdv_rowset_impl_emplace,
         .enumerator = mdv_rowset_impl_enumerator,
     };
 
-    atomic_init(&impl->base.rc, 1);
-
     impl->base.vptr = &vtbl;
 
-    impl->base.columns = columns;
+    atomic_init(&impl->rc, 1);
+
+    impl->table = mdv_table_retain(table);
 
     memset(&impl->rows, 0, sizeof(impl->rows));
 
@@ -246,9 +259,9 @@ uint32_t mdv_rowset_release(mdv_rowset *rowset)
 }
 
 
-uint32_t mdv_rowset_columns(mdv_rowset const *rowset)
+mdv_table * mdv_rowset_table(mdv_rowset *rowset)
 {
-    return rowset->columns;
+    rowset->vptr->table(rowset);
 }
 
 

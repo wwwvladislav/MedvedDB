@@ -24,6 +24,8 @@ typedef struct {} mdv_rowset;
 typedef struct {} mdv_rows_enumerator;
 %clearnodefault;
 
+%newobject mdv_rowset::get_enumerator;
+
 %extend mdv_rowset
 {
     mdv_rowset(uint32_t columns)
@@ -79,6 +81,8 @@ typedef struct {} mdv_rows_enumerator;
     }
 }
 
+%newobject mdv_rows_enumerator::current;
+
 %extend mdv_rows_enumerator
 {
     ~mdv_rows_enumerator()
@@ -106,7 +110,7 @@ typedef struct {} mdv_rows_enumerator;
         {
             for(uint32_t i = 0; i < $self->columns; ++i)
             {
-                datums->data[i] = mdv_datum_create(row->fields + i, &mdv_default_allocator);
+                datums->data[i] = mdv_datum_byte_create(row->fields[i].ptr, row->fields[i].size);
 
                 if (!datums->data[i])
                 {

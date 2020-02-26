@@ -14,7 +14,7 @@ typedef struct {} mdv_table;
 
 %extend mdv_table
 {
-    void close()
+    ~mdv_table()
     {
         mdv_table_release($self);
     }

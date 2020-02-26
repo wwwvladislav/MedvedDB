@@ -768,9 +768,9 @@ mdv_rowlist_entry * mdv_unbinn_row_slice(binn const *list,
 }
 
 
-bool mdv_binn_rowset(mdv_rowset *rowset, binn *list, mdv_table_desc const *table_desc)
+bool mdv_binn_rowset(mdv_rowset *rowset, binn *list)
 {
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
     if (!binn_create_list(list))
     {
@@ -791,6 +791,12 @@ bool mdv_binn_rowset(mdv_rowset *rowset, binn *list, mdv_table_desc const *table
     }
 
     mdv_rollbacker_push(rollbacker, mdv_enumerator_release, enumerator);
+
+    mdv_table *table = mdv_rowset_table(rowset);
+
+    mdv_rollbacker_push(rollbacker, mdv_table_release, table);
+
+    mdv_table_desc const *table_desc = mdv_table_description(table);
 
     while(mdv_enumerator_next(enumerator) == MDV_OK)
     {
@@ -818,6 +824,7 @@ bool mdv_binn_rowset(mdv_rowset *rowset, binn *list, mdv_table_desc const *table
         }
     }
 
+    mdv_table_release(table);
     mdv_enumerator_release(enumerator);
     mdv_rollbacker_free(rollbacker);
 
@@ -825,15 +832,17 @@ bool mdv_binn_rowset(mdv_rowset *rowset, binn *list, mdv_table_desc const *table
 }
 
 
-mdv_rowset * mdv_unbinn_rowset(binn const *list, mdv_table_desc const *table_desc)
+mdv_rowset * mdv_unbinn_rowset(binn const *list, mdv_table *table)
 {
-    mdv_rowset *rowset = mdv_rowset_create(table_desc->size);
+    mdv_rowset *rowset = mdv_rowset_create(table);
 
-    if (!rowset)
+    if (!rowset || !table)
     {
         MDV_LOGE("unbinn_rowset failed");
         return 0;
     }
+
+    mdv_table_desc const *table_desc = mdv_table_description(table);
 
     binn_iter iter = {};
     binn value = {};
@@ -1155,7 +1164,7 @@ bool mdv_binn_bitset(mdv_bitset const *bitset, binn *obj)
     size_t const capacity = mdv_bitset_capacity(bitset);
     int32_t const *data = (int32_t const *)mdv_bitset_data(bitset);
 
-    for(size_t i = 0; i < capacity / MDV_BITSET_ALIGNMENT; ++i)
+    for(size_t i = 0; i < capacity / (MDV_BITSET_ALIGNMENT * CHAR_BIT); ++i)
     {
         if (!binn_list_add_int32(obj, data[i]))
         {

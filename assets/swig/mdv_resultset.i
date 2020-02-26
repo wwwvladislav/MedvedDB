@@ -19,13 +19,22 @@ typedef struct {} mdv_resultset;
 typedef struct {} mdv_result_enumerator;
 %clearnodefault;
 
+%newobject mdv_resultset::get_enumerator;
+
 %extend mdv_resultset
 {
+    ~mdv_resultset()
+    {
+        mdv_resultset_release($self);
+    }
+
     mdv_result_enumerator * get_enumerator()
     {
         return mdv_resultset_enumerator($self);
     }
 }
+
+%newobject mdv_result_enumerator::current;
 
 %extend mdv_result_enumerator
 {

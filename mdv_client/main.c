@@ -263,7 +263,7 @@ static void mdv_test_scenario(char const *args)
 
     // Rowset creation
 
-    mdv_rowset *rowset = mdv_rowset_create(desc.size);
+    mdv_rowset *rowset = mdv_rowset_create(table);
 
     if (!rowset)
     {
@@ -303,7 +303,7 @@ static void mdv_test_scenario(char const *args)
 
     // Data insertion into the table
 
-    mdv_errno err = mdv_insert_rows(client, table, rowset);
+    mdv_errno err = mdv_insert(client, rowset);
 
     if (err == MDV_OK)
         MDV_INF("New row was successfully inserted\n");

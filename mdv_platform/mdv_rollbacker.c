@@ -18,9 +18,9 @@ mdv_rollbacker * mdv_rollbacker_create(size_t capacity)
     {
         rbr->capacity = capacity + 1;
         rbr->size = 0;
-    }
 
-    mdv_rollbacker_push(rbr, mdv_rollbacker_free, rbr);
+        mdv_rollbacker_push(rbr, mdv_rollbacker_free, rbr);
+    }
 
     return rbr;
 }
@@ -52,26 +52,31 @@ bool _mdv_rollbacker_push(mdv_rollbacker *rbr, mdv_rollback_op const *op)
 
 void mdv_rollback(mdv_rollbacker *rbr)
 {
-    while(rbr && rbr->size)
+    if(rbr)
     {
-        rbr->size--;
+        size_t size = rbr->size;
 
-        mdv_rollback_op *op = rbr->ops + rbr->size;
-
-        switch(op->args_count)
+        while(size)
         {
-            case 1:
-                ((mdv_rollback_fn_1)op->rollback)(op->arg[0]);
-                break;
-            case 2:
-                ((mdv_rollback_fn_2)op->rollback)(op->arg[0],
-                                                  op->arg[1]);
-                break;
-            case 3:
-                ((mdv_rollback_fn_3)op->rollback)(op->arg[0],
-                                                  op->arg[1],
-                                                  op->arg[2]);
-                break;
+            size--;
+
+            mdv_rollback_op *op = rbr->ops + size;
+
+            switch(op->args_count)
+            {
+                case 1:
+                    ((mdv_rollback_fn_1)op->rollback)(op->arg[0]);
+                    break;
+                case 2:
+                    ((mdv_rollback_fn_2)op->rollback)(op->arg[0],
+                                                    op->arg[1]);
+                    break;
+                case 3:
+                    ((mdv_rollback_fn_3)op->rollback)(op->arg[0],
+                                                    op->arg[1],
+                                                    op->arg[2]);
+                    break;
+            }
         }
     }
 }

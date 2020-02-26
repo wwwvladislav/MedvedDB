@@ -130,7 +130,7 @@ mdv_hashmap_bucket * mdv_hashmap_buckets(mdv_hashmap const *hm)
 
 bool mdv_hashmap_resize(mdv_hashmap *hm, size_t capacity)
 {
-    if (capacity >= hm->size)
+    if (capacity > hm->size)
     {
         mdv_hashmap_bucket *buckets = hm->buckets;
 

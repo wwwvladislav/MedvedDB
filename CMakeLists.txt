@@ -17,7 +17,7 @@ cmake_policy(SET CMP0015 NEW)
 #*********************************************************
 # Options
 #*********************************************************
-option(BUILD_JNI "Build java native interface" ON)
+option(BUILD_JNI "Build java native interface" OFF)
 
 
 #*********************************************************

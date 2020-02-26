@@ -116,13 +116,12 @@ mdv_hashmap * mdv_get_routes(mdv_client *client);
  * @details This function implements insertion functionality.
  *
  * @param client [in]    DB client
- * @param table [in]     table descriptor
  * @param rowset [in]    Set of rows for insert
  *
  * @return On success, return MDV_OK.
  * @return On error, return non zero value
  */
-mdv_errno mdv_insert_rows(mdv_client *client, mdv_table *table, mdv_rowset *rowset);
+mdv_errno mdv_insert(mdv_client *client, mdv_rowset *rowset);
 
 
 /**

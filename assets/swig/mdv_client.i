@@ -18,6 +18,9 @@ typedef struct {} mdv_client;
 
 mdv_table *  mdv_create_table(mdv_client *client, mdv_table_desc *table);
 
+%newobject mdv_client::createTable;
+%newobject mdv_client::select;
+
 %extend mdv_client
 {
     static mdv_client * connect(mdv_client_config const *config);

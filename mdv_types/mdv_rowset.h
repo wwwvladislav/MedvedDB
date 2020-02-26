@@ -2,15 +2,17 @@
  * @file mdv_rowset.h
  * @author Vladislav Volkov (wwwvladislav@gmail.com)
  * @brief Interface and useful types definitions for row set access.
+ * @details Row set is associated with specific table or view.
  * @version 0.1
  * @date 2019-11-19
  *
- * @copyright Copyright (c) 2019
+ * @copyright Copyright (c) 2019, Vladislav Volkov
  *
  */
 #pragma once
 #include "mdv_data.h"
 #include "mdv_row.h"
+#include "mdv_table.h"
 #include <mdv_def.h>
 #include <mdv_enumerator.h>
 #include <mdv_list.h>
@@ -30,6 +32,7 @@ typedef struct mdv_rowset mdv_rowset;
 
 typedef mdv_rowset *     (*mdv_rowset_retain_fn)    (mdv_rowset *);
 typedef uint32_t         (*mdv_rowset_release_fn)   (mdv_rowset *);
+typedef mdv_table *      (*mdv_rowset_table_fn)     (mdv_rowset *);
 typedef size_t           (*mdv_rowset_append_fn)    (mdv_rowset *, mdv_data const **, size_t);
 typedef void             (*mdv_rowset_emplace_fn)   (mdv_rowset *, mdv_rowlist_entry *);
 typedef mdv_enumerator * (*mdv_rowset_enumerator_fn)(mdv_rowset *);
@@ -40,6 +43,7 @@ typedef struct
 {
     mdv_rowset_retain_fn     retain;        ///< Function for rowset retain
     mdv_rowset_release_fn    release;       ///< Function for rowset release
+    mdv_rowset_table_fn      table;         ///< Function for accessing to the table associated with rowset
     mdv_rowset_append_fn     append;        ///< Function for append new row to rowset
     mdv_rowset_emplace_fn    emplace;       ///< Function for emplace new row in rowset
     mdv_rowset_enumerator_fn enumerator;    ///< Function for rowset iterator creation
@@ -49,8 +53,6 @@ typedef struct
 struct mdv_rowset
 {
     mdv_irowset const      *vptr;       ///< Interface for rowset
-    atomic_uint_fast32_t    rc;         ///< References counter
-    uint32_t                columns;    ///< Columns count
 };
 
 
@@ -59,7 +61,7 @@ struct mdv_rowset
  *
  * @return rowset or NULL
  */
-mdv_rowset * mdv_rowset_create(uint32_t columns);
+mdv_rowset * mdv_rowset_create(mdv_table *table);
 
 
 /**
@@ -78,9 +80,9 @@ uint32_t mdv_rowset_release(mdv_rowset *rowset);
 
 
 /**
- * @brief Returns rowset columns count
+ * @brief Returns table associated with rowset
  */
-uint32_t mdv_rowset_columns(mdv_rowset const *rowset);
+mdv_table * mdv_rowset_table(mdv_rowset *rowset);
 
 
 /**

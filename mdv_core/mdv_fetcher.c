@@ -161,7 +161,7 @@ static void mdv_fetcher_fn(mdv_job_base *job)
         binn list;
 
 
-        if (mdv_binn_rowset(rowset, &list, mdv_table_description(view_desc)))
+        if (mdv_binn_rowset(rowset, &list))
         {
             mdv_evt_view_data *evt = mdv_evt_view_data_create(
                                             &ctx->session,

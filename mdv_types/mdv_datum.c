@@ -1,11 +1,12 @@
 #include "mdv_datum.h"
 #include <mdv_log.h>
+#include <mdv_alloc.h>
 #include <string.h>
 
 
 struct mdv_datum
 {
-    mdv_allocator const *allocator; ///< Memory allocator
+    mdv_field_type       type;      ///< Data type
     mdv_data             data;      ///< Data
 };
 
@@ -19,11 +20,10 @@ struct mdv_datum
                                                         \
     mdv_datum * mdv_datum_##name##_create(              \
                     T const *v,                         \
-                    uint32_t count,                     \
-                    mdv_allocator const *allocator)     \
+                    uint32_t count)                     \
     {                                                   \
         mdv_datum_##name *datum =                       \
-            allocator->alloc(                           \
+            mdv_alloc(                                  \
                 offsetof(mdv_datum_##name, data)        \
                     + sizeof(T) * count,                \
                     "datum_"#name);                     \
@@ -33,7 +33,7 @@ struct mdv_datum
             return 0;                                   \
         }                                               \
                                                         \
-        datum->base.allocator = allocator;              \
+        datum->base.type = field_type;                  \
         datum->base.data.size = sizeof(T) * count;      \
         datum->base.data.ptr = datum->data;             \
         memcpy(datum->data, v, sizeof(T) * count);      \
@@ -58,27 +58,26 @@ mdv_datum_type(double,      double, MDV_FLD_TYPE_DOUBLE);
 #undef mdv_datum_type
 
 
-mdv_datum * mdv_datum_create(mdv_data const *data, mdv_allocator const *allocator)
-{
-    return mdv_datum_byte_create(data->ptr, data->size, allocator);
-}
-
-
 void mdv_datum_free(mdv_datum *datum)
 {
-    if (datum)
-        datum->allocator->free(datum, "datum");
+    mdv_free(datum, "datum");
 }
 
 
-uint32_t mdv_datum_size(mdv_datum *datum)
+uint32_t mdv_datum_size(mdv_datum const *datum)
 {
     return datum->data.size;
 }
 
 
-void * mdv_datum_ptr(mdv_datum *datum)
+void * mdv_datum_ptr(mdv_datum const *datum)
 {
     return datum->data.ptr;
+}
+
+
+mdv_field_type mdv_datum_type(mdv_datum const *datum)
+{
+    return datum->type;
 }
 

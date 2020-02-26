@@ -24,7 +24,7 @@ MU_TEST(types_rowset)
     mdv_uuid const uuid = {};
 
     mdv_table *table = mdv_table_create(&uuid, &desc);
-    mdv_rowset *rowset = mdv_rowset_create(desc.size);
+    mdv_rowset *rowset = mdv_rowset_create(table);
 
     mdv_data const row0[] = { { 2, "00" }, { 2, "01" }, { 2, "02" } };
     mdv_data const row1[] = { { 2, "10" }, { 2, "11" }, { 2, "12" } };
@@ -36,7 +36,7 @@ MU_TEST(types_rowset)
 
     size_t rows_count = 0;
 
-    uint32_t const columns = mdv_rowset_columns(rowset);
+    uint32_t const columns = desc.size;
 
     while(mdv_enumerator_next(enumerator) == MDV_OK)
     {

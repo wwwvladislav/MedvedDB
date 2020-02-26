@@ -21,8 +21,8 @@ bool                mdv_binn_row(mdv_row const *row, mdv_table_desc const *table
 mdv_rowlist_entry * mdv_unbinn_row(binn const *list, mdv_table_desc const *table_desc);
 mdv_rowlist_entry * mdv_unbinn_row_slice(binn const *list, mdv_table_desc const *table_desc, mdv_bitset const *mask);
 
-bool                mdv_binn_rowset(mdv_rowset *rowset, binn *list, mdv_table_desc const *table_desc);
-mdv_rowset *        mdv_unbinn_rowset(binn const *list, mdv_table_desc const *table_desc);
+bool                mdv_binn_rowset(mdv_rowset *rowset, binn *list);
+mdv_rowset *        mdv_unbinn_rowset(binn const *list, mdv_table *table);
 
 bool                mdv_binn_bitset(mdv_bitset const *bitset, binn *obj);
 mdv_bitset     *    mdv_unbinn_bitset(binn const *obj);

@@ -23,7 +23,7 @@ static bool mdv_objects_idgen_init(mdv_objects *objs)
 {
     objs->idgen = 0;
 
-    mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
+    mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
     // Start transaction
     mdv_transaction transaction = mdv_transaction_start(objs->storage);

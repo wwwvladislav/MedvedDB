@@ -162,7 +162,15 @@ static mdv_rowset * mdv_rowdata_slice_impl(mdv_enumerator       *enumerator,
 
     mdv_table_desc const *desc = mdv_table_description(table);
 
-    if ((rowset = mdv_rowset_create(mdv_bitset_count(fields, true))))
+    mdv_table *table_slice = mdv_table_slice(table, fields);
+
+    if (!table_slice)
+    {
+        MDV_LOGE("Table slice failed");
+        return 0;
+    }
+
+    if ((rowset = mdv_rowset_create(table_slice)))
     {
         for(size_t i = 0; i < count;)
         {
@@ -213,6 +221,8 @@ static mdv_rowset * mdv_rowdata_slice_impl(mdv_enumerator       *enumerator,
                 break;
         }
     }
+
+    mdv_table_release(table_slice);
 
     return rowset;
 }

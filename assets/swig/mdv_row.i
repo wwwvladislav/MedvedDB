@@ -96,30 +96,43 @@ typedef struct mdv_datums {} mdv_datums;
         return $self->size;
     }
 
-    bool set(size_t idx, bool val)                          { return mdv_datums_set_bool($self, idx, &val, 1); }
-    bool set(size_t idx, ArrayOfBool *arr, uint32_t size)   { return mdv_datums_set_bool($self, idx, arr, size); }
-    bool set(size_t idx, char val)                          { return mdv_datums_set_char($self, idx, &val, 1); }
-    bool set(size_t idx, ArrayOfChar *arr, uint32_t size)   { return mdv_datums_set_char($self, idx, arr, size); }
-    bool set(size_t idx, char const *str)                   { return mdv_datums_set_char($self, idx, str, strlen(str)); }
-    bool set(size_t idx, ArrayOfByte *arr, uint32_t size)   { return mdv_datums_set_byte($self, idx, arr, size); }
-    bool set(size_t idx, uint8_t val)                       { return mdv_datums_set_uint8($self, idx, &val, 1); }
-    bool set(size_t idx, ArrayOfUint8 *arr, uint32_t size)  { return mdv_datums_set_uint8($self, idx, arr, size); }
-    bool set(size_t idx, int8_t val)                        { return mdv_datums_set_int8($self, idx, &val, 1); }
-    bool set(size_t idx, ArrayOfInt8 *arr, uint32_t size)   { return mdv_datums_set_int8($self, idx, arr, size); }
-    bool set(size_t idx, uint16_t val)                      { return mdv_datums_set_uint16($self, idx, &val, 1); }
-    bool set(size_t idx, ArrayOfUint16 *arr, uint32_t size) { return mdv_datums_set_uint16($self, idx, arr, size); }
-    bool set(size_t idx, int16_t val)                       { return mdv_datums_set_int16($self, idx, &val, 1); }
-    bool set(size_t idx, ArrayOfInt16 *arr, uint32_t size)  { return mdv_datums_set_int16($self, idx, arr, size); }
-    bool set(size_t idx, uint32_t val)                      { return mdv_datums_set_uint32($self, idx, &val, 1); }
-    bool set(size_t idx, ArrayOfUint32 *arr, uint32_t size) { return mdv_datums_set_uint32($self, idx, arr, size); }
-    bool set(size_t idx, int32_t val)                       { return mdv_datums_set_int32($self, idx, &val, 1); }
-    bool set(size_t idx, ArrayOfInt32 *arr, uint32_t size)  { return mdv_datums_set_int32($self, idx, arr, size); }
-    bool set(size_t idx, uint64_t val)                      { return mdv_datums_set_uint64($self, idx, &val, 1); }
-    bool set(size_t idx, ArrayOfUint64 *arr, uint32_t size) { return mdv_datums_set_uint64($self, idx, arr, size); }
-    bool set(size_t idx, int64_t val)                       { return mdv_datums_set_int64($self, idx, &val, 1); }
-    bool set(size_t idx, ArrayOfInt64 *arr, uint32_t size)  { return mdv_datums_set_int64($self, idx, arr, size); }
-    bool set(size_t idx, float val)                         { return mdv_datums_set_float($self, idx, &val, 1); }
-    bool set(size_t idx, ArrayOfFloat *arr, uint32_t size)  { return mdv_datums_set_float($self, idx, arr, size); }
-    bool set(size_t idx, double val)                        { return mdv_datums_set_double($self, idx, &val, 1); }
-    bool set(size_t idx, ArrayOfDouble *arr, uint32_t size) { return mdv_datums_set_double($self, idx, arr, size); }
+    bool setBool(size_t idx, bool val)                              { return mdv_datums_set_bool($self, idx, &val, 1); }
+    bool setBool(size_t idx, ArrayOfBool *arr, uint32_t size)       { return mdv_datums_set_bool($self, idx, arr, size); }
+
+    bool setChar(size_t idx, char val)                              { return mdv_datums_set_char($self, idx, &val, 1); }
+    bool setChar(size_t idx, ArrayOfChar *arr, uint32_t size)       { return mdv_datums_set_char($self, idx, arr, size); }
+    bool setString(size_t idx, char const *str)                     { return mdv_datums_set_char($self, idx, str, strlen(str)); }
+
+    bool setByte(size_t idx, ArrayOfByte *arr, uint32_t size)       { return mdv_datums_set_byte($self, idx, arr, size); }
+    bool setByte(size_t idx, uint8_t val)                           { return mdv_datums_set_uint8($self, idx, &val, 1); }
+
+    bool setUint8(size_t idx, uint8_t val)                          { return mdv_datums_set_uint8($self, idx, &val, 1); }
+    bool setUint8(size_t idx, ArrayOfUint8 *arr, uint32_t size)     { return mdv_datums_set_uint8($self, idx, arr, size); }
+
+    bool setInt8(size_t idx, int8_t val)                            { return mdv_datums_set_int8($self, idx, &val, 1); }
+    bool setInt8(size_t idx, ArrayOfInt8 *arr, uint32_t size)       { return mdv_datums_set_int8($self, idx, arr, size); }
+
+    bool setUint16(size_t idx, uint16_t val)                        { return mdv_datums_set_uint16($self, idx, &val, 1); }
+    bool setUint16(size_t idx, ArrayOfUint16 *arr, uint32_t size)   { return mdv_datums_set_uint16($self, idx, arr, size); }
+
+    bool setInt16(size_t idx, int16_t val)                          { return mdv_datums_set_int16($self, idx, &val, 1); }
+    bool setInt16(size_t idx, ArrayOfInt16 *arr, uint32_t size)     { return mdv_datums_set_int16($self, idx, arr, size); }
+
+    bool setUint32(size_t idx, uint32_t val)                        { return mdv_datums_set_uint32($self, idx, &val, 1); }
+    bool setUint32(size_t idx, ArrayOfUint32 *arr, uint32_t size)   { return mdv_datums_set_uint32($self, idx, arr, size); }
+
+    bool setInt32(size_t idx, int32_t val)                          { return mdv_datums_set_int32($self, idx, &val, 1); }
+    bool setInt32(size_t idx, ArrayOfInt32 *arr, uint32_t size)     { return mdv_datums_set_int32($self, idx, arr, size); }
+
+    bool setUint64(size_t idx, uint64_t val)                        { return mdv_datums_set_uint64($self, idx, &val, 1); }
+    bool setUint64(size_t idx, ArrayOfUint64 *arr, uint32_t size)   { return mdv_datums_set_uint64($self, idx, arr, size); }
+
+    bool setInt64(size_t idx, int64_t val)                          { return mdv_datums_set_int64($self, idx, &val, 1); }
+    bool setInt64(size_t idx, ArrayOfInt64 *arr, uint32_t size)     { return mdv_datums_set_int64($self, idx, arr, size); }
+
+    bool setFloat(size_t idx, float val)                            { return mdv_datums_set_float($self, idx, &val, 1); }
+    bool setFloat(size_t idx, ArrayOfFloat *arr, uint32_t size)     { return mdv_datums_set_float($self, idx, arr, size); }
+
+    bool setDouble(size_t idx, double val)                          { return mdv_datums_set_double($self, idx, &val, 1); }
+    bool setDouble(size_t idx, ArrayOfDouble *arr, uint32_t size)   { return mdv_datums_set_double($self, idx, arr, size); }
 }

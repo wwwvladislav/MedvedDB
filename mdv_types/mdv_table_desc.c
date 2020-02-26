@@ -105,6 +105,7 @@ bool mdv_table_desc_append(mdv_table_desc *desc, mdv_field const *field)
 
     new_field->name = name->data;
 
+    desc->size = (uint32_t)mdv_vector_size(*ppfields);
     desc->fields = mdv_vector_data(*ppfields);
 
     return true;

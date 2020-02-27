@@ -6,11 +6,12 @@
 %}
 
 %include "mdv_row.i"
+%include "mdv_table.i"
 
 %{
 typedef struct
 {
-    uint32_t        columns;
+    mdv_table      *table;
     mdv_enumerator *enumerator;
 } mdv_rows_enumerator;
 %}
@@ -28,9 +29,9 @@ typedef struct {} mdv_rows_enumerator;
 
 %extend mdv_rowset
 {
-    mdv_rowset(uint32_t columns)
+    mdv_rowset(mdv_table *table)
     {
-        return mdv_rowset_create(columns);
+        return mdv_rowset_create(table);
     }
 
     ~mdv_rowset()
@@ -38,25 +39,36 @@ typedef struct {} mdv_rows_enumerator;
         mdv_rowset_release($self);
     }
 
-    uint32_t cols()
-    {
-        return mdv_rowset_columns($self);
-    }
-
     bool add(mdv_datums const *row)
     {
-        if(row->size != mdv_rowset_columns($self))
+        mdv_table *table = mdv_rowset_table($self);
+        mdv_table_desc const *table_desc = mdv_table_description(table);
+
+        if(row->size != table_desc->size)
+        {
+            // Invalid row length
+            mdv_table_release(table);
             return false;
+        }
 
         mdv_data data[row->size];
 
         for(uint32_t i = 0; i < row->size; ++i)
         {
+            if(mdv_datum_type(row->data[i]) != table_desc->fields[i].type)
+            {
+                // Invalid field type
+                mdv_table_release(table);
+                return false;
+            }
+
             data[i].size = mdv_datum_size(row->data[i]);
             data[i].ptr = mdv_datum_ptr(row->data[i]);
         }
 
         mdv_data const *rows[] = { data };
+
+        mdv_table_release(table);
 
         return mdv_rowset_append($self, rows, 1) == 1;
     }
@@ -68,7 +80,6 @@ typedef struct {} mdv_rows_enumerator;
         if(!enumerator)
             return 0;
 
-        enumerator->columns = mdv_rowset_columns($self);
         enumerator->enumerator = mdv_rowset_enumerator($self);
 
         if (!enumerator->enumerator)
@@ -76,6 +87,8 @@ typedef struct {} mdv_rows_enumerator;
             mdv_free(enumerator, "rows_enumerator");
             return 0;
         }
+
+        enumerator->table = mdv_rowset_table($self);
 
         return enumerator;
     }
@@ -87,6 +100,7 @@ typedef struct {} mdv_rows_enumerator;
 {
     ~mdv_rows_enumerator()
     {
+        mdv_table_release($self->table);
         mdv_enumerator_release($self->enumerator);
         mdv_free($self, "rows_enumerator");
     }
@@ -103,14 +117,15 @@ typedef struct {} mdv_rows_enumerator;
 
     mdv_datums * current()
     {
-        mdv_row *row = mdv_enumerator_current($self->enumerator);
-        mdv_datums *datums = new_mdv_datums($self->columns);
+        mdv_row              *row    = mdv_enumerator_current($self->enumerator);
+        mdv_table_desc const *desc   = mdv_table_description($self->table);
+        mdv_datums           *datums = new_mdv_datums(desc->size);
 
         if (datums)
         {
-            for(uint32_t i = 0; i < $self->columns; ++i)
+            for(uint32_t i = 0; i < desc->size; ++i)
             {
-                datums->data[i] = mdv_datum_byte_create(row->fields[i].ptr, row->fields[i].size);
+                datums->data[i] = mdv_datum_byte_create(row->fields[i].ptr, row->fields[i].size);   // TODO: use type
 
                 if (!datums->data[i])
                 {

@@ -14,9 +14,8 @@ typedef struct {} mdv_client;
 %include "mdv_rowset.i"
 %include "mdv_client_config.i"
 %include "mdv_bitset.i"
-%include "mdv_resultset.i"
 
-mdv_table *  mdv_create_table(mdv_client *client, mdv_table_desc *table);
+mdv_table * mdv_create_table(mdv_client *client, mdv_table_desc *table);
 
 %newobject mdv_client::createTable;
 %newobject mdv_client::select;
@@ -32,12 +31,12 @@ mdv_table *  mdv_create_table(mdv_client *client, mdv_table_desc *table);
         return mdv_create_table($self, table);
     }
 
-    bool insertRows(mdv_table *table, mdv_rowset *rowset)
+    bool insert(mdv_rowset *rowset)
     {
-        return mdv_insert_rows($self, table, rowset) == MDV_OK;
+        return mdv_insert($self, rowset) == MDV_OK;
     }
 
-    mdv_resultset * select(mdv_table *table, mdv_bitset *fields, char const *filter)
+    mdv_rowset * select(mdv_table *table, mdv_bitset *fields, char const *filter)
     {
         return mdv_select($self, table, fields, filter);
     }

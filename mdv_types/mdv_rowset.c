@@ -182,7 +182,7 @@ static void * mdv_rowset_enumerator_impl_current(mdv_enumerator *enumerator)
 }
 
 
-static mdv_enumerator * mdv_rowset_impl_enumerator(mdv_rowset *rowset)
+static mdv_enumerator * mdv_rowset_enumerator_impl_create(mdv_rowset *rowset)
 {
     mdv_rowset_enumerator_impl *enumerator = mdv_alloc(sizeof(mdv_rowset_enumerator_impl), "rowset_enumerator");
 
@@ -210,6 +210,12 @@ static mdv_enumerator * mdv_rowset_impl_enumerator(mdv_rowset *rowset)
     mdv_rowset_enumerator_impl_reset(&enumerator->base);
 
     return &enumerator->base;
+}
+
+
+static mdv_enumerator * mdv_rowset_impl_enumerator(mdv_rowset *rowset)
+{
+    return mdv_rowset_enumerator_impl_create(rowset);
 }
 
 

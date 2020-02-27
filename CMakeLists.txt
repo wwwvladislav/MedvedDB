@@ -17,7 +17,7 @@ cmake_policy(SET CMP0015 NEW)
 #*********************************************************
 # Options
 #*********************************************************
-option(BUILD_JNI "Build java native interface" OFF)
+option(BUILD_JNI "Build java native interface" ON)
 
 
 #*********************************************************
@@ -179,8 +179,6 @@ if(SWIG_FOUND)
                 ${SWIG_OUTDIR}/Row.java
                 ${SWIG_OUTDIR}/RowSet.java
                 ${SWIG_OUTDIR}/RowSetEnumerator.java
-                ${SWIG_OUTDIR}/ResultSet.java
-                ${SWIG_OUTDIR}/ResultSetEnumerator.java
                 ${SWIG_OUTDIR}/ArrayOfBool.java
                 ${SWIG_OUTDIR}/ArrayOfChar.java
                 ${SWIG_OUTDIR}/ArrayOfByte.java

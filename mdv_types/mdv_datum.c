@@ -58,6 +58,13 @@ mdv_datum_type(double,      double, MDV_FLD_TYPE_DOUBLE);
 #undef mdv_datum_type
 
 
+mdv_datum * mdv_datum_create(mdv_field_type type, void const *v, uint32_t size)
+{
+    // TODO
+    return 0;
+}
+
+
 void mdv_datum_free(mdv_datum *datum)
 {
     mdv_free(datum, "datum");

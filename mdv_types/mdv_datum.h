@@ -37,6 +37,7 @@ mdv_datum * mdv_datum_float_create(float const *v, uint32_t count);
 mdv_datum * mdv_datum_double_create(double const *v, uint32_t count);
 
 
+mdv_datum *     mdv_datum_create(mdv_field_type type, void const *v, uint32_t size);
 void            mdv_datum_free(mdv_datum *datum);
 uint32_t        mdv_datum_size(mdv_datum const *datum);
 void *          mdv_datum_ptr(mdv_datum const *datum);

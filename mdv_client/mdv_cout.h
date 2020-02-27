@@ -12,4 +12,4 @@ int MDV_OUT(const char *format, ...);
 int MDV_INF(const char *format, ...);
 
 
-void mdv_cout_table(mdv_table const *table, mdv_enumerator *resultset);
+void mdv_cout_table(mdv_rowset *rowset);

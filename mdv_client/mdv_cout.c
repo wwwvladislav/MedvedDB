@@ -392,35 +392,29 @@ static void mdv_cout_table_row(mdv_table const *table, mdv_row const *row)
 }
 
 
-void mdv_cout_table(mdv_table const *table, mdv_enumerator *resultset)
+void mdv_cout_table(mdv_rowset *rowset)
 {
+    mdv_table *table = mdv_rowset_table(rowset);
+
     mdv_cout_table_separator(table);
     mdv_cout_table_header(table);
     mdv_cout_table_separator(table);
 
-    while(mdv_enumerator_next(resultset) == MDV_OK)
+    mdv_enumerator *it = mdv_rowset_enumerator(rowset);
+
+    if (it)
     {
-        mdv_rowset *rowset = mdv_enumerator_current(resultset);
-
-        if (rowset)
+        while(mdv_enumerator_next(it) == MDV_OK)
         {
-            mdv_enumerator *rows_it = mdv_rowset_enumerator(rowset);
-
-            if (rows_it)
-            {
-                while(mdv_enumerator_next(rows_it) == MDV_OK)
-                {
-                    mdv_row *row = mdv_enumerator_current(rows_it);
-                    mdv_cout_table_row(table, row);
-                }
-
-                mdv_enumerator_release(rows_it);
-            }
-
-            mdv_rowset_release(rowset);
+            mdv_row *row = mdv_enumerator_current(it);
+            mdv_cout_table_row(table, row);
         }
+
+        mdv_enumerator_release(it);
     }
 
     mdv_cout_table_separator(table);
+
+    mdv_table_release(table);
 }
 

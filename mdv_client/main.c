@@ -198,18 +198,12 @@ static void mdv_show_tables(char const *args)
         {
             mdv_bitset_fill(mask, true);
 
-            mdv_resultset *resultset = mdv_select(client, table, mask, "");
+            mdv_rowset *resultset = mdv_select(client, table, mask, "");
 
             if (resultset)
             {
-                mdv_table *result_table = mdv_resultset_table(resultset);
-                mdv_enumerator *enumerator = mdv_resultset_enumerator(resultset);
-
-                mdv_cout_table(result_table, enumerator);
-
-                mdv_table_release(result_table);
-                mdv_enumerator_release(enumerator);
-                mdv_resultset_release(resultset);
+                mdv_cout_table(resultset);
+                mdv_rowset_release(resultset);
             }
             else
                 MDV_INF("Select request failed\n");
@@ -324,18 +318,12 @@ static void mdv_test_scenario(char const *args)
     {
         mdv_bitset_fill(mask, true);
 
-        mdv_resultset *resultset = mdv_select(client, table, mask, "");
+        mdv_rowset *resultset = mdv_select(client, table, mask, "");
 
         if (resultset)
         {
-            mdv_table *result_table = mdv_resultset_table(resultset);
-            mdv_enumerator *enumerator = mdv_resultset_enumerator(resultset);
-
-            mdv_cout_table(result_table, enumerator);
-
-            mdv_table_release(result_table);
-            mdv_enumerator_release(enumerator);
-            mdv_resultset_release(resultset);
+            mdv_cout_table(resultset);
+            mdv_rowset_release(resultset);
         }
         else
             MDV_INF("Select request failed\n");

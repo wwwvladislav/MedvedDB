@@ -15,6 +15,10 @@ The main properties are following:
 1. Linux (Ubuntu)
 2. Android
 
+### Supported language bindings
+MedvedDB API can be used from other programming languages. API for specific language is described via SWIG.
+ * Java
+
 ### Building MedvedDB from Source
 ```
 mkdir build

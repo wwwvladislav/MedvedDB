@@ -17,7 +17,8 @@ The main properties are following:
 
 ### Supported language bindings
 MedvedDB API can be used from other programming languages. API for specific language is described via SWIG.
- * Java
+ * Java \
+Java API generation requires SWIG and JDK packages. Then simply turn on the BUILD_JNI option in CMakeLists.txt and build the project. The JNI library and Java JAR file will be placed in the build/mdv_api4j folder (search the libmdv4j.so and mdv4j.jar files).
 
 ### Building MedvedDB from Source
 ```

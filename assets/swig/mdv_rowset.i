@@ -125,7 +125,7 @@ typedef struct {} mdv_rows_enumerator;
         {
             for(uint32_t i = 0; i < desc->size; ++i)
             {
-                datums->data[i] = mdv_datum_byte_create(row->fields[i].ptr, row->fields[i].size);   // TODO: use type
+                datums->data[i] = mdv_datum_create(desc->fields[i].type, row->fields[i].ptr, row->fields[i].size);
 
                 if (!datums->data[i])
                 {

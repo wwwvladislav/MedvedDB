@@ -11,35 +11,56 @@ struct mdv_datum
 };
 
 
-#define mdv_datum_type(T, name, field_type)             \
-    typedef struct                                      \
-    {                                                   \
-        mdv_datum            base;                      \
-        T                    data[1];                   \
-    } mdv_datum_##name;                                 \
-                                                        \
-    mdv_datum * mdv_datum_##name##_create(              \
-                    T const *v,                         \
-                    uint32_t count)                     \
-    {                                                   \
-        mdv_datum_##name *datum =                       \
-            mdv_alloc(                                  \
-                offsetof(mdv_datum_##name, data)        \
-                    + sizeof(T) * count,                \
-                    "datum_"#name);                     \
-        if (!datum)                                     \
-        {                                               \
-            MDV_LOGE("No memory for new datum " #name); \
-            return 0;                                   \
-        }                                               \
-                                                        \
-        datum->base.type = field_type;                  \
-        datum->base.data.size = sizeof(T) * count;      \
-        datum->base.data.ptr = datum->data;             \
-        memcpy(datum->data, v, sizeof(T) * count);      \
-                                                        \
-        return &datum->base;                            \
+#define mdv_datum_type(T, name, field_type)                     \
+    typedef struct                                              \
+    {                                                           \
+        mdv_datum            base;                              \
+        T                    data[1];                           \
+    } mdv_datum_##name;                                         \
+                                                                \
+    mdv_datum * mdv_datum_##name##_create(                      \
+                    T const *v,                                 \
+                    uint32_t count)                             \
+    {                                                           \
+        size_t datum_size = offsetof(mdv_datum_##name, data)    \
+                                + sizeof(T) * count;            \
+                                                                \
+        /* Tail for the last zero */                            \
+        if (field_type == MDV_FLD_TYPE_CHAR)                    \
+            datum_size++;                                       \
+                                                                \
+        mdv_datum_##name *datum =                               \
+            mdv_alloc(                                          \
+                offsetof(mdv_datum_##name, data)                \
+                    + sizeof(T) * count,                        \
+                    "datum_"#name);                             \
+        if (!datum)                                             \
+        {                                                       \
+            MDV_LOGE("No memory for new datum " #name);         \
+            return 0;                                           \
+        }                                                       \
+                                                                \
+        datum->base.type = field_type;                          \
+        datum->base.data.size = sizeof(T) * count;              \
+        datum->base.data.ptr = datum->data;                     \
+        memcpy(datum->data, v, sizeof(T) * count);              \
+                                                                \
+        if (field_type == MDV_FLD_TYPE_CHAR)                    \
+            datum->data[count] = 0;                             \
+                                                                \
+        return &datum->base;                                    \
+    }                                                           \
+                                                                \
+    T const * mdv_datum_as_##name(mdv_datum const *datum)       \
+    {                                                           \
+        if(datum->type != field_type)                           \
+        {                                                       \
+            MDV_LOGE("Invalid datum cast for "#name" type");    \
+            return 0;                                           \
+        }                                                       \
+        return (T const *)datum->data.ptr;                      \
     }
+
 
 mdv_datum_type(bool,        bool,   MDV_FLD_TYPE_BOOL);
 mdv_datum_type(char,        char,   MDV_FLD_TYPE_CHAR);
@@ -60,7 +81,25 @@ mdv_datum_type(double,      double, MDV_FLD_TYPE_DOUBLE);
 
 mdv_datum * mdv_datum_create(mdv_field_type type, void const *v, uint32_t size)
 {
-    // TODO
+    switch(type)
+    {
+        case MDV_FLD_TYPE_BOOL:     return mdv_datum_bool_create(v, size / mdv_field_type_size(type));
+        case MDV_FLD_TYPE_CHAR:     return mdv_datum_char_create(v, size / mdv_field_type_size(type));
+        case MDV_FLD_TYPE_BYTE:     return mdv_datum_byte_create(v, size / mdv_field_type_size(type));
+        case MDV_FLD_TYPE_INT8:     return mdv_datum_int8_create(v, size / mdv_field_type_size(type));
+        case MDV_FLD_TYPE_UINT8:    return mdv_datum_uint8_create(v, size / mdv_field_type_size(type));
+        case MDV_FLD_TYPE_INT16:    return mdv_datum_int16_create(v, size / mdv_field_type_size(type));
+        case MDV_FLD_TYPE_UINT16:   return mdv_datum_uint16_create(v, size / mdv_field_type_size(type));
+        case MDV_FLD_TYPE_INT32:    return mdv_datum_int32_create(v, size / mdv_field_type_size(type));
+        case MDV_FLD_TYPE_UINT32:   return mdv_datum_uint32_create(v, size / mdv_field_type_size(type));
+        case MDV_FLD_TYPE_INT64:    return mdv_datum_int64_create(v, size / mdv_field_type_size(type));
+        case MDV_FLD_TYPE_UINT64:   return mdv_datum_uint64_create(v, size / mdv_field_type_size(type));
+        case MDV_FLD_TYPE_FLOAT:    return mdv_datum_float_create(v, size / mdv_field_type_size(type));
+        case MDV_FLD_TYPE_DOUBLE:   return mdv_datum_double_create(v, size / mdv_field_type_size(type));
+        default:
+            MDV_LOGE("Inknown type");
+    }
+
     return 0;
 }
 
@@ -77,6 +116,12 @@ uint32_t mdv_datum_size(mdv_datum const *datum)
 }
 
 
+uint32_t mdv_datum_count(mdv_datum const *datum)
+{
+    return datum->data.size / mdv_field_type_size(datum->type);
+}
+
+
 void * mdv_datum_ptr(mdv_datum const *datum)
 {
     return datum->data.ptr;
@@ -87,4 +132,3 @@ mdv_field_type mdv_datum_type(mdv_datum const *datum)
 {
     return datum->type;
 }
-

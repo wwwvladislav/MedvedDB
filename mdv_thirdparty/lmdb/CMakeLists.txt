@@ -5,6 +5,10 @@ file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 
 use_c11()
 
+find_package(Threads REQUIRED)
+
 add_definitions(-DMDB_VL32)
 
 add_library(lmdb STATIC ${SOURCES})
+
+target_link_libraries(lmdb Threads::Threads)

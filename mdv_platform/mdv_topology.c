@@ -130,6 +130,12 @@ static bool mdv_topology_linked_node_append(mdv_vector *topolinks,
                                             mdv_toponode const *lnodes[2],
                                             uint32_t lweight)
 {
+    if (!lnodes[0] || !lnodes[1])
+    {
+        MDV_LOGE("Invalid link");
+        return false;
+    }
+
     uint32_t lnode_idx = 0;
     uint32_t rnode_idx = 0;
 
@@ -328,6 +334,9 @@ mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_uuid const *nodea,
 
     bool ab_link_added = false;
 
+    mdv_toponode const *lnodes[2] = { 0, 0 };
+    uint32_t lweight = 0;
+
     // {a} - {b} calculation
     mdv_vector_foreach(a->links, mdv_topolink, link)
     {
@@ -350,6 +359,9 @@ mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_uuid const *nodea,
             {
                 mdv_vector_push_back(ab_links, link);
                 ab_link_added = true;
+                lnodes[0] = lnode;
+                lnodes[1] = rnode;
+                lweight = link->weight;
                 continue;
             }
         }
@@ -357,9 +369,6 @@ mdv_topology * mdv_topology_diff(mdv_topology *a, mdv_uuid const *nodea,
         if (!mdv_hashmap_find(blinks, &l.node))
             mdv_vector_push_back(ab_links, link);
     }
-
-    mdv_toponode const *lnodes[2] = { 0, 0 };
-    uint32_t lweight = 0;
 
     if (!ab_link_added)
     {

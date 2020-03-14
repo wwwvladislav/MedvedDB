@@ -12,7 +12,7 @@ include_directories(
     ${ROOT_DIR}/mdv_types
 )
 
-add_library(mdv_api STATIC ${SOURCES})
+add_library(mdv_api SHARED ${SOURCES})
 
 add_dependencies(mdv_api mdv_platform mdv_net mdv_types)
 

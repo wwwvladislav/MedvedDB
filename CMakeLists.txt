@@ -11,7 +11,7 @@
 # cpack ..
 
 cmake_minimum_required(VERSION 3.10)
-project(MedvedDB C)
+project(medveddb C)
 cmake_policy(SET CMP0015 NEW)
 
 #*********************************************************
@@ -221,3 +221,45 @@ if(SWIG_FOUND)
         endif()
     endif(BUILD_JNI)
 endif(SWIG_FOUND)
+
+
+#*********************************************************
+# CPack
+#*********************************************************
+
+if (${PLATFORM} STREQUAL LINUX)
+    if(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
+        message("CPack is found")
+        include(InstallRequiredSystemLibraries)
+
+        set(CPACK_SET_DESTDIR "on")
+        set(CPACK_PACKAGING_INSTALL_PREFIX "/tmp")
+        set(CPACK_GENERATOR "DEB")
+
+        set(CPACK_PACKAGE_DESCRIPTION "Medved DB")
+        set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "MedvedDB is fully decentralized NoSQL database.")
+        set(CPACK_PACKAGE_VENDOR "MedvedDB")
+        set(CPACK_PACKAGE_CONTACT "wwwvladislav@gmail.com")
+        set(CPACK_PACKAGE_VERSION_MAJOR "${MAJOR_VERSION}")
+        set(CPACK_PACKAGE_VERSION_MINOR "${MINOR_VERSION}")
+        set(CPACK_PACKAGE_VERSION_PATCH "${PATCH_VERSION}")
+        set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}_${MAJOR_VERSION}.${MINOR_VERSION}.${CPACK_PACKAGE_VERSION_PATCH}")
+        set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}_${MAJOR_VERSION}.${MINOR_VERSION}.${CPACK_PACKAGE_VERSION_PATCH}")
+
+        set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+        set(CPACK_DEBIAN_ARCHITECTURE ${CMAKE_SYSTEM_PROCESSOR})
+
+        set(CPACK_INSTALL_PREFIX "/opt/medveddb")
+
+        set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/contrib/deb/postinst;${CMAKE_CURRENT_SOURCE_DIR}/assets/contrib/deb/prerm;${CMAKE_CURRENT_SOURCE_DIR}/assets/contrib/deb/postrm;")
+
+        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/contrib/etc/ld.so.conf.d/medveddb.conf      DESTINATION /etc/ld.so.conf.d)
+        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/contrib/etc/systemd/system/medveddb.service DESTINATION /etc/systemd/system)
+        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/conf/medved.conf                            DESTINATION /opt/medveddb)
+        install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets/contrib/opt/medveddb/                   DESTINATION /opt/medveddb USE_SOURCE_PERMISSIONS)
+
+        include(CPack)
+
+    endif()
+endif()

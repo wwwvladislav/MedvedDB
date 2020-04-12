@@ -27,3 +27,8 @@ add_executable(medved ${HEADERS} ${SOURCES})
 add_dependencies(medved mdv_platform mdv_net mdv_core mdv_types)
 
 target_link_libraries(medved mdv_platform mdv_net mdv_core mdv_types)
+
+install(TARGETS ${PROJECT_NAME}
+        RUNTIME DESTINATION ./
+        LIBRARY DESTINATION lib
+)

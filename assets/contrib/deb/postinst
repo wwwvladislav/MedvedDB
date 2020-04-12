@@ -1,0 +1,5 @@
+ldconfig
+groupadd -f medved
+useradd -g medved medved 2>/dev/null
+chown medved:medved /opt/medveddb
+systemctl enable medveddb

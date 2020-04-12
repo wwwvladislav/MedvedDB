@@ -1,0 +1,16 @@
+[Unit]
+Description=MedvedDB daemon
+After=syslog.target
+
+[Service]
+Type=simple
+User=medved
+Group=medved
+Restart=no
+TimeoutSec=30
+IgnoreSIGPIPE=no
+WorkingDirectory=/opt/medveddb
+ExecStart=/opt/medveddb/medved --cfg=/opt/medveddb/medved.conf
+
+[Install]
+WantedBy=multi-user.target

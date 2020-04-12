@@ -17,3 +17,8 @@ add_library(mdv_api SHARED ${SOURCES})
 add_dependencies(mdv_api mdv_platform mdv_net mdv_types)
 
 target_link_libraries(mdv_api mdv_platform mdv_net mdv_types)
+
+install(TARGETS ${PROJECT_NAME}
+        RUNTIME DESTINATION ./
+        LIBRARY DESTINATION lib
+)

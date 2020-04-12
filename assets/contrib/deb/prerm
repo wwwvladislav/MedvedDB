@@ -1,0 +1,2 @@
+systemctl stop medveddb
+systemctl disable medveddb

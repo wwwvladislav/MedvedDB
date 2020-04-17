@@ -267,7 +267,7 @@ uint32_t mdv_rowset_release(mdv_rowset *rowset)
 
 mdv_table * mdv_rowset_table(mdv_rowset *rowset)
 {
-    rowset->vptr->table(rowset);
+    return rowset->vptr->table(rowset);
 }
 
 

@@ -18,9 +18,12 @@
 #elif defined(__sun) && defined(__SVR4)
     #define MDV_PLATFORM_SOLARIS                        // Solaris
 #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
-   #define MDV_PLATFORM_BSD                             // FreeBSD, OpenBSD, NetBSD
+    #define MDV_PLATFORM_BSD                             // FreeBSD, OpenBSD, NetBSD
 #elif defined(__linux__)
-   #define MDV_PLATFORM_LINUX
+    #define MDV_PLATFORM_LINUX
+    #ifndef _GNU_SOURCE
+        #define _GNU_SOURCE 1
+    #endif
 #else
     #error "Unsupported platform"
 #endif

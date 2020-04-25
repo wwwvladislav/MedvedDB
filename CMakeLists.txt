@@ -105,6 +105,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # Libraries and executables
 #*********************************************************
 add_subdirectory(${ROOT_DIR}/mdv_thirdparty)
+add_subdirectory(${ROOT_DIR}/mdv_storage)
 add_subdirectory(${ROOT_DIR}/mdv_platform)
 add_subdirectory(${ROOT_DIR}/mdv_crypto)
 add_subdirectory(${ROOT_DIR}/mdv_net)

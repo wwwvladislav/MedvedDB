@@ -6,3 +6,5 @@
 #define MDV_LISTEN_BACKLOG  256
 #define MDV_MSG_SIZE_MAX    (1024 * 1024)
 #define MDV_LINK_WEIGHT_MAX (1024 * 1024)
+#define MDV_PAGE_SIZE       8192
+

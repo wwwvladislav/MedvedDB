@@ -476,7 +476,7 @@ mdv_topology * mdv_topology_create(mdv_vector *nodes,
         return 0;
     }
 
-    mdv_hashmap *node_idxs = mdv_hashmap_create(mdv_node_idx, id, mdv_vector_size(nodes)  * 5 / 4, mdv_u32_hash, mdv_u32_cmp);
+    mdv_hashmap *node_idxs = mdv_hashmap_create(mdv_node_idx, id, mdv_vector_size(nodes), mdv_u32_hash, mdv_u32_cmp);
 
     if (!node_idxs)
     {

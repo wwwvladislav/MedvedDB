@@ -1,4 +1,5 @@
 #include "mdv_def.h"
+#include "mdv_log.h"
 #include <unistd.h>
 
 
@@ -17,7 +18,10 @@ int mdv_descriptor_cmp(mdv_descriptor const *fd1, mdv_descriptor const *fd2)
 void mdv_descriptor_close(mdv_descriptor fd)
 {
     if (fd != MDV_INVALID_DESCRIPTOR)
+    {
+        MDV_LOGD("descriptor %d closed", *(int*)&fd);
         close(*(int*)&fd);
+    }
 }
 
 

@@ -21,7 +21,7 @@ static mdv_hashmap * mdv_router_unique_nodes(mdv_vector *topolinks, mdv_vector *
 {
     mdv_hashmap *nodes = mdv_hashmap_create(mdv_router_node,
                                             id,
-                                            mdv_vector_size(toponodes) * 5 / 4,
+                                            mdv_vector_size(toponodes),
                                             mdv_uint32_hash,
                                             mdv_uint32_cmp);
 

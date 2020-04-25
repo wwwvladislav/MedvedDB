@@ -39,6 +39,8 @@ mdv_hashmap * _mdv_hashmap_create(size_t         capacity,
 
     atomic_init(&hm->rc, 1);
 
+    capacity *= 5 / 4;
+
     hm->capacity    = capacity;
     hm->size        = 0;
     hm->key_offset  = key_offset;

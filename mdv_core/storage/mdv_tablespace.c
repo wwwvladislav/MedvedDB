@@ -92,7 +92,7 @@ static mdv_hashmap/*<mdv_storage_id>*/ * mdv_tablespace_storage_ids(mdv_topology
     mdv_hashmap *idmap = mdv_hashmap_create(
                             mdv_storage_id,
                             uuid,
-                            mdv_vector_size(nodes) * 5 / 4,
+                            mdv_vector_size(nodes),
                             mdv_uuid_hash,
                             mdv_uuid_cmp);
 

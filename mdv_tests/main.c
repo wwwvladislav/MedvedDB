@@ -12,6 +12,8 @@ int main(int argc, char *argv[])
     (void)argc;
     (void)argv;
 
+    mdv_logf_set_level(ZF_LOG_INFO);
+
     mdv_alloc_initialize();
 
     MU_RUN_SUITE(platform);
@@ -21,6 +23,8 @@ int main(int argc, char *argv[])
     MU_REPORT();
 
     mdv_alloc_finalize();
+
+    printf("Allocations: %d\n", mdv_allocations());
 
     return minunit_status;
 }

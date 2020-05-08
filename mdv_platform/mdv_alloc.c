@@ -139,6 +139,19 @@ void mdv_free(void *ptr, char const *name)
 }
 
 
+#ifdef MDV_COUNT_ALLOCS_STAT
+int mdv_allocations()
+{
+    return atomic_load_explicit(&MDV_ALLOCS, memory_order_relaxed);
+}
+#else
+int mdv_allocations()
+{
+    return 0;
+}
+#endif
+
+
 mdv_allocator const mdv_default_allocator =
 {
     .alloc      = &mdv_alloc,

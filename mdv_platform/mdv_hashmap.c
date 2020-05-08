@@ -112,6 +112,7 @@ void mdv_hashmap_clear(mdv_hashmap *hm)
     }
 }
 
+
 size_t mdv_hashmap_size(mdv_hashmap const *hm)
 {
     return hm->size;

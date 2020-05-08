@@ -1,22 +1,5 @@
 #pragma once
-#include <mdv_def.h>
-
-#ifdef MDV_PLATFORM_LINUX
-    #include <sys/socket.h>         // sockaddr_storage
-#elif defined(MDV_PLATFORM_WINDOWS)
-     #include <ws2def.h>            // sockaddr_storage
-#endif
-
-
-typedef struct sockaddr_storage mdv_sockaddr;
-
-
-typedef enum
-{
-    MDV_SOCK_STREAM = 0,
-    MDV_SOCK_DGRAM,
-    MDV_SOCK_UNKNOWN
-} mdv_socket_type;
+#include "mdv_netaddr.h"
 
 
 typedef enum
@@ -24,10 +7,6 @@ typedef enum
     MDV_SOCK_SHUT_RD = 1 << 0,
     MDV_SOCK_SHUT_WR = 1 << 1
 } mdv_socket_shutdown_type;
-
-
-mdv_errno      mdv_str2sockaddr(char const *str, mdv_socket_type *protocol, mdv_sockaddr *addr);
-char const *   mdv_sockaddr2str(mdv_socket_type protocol, mdv_sockaddr const *addr, char *buf, size_t size);
 
 
 mdv_descriptor mdv_socket(mdv_socket_type type);

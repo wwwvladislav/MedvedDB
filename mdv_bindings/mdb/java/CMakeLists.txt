@@ -5,14 +5,6 @@ use_c11()
 
 if(BUILD_JNI)
 
-    set(JAVA_AWT_LIBRARY NotNeeded)
-    set(JAVA_JVM_LIBRARY NotNeeded)
-    set(JAVA_AWT_INCLUDE_PATH NotNeeded)
-
-    if (${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-        set(JAVA_INCLUDE_PATH2 NotNeeded)
-    endif()
-
     if(JNI_FOUND)
 
         set(SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/mdv_svc4j.c)

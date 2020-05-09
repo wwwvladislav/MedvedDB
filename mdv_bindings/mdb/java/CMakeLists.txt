@@ -13,11 +13,7 @@ if(BUILD_JNI)
         set(JAVA_INCLUDE_PATH2 NotNeeded)
     endif()
 
-    find_package(JNI)
-
     if(JNI_FOUND)
-
-        find_package(SWIG)
 
         set(SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/mdv_svc4j.c)
 
@@ -29,7 +25,7 @@ if(BUILD_JNI)
                 -java
                 -outdir     ${SWIG_OUTDIR}
                 -o          ${SWIG_OUT}
-                -package    mdb
+                -package    mdv
                 -I${ROOT_DIR}/mdv_api
                 -I${ROOT_DIR}/mdv_types
                 -I${ROOT_DIR}/mdv_platform
@@ -47,8 +43,6 @@ if(BUILD_JNI)
             add_custom_target(mdb_swig4j ALL
                 COMMAND     ${SWIG_EXECUTABLE} ${SWIG_FLAGS} ${SWIG_FILE}
                 BYPRODUCTS  ${SWIG_OUT} ${JAVA_SOURCES})
-
-            find_package(Java COMPONENTS Runtime Development)
 
             if(Java_FOUND)
                 include(UseJava)

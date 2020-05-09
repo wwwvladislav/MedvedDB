@@ -231,7 +231,7 @@ SWIGINTERN void delete_mdv_service(mdv_service *self){
 extern "C" {
 #endif
 
-SWIGEXPORT jlong JNICALL Java_mdb_mdvJNI_new_1Service(JNIEnv *jenv, jclass jcls, jstring jarg1) {
+SWIGEXPORT jlong JNICALL Java_mdv_mdvJNI_new_1Service(JNIEnv *jenv, jclass jcls, jstring jarg1) {
   jlong jresult = 0 ;
   char *arg1 = (char *) 0 ;
   mdv_service *result = 0 ;
@@ -250,7 +250,7 @@ SWIGEXPORT jlong JNICALL Java_mdb_mdvJNI_new_1Service(JNIEnv *jenv, jclass jcls,
 }
 
 
-SWIGEXPORT void JNICALL Java_mdb_mdvJNI_delete_1Service(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+SWIGEXPORT void JNICALL Java_mdv_mdvJNI_delete_1Service(JNIEnv *jenv, jclass jcls, jlong jarg1) {
   mdv_service *arg1 = (mdv_service *) 0 ;
   
   (void)jenv;
@@ -260,7 +260,7 @@ SWIGEXPORT void JNICALL Java_mdb_mdvJNI_delete_1Service(JNIEnv *jenv, jclass jcl
 }
 
 
-SWIGEXPORT jboolean JNICALL Java_mdb_mdvJNI_Service_1start(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+SWIGEXPORT jboolean JNICALL Java_mdv_mdvJNI_Service_1start(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
   jboolean jresult = 0 ;
   mdv_service *arg1 = (mdv_service *) 0 ;
   bool result;
@@ -275,7 +275,7 @@ SWIGEXPORT jboolean JNICALL Java_mdb_mdvJNI_Service_1start(JNIEnv *jenv, jclass 
 }
 
 
-SWIGEXPORT void JNICALL Java_mdb_mdvJNI_Service_1stop(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+SWIGEXPORT void JNICALL Java_mdv_mdvJNI_Service_1stop(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
   mdv_service *arg1 = (mdv_service *) 0 ;
   
   (void)jenv;

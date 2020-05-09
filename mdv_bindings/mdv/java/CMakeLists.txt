@@ -32,9 +32,10 @@ if(BUILD_JNI)
                 -package    mdv
                 -I${ROOT_DIR}/mdv_api
                 -I${ROOT_DIR}/mdv_types
-                -I${ROOT_DIR}/mdv_platform)
+                -I${ROOT_DIR}/mdv_platform
+            )
 
-            set(SWIG_FILE ${ROOT_DIR}/assets/swig/mdv.i)
+            set(SWIG_FILE ${ROOT_DIR}/assets/swig/mdv/mdv.i)
 
             set(JAVA_SOURCES
                 ${SWIG_OUTDIR}/mdv.java
@@ -68,7 +69,7 @@ if(BUILD_JNI)
                 ${SWIG_OUTDIR}/ClientThreadpoolConfig.java
             )
 
-            add_custom_target(swig4j ALL
+            add_custom_target(mdv_swig4j ALL
                 COMMAND     ${SWIG_EXECUTABLE} ${SWIG_FLAGS} ${SWIG_FILE}
                 BYPRODUCTS  ${SWIG_OUT} ${JAVA_SOURCES})
 
@@ -84,7 +85,7 @@ if(BUILD_JNI)
                         OUTPUT_NAME mdv4j
                         OUTPUT_DIR ${SWIG_OUTDIR})
 
-                add_dependencies(mdv_java swig4j)
+                add_dependencies(mdv_java mdv_swig4j)
             endif(Java_FOUND)
 
         endif(SWIG_FOUND)
@@ -98,7 +99,7 @@ if(BUILD_JNI)
         add_library(mdv4j SHARED ${SOURCES})
 
         if(SWIG_FOUND)
-            add_dependencies(mdv4j mdv_api swig4j)
+            add_dependencies(mdv4j mdv_api mdv_swig4j)
         else()
             add_dependencies(mdv4j mdv_api)
         endif()

@@ -113,7 +113,7 @@ add_subdirectory(${ROOT_DIR}/mdv_types)
 add_subdirectory(${ROOT_DIR}/mdv_core)
 add_subdirectory(${ROOT_DIR}/mdv_service)
 add_subdirectory(${ROOT_DIR}/mdv_api)
-add_subdirectory(${ROOT_DIR}/mdv_api4)
+add_subdirectory(${ROOT_DIR}/mdv_bindings)
 add_subdirectory(${ROOT_DIR}/mdv_client)
 add_subdirectory(${ROOT_DIR}/mdv_tests)
 

@@ -7,7 +7,7 @@ if(BUILD_JNI)
 
     if(JNI_FOUND)
 
-        set(SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/mdv_svc4j.c)
+        set(SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/mdb_svc4j.c)
 
         if(SWIG_FOUND)
             set(SWIG_OUTDIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -17,7 +17,7 @@ if(BUILD_JNI)
                 -java
                 -outdir     ${SWIG_OUTDIR}
                 -o          ${SWIG_OUT}
-                -package    mdv
+                -package    mdb
                 -I${ROOT_DIR}/mdv_api
                 -I${ROOT_DIR}/mdv_types
                 -I${ROOT_DIR}/mdv_platform
@@ -27,8 +27,8 @@ if(BUILD_JNI)
             set(SWIG_FILE ${ROOT_DIR}/assets/swig/mdb/mdb.i)
 
             set(JAVA_SOURCES
-                ${SWIG_OUTDIR}/mdv.java
-                ${SWIG_OUTDIR}/mdvJNI.java
+                ${SWIG_OUTDIR}/mdb.java
+                ${SWIG_OUTDIR}/mdbJNI.java
                 ${SWIG_OUTDIR}/Service.java
             )
 

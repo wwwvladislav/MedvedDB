@@ -1,4 +1,4 @@
-%module mdv
+%module mdb
 
 %inline %{
 #include <mdv_service.h>

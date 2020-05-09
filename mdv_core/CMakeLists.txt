@@ -16,8 +16,12 @@ include_directories(
     ${ROOT_DIR}/mdv_types
 )
 
-add_library(mdv_core STATIC ${SOURCES})
+add_library(mdv_objs OBJECT ${SOURCES})
 
+add_library(mdv_core STATIC $<TARGET_OBJECTS:mdv_objs>)
 add_dependencies(mdv_core inih mdv_platform mdv_net mdv_api mdv_types lmdb)
-
 target_link_libraries(mdv_core inih zf_log mdv_platform mdv_net mdv_api mdv_types lmdb)
+
+add_library(mdb SHARED $<TARGET_OBJECTS:mdv_objs>)
+add_dependencies(mdb inih mdv_platform mdv_net mdv_api mdv_types lmdb)
+target_link_libraries(mdb inih zf_log mdv_platform mdv_net mdv_api mdv_types lmdb)

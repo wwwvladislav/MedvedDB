@@ -8,7 +8,7 @@
 #include <mdv_log.h>
 
 
-static mdv_service service;
+static mdv_service *service = 0;
 
 
 static int help()
@@ -36,7 +36,7 @@ static int usage()
 static void termination_signal_handler(int signal)
 {
     MDV_LOGI("Service is terminating [Signal: %s]", strsignal(signal));
-    mdv_service_stop(&service);
+    mdv_service_stop(service);
 }
 
 int main(int argc, char *argv[])
@@ -58,9 +58,7 @@ int main(int argc, char *argv[])
     int option_index = 0;
     int ret = 0;
 
-    bool service_is_ok = false;
-
-    while(!service_is_ok && (ret = getopt_long(argc, argv, "hc:", long_options, &option_index)) != -1)
+    while(!service && (ret = getopt_long(argc, argv, "hc:", long_options, &option_index)) != -1)
     {
         char op = (char)ret;
 
@@ -85,7 +83,9 @@ int main(int argc, char *argv[])
 
                 mdv_alloc_initialize();
 
-                if (!(service_is_ok = mdv_service_create(&service, optarg)))
+                service = mdv_service_create(optarg);
+
+                if (!service)
                 {
                     mdv_alloc_finalize();
                     return -1;
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (!service_is_ok)
+    if (!service)
         return usage();
 
     // Register signal handlers
@@ -107,11 +107,12 @@ int main(int argc, char *argv[])
 
     MDV_LOGI("Service is starting...");
 
-    mdv_service_start(&service);
+    if (mdv_service_start(service))
+        mdv_service_wait(service);
 
     MDV_LOGI("Service is stoped");
 
-    mdv_service_free(&service);
+    mdv_service_free(service);
 
     mdv_alloc_finalize();
 

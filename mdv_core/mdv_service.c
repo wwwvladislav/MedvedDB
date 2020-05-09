@@ -2,7 +2,16 @@
 #include <mdv_log.h>
 #include <mdv_threads.h>
 #include <mdv_binn.h>
+#include <mdv_alloc.h>
 #include "mdv_config.h"
+#include "mdv_core.h"
+
+
+struct mdv_service
+{
+    mdv_core       *core;               ///< Core component for cluster nodes management and storage accessing.
+    volatile bool   is_started;         ///< Flag indicates that the service is working
+};
 
 
 static void mdv_service_configure_logging()
@@ -23,13 +32,13 @@ static void mdv_service_configure_logging()
 }
 
 
-bool mdv_service_create(mdv_service *svc, char const *cfg_file_path)
+mdv_service * mdv_service_create(char const *cfg_file_path)
 {
     // Configuration
     if (!mdv_load_config(cfg_file_path))
     {
         MDV_LOGE("Service initialization failed. Can't load '%s'", cfg_file_path);
-        return false;
+        return 0;
     }
 
     // Logging
@@ -38,24 +47,37 @@ bool mdv_service_create(mdv_service *svc, char const *cfg_file_path)
     // Serializatior allocator
     mdv_binn_set_allocator();
 
+    mdv_service *svc = mdv_alloc(sizeof(mdv_service),  "service");
+
+    if(!svc)
+    {
+        MDV_LOGE("No memory for new service");
+        return 0;
+    }
+
     // Create core
     svc->core = mdv_core_create();
 
     if (!svc->core)
     {
         MDV_LOGE("Core creation failed");
-        return false;
+        mdv_free(svc, "service");
+        return 0;
     }
 
     svc->is_started = false;
 
-    return true;
+    return svc;
 }
 
 
 void mdv_service_free(mdv_service *svc)
 {
-    mdv_core_free(svc->core);
+    if(svc)
+    {
+        mdv_core_free(svc->core);
+        mdv_free(svc, "service");
+    }
 }
 
 
@@ -65,12 +87,16 @@ bool mdv_service_start(mdv_service *svc)
 
     mdv_core_connect(svc->core);
 
+    return svc->is_started;
+}
+
+
+void mdv_service_wait(mdv_service *svc)
+{
     while(svc->is_started)
     {
         mdv_sleep(1000);
     }
-
-    return true;
 }
 
 

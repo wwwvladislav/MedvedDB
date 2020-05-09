@@ -11,6 +11,9 @@ The main properties are following:
 2. Support eventual consistency model.
 3. Fully transactional and complies with the ACID properties. This properties are inherited from LMDB database. LMDB database is used as the low level storage.
 
+MedvedDB can be used as standalone linux daemon or as embedded DB.
+All database functions are implemented in the mdv_core library and can be used in other languages.
+
 ### Supported platforms:
 1. Linux (Ubuntu)
 2. Android

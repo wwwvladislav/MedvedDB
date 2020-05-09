@@ -32,15 +32,8 @@ static void mdv_service_configure_logging()
 }
 
 
-mdv_service * mdv_service_create(char const *cfg_file_path)
+static mdv_service * mdv_service_create_impl()
 {
-    // Configuration
-    if (!mdv_load_config(cfg_file_path))
-    {
-        MDV_LOGE("Service initialization failed. Can't load '%s'", cfg_file_path);
-        return 0;
-    }
-
     // Logging
     mdv_service_configure_logging();
 
@@ -68,6 +61,32 @@ mdv_service * mdv_service_create(char const *cfg_file_path)
     svc->is_started = false;
 
     return svc;
+}
+
+
+mdv_service * mdv_service_create(char const *cfg_file_path)
+{
+    // Configuration
+    if (!mdv_load_config(cfg_file_path))
+    {
+        MDV_LOGE("Service initialization failed. Can't load '%s'", cfg_file_path);
+        return 0;
+    }
+
+    return mdv_service_create_impl();
+}
+
+
+mdv_service * mdv_service_create_with_config(char const *cfg)
+{
+    // Configuration
+    if (!mdv_apply_config(cfg))
+    {
+        MDV_LOGE("Service initialization failed. Can't apply configuration");
+        return 0;
+    }
+
+    return mdv_service_create_impl();
 }
 
 

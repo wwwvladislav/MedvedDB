@@ -236,6 +236,19 @@ static void mdv_set_config_defaults()
 }
 
 
+static bool mdv_cfg_validate()
+{
+    if (!MDV_CONFIG.server.listen
+        || !MDV_CONFIG.storage.path)
+    {
+        MDV_LOGE("Mandatory configuration parameters weren't not provided\n");
+        return false;
+    }
+
+    return true;
+}
+
+
 bool mdv_load_config(char const *path)
 {
     mdv_set_config_defaults();
@@ -248,12 +261,21 @@ bool mdv_load_config(char const *path)
         return false;
     }
 
-    if (!MDV_CONFIG.server.listen
-        || !MDV_CONFIG.storage.path)
+    return mdv_cfg_validate();
+}
+
+
+bool mdv_apply_config(char const *cfg)
+{
+    mdv_set_config_defaults();
+
+    mdv_stack_clear(MDV_CONFIG.mempool);
+
+    if (ini_parse_string(cfg, mdv_cfg_handler, &MDV_CONFIG) < 0)
     {
-        MDV_LOGE("Mandatory configuration parameters weren't not provided\n");
+        MDV_LOGE("Can't apply configuration \n");
         return false;
     }
 
-    return true;
+    return mdv_cfg_validate();
 }

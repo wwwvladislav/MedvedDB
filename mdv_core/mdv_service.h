@@ -27,6 +27,16 @@ mdv_service * mdv_service_create(char const *cfg_file_path);
 
 
 /**
+ * @brief Main MDV service creation with given configuration
+ *
+ * @param cfg [in] configuration string
+ *
+ * @return On success returns pointer to new created service, otherwise returnc NULL pointer.
+ */
+mdv_service * mdv_service_create_with_config(char const *cfg);
+
+
+/**
  * @brief Frees resources allocated by service
  *
  * @param svc [in] MDV service

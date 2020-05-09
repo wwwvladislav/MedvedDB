@@ -97,3 +97,13 @@ extern mdv_config MDV_CONFIG;
  */
 bool mdv_load_config(char const *path);
 
+
+/**
+ * @brief Apply configuration
+ *
+ * @param cfg [in] Configuration
+ *
+ * @return On success returns true
+ * @return On error returns false
+ */
+bool mdv_apply_config(char const *cfg);

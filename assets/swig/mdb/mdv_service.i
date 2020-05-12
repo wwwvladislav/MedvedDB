@@ -17,7 +17,7 @@ typedef struct {} mdv_service;
     {
         mdv_alloc_initialize();
 
-        mdv_service *service = mdv_service_create(cfg);
+        mdv_service *service = mdv_service_create_with_config(cfg);
 
         if (!service)
         {

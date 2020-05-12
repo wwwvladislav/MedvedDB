@@ -212,7 +212,7 @@ static void SWIGUNUSED SWIG_JavaThrowException(JNIEnv *jenv, SWIG_JavaExceptionC
 SWIGINTERN mdv_service *new_mdv_service(char const *cfg){
         mdv_alloc_initialize();
 
-        mdv_service *service = mdv_service_create(cfg);
+        mdv_service *service = mdv_service_create_with_config(cfg);
 
         if (!service)
         {

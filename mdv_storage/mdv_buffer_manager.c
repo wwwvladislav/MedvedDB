@@ -49,10 +49,10 @@ struct mdv_buffer
 };
 
 
-mdv_static_assert(sizeof(mdv_buffer_runtime) == 16u);
 mdv_static_assert(sizeof(mdv_buffer_metainf) == 16u);
-mdv_static_assert(offsetof(mdv_buffer, data.header) == 16u);
-mdv_static_assert(offsetof(mdv_buffer, data.ptr) == 32u);
+mdv_static_assert(offsetof(mdv_buffer, data.ptr)
+                    == offsetof(mdv_buffer, data.header) 
+                        + sizeof(mdv_buffer_metainf));
 
 
 struct mdv_buffer_manager

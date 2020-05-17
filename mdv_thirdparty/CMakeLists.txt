@@ -18,3 +18,6 @@ add_subdirectory(aes)
 add_subdirectory(sha3)
 
 add_subdirectory(ecc)
+
+add_subdirectory(lz4)
+

@@ -19,6 +19,7 @@ char const * mdv_msg_name(uint32_t id)
         case mdv_message_id(view):          return "VIEW";
         case mdv_message_id(fetch):         return "FETCH";
         case mdv_message_id(rowset):        return "ROWSET";
+        case mdv_message_id(delete_from):   return "DELETE FROM";
     }
     return "UNKOWN";
 }
@@ -387,3 +388,41 @@ bool mdv_msg_rowset_unbinn(binn const * obj, mdv_msg_rowset *msg)
     return true;
 }
 
+
+bool mdv_msg_delete_from_binn(mdv_msg_delete_from const *msg, binn *obj)
+{
+    if (!binn_create_object(obj))
+    {
+        MDV_LOGE("mdv_msg_delete_from_binn failed");
+        return false;
+    }
+
+    if (0
+        || !binn_object_set_uint64(obj, "T0", msg->table.u64[0])
+        || !binn_object_set_uint64(obj, "T1", msg->table.u64[1])
+        || !binn_object_set_str(obj,    "F", (char*)msg->filter))
+    {
+        MDV_LOGE("mdv_msg_delete_from_binn failed");
+        binn_free(obj);
+        return false;
+    }
+
+    return true;
+}
+
+
+bool mdv_msg_delete_from_unbinn(binn const * obj, mdv_msg_delete_from *msg)
+{
+    binn *fields = 0;
+
+    if (0
+        || !binn_object_get_uint64((void*)obj, "T0", (uint64 *)(msg->table.u64 + 0))
+        || !binn_object_get_uint64((void*)obj, "T1", (uint64 *)(msg->table.u64 + 1))
+        || !binn_object_get_str((void*)obj,    "F", (char**)&msg->filter))
+    {
+        MDV_LOGE("mdv_msg_delete_from_unbinn failed");
+        return false;
+    }
+
+    return true;
+}

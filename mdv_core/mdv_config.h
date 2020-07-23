@@ -42,6 +42,7 @@ typedef struct
         char const *path;           ///< Directory where the database is placed
         char const *trlog;          ///< Directory where the database transaction logs are placed
         char const *rowdata;        ///< Directory where the database rowdata is placed
+        size_t      shared_buffers; ///< Amount of memory the database uses for shared memory buffers
         size_t      max_size;       ///< The maximum size of the LMDB map size.
     } storage;                      ///< Storage settings
 

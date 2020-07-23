@@ -148,6 +148,11 @@ typedef struct mdv_datums {} mdv_datums;
         return mdv_datum_count($self->data[idx]);
     }
 
+    mdv_field_type fieldType(size_t idx)
+    {
+        return mdv_datum_type($self->data[idx]);
+    }
+
     bool                  getBool(size_t idx)                           { return *mdv_datum_as_bool($self->data[idx]); }
     ArrayOfBool const *   getBoolArray(size_t idx)                      { return mdv_datum_as_bool($self->data[idx]); }
     char                  getChar(size_t idx)                           { return *mdv_datum_as_char($self->data[idx]); }

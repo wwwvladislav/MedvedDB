@@ -464,6 +464,45 @@ static mdv_errno mdv_user_insert_into_handler(mdv_msg const *msg, void *arg)
 }
 
 
+static mdv_errno mdv_user_delete_from_handler(mdv_msg const *msg, void *arg)
+{
+    MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
+
+    mdv_user    *user   = arg;
+
+    binn binn_msg;
+
+    if(!binn_load(msg->payload, &binn_msg))
+    {
+        MDV_LOGW("Message '%s' reading failed", mdv_msg_name(msg->hdr.id));
+        return MDV_FAILED;
+    }
+
+    mdv_msg_delete_from delete_from;
+
+    mdv_errno err = MDV_FAILED;
+
+    if (mdv_msg_delete_from_unbinn(&binn_msg, &delete_from))
+    {
+        // TODO
+    }
+    else
+        MDV_LOGE("Invalid '%s' message", mdv_msg_name(mdv_msg_delete_from_id));
+
+    binn_free(&binn_msg);
+
+    mdv_msg_status const status =
+    {
+        .err = err,
+        .message = ""
+    };
+
+    err = mdv_user_status_reply(user, msg->hdr.number, &status);
+
+    return err;
+}
+
+
 static mdv_errno mdv_user_get_topology_handler(mdv_msg const *msg, void *arg)
 {
     MDV_LOGI("<<<<< '%s'", mdv_msg_name(msg->hdr.id));
@@ -741,6 +780,8 @@ mdv_channel * mdv_user_create(mdv_descriptor  fd,
         { mdv_message_id(get_topology),  &mdv_user_get_topology_handler, user },
         { mdv_message_id(select),        &mdv_user_select_handler,       user },
         { mdv_message_id(fetch),         &mdv_user_fetch_handler,        user },
+        { mdv_message_id(delete_from),   &mdv_user_delete_from_handler,  user },
+
     };
 
     for(size_t i = 0; i < sizeof handlers / sizeof *handlers; ++i)

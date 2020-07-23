@@ -74,6 +74,11 @@ static int mdv_cfg_handler(void* user, const char* section, const char* name, co
         config->storage.max_size = mdv_str2size(value);
         MDV_LOGI("Storage maximum size: %zu", config->storage.max_size);
     }
+    else if (MDV_CFG_MATCH("storage", "shared_buffers"))
+    {
+        config->storage.shared_buffers = mdv_str2size(value);
+        MDV_LOGI("Storage shared buffers size: %zu", config->storage.shared_buffers);
+    }
 
     else if (MDV_CFG_MATCH("ebus", "workers"))
     {
@@ -213,6 +218,7 @@ static void mdv_set_config_defaults()
     MDV_CONFIG.storage.path                 = "./data";
     MDV_CONFIG.storage.trlog                = "./data/trlog";
     MDV_CONFIG.storage.rowdata              = "./data/rowdata";
+    MDV_CONFIG.storage.shared_buffers       = 33554432u;
     MDV_CONFIG.storage.max_size             = 4294963200u;
 
     MDV_CONFIG.ebus.workers                 = 4;

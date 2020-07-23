@@ -27,8 +27,12 @@
      |                                  |
      | SELECT >>>>>                     |
      |                       <<<<< VIEW |
+     |                                  |
      | FETCH >>>>>                      |
      |            <<<<< ROWSET / STATUS |
+     |                                  |
+     | DELETE FROM >>>>>                |
+     |                     <<<<< STATUS |
  */
 
 
@@ -110,6 +114,11 @@ mdv_message_def(rowset, 13,
 );
 
 
+mdv_message_def(delete_from, 14,
+    mdv_uuid    table;
+    char const *filter;
+);
+
 char const *                mdv_msg_name                    (uint32_t id);
 
 
@@ -157,3 +166,7 @@ bool                        mdv_msg_fetch_unbinn            (binn const * obj, m
 
 bool                        mdv_msg_rowset_binn             (mdv_msg_rowset const *msg, binn *obj);
 bool                        mdv_msg_rowset_unbinn           (binn const * obj, mdv_msg_rowset *msg);
+
+
+bool                        mdv_msg_delete_from_binn        (mdv_msg_delete_from const *msg, binn *obj);
+bool                        mdv_msg_delete_from_unbinn      (binn const * obj, mdv_msg_delete_from *msg);

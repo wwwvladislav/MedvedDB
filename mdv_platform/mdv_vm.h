@@ -18,15 +18,16 @@ typedef uint8_t mdv_vm_op_t;
 /// A piece of some data
 typedef struct
 {
-    uint16_t        size;   ///< Data size
-    void const     *data;   ///< Data pointer
+    bool            external;       ///< Data pointer is external
+    uint32_t        size;           ///< Data size
+    void const     *data;           ///< Data pointer
 } mdv_vm_datum;
 
 
 typedef enum
 {
     MDV_VM_NOP = 0,     /// NOP                                     [0]
-    MDV_VM_PUSH,        /// PUSH Size Data (Size is 2 bytes)        [1][xx][...]
+    MDV_VM_PUSH,        /// PUSH ExtFlag Size Data (Size is 4 bytes)[1][x][xxxx][...]
     MDV_VM_CALL,        /// CALL FunctionId (FunctionId is 2 bytes) [2][xx]
     MDV_VM_END = 0xff   /// END                                     [0xFF]
 } mdv_vm_commands;

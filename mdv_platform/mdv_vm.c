@@ -5,8 +5,15 @@
 
 mdv_errno mdv_vm_stack_push(mdv_stack_base *stack, mdv_vm_datum const *data)
 {
-    return mdv_stack_push(*stack, (char const *)data->data, data->size)
+    size_t const size = data->external
+                            ? sizeof(void*)
+                            : data->size;
+    char const *ptr = data->external
+                            ? (char const *)&data->data
+                            : (char const *)data->data;
+    return mdv_stack_push(*stack, ptr, size)
             && mdv_stack_push(*stack, (char const *)&data->size, sizeof(data->size))
+            && mdv_stack_push(*stack, (char const *)&data->external, sizeof(data->external))
             ? MDV_OK
             : MDV_STACK_OVERFLOW;
 }
@@ -14,28 +21,48 @@ mdv_errno mdv_vm_stack_push(mdv_stack_base *stack, mdv_vm_datum const *data)
 
 mdv_errno mdv_vm_stack_pop(mdv_stack_base *stack, mdv_vm_datum *data)
 {
-    uint16_t const *size = mdv_stack_pop(*stack, sizeof(uint16_t));
+    bool const *external = mdv_stack_pop(*stack, sizeof(bool));
+    if (!external)
+        return MDV_FAILED;
+
+    uint32_t const *size = mdv_stack_pop(*stack, sizeof(data->size));
     if (!size)
         return MDV_FAILED;
+
+    size_t const sz = *external ? sizeof(void*) : *size;
+
+    void const *ptr = mdv_stack_pop(*stack, sz);
+    if (!ptr)
+        return MDV_FAILED;
+
+    data->external = *external;
     data->size = *size;
-    data->data = mdv_stack_pop(*stack, *size);
-    return data->data ? MDV_OK : MDV_FAILED;
+    data->data = *external ? *(void**)ptr : ptr;
+
+    return MDV_OK;
 }
 
 
 static mdv_errno mdv_vm_stack_top(mdv_stack_base *stack, mdv_vm_datum *data)
 {
-    if(stack->size < sizeof(data->size))
+    if(stack->size < sizeof(bool) + sizeof(data->size))
         return MDV_FAILED;
 
     char const *top = stack->data + stack->size;
-    uint16_t const size = *(uint16_t const *)(top - sizeof(data->size));
 
-    if(size + sizeof(data->size) > stack->size)
+    bool const external = *(bool const *)(top - sizeof(bool));
+    uint32_t const size = *(uint32_t const *)(top - sizeof(bool) - sizeof(data->size));
+
+    size_t const sz = external ? sizeof(void*) : size;
+
+    if(sz + sizeof(bool) + sizeof(data->size) > stack->size)
         return MDV_FAILED;
 
+    char const *ptr = top - sizeof(bool) - sizeof(data->size) - sz;
+
+    data->external = external;
     data->size = size;
-    data->data = top - sizeof(data->size) - size;
+    data->data = external ? *(void const**)ptr : ptr;
 
     return MDV_OK;
 }
@@ -58,20 +85,22 @@ mdv_errno mdv_vm_run(mdv_stack_base *stack, mdv_vm_fn const *fns, size_t fns_cou
 
             case MDV_VM_PUSH:
             {
-                mdv_vm_datum datum =
+                mdv_vm_datum const datum =
                 {
-                    .size = *(uint16_t*)ip
+                    .external = *ip,
+                    .size = *(uint32_t*)(ip + sizeof(uint8_t)),
+                    .data = ip + sizeof(uint8_t) + sizeof(uint32_t)
                 };
 
-                ip += sizeof(uint16_t);
+                size_t const size = datum.external
+                                        ? sizeof(void*)
+                                        : datum.size;
 
-                datum.data = ip;
+                ip += sizeof(uint8_t) + sizeof(uint32_t) + size;
 
                 err = mdv_vm_stack_push(stack, &datum);
 
-                if (err == MDV_OK)
-                    ip += datum.size;
-                else
+                if (err != MDV_OK)
                     ip = 0;
 
                 break;
@@ -120,17 +149,17 @@ mdv_errno mdv_vm_run(mdv_stack_base *stack, mdv_vm_fn const *fns, size_t fns_cou
 
 mdv_errno mdv_vm_result_as_bool(mdv_stack_base *stack, bool *res)
 {
-    if (mdv_stack_size(*stack) < sizeof(uint16_t) + sizeof(uint8_t))
-        return MDV_FAILED;
+    mdv_vm_datum data;
 
-    char const *top = stack->data + stack->size;
+    mdv_errno err = mdv_vm_stack_top(stack, &data);
 
-    uint16_t const len = *(uint16_t const*)(top - sizeof(uint16_t));
+    if(err != MDV_OK)
+        return err;
 
-    if(len != sizeof(uint8_t))
+    if(data.size != sizeof(uint8_t))
         return MDV_INVALID_TYPE;
 
-    uint8_t const val = *(uint8_t*)(top - sizeof(uint16_t) - sizeof(uint8_t));
+    uint8_t const val = *(uint8_t*)(data.data);
 
     *res = val != MDV_VM_FALSE;
 
@@ -170,6 +199,7 @@ mdv_errno mdv_vmop_equal(mdv_stack_base *stack)
 
     mdv_vm_datum const data =
     {
+        .external = false,
         .size = sizeof res,
         .data = &res
     };
@@ -194,6 +224,7 @@ mdv_errno mdv_vmop_not_equal(mdv_stack_base *stack)
 
     mdv_vm_datum const data =
     {
+        .external = false,
         .size = sizeof res,
         .data = &res
     };
@@ -223,6 +254,7 @@ mdv_errno mdv_vmop_greater(mdv_stack_base *stack)
 
     mdv_vm_datum const data =
     {
+        .external = false,
         .size = sizeof res,
         .data = &res
     };
@@ -252,6 +284,7 @@ mdv_errno mdv_vmop_greater_or_equal(mdv_stack_base *stack)
 
     mdv_vm_datum const data =
     {
+        .external = false,
         .size = sizeof res,
         .data = &res
     };
@@ -281,6 +314,7 @@ mdv_errno mdv_vmop_less(mdv_stack_base *stack)
 
     mdv_vm_datum const data =
     {
+        .external = false,
         .size = sizeof res,
         .data = &res
     };
@@ -310,6 +344,7 @@ mdv_errno mdv_vmop_less_or_equal(mdv_stack_base *stack)
 
     mdv_vm_datum const data =
     {
+        .external = false,
         .size = sizeof res,
         .data = &res
     };
@@ -341,6 +376,7 @@ mdv_errno mdv_vmop_and(mdv_stack_base *stack)
 
     mdv_vm_datum const data =
     {
+        .external = false,
         .size = size,
         .data = res
     };
@@ -372,6 +408,7 @@ mdv_errno mdv_vmop_or(mdv_stack_base *stack)
 
     mdv_vm_datum const data =
     {
+        .external = false,
         .size = size,
         .data = res
     };

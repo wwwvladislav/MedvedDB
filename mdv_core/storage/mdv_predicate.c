@@ -16,7 +16,7 @@ struct mdv_predicate
 
 static const uint8_t MDV_EMPTY_PREDICATE[] =
 {
-    MDV_VM_PUSH, 1, 0, MDV_VM_TRUE,
+    MDV_VM_PUSH, 0, 1, 0, 0, 0, MDV_VM_TRUE,
     MDV_VM_END
 };
 

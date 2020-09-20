@@ -65,15 +65,15 @@ typedef struct
                      mdv_stack_push_1(st, __VA_ARGS__))
 
 
-#define mdv_stack_pop_multiple(st, count)   \
-    ((st).size >= count                     \
-        ? (st).data + ((st).size -= count)  \
+#define mdv_stack_pop_multiple(st, count)               \
+    (const void *)((st).size >= count                   \
+        ? (st).data + ((st).size -= count)              \
         : 0)
 
 
-#define mdv_stack_pop_one(st)               \
-    ((st).size > 0                          \
-        ? (st).data + --(st).size           \
+#define mdv_stack_pop_one(st)                           \
+    (const void *)((st).size > 0                        \
+        ? (st).data + --(st).size                       \
         : 0)
 
 

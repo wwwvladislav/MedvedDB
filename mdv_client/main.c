@@ -35,6 +35,7 @@ static void mdv_redirect_output(char const *);
 static void mdv_show_topology(char const *);
 static void mdv_show_routes(char const *);
 static void mdv_show_tables(char const *);
+static void mdv_show_table_desc(char const *);
 static void mdv_test_scenario(char const *);
 
 
@@ -44,6 +45,7 @@ static mdv_command const commands[] =
     { "\\o",    "Save an output of query to a text file",   &mdv_redirect_output },
     { "\\t",    "Show network topology",                    &mdv_show_topology },
     { "\\r",    "Show routing table",                       &mdv_show_routes },
+    { "\\d",    "Describe a table",                         &mdv_show_table_desc },
     { "\\dt",   "Show tables in the current database",      &mdv_show_tables },
     { "\\q",    "Quit mdv",                                 0 },
     { "\\test", "Run test scenario",                        &mdv_test_scenario },
@@ -199,6 +201,43 @@ static void mdv_show_tables(char const *args)
             mdv_bitset_fill(mask, true);
 
             mdv_rowset *resultset = mdv_select(client, table, mask, "");
+
+            if (resultset)
+            {
+                mdv_cout_table(resultset);
+                mdv_rowset_release(resultset);
+            }
+            else
+                MDV_INF("Select request failed\n");
+
+            mdv_bitset_release(mask);
+        }
+        else
+            MDV_INF("Rows iteration failed. No memory for fields mask.\n");
+
+        mdv_table_release(table);
+    }
+}
+
+
+static void mdv_show_table_desc(char const *name)
+{
+    (void)name;
+
+    mdv_table *table = mdv_get_table(client, &MDV_SYSTBL_TABLES);
+
+    if (table)
+    {
+        mdv_bitset *mask = mdv_bitset_create(mdv_table_description(table)->size, &mdv_default_allocator);
+
+        if (mask)
+        {
+            mdv_bitset_fill(mask, true);
+
+            char filter[256];
+            snprintf(filter, sizeof filter, "tablename = \'MyTable\'");
+
+            mdv_rowset *resultset = mdv_select(client, table, mask, filter);
 
             if (resultset)
             {

@@ -16,12 +16,23 @@ struct mdv_predicate
 
 static const uint8_t MDV_EMPTY_PREDICATE[] =
 {
-    MDV_VM_PUSH, 1, 0, 1,
+    MDV_VM_PUSH, 1, 0, MDV_VM_TRUE,
     MDV_VM_END
 };
 
 
-static mdv_vm_fn const MDV_PREDICATE_FNS[] = { 0 };
+static mdv_vm_fn const MDV_PREDICATE_FNS[] =
+{
+    mdv_vmop_equal,
+    mdv_vmop_not_equal,
+    mdv_vmop_greater,
+    mdv_vmop_greater_or_equal,
+    mdv_vmop_less,
+    mdv_vmop_less_or_equal,
+    mdv_vmop_and,
+    mdv_vmop_or,
+    mdv_vmop_not
+};
 
 
 mdv_predicate * mdv_predicate_parse(char const *expression)

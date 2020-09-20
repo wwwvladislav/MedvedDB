@@ -25,13 +25,13 @@ MU_TEST(platform_stack)
 
     mu_check(mdv_stack_size(stack) == mdv_stack_capacity(stack));
 
-    mu_check(*mdv_stack_pop(stack) == '4');
+    mu_check(*(char const*)mdv_stack_pop(stack) == '4');
 
-    mu_check(*mdv_stack_pop(stack, 2) == '2');
+    mu_check(*(char const*)mdv_stack_pop(stack, 2) == '2');
 
-    mu_check(*mdv_stack_pop(stack, 1) == '1');
+    mu_check(*(char const*)mdv_stack_pop(stack, 1) == '1');
 
-    mu_check(*mdv_stack_pop(stack, 1) == '0');
+    mu_check(*(char const*)mdv_stack_pop(stack, 1) == '0');
 
     mu_check(mdv_stack_empty(stack));
 }

@@ -194,7 +194,7 @@ mdv_errno mdv_dispatcher_send(mdv_dispatcher *pd, mdv_msg *req, mdv_msg *resp, s
 
     if (mdv_mutex_lock(&pd->requests_mutex) == MDV_OK)
     {
-        mdv_condvar **pcv = mdv_stack_pop(pd->cvs);
+        mdv_condvar * const *pcv = mdv_stack_pop(pd->cvs);
 
         if (*pcv)
         {

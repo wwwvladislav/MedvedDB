@@ -25,8 +25,6 @@ use_c11()
 
 add_executable(mdv ${HEADERS} ${SOURCES})
 
-add_dependencies(mdv mdv_api linenoise)
-
 target_link_libraries(mdv mdv_api linenoise)
 
 install(TARGETS ${PROJECT_NAME}

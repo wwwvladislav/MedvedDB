@@ -14,6 +14,4 @@ include_directories(
 
 add_library(mdv_api STATIC ${SOURCES})
 
-add_dependencies(mdv_api mdv_platform mdv_net mdv_types)
-
 target_link_libraries(mdv_api mdv_platform mdv_net mdv_types)

@@ -14,6 +14,4 @@ include_directories(
 
 add_library(mdv_storage STATIC ${SOURCES})
 
-add_dependencies(mdv_storage zf_log rpmalloc uuid4)
-
 target_link_libraries(mdv_storage zf_log rpmalloc uuid4)

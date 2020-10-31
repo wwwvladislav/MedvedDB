@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
     (void)argc;
     (void)argv;
 
-    mdv_logf_set_level(ZF_LOG_INFO);
+    mdv_logf_set_level(ZF_LOG_WARN);
 
     mdv_alloc_initialize();
 

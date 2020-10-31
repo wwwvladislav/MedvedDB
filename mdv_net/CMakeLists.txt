@@ -15,6 +15,4 @@ find_package(Threads REQUIRED)
 
 add_library(mdv_net STATIC ${SOURCES})
 
-add_dependencies(mdv_net mdv_platform zf_log rpmalloc)
-
 target_link_libraries(mdv_net mdv_platform zf_log rpmalloc Threads::Threads)

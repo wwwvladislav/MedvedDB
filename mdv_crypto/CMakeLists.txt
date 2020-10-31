@@ -13,6 +13,4 @@ include_directories(
 
 add_library(mdv_crypto STATIC ${SOURCES})
 
-add_dependencies(mdv_crypto aes sha3 ecc)
-
 target_link_libraries(mdv_crypto aes sha3 ecc)

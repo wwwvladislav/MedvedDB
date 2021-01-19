@@ -7,8 +7,8 @@
 
 
 /// Connection context types
-const mdv_channel_t MDV_USER_CHANNEL;   /// User channel
-const mdv_channel_t MDV_PEER_CHANNEL;   /// Peer channel
+extern const mdv_channel_t MDV_USER_CHANNEL;   /// User channel
+extern const mdv_channel_t MDV_PEER_CHANNEL;   /// Peer channel
 
 
 mdv_errno mdv_handshake_write(mdv_descriptor fd, mdv_channel_t type, mdv_uuid const *uuid);

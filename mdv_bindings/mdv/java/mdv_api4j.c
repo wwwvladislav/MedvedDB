@@ -270,6 +270,9 @@ SWIGINTERN bool mdv_table_desc_addField(struct mdv_table_desc *self,mdv_field_ty
 
         return mdv_table_desc_append(self, &field);
     }
+SWIGINTERN mdv_uuid const *mdv_table_getUUID(mdv_table *self){
+        return mdv_table_uuid(self);
+    }
 SWIGINTERN void delete_mdv_table(mdv_table *self){
         mdv_table_release(self);
     }
@@ -666,7 +669,43 @@ SWIGINTERN void delete_mdv_bitset(struct mdv_bitset *self){
     }
 
 #include <mdv_uuid.h>
+#include <mdv_alloc.h>
+#include <mdv_log.h>
 
+SWIGINTERN mdv_uuid *new_mdv_uuid(char const *str){
+        mdv_uuid *uuid = malloc(sizeof(mdv_uuid));
+
+        if(!uuid)
+        {
+            MDV_LOGE("No memory for UUID");
+            return 0;
+        }
+
+        bool res = mdv_uuid_from_str(uuid, str);
+
+        if(!res)
+        {
+            MDV_LOGE("Invalid UUID");
+            free(uuid);
+            return 0;
+        }
+
+        return uuid;
+    }
+SWIGINTERN void delete_mdv_uuid(mdv_uuid *self){
+        free(self);
+    }
+SWIGINTERN char const *mdv_uuid_toString(mdv_uuid *self){
+        char *tmp = malloc(MDV_UUID_STR_LEN);
+
+        if(!tmp)
+        {
+            MDV_LOGE("No memory for UUID string representations");
+            return 0;
+        }
+
+        return mdv_uuid_to_str(self, tmp);
+    }
 
 #ifdef __cplusplus
 extern "C" {
@@ -1046,6 +1085,21 @@ SWIGEXPORT jboolean JNICALL Java_mdv_mdvJNI_TableDesc_1addField(JNIEnv *jenv, jc
   result = (bool)mdv_table_desc_addField(arg1,arg2,arg3,(char const *)arg4);
   jresult = (jboolean)result; 
   if (arg4) (*jenv)->ReleaseStringUTFChars(jenv, jarg4, (const char *)arg4);
+  return jresult;
+}
+
+
+SWIGEXPORT jlong JNICALL Java_mdv_mdvJNI_Table_1getUUID(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jlong jresult = 0 ;
+  mdv_table *arg1 = (mdv_table *) 0 ;
+  mdv_uuid *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(mdv_table **)&jarg1; 
+  result = (mdv_uuid *)mdv_table_getUUID(arg1);
+  *(mdv_uuid **)&jresult = result; 
   return jresult;
 }
 
@@ -3862,14 +3916,21 @@ SWIGEXPORT jlong JNICALL Java_mdv_mdvJNI_BitSet_1capacity(JNIEnv *jenv, jclass j
 }
 
 
-SWIGEXPORT jlong JNICALL Java_mdv_mdvJNI_new_1UUID(JNIEnv *jenv, jclass jcls) {
+SWIGEXPORT jlong JNICALL Java_mdv_mdvJNI_new_1UUID(JNIEnv *jenv, jclass jcls, jstring jarg1) {
   jlong jresult = 0 ;
+  char *arg1 = (char *) 0 ;
   mdv_uuid *result = 0 ;
   
   (void)jenv;
   (void)jcls;
-  result = (mdv_uuid *)calloc(1, sizeof(mdv_uuid));
+  arg1 = 0;
+  if (jarg1) {
+    arg1 = (char *)(*jenv)->GetStringUTFChars(jenv, jarg1, 0);
+    if (!arg1) return 0;
+  }
+  result = (mdv_uuid *)new_mdv_uuid((char const *)arg1);
   *(mdv_uuid **)&jresult = result; 
+  if (arg1) (*jenv)->ReleaseStringUTFChars(jenv, jarg1, (const char *)arg1);
   return jresult;
 }
 
@@ -3880,7 +3941,23 @@ SWIGEXPORT void JNICALL Java_mdv_mdvJNI_delete_1UUID(JNIEnv *jenv, jclass jcls, 
   (void)jenv;
   (void)jcls;
   arg1 = *(mdv_uuid **)&jarg1; 
-  free((char *) arg1);
+  delete_mdv_uuid(arg1);
+}
+
+
+SWIGEXPORT jstring JNICALL Java_mdv_mdvJNI_UUID_1toString(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jstring jresult = 0 ;
+  mdv_uuid *arg1 = (mdv_uuid *) 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(mdv_uuid **)&jarg1; 
+  result = (char *)mdv_uuid_toString(arg1);
+  if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
+  free(result);
+  return jresult;
 }
 
 

@@ -1,0 +1,272 @@
+Grammar
+
+    0 $accept: input $end
+
+    1 input: %empty
+    2      | input line
+
+    3 line: EOL
+    4     | exp EOL
+
+    5 exp: NUMBER
+    6    | exp PLUS exp
+    7    | exp MINUS exp
+    8    | exp MULT exp
+    9    | exp DIV exp
+   10    | MINUS exp
+   11    | LB exp RB
+
+
+Terminals, with rules where they appear
+
+    $end (0) 0
+    error (256)
+    NUMBER <val> (258) 5
+    PLUS (259) 6
+    MINUS (260) 7 10
+    MULT (261) 8
+    DIV (262) 9
+    EOL (263) 3 4
+    LB (264) 11
+    RB (265) 11
+
+
+Nonterminals, with rules where they appear
+
+    $accept (11)
+        on left: 0
+    input (12)
+        on left: 1 2
+        on right: 0 2
+    line (13)
+        on left: 3 4
+        on right: 2
+    exp <val> (14)
+        on left: 5 6 7 8 9 10 11
+        on right: 4 6 7 8 9 10 11
+
+
+State 0
+
+    0 $accept: . input $end
+
+    $default  reduce using rule 1 (input)
+
+    input  go to state 1
+
+
+State 1
+
+    0 $accept: input . $end
+    2 input: input . line
+
+    $end    shift, and go to state 2
+    NUMBER  shift, and go to state 3
+    MINUS   shift, and go to state 4
+    EOL     shift, and go to state 5
+    LB      shift, and go to state 6
+
+    line  go to state 7
+    exp   go to state 8
+
+
+State 2
+
+    0 $accept: input $end .
+
+    $default  accept
+
+
+State 3
+
+    5 exp: NUMBER .
+
+    $default  reduce using rule 5 (exp)
+
+
+State 4
+
+   10 exp: MINUS . exp
+
+    NUMBER  shift, and go to state 3
+    MINUS   shift, and go to state 4
+    LB      shift, and go to state 6
+
+    exp  go to state 9
+
+
+State 5
+
+    3 line: EOL .
+
+    $default  reduce using rule 3 (line)
+
+
+State 6
+
+   11 exp: LB . exp RB
+
+    NUMBER  shift, and go to state 3
+    MINUS   shift, and go to state 4
+    LB      shift, and go to state 6
+
+    exp  go to state 10
+
+
+State 7
+
+    2 input: input line .
+
+    $default  reduce using rule 2 (input)
+
+
+State 8
+
+    4 line: exp . EOL
+    6 exp: exp . PLUS exp
+    7    | exp . MINUS exp
+    8    | exp . MULT exp
+    9    | exp . DIV exp
+
+    PLUS   shift, and go to state 11
+    MINUS  shift, and go to state 12
+    MULT   shift, and go to state 13
+    DIV    shift, and go to state 14
+    EOL    shift, and go to state 15
+
+
+State 9
+
+    6 exp: exp . PLUS exp
+    7    | exp . MINUS exp
+    8    | exp . MULT exp
+    9    | exp . DIV exp
+   10    | MINUS exp .
+
+    MULT  shift, and go to state 13
+    DIV   shift, and go to state 14
+
+    $default  reduce using rule 10 (exp)
+
+
+State 10
+
+    6 exp: exp . PLUS exp
+    7    | exp . MINUS exp
+    8    | exp . MULT exp
+    9    | exp . DIV exp
+   11    | LB exp . RB
+
+    PLUS   shift, and go to state 11
+    MINUS  shift, and go to state 12
+    MULT   shift, and go to state 13
+    DIV    shift, and go to state 14
+    RB     shift, and go to state 16
+
+
+State 11
+
+    6 exp: exp PLUS . exp
+
+    NUMBER  shift, and go to state 3
+    MINUS   shift, and go to state 4
+    LB      shift, and go to state 6
+
+    exp  go to state 17
+
+
+State 12
+
+    7 exp: exp MINUS . exp
+
+    NUMBER  shift, and go to state 3
+    MINUS   shift, and go to state 4
+    LB      shift, and go to state 6
+
+    exp  go to state 18
+
+
+State 13
+
+    8 exp: exp MULT . exp
+
+    NUMBER  shift, and go to state 3
+    MINUS   shift, and go to state 4
+    LB      shift, and go to state 6
+
+    exp  go to state 19
+
+
+State 14
+
+    9 exp: exp DIV . exp
+
+    NUMBER  shift, and go to state 3
+    MINUS   shift, and go to state 4
+    LB      shift, and go to state 6
+
+    exp  go to state 20
+
+
+State 15
+
+    4 line: exp EOL .
+
+    $default  reduce using rule 4 (line)
+
+
+State 16
+
+   11 exp: LB exp RB .
+
+    $default  reduce using rule 11 (exp)
+
+
+State 17
+
+    6 exp: exp . PLUS exp
+    6    | exp PLUS exp .
+    7    | exp . MINUS exp
+    8    | exp . MULT exp
+    9    | exp . DIV exp
+
+    MULT  shift, and go to state 13
+    DIV   shift, and go to state 14
+
+    $default  reduce using rule 6 (exp)
+
+
+State 18
+
+    6 exp: exp . PLUS exp
+    7    | exp . MINUS exp
+    7    | exp MINUS exp .
+    8    | exp . MULT exp
+    9    | exp . DIV exp
+
+    MULT  shift, and go to state 13
+    DIV   shift, and go to state 14
+
+    $default  reduce using rule 7 (exp)
+
+
+State 19
+
+    6 exp: exp . PLUS exp
+    7    | exp . MINUS exp
+    8    | exp . MULT exp
+    8    | exp MULT exp .
+    9    | exp . DIV exp
+
+    $default  reduce using rule 8 (exp)
+
+
+State 20
+
+    6 exp: exp . PLUS exp
+    7    | exp . MINUS exp
+    8    | exp . MULT exp
+    9    | exp . DIV exp
+    9    | exp DIV exp .
+
+    $default  reduce using rule 9 (exp)

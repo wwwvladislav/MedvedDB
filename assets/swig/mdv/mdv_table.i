@@ -14,6 +14,11 @@ typedef struct {} mdv_table;
 
 %extend mdv_table
 {
+    mdv_uuid const * getUUID()
+    {
+        return mdv_table_uuid($self);
+    }
+
     ~mdv_table()
     {
         mdv_table_release($self);

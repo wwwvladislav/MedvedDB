@@ -246,24 +246,6 @@ static mdv_rowdata * mdv_tablespace_rowdata_create(mdv_tablespace *tablespace, m
 }
 
 
-static mdv_rowdata * mdv_tablespace_rowdata_get(mdv_tablespace *tablespace, mdv_uuid const *table_id)
-{
-    mdv_rowdata *rowdata = 0;
-
-    if (mdv_mutex_lock(&tablespace->rowdata_mutex) == MDV_OK)
-    {
-        mdv_rowdata_ref *ref = mdv_hashmap_find(tablespace->rowdata, table_id);
-
-        if (ref)
-            rowdata = mdv_rowdata_retain(ref->rowdata);
-
-        mdv_mutex_unlock(&tablespace->rowdata_mutex);
-    }
-
-    return rowdata;
-}
-
-
 static mdv_errno mdv_tablespace_evt_table_get(void *arg, mdv_event *event)
 {
     mdv_tablespace  *tablespace = arg;
@@ -322,7 +304,7 @@ static mdv_errno mdv_tablespace_evt_rowdata_get(void *arg, mdv_event *event)
     mdv_tablespace  *tablespace = arg;
     mdv_evt_rowdata *get_rowdata  = (mdv_evt_rowdata *)event;
 
-    get_rowdata->rowdata = mdv_tablespace_rowdata_get(tablespace, &get_rowdata->table);
+    get_rowdata->rowdata = mdv_tablespace_rowdata_create(tablespace, &get_rowdata->table);
 
     return get_rowdata->rowdata ? MDV_OK : MDV_FAILED;
 }

@@ -220,11 +220,17 @@ static void mdv_show_tables(char const *args)
 }
 
 
-static void mdv_show_table_desc(char const *name)
+static void mdv_show_table_desc(char const *uuid_str)
 {
-    (void)name;
+    mdv_uuid uuid;
 
-    mdv_table *table = mdv_get_table(client, &MDV_SYSTBL_TABLES);
+    if (!mdv_uuid_from_str(&uuid, uuid_str))
+    {
+        MDV_INF("UUID %s is invalid\n", uuid_str);
+        return;
+    }
+
+    mdv_table *table = mdv_get_table(client, &uuid);
 
     if (table)
     {
@@ -234,8 +240,7 @@ static void mdv_show_table_desc(char const *name)
         {
             mdv_bitset_fill(mask, true);
 
-            char filter[256];
-            snprintf(filter, sizeof filter, "tablename = \'MyTable\'");
+            char filter[] = "";
 
             mdv_rowset *resultset = mdv_select(client, table, mask, filter);
 
@@ -465,6 +470,10 @@ int main(int argc, char *argv[])
                     cmd->handler(args);
                     linenoiseHistoryAdd(line);
                     linenoiseHistorySave(MDV_HISTORY);
+                }
+                else
+                {
+                    MDV_INF("\rInvalid command\r\n");
                 }
             }
 

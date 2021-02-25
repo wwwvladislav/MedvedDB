@@ -1,15 +1,16 @@
 #pragma once
-#include "../minunit.h"
+#include <minunit.h>
 #include <mdv_chaman.h>
 #include <mdv_threads.h>
 #include <mdv_uuid.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdatomic.h>
 
 
-static volatile int mdv_init_count = 0;
-static volatile int mdv_close_count = 0;
-static volatile int mdv_recv_size = 0;
+static atomic_uint_fast32_t mdv_init_count = 0;
+static atomic_uint_fast32_t mdv_close_count = 0;
+static atomic_uint_fast32_t mdv_recv_size = 0;
 static volatile mdv_descriptor fds[2];
 
 
@@ -45,7 +46,7 @@ static uint32_t mdv_test_channel_release_impl(mdv_channel *channel)
 
         if (!rc)
         {
-            ++mdv_close_count;
+            atomic_fetch_add_explicit(&mdv_close_count, 1, memory_order_relaxed);
             mdv_free(channel, "test_channel") ;
         }
     }
@@ -82,7 +83,7 @@ static mdv_errno mdv_test_channel_recv_impl(mdv_channel *channel)
 
     while(err == MDV_OK)
     {
-        mdv_recv_size += len;
+        atomic_fetch_add_explicit(&mdv_recv_size, len, memory_order_relaxed);
 
         len = sizeof(buffer) - 1;
         err = mdv_read(fd, buffer, &len);
@@ -142,7 +143,7 @@ static mdv_channel * mdv_test_channel_create_impl(mdv_descriptor    fd,
     channel->dir = dir;
     channel->id = *channel_id;
 
-    fds[mdv_init_count++] = fd;
+    fds[atomic_fetch_add_explicit(&mdv_init_count, 1, memory_order_relaxed)] = fd;
 
     return &channel->base;
 }
@@ -183,7 +184,7 @@ MU_TEST(platform_chaman)
     err = mdv_chaman_dial(client, "tcp://localhost:55555", 0);
     mu_check(err == MDV_OK);
 
-    while(mdv_init_count != 2)
+    while(atomic_load_explicit(&mdv_init_count, memory_order_relaxed) != 2)
         mdv_sleep(10);
 
     char const msg[] = "The quick brown fox jumps over the lazy dog";
@@ -192,12 +193,12 @@ MU_TEST(platform_chaman)
     mu_check(mdv_write(fds[0], msg, &len) == MDV_OK && len == sizeof msg);
     mu_check(mdv_write(fds[1], msg, &len) == MDV_OK && len == sizeof msg);
 
-    while(mdv_recv_size != 2 * sizeof msg)
+    while(atomic_load_explicit(&mdv_recv_size, memory_order_relaxed) != 2 * sizeof msg)
         mdv_sleep(10);
 
     mdv_socket_shutdown(fds[0], MDV_SOCK_SHUT_RD | MDV_SOCK_SHUT_WR);
 
-    while(mdv_close_count != 2)
+    while(atomic_load_explicit(&mdv_close_count, memory_order_relaxed) != 2)
         mdv_sleep(10);
 
     mdv_chaman_free(client);

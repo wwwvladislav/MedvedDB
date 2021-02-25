@@ -5,13 +5,10 @@ file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 
 use_c11()
 
-include_directories(
-    ${ROOT_DIR}/mdv_platform
-    ${LIBS_DIR}/zf_log
-    ${LIBS_DIR}/rpmalloc
-    ${LIBS_DIR}/uuid4
-)
-
 add_library(mdv_storage STATIC ${SOURCES})
 
-target_link_libraries(mdv_storage zf_log rpmalloc uuid4)
+add_library(mdv::storage ALIAS mdv_storage)
+
+target_include_directories(mdv_storage PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(mdv_storage PUBLIC mdv::platform mdv::zf_log mdv::rpmalloc mdv::uuid4)

@@ -5,13 +5,12 @@ file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 
 use_c11()
 
-include_directories(
-    ${LIBS_DIR}/binn
-    ${ROOT_DIR}/mdv_platform
-    ${ROOT_DIR}/mdv_net
-    ${ROOT_DIR}/mdv_types
-)
-
 add_library(mdv_api STATIC ${SOURCES})
 
-target_link_libraries(mdv_api mdv_platform mdv_net mdv_types)
+add_library(mdv::api ALIAS mdv_api)
+
+target_include_directories(mdv_api PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_link_libraries(mdv_api PUBLIC mdv::binn mdv::platform mdv::net mdv::types)

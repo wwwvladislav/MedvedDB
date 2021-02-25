@@ -5,15 +5,14 @@ file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 
 use_c11()
 
-include_directories(
-    ${LIBS_DIR}/binn
-    ${LIBS_DIR}/zf_log
-    ${LIBS_DIR}/rpmalloc
-    ${LIBS_DIR}/uuid4
-)
-
 find_package(Threads REQUIRED)
 
 add_library(mdv_platform STATIC ${SOURCES})
 
-target_link_libraries(mdv_platform zf_log rpmalloc binn m uuid4 Threads::Threads)
+add_library(mdv::platform ALIAS mdv_platform)
+
+target_include_directories(mdv_platform PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(mdv_platform
+                      PUBLIC mdv::zf_log mdv::rpmalloc mdv::binn mdv::uuid4
+                      PRIVATE Threads::Threads m)

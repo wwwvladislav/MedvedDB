@@ -14,7 +14,11 @@ else()
 endif()
 
 add_library(zf_log ${HEADERS} ${SOURCES})
+
+add_library(mdv::zf_log ALIAS zf_log)
+
 target_include_directories(zf_log PUBLIC $<BUILD_INTERFACE:${HEADERS_DIR}>)
+
 if(ZF_LOG_LIBRARY_PREFIX)
 	target_compile_definitions(zf_log PRIVATE "ZF_LOG_LIBRARY_PREFIX=${ZF_LOG_LIBRARY_PREFIX}")
 endif()

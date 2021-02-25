@@ -51,22 +51,17 @@ if(BUILD_JNI)
 
         endif(SWIG_FOUND)
 
-        include_directories(
-            ${ROOT_DIR}/mdv_api
-            ${ROOT_DIR}/mdv_types
-            ${ROOT_DIR}/mdv_platform
-            ${ROOT_DIR}/mdv_core
-            ${JNI_INCLUDE_DIRS})
-
         add_library(mdb4j SHARED ${SOURCES})
 
+        add_library(mdv::mdb4j ALIAS mdb4j)
+
+        target_include_directories(mdb4j PRIVATE ${JNI_INCLUDE_DIRS})
+
         if(SWIG_FOUND)
-            add_dependencies(mdb4j mdv_core mdb_swig4j)
-        else()
-            add_dependencies(mdb4j mdv_core)
+            add_dependencies(mdb4j mdb_swig4j)
         endif()
 
-        target_link_libraries(mdb4j mdv_core)
+        target_link_libraries(mdb4j mdv::core)
 
         install(TARGETS ${PROJECT_NAME}
             RUNTIME DESTINATION ./

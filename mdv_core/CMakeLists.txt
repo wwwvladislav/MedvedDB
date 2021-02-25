@@ -23,17 +23,17 @@ if(FLEX_FOUND AND BISON_FOUND)
     )
 endif()
 
-include_directories(
-    ${LIBS_DIR}/binn
-    ${LIBS_DIR}/inih
-    ${LIBS_DIR}/zf_log
-    ${LIBS_DIR}/lmdb
-    ${ROOT_DIR}/mdv_platform
-    ${ROOT_DIR}/mdv_net
-    ${ROOT_DIR}/mdv_api
-    ${ROOT_DIR}/mdv_types
-)
-
 add_library(mdv_core STATIC ${SOURCES})
 
-target_link_libraries(mdv_core inih zf_log mdv_platform mdv_net mdv_api mdv_types lmdb)
+add_library(mdv::core ALIAS mdv_core)
+
+target_include_directories(mdv_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(mdv_core PUBLIC
+    mdv::inih
+    mdv::zf_log
+    mdv::platform
+    mdv::net
+    mdv::api
+    mdv::types
+    mdv::lmdb)

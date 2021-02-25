@@ -5,12 +5,10 @@ file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 
 use_c11()
 
-include_directories(
-    ${LIBS_DIR}/binn
-    ${LIBS_DIR}/zf_log
-    ${ROOT_DIR}/mdv_platform
-)
-
 add_library(mdv_types STATIC ${SOURCES})
 
-target_link_libraries(mdv_types zf_log mdv_platform)
+add_library(mdv::types ALIAS mdv_types)
+
+target_include_directories(mdv_types PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(mdv_types PUBLIC mdv::zf_log mdv::platform)

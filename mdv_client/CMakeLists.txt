@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.4)
 project(mdv)
 
-add_definitions(-Wall -Wextra)
-
 set(HEADERS
     mdv_cout.h
 )
@@ -12,20 +10,13 @@ set(SOURCES
     mdv_cout.c
 )
 
-include_directories(
-    ${LIBS_DIR}/binn
-    ${LIBS_DIR}/linenoise
-    ${ROOT_DIR}/mdv_api
-    ${ROOT_DIR}/mdv_platform
-    ${ROOT_DIR}/mdv_net
-    ${ROOT_DIR}/mdv_types
-)
-
 use_c11()
 
 add_executable(mdv ${HEADERS} ${SOURCES})
 
-target_link_libraries(mdv mdv_api linenoise)
+target_compile_options(mdv PRIVATE -Wall -Wextra)
+
+target_link_libraries(mdv PRIVATE mdv::api mdv::linenoise)
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ./

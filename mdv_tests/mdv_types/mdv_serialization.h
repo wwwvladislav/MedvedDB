@@ -1,5 +1,5 @@
 #pragma once
-#include "../minunit.h"
+#include <minunit.h>
 #include <mdv_serialization.h>
 #include <mdv_alloc.h>
 #include <mdv_uuid.h>

@@ -1,5 +1,5 @@
 #pragma once
-#include "../../minunit.h"
+#include <minunit.h>
 #include <storage/mdv_predicate.h>
 #include <mdv_vm.h>
 

@@ -63,6 +63,9 @@ char const * mdv_uuid_to_str(mdv_uuid const *uuid, char buf[MDV_UUID_STR_LEN])
 
 bool mdv_uuid_from_str(mdv_uuid *uuid, char const *str)
 {
+    if (!str)
+        return false;
+
     size_t const str_len = strlen(str);
 
     if (str_len != 2 * sizeof uuid->u8)

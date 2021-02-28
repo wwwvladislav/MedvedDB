@@ -225,12 +225,20 @@ bool mdv_binn_table_desc(mdv_table_desc const *table, binn *obj)
 mdv_table_desc * mdv_unbinn_table_desc(binn const *obj)
 {
     uint32_t size = 0;
+    char *name = 0;
+    uint32_t fields_count = 0;
 
-    if (!binn_object_get_uint32((void*)obj, "B", &size))
+    if (0
+        || !binn_object_get_uint32((void*)obj, "B", &size)
+        || !binn_object_get_str((void*)obj, "N", &name)
+        || !binn_object_get_uint32((void*)obj, "S", &fields_count)
+        )
     {
-        MDV_LOGE("unbinn_table failed");
+        MDV_LOGE("unbinn_table_desc failed");
         return 0;
     }
+
+    size += sizeof(void*) * (2 + fields_count);
 
     mdv_table_desc *table = mdv_alloc(size, "table_desc");
 
@@ -240,16 +248,7 @@ mdv_table_desc * mdv_unbinn_table_desc(binn const *obj)
         return 0;
     }
 
-    char *name = 0;
-
-    if (0
-        || !binn_object_get_str((void*)obj, "N", &name)
-        || !binn_object_get_uint32((void*)obj, "S", &table->size))
-    {
-        MDV_LOGE("unbinn_table_desc failed");
-        mdv_free(table, "table_desc");
-        return 0;
-    }
+    table->size = fields_count;
 
     mdv_field *fields = (mdv_field *)(table + 1);
 
@@ -304,10 +303,10 @@ mdv_table_desc * mdv_unbinn_table_desc(binn const *obj)
         ++i;
     }
 
-    if (buff - (char*)table != size)
+    if (buff - (char*)table > size)
         MDV_LOGE("memory corrupted: %p, %zu != %u", table, buff - (char*)table, size);
 
-    assert(buff - (char*)table == size);
+    assert(buff - (char*)table <= size);
 
     return table;
 }

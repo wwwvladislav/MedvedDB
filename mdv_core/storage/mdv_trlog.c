@@ -1,6 +1,6 @@
 #include "mdv_trlog.h"
-#include "mdv_storage.h"
-#include "mdv_storages.h"
+#include <mdv_lmdb.h>
+#include <mdv_names.h>
 #include "../mdv_config.h"
 #include "../event/mdv_evt_types.h"
 #include "../event/mdv_evt_trlog.h"
@@ -22,7 +22,7 @@ struct mdv_trlog
 {
     mdv_uuid                uuid;               ///< storage UUID
     uint32_t                id;                 ///< storage local unique identifier
-    mdv_storage            *storage;            ///< transaction log storage
+    mdv_lmdb               *storage;            ///< transaction log storage
     mdv_ebus               *ebus;               ///< Events bus
     atomic_uint_fast64_t    top;                ///< transaction log last insertion position
     atomic_uint_fast64_t    applied;            ///< transaction log application position

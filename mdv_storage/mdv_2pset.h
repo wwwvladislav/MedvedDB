@@ -1,5 +1,5 @@
 /**
- * @file mdv_objects.h
+ * @file mdv_2pset.h
  * @author Vladislav Volkov (wwwvladislav@gmail.com)
  * @brief DB objects storage
  * @version 0.1
@@ -15,15 +15,7 @@
 
 
 /// DB objects storage
-typedef struct mdv_objects mdv_objects;
-
-
-/// Key and value pair
-typedef struct mdv_objects_entry
-{
-    mdv_data key;
-    mdv_data value;
-} mdv_objects_entry;
+typedef struct mdv_2pset mdv_2pset;
 
 
 /**
@@ -34,7 +26,7 @@ typedef struct mdv_objects_entry
  *
  * @return DB objects storage
  */
-mdv_objects * mdv_objects_open(char const *root_dir, char const *storage_name);
+mdv_2pset * mdv_2pset_open(char const *root_dir, char const *storage_name);
 
 
 /**
@@ -44,7 +36,7 @@ mdv_objects * mdv_objects_open(char const *root_dir, char const *storage_name);
  *
  * @return pointer which provided as argument
  */
-mdv_objects * mdv_objects_retain(mdv_objects *objs);
+mdv_2pset * mdv_2pset_retain(mdv_2pset *objs);
 
 
 /**
@@ -54,7 +46,7 @@ mdv_objects * mdv_objects_retain(mdv_objects *objs);
  *
  * @return references counter
  */
-uint32_t mdv_objects_release(mdv_objects *objs);
+uint32_t mdv_2pset_release(mdv_2pset *objs);
 
 
 /**
@@ -67,7 +59,7 @@ uint32_t mdv_objects_release(mdv_objects *objs);
  * @return On success, return MDV_OK.
  * @return On error, return non zero value
  */
-mdv_errno mdv_objects_reserve_ids_range(mdv_objects *objs, uint32_t range, uint64_t *id);
+mdv_errno mdv_2pset_reserve_ids_range(mdv_2pset *objs, uint32_t range, uint64_t *id);
 
 
 /**
@@ -75,12 +67,12 @@ mdv_errno mdv_objects_reserve_ids_range(mdv_objects *objs, uint32_t range, uint6
  *
  * @param objs [in]     DB objects storage
  * @param id [in]       Unique object identifier
- * @param objs_arr [in] Serialized objects array
+ * @param obj [in]      Serialized object
  *
  * @return On success, return MDV_OK.
  * @return On error, return non zero value
  */
-mdv_errno mdv_objects_add(mdv_objects *objs, mdv_data const *id, mdv_data const *obj);
+mdv_errno mdv_2pset_add(mdv_2pset *objs, mdv_data const *id, mdv_data const *obj);
 
 
 /**
@@ -93,7 +85,7 @@ mdv_errno mdv_objects_add(mdv_objects *objs, mdv_data const *id, mdv_data const 
  * @return On success, return MDV_OK.
  * @return On error, return non zero value
  */
-mdv_errno mdv_objects_add_batch(mdv_objects *objs, void *arg, bool (*next)(void *arg, mdv_data *id, mdv_data *obj));
+mdv_errno mdv_2pset_add_batch(mdv_2pset *objs, void *arg, bool (*next)(void *arg, mdv_data *id, mdv_data *obj));
 
 
 /**
@@ -106,7 +98,7 @@ mdv_errno mdv_objects_add_batch(mdv_objects *objs, void *arg, bool (*next)(void 
  * @return On success, returns nonzero object pointer
  * @return On error, returns NULL
  */
-void * mdv_objects_get(mdv_objects *objs, mdv_data const *id, void * (*restore)(mdv_data const *));
+void * mdv_2pset_get(mdv_2pset *objs, mdv_data const *id, void * (*restore)(mdv_data const *));
 
 
 /**
@@ -116,7 +108,7 @@ void * mdv_objects_get(mdv_objects *objs, mdv_data const *id, void * (*restore)(
  *
  * @return objects iterator from begin of objects collection
  */
-mdv_enumerator * mdv_objects_enumerator(mdv_objects *objs);
+mdv_enumerator * mdv_2pset_enumerator(mdv_2pset *objs);
 
 
 /**
@@ -127,4 +119,4 @@ mdv_enumerator * mdv_objects_enumerator(mdv_objects *objs);
  *
  * @return objects iterator
  */
-mdv_enumerator * mdv_objects_enumerator_from(mdv_objects *objs, mdv_data const *id);
+mdv_enumerator * mdv_2pset_enumerator_from(mdv_2pset *objs, mdv_data const *id);

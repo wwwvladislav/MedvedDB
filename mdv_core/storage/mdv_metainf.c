@@ -1,6 +1,6 @@
 #include "mdv_metainf.h"
 #include "../mdv_config.h"
-#include "mdv_storages.h"
+#include <mdv_names.h>
 #include <mdv_log.h>
 #include <mdv_string.h>
 
@@ -12,9 +12,9 @@ void mdv_metainf_init(mdv_metainf *m)
 }
 
 
-mdv_storage * mdv_metainf_storage_open(char const *path)
+mdv_lmdb * mdv_metainf_storage_open(char const *path)
 {
-    mdv_storage *storage = mdv_storage_open(
+    mdv_lmdb *storage = mdv_storage_open(
                                 path,
                                 MDV_STRG_METAINF,
                                 MDV_STRG_METAINF_MAPS,
@@ -31,7 +31,7 @@ mdv_storage * mdv_metainf_storage_open(char const *path)
 }
 
 
-bool mdv_metainf_load(mdv_metainf *metainf, mdv_storage *storage)
+bool mdv_metainf_load(mdv_metainf *metainf, mdv_lmdb *storage)
 {
     mdv_metainf_init(metainf);
 
@@ -63,7 +63,7 @@ void mdv_metainf_validate(mdv_metainf *metainf)
 }
 
 
-void mdv_metainf_flush(mdv_metainf *metainf, mdv_storage *storage)
+void mdv_metainf_flush(mdv_metainf *metainf, mdv_lmdb *storage)
 {
     // Save metainf
     mdv_transaction transaction = mdv_transaction_start(storage);

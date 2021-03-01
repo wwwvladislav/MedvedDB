@@ -1,7 +1,6 @@
-#include "mdv_objects.h"
-#include "mdv_storage.h"
-#include "mdv_storages.h"
-#include "../mdv_config.h"
+#include "mdv_2pset.h"
+#include "mdv_lmdb.h"
+#include "mdv_names.h"
 #include <mdv_rollbacker.h>
 #include <mdv_alloc.h>
 #include <mdv_mutex.h>
@@ -10,16 +9,17 @@
 
 static uint8_t MDV_OBJECTS_IDGEN = 0;
 
+static const size_t LMDB_MAP_SIZE = 4294963200u; ///< The maximum size of the LMDB map size.
 
-struct mdv_objects
+struct mdv_2pset
 {
-    mdv_storage     *storage;       ///< objects storage
+    mdv_lmdb        *storage;       ///< objects storage
     mdv_mutex        idgen_mutex;   ///< mutex for objects identifiers generator
     uint64_t         idgen;         ///< last free object identifier
 };
 
 
-static bool mdv_objects_idgen_init(mdv_objects *objs)
+static bool mdv_objects_idgen_init(mdv_2pset *objs)
 {
     objs->idgen = 0;
 
@@ -69,11 +69,11 @@ static bool mdv_objects_idgen_init(mdv_objects *objs)
 }
 
 
-mdv_objects * mdv_objects_open(char const *root_dir, char const *storage_name)
+mdv_2pset * mdv_2pset_open(char const *root_dir, char const *storage_name)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
-    mdv_objects *objs = mdv_alloc(sizeof(mdv_objects), "objects");
+    mdv_2pset *objs = mdv_alloc(sizeof(mdv_2pset), "objects");
 
     if (!objs)
     {
@@ -88,7 +88,7 @@ mdv_objects * mdv_objects_open(char const *root_dir, char const *storage_name)
                                      storage_name,
                                      MDV_STRG_OBJECTS_MAPS,
                                      MDV_STRG_NOSUBDIR,
-                                     MDV_CONFIG.storage.max_size);
+                                     LMDB_MAP_SIZE);
 
     if (!objs->storage)
     {
@@ -121,7 +121,7 @@ mdv_objects * mdv_objects_open(char const *root_dir, char const *storage_name)
 }
 
 
-mdv_objects * mdv_objects_retain(mdv_objects *objs)
+mdv_2pset * mdv_2pset_retain(mdv_2pset *objs)
 {
     if (objs)
         mdv_storage_retain(objs->storage);
@@ -129,7 +129,7 @@ mdv_objects * mdv_objects_retain(mdv_objects *objs)
 }
 
 
-uint32_t mdv_objects_release(mdv_objects *objs)
+uint32_t mdv_2pset_release(mdv_2pset *objs)
 {
     if (!objs)
         return 0;
@@ -146,7 +146,7 @@ uint32_t mdv_objects_release(mdv_objects *objs)
 }
 
 
-mdv_errno mdv_objects_reserve_ids_range(mdv_objects *objs, uint32_t range, uint64_t *id)
+mdv_errno mdv_2pset_reserve_ids_range(mdv_2pset *objs, uint32_t range, uint64_t *id)
 {
     mdv_errno err = mdv_mutex_lock(&objs->idgen_mutex);
 
@@ -219,7 +219,7 @@ mdv_errno mdv_objects_reserve_ids_range(mdv_objects *objs, uint32_t range, uint6
 }
 
 
-static bool mdv_objects_is_deleted(mdv_objects     *objs,
+static bool mdv_objects_is_deleted(mdv_2pset     *objs,
                                    mdv_map         *map,
                                    mdv_transaction *transaction,
                                    mdv_data const  *key)
@@ -230,7 +230,7 @@ static bool mdv_objects_is_deleted(mdv_objects     *objs,
 }
 
 
-mdv_errno mdv_objects_add(mdv_objects *objs, mdv_data const *id, mdv_data const *obj)
+mdv_errno mdv_2pset_add(mdv_2pset *objs, mdv_data const *id, mdv_data const *obj)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
@@ -300,7 +300,7 @@ mdv_errno mdv_objects_add(mdv_objects *objs, mdv_data const *id, mdv_data const 
 }
 
 
-mdv_errno mdv_objects_add_batch(mdv_objects *objs, void *arg, bool (*next)(void *arg, mdv_data *id, mdv_data *obj))
+mdv_errno mdv_2pset_add_batch(mdv_2pset *objs, void *arg, bool (*next)(void *arg, mdv_data *id, mdv_data *obj))
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
@@ -384,7 +384,7 @@ mdv_errno mdv_objects_add_batch(mdv_objects *objs, void *arg, bool (*next)(void 
 }
 
 
-void * mdv_objects_get(mdv_objects *objs, mdv_data const *id, void * (*restore)(mdv_data const *))
+void * mdv_2pset_get(mdv_2pset *objs, mdv_data const *id, void * (*restore)(mdv_data const *))
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
@@ -461,11 +461,11 @@ void * mdv_objects_get(mdv_objects *objs, mdv_data const *id, void * (*restore)(
 typedef struct
 {
     mdv_enumerator          base;           ///< Base type for rowset enumerator
-    mdv_objects            *objects;        ///< Objects storage
+    mdv_2pset              *objects;        ///< Objects storage
     mdv_map                 map;            ///< Objects map
     mdv_transaction         transaction;    ///< Transaction
     mdv_cursor              cursor;         ///< Cursor for objects access
-    mdv_objects_entry       current;        ///< Current object key and value
+    mdv_kvdata              current;        ///< Current object key and value
 } mdv_objects_enumerator_impl;
 
 
@@ -491,7 +491,7 @@ static uint32_t mdv_objects_enumerator_impl_release(mdv_enumerator *enumerator)
             mdv_cursor_close(&impl->cursor);
             mdv_transaction_abort(&impl->transaction);
             mdv_map_close(&impl->map);
-            mdv_objects_release(impl->objects);
+            mdv_2pset_release(impl->objects);
             mdv_free(enumerator, "objects_enumerator");
         }
     }
@@ -528,7 +528,7 @@ static void * mdv_objects_enumerator_impl_current(mdv_enumerator *enumerator)
 }
 
 
-static mdv_enumerator * mdv_objects_enumerator_impl_create(mdv_objects *objs, mdv_cursor_op op)
+static mdv_enumerator * mdv_objects_enumerator_impl_create(mdv_2pset *objs, mdv_cursor_op op)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
@@ -596,7 +596,7 @@ static mdv_enumerator * mdv_objects_enumerator_impl_create(mdv_objects *objs, md
         return 0;
     }
 
-    enumerator->objects = mdv_objects_retain(objs);
+    enumerator->objects = mdv_2pset_retain(objs);
 
     mdv_rollbacker_free(rollbacker);
 
@@ -604,13 +604,13 @@ static mdv_enumerator * mdv_objects_enumerator_impl_create(mdv_objects *objs, md
 }
 
 
-mdv_enumerator * mdv_objects_enumerator(mdv_objects *objs)
+mdv_enumerator * mdv_2pset_enumerator(mdv_2pset *objs)
 {
     return mdv_objects_enumerator_impl_create(objs, MDV_CURSOR_FIRST);
 }
 
 
-mdv_enumerator * mdv_objects_enumerator_from(mdv_objects *objs, mdv_data const *id)
+mdv_enumerator * mdv_2pset_enumerator_from(mdv_2pset *objs, mdv_data const *id)
 {
     return mdv_objects_enumerator_impl_create(objs, MDV_CURSOR_SET_RANGE);
 }

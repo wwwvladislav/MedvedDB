@@ -147,6 +147,8 @@ bool mdv_rmdir(char const *path)
     DIR *pdir = opendir(path);
     if (!pdir)
     {
+        if (mdv_error() == MDV_ENOENT)
+            return true;
         MDV_LOGE("rmdir failed. Directory could not be opened due the error: %d", mdv_error());
         return false;
     }

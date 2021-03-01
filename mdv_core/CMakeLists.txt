@@ -35,5 +35,5 @@ target_link_libraries(mdv_core PUBLIC
     mdv::platform
     mdv::net
     mdv::api
-    mdv::types
-    mdv::lmdb)
+    mdv::storage
+)

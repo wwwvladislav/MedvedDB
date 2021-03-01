@@ -1,6 +1,6 @@
 #include "mdv_rowdata.h"
-#include "mdv_objects.h"
-#include "mdv_storages.h"
+#include "mdv_2pset.h"
+#include <mdv_names.h>
 #include <mdv_rollbacker.h>
 #include <mdv_alloc.h>
 #include <mdv_log.h>
@@ -10,7 +10,7 @@
 
 struct mdv_rowdata
 {
-    mdv_objects     *objects;   ///< DB objects storage
+    mdv_2pset      *objects;    ///< DB objects storage
     mdv_uuid        table;      ///< Table identifier
 };
 
@@ -34,7 +34,7 @@ mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_uuid const *table)
 
     char storage_name[64];
 
-    rowdata->objects = mdv_objects_open(dir, MDV_STRG_UUID(table, storage_name, sizeof storage_name));
+    rowdata->objects = mdv_2pset_open(dir, MDV_STRG_UUID(table, storage_name, sizeof storage_name));
 
     if (!rowdata->objects)
     {
@@ -43,7 +43,7 @@ mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_uuid const *table)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_objects_release, rowdata->objects);
+    mdv_rollbacker_push(rollbacker, mdv_2pset_release, rowdata->objects);
 
     mdv_rollbacker_free(rollbacker);
 
@@ -54,7 +54,7 @@ mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_uuid const *table)
 mdv_rowdata * mdv_rowdata_retain(mdv_rowdata *rowdata)
 {
     if (rowdata)
-        mdv_objects_retain(rowdata->objects);
+        mdv_2pset_retain(rowdata->objects);
     return rowdata;
 }
 
@@ -64,7 +64,7 @@ uint32_t mdv_rowdata_release(mdv_rowdata *rowdata)
     if (!rowdata)
         return 0;
 
-    uint32_t rc = mdv_objects_release(rowdata->objects);
+    uint32_t rc = mdv_2pset_release(rowdata->objects);
 
     if (!rc)
     {
@@ -77,7 +77,7 @@ uint32_t mdv_rowdata_release(mdv_rowdata *rowdata)
 
 mdv_errno mdv_rowdata_reserve(mdv_rowdata *rowdata, uint32_t range, uint64_t *id)
 {
-    return mdv_objects_reserve_ids_range(rowdata->objects, range, id);
+    return mdv_2pset_reserve_ids_range(rowdata->objects, range, id);
 }
 
 
@@ -89,7 +89,7 @@ mdv_errno mdv_rowdata_add_raw(mdv_rowdata *rowdata, mdv_objid const *id, mdv_dat
         .ptr = (void*)id
     };
 
-    return mdv_objects_add(rowdata->objects, &obj_id, row);
+    return mdv_2pset_add(rowdata->objects, &obj_id, row);
 }
 
 
@@ -136,7 +136,7 @@ mdv_errno mdv_rowdata_add_raw_rowset(mdv_rowdata *rowdata, mdv_objid const *id, 
 
     binn_iter_init(&it.iter, rowset, BINN_LIST);
 
-    mdv_errno err = mdv_objects_add_batch(rowdata->objects, &it, mdv_rowdata_batch_next);
+    mdv_errno err = mdv_2pset_add_batch(rowdata->objects, &it, mdv_rowdata_batch_next);
 
     if (err != MDV_OK)
     {
@@ -174,7 +174,7 @@ static mdv_rowset * mdv_rowdata_slice_impl(mdv_enumerator       *enumerator,
     {
         for(size_t i = 0; i < count;)
         {
-            mdv_objects_entry const *entry = mdv_enumerator_current(enumerator);
+            mdv_kvdata const *entry = mdv_enumerator_current(enumerator);
 
             binn binn_row;
 
@@ -239,7 +239,7 @@ mdv_rowset * mdv_rowdata_slice_from_begin(mdv_rowdata           *rowdata,
 {
     mdv_rowset *rowset = 0;
 
-    mdv_enumerator *enumerator = mdv_objects_enumerator(rowdata->objects);
+    mdv_enumerator *enumerator = mdv_2pset_enumerator(rowdata->objects);
 
     if (enumerator)
     {
@@ -268,13 +268,13 @@ mdv_rowset * mdv_rowdata_slice(mdv_rowdata          *rowdata,
         .ptr = rowid
     };
 
-    mdv_enumerator *enumerator = mdv_objects_enumerator_from(rowdata->objects, &key);
+    mdv_enumerator *enumerator = mdv_2pset_enumerator_from(rowdata->objects, &key);
 
     if (enumerator)
     {
         do
         {
-            mdv_objects_entry const *entry = mdv_enumerator_current(enumerator);
+            mdv_kvdata const *entry = mdv_enumerator_current(enumerator);
 
             assert(entry->key.size == sizeof(mdv_objid));
 

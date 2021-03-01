@@ -1,4 +1,4 @@
-#include "mdv_storage.h"
+#include "mdv_lmdb.h"
 #include <mdv_log.h>
 #include <mdv_alloc.h>
 #include <mdv_string.h>
@@ -17,7 +17,7 @@
 
 /// @cond Doxygen_Suppress
 
-struct mdv_storage
+struct mdv_lmdb
 {
     atomic_uint_fast32_t    ref_counter;
     MDB_env                *env;
@@ -26,7 +26,7 @@ struct mdv_storage
 /// @endcond
 
 
-mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_num, uint32_t flags, size_t mapsize)
+mdv_lmdb * mdv_storage_open(char const *path, char const *name, uint32_t dbs_num, uint32_t flags, size_t mapsize)
 {
     if (!path || !name)
     {
@@ -98,7 +98,7 @@ mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_
 
     #undef MDV_DB_CALL
 
-    mdv_storage *pstorage = (mdv_storage *)mdv_alloc(sizeof(mdv_storage), "storage");
+    mdv_lmdb *pstorage = (mdv_lmdb *)mdv_alloc(sizeof(mdv_lmdb), "storage");
     if (!pstorage)
     {
         MDV_LOGE("Memory allocation failed");
@@ -112,7 +112,7 @@ mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_
 }
 
 
-mdv_storage * mdv_storage_retain(mdv_storage *pstorage)
+mdv_lmdb * mdv_storage_retain(mdv_lmdb *pstorage)
 {
     if (pstorage)
         atomic_fetch_add_explicit(&pstorage->ref_counter, 1, memory_order_relaxed);
@@ -120,7 +120,7 @@ mdv_storage * mdv_storage_retain(mdv_storage *pstorage)
 }
 
 
-uint32_t mdv_storage_release(mdv_storage *pstorage)
+uint32_t mdv_storage_release(mdv_lmdb *pstorage)
 {
     uint32_t rc = 0;
 
@@ -139,7 +139,7 @@ uint32_t mdv_storage_release(mdv_storage *pstorage)
 }
 
 
-mdv_transaction mdv_transaction_start(mdv_storage *pstorage)
+mdv_transaction mdv_transaction_start(mdv_lmdb *pstorage)
 {
     MDB_txn *txn;
 

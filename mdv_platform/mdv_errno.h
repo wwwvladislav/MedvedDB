@@ -15,15 +15,16 @@ enum
     MDV_FAILED          = -1,   ///< Operation failed due the unknown error.
     MDV_INVALID_ARG     = -2,   ///< Function argument is invalid.
     MDV_INVALID_TYPE    = -3,   ///< Invalid type.
-    MDV_EAGAIN          = -4,   ///< Resource temporarily unavailable. There is no data available right now, try again later.
-    MDV_CLOSED          = -5,   ///< File descriptor closed.
-    MDV_EEXIST          = -6,   ///< File exists
-    MDV_NO_MEM          = -7,   ///< No free space of memory
-    MDV_INPROGRESS      = -8,   ///< Operation now in progress
-    MDV_ETIMEDOUT       = -9,   ///< Timed out
-    MDV_BUSY            = -10,   ///< Resource is busy
-    MDV_NO_IMPL         = -11,  ///< No implementaion
-    MDV_STACK_OVERFLOW  = -12,  ///< Stack overflow
+    MDV_ENOENT          = -4,   ///< No such file or directory
+    MDV_EAGAIN          = -5,   ///< Resource temporarily unavailable. There is no data available right now, try again later.
+    MDV_CLOSED          = -6,   ///< File descriptor closed.
+    MDV_EEXIST          = -7,   ///< File exists
+    MDV_NO_MEM          = -8,   ///< No free space of memory
+    MDV_INPROGRESS      = -9,   ///< Operation now in progress
+    MDV_ETIMEDOUT       = -10,  ///< Timed out
+    MDV_BUSY            = -11,  ///< Resource is busy
+    MDV_NO_IMPL         = -12,  ///< No implementaion
+    MDV_STACK_OVERFLOW  = -13,  ///< Stack overflow
 };
 
 

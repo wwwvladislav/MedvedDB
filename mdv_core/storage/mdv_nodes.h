@@ -4,7 +4,7 @@
  * @details Nodes storage contains information about nodes (identifiers, UUIDs and addresses).
 */
 #pragma once
-#include "mdv_storage.h"
+#include <mdv_lmdb.h>
 #include "../mdv_node.h"
 
 
@@ -17,7 +17,7 @@
  * @return On success, return MDV_OK
  * @return On error, return nonzero value
  */
-mdv_errno mdv_nodes_foreach(mdv_storage *storage,
+mdv_errno mdv_nodes_foreach(mdv_lmdb *storage,
                             void *arg,
                             void (*fn)(void *arg, mdv_node const *node));
 
@@ -31,4 +31,4 @@ mdv_errno mdv_nodes_foreach(mdv_storage *storage,
  * @return On success, return MDV_OK
  * @return On error, return nonzero value
  */
-mdv_errno mdv_nodes_store(mdv_storage *storage, mdv_node const *node);
+mdv_errno mdv_nodes_store(mdv_lmdb *storage, mdv_node const *node);

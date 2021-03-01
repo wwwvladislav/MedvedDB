@@ -31,7 +31,7 @@ struct mdv_core
 
     struct
     {
-        mdv_storage    *metainf;        ///< Metainformation storage
+        mdv_lmdb       *metainf;        ///< Metainformation storage
         mdv_tablespace *tablespace;     ///< Tables storage
     } storage;                          ///< Storages
 };

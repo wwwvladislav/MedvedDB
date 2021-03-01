@@ -1,6 +1,6 @@
 #include "mdv_tables.h"
-#include "mdv_objects.h"
-#include "mdv_storages.h"
+#include "mdv_2pset.h"
+#include <mdv_names.h>
 #include <mdv_rollbacker.h>
 #include <mdv_alloc.h>
 #include <mdv_log.h>
@@ -11,7 +11,7 @@
 
 struct mdv_tables
 {
-    mdv_objects *objects;   ///< DB objects storage
+    mdv_2pset   *objects;   ///< DB objects storage
     mdv_table   *desc;      ///< Table descriptor
 };
 
@@ -57,7 +57,7 @@ mdv_tables * mdv_tables_open(char const *root_dir)
 
     mdv_rollbacker_push(rollbacker, mdv_table_release, tables->desc);
 
-    tables->objects = mdv_objects_open(root_dir, MDV_STRG_TABLES);
+    tables->objects = mdv_2pset_open(root_dir, MDV_STRG_TABLES);
 
     if (!tables->objects)
     {
@@ -66,7 +66,7 @@ mdv_tables * mdv_tables_open(char const *root_dir)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_objects_release, tables->objects);
+    mdv_rollbacker_push(rollbacker, mdv_2pset_release, tables->objects);
 
     mdv_rollbacker_free(rollbacker);
 
@@ -77,7 +77,7 @@ mdv_tables * mdv_tables_open(char const *root_dir)
 mdv_tables * mdv_tables_retain(mdv_tables *tables)
 {
     if (tables)
-        mdv_objects_retain(tables->objects);
+        mdv_2pset_retain(tables->objects);
     return tables;
 }
 
@@ -87,7 +87,7 @@ uint32_t mdv_tables_release(mdv_tables *tables)
     if (!tables)
         return 0;
 
-    uint32_t rc = mdv_objects_release(tables->objects);
+    uint32_t rc = mdv_2pset_release(tables->objects);
 
     if (!rc)
     {
@@ -107,7 +107,7 @@ mdv_errno mdv_tables_add_raw(mdv_tables *tables, mdv_uuid const *uuid, mdv_data 
         .ptr = (void*)uuid
     };
 
-    return mdv_objects_add(tables->objects, &id, table);
+    return mdv_2pset_add(tables->objects, &id, table);
 }
 
 
@@ -138,7 +138,7 @@ mdv_table * mdv_tables_get(mdv_tables *tables, mdv_uuid const *uuid)
         .ptr = (void*)uuid
     };
 
-    return mdv_objects_get(tables->objects, &id, mdv_table_restore);
+    return mdv_2pset_get(tables->objects, &id, mdv_table_restore);
 }
 
 
@@ -171,7 +171,7 @@ static mdv_rowset * mdv_tables_slice_impl(mdv_tables           *tables,
     {
         for(size_t i = 0; i < count;)
         {
-            mdv_objects_entry const *entry = mdv_enumerator_current(enumerator);
+            mdv_kvdata const *entry = mdv_enumerator_current(enumerator);
 
             binn obj;
 
@@ -234,7 +234,7 @@ mdv_rowset * mdv_tables_slice_from_begin(mdv_tables         *tables,
 {
     mdv_rowset *rowset = 0;
 
-    mdv_enumerator *enumerator = mdv_objects_enumerator(tables->objects);
+    mdv_enumerator *enumerator = mdv_2pset_enumerator(tables->objects);
 
     if (enumerator)
     {
@@ -261,13 +261,13 @@ mdv_rowset * mdv_tables_slice(mdv_tables        *tables,
         .ptr = rowid
     };
 
-    mdv_enumerator *enumerator = mdv_objects_enumerator_from(tables->objects, &key);
+    mdv_enumerator *enumerator = mdv_2pset_enumerator_from(tables->objects, &key);
 
     if (enumerator)
     {
         do
         {
-            mdv_objects_entry const *entry = mdv_enumerator_current(enumerator);
+            mdv_kvdata const *entry = mdv_enumerator_current(enumerator);
 
             assert(entry->key.size == sizeof(mdv_uuid));
 

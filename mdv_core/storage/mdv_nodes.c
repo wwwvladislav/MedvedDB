@@ -1,5 +1,5 @@
 #include "mdv_nodes.h"
-#include "mdv_storages.h"
+#include <mdv_names.h>
 #include <mdv_log.h>
 #include <mdv_rollbacker.h>
 #include <mdv_binn.h>
@@ -60,7 +60,7 @@ static bool mdv_unbinn_node(binn const *obj, mdv_uuid const *uuid, mdv_node *nod
 }
 
 
-mdv_errno mdv_nodes_foreach(mdv_storage *storage,
+mdv_errno mdv_nodes_foreach(mdv_lmdb *storage,
                             void *arg,
                             void (*fn)(void *arg, mdv_node const *node))
 {
@@ -134,7 +134,7 @@ mdv_errno mdv_nodes_foreach(mdv_storage *storage,
 }
 
 
-mdv_errno mdv_nodes_store(mdv_storage *storage, mdv_node const *node)
+mdv_errno mdv_nodes_store(mdv_lmdb *storage, mdv_node const *node)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 

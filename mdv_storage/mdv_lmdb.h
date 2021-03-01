@@ -11,7 +11,7 @@
 
 
 /// Key-value storage descriptor
-typedef struct mdv_storage mdv_storage;
+typedef struct mdv_lmdb mdv_lmdb;
 
 
 /// Flags for key-value storage opening. Flags might be combined with bitwise OR operator.
@@ -43,7 +43,7 @@ typedef enum
  * @return On success, return nonzero pointer to opened storage
  * @return On error, return NULL pointer
  */
-mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_num, uint32_t flags, size_t mapsize);
+mdv_lmdb * mdv_storage_open(char const *path, char const *name, uint32_t dbs_num, uint32_t flags, size_t mapsize);
 
 
 /**
@@ -53,7 +53,7 @@ mdv_storage * mdv_storage_open(char const *path, char const *name, uint32_t dbs_
  *
  * @return pointer which provided as argument
  */
-mdv_storage * mdv_storage_retain(mdv_storage *pstorage);
+mdv_lmdb * mdv_storage_retain(mdv_lmdb *pstorage);
 
 
 /**
@@ -63,13 +63,13 @@ mdv_storage * mdv_storage_retain(mdv_storage *pstorage);
  *
  * @return references counter
  */
-uint32_t mdv_storage_release(mdv_storage *pstorage);
+uint32_t mdv_storage_release(mdv_lmdb *pstorage);
 
 
 /// Transaction descriptor
 typedef struct
 {
-    mdv_storage *pstorage;      ///< storage
+    mdv_lmdb *pstorage;      ///< storage
     void        *ptransaction;  ///< transaction
 } mdv_transaction;
 
@@ -81,7 +81,7 @@ typedef struct
  *
  * @return On success return valid filled transaction descriptor. Validity can be checked with mdv_transaction_ok() macro.
  */
-mdv_transaction mdv_transaction_start(mdv_storage *pstorage);
+mdv_transaction mdv_transaction_start(mdv_lmdb *pstorage);
 
 
 /**
@@ -117,7 +117,7 @@ bool mdv_transaction_abort(mdv_transaction *ptransaction);
 /// Key-value storage map descriptor
 typedef struct
 {
-    mdv_storage *pstorage;  ///< Storage
+    mdv_lmdb *pstorage;  ///< Storage
     unsigned int dbmap;     ///< map internal descriptor
 } mdv_map;
 
@@ -150,7 +150,7 @@ bool    mdv_map_del        (mdv_map *pmap, mdv_transaction *ptransaction, mdv_da
  */
 typedef struct
 {
-    mdv_storage *pstorage;      ///< pointer to the file or memory storage
+    mdv_lmdb *pstorage;      ///< pointer to the file or memory storage
     void        *pcursor;       ///< pointer to the cursor which points to the map entry
 } mdv_cursor;
 

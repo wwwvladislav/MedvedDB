@@ -4,7 +4,7 @@
  */
 #pragma once
 #include "mdv_node.h"
-#include "storage/mdv_storage.h"
+#include <mdv_lmdb.h>
 #include <mdv_def.h>
 #include <mdv_uuid.h>
 #include <mdv_vector.h>
@@ -35,7 +35,7 @@ typedef struct mdv_tracker mdv_tracker;
  * @return On error, return NULL
  */
 mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid,
-                                 mdv_storage    *storage,
+                                 mdv_lmdb       *storage,
                                  mdv_ebus       *ebus);
 
 

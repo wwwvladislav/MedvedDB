@@ -9,17 +9,15 @@
  *
  */
 #pragma once
-#include "mdv_op.h"
-#include "../mdv_objects.h"
-#include <mdv_table.h>
+#include <ops/mdv_op.h>
+#include <mdv_2pset.h>
 
 
 /**
- * @brief Create new table scanner
+ * @brief Create new objects scanner
  *
- * @param table [in] Table descriptor
  * @param objects [in] Objects storage
  *
  * @return new table scanner
  */
-mdv_op * mdv_scan_seq(mdv_table *table, mdv_objects *objects);
+mdv_op * mdv_scan_seq(mdv_2pset *objects);

@@ -11,4 +11,4 @@ target_compile_options(mdv_tests PRIVATE -Wall -Wextra)
 
 target_include_directories(mdv_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(mdv_tests PRIVATE mdv::platform mdv::core mdv::types mdv::crypto)
+target_link_libraries(mdv_tests PRIVATE mdv::platform mdv::core mdv::types mdv::crypto mdv::storage)

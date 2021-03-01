@@ -33,7 +33,7 @@ struct mdv_tracker
     atomic_uint_fast32_t    rc;             ///< References counter
     mdv_uuid                uuid;           ///< Global unique identifier for current node (i.e. self UUID)
     atomic_uint             max_id;         ///< Maximum node identifier
-    mdv_storage            *storage;        ///< Nodes storage
+    mdv_lmdb               *storage;        ///< Nodes storage
     mdv_ebus               *ebus;           ///< Events bus
 
     mdv_mutex               nodes_mutex;    ///< nodes guard mutex
@@ -744,7 +744,7 @@ static const mdv_event_handler_type mdv_tracker_handlers[] =
 
 
 mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid,
-                                 mdv_storage    *storage,
+                                 mdv_lmdb       *storage,
                                  mdv_ebus       *ebus)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(8);

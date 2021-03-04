@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.4)
 project(mdv_tests)
 
-file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
+file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 
 use_c11()
 

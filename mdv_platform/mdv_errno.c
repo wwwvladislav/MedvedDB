@@ -25,6 +25,7 @@ char const * mdv_strerror(mdv_errno err, char *buf, size_t size)
     switch(err)
     {
         case MDV_OK:                return "Operation successfully completed";
+        case MDV_FALSE:             return "Operation successfully completed with FALSE value";
         case MDV_FAILED:            return "Unknown error";
         case MDV_INVALID_ARG:       return "Function argument is invalid";
         case MDV_INVALID_TYPE:      return "Invalid type";

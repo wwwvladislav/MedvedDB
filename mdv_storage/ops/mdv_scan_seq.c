@@ -1,10 +1,9 @@
 #include "mdv_scan_seq.h"
 #include <mdv_rollbacker.h>
-#include <mdv_serialization.h>
 #include <mdv_alloc.h>
 #include <mdv_log.h>
-#include <assert.h>
 #include <string.h>
+#include <stdatomic.h>
 
 
 typedef struct
@@ -56,15 +55,25 @@ static mdv_errno mdv_scan_seq_reset(mdv_op *op)
 }
 
 
-static mdv_kvdata const * mdv_scan_seq_next(mdv_op *op)
+static mdv_errno mdv_scan_seq_next(mdv_op *op, mdv_kvdata *kvdata)
 {
     mdv_scan_seq_t *scanner = (mdv_scan_seq_t *)op;
+
     if (scanner->end)
-        return 0;
+        return MDV_FALSE;
+
     if (scanner->current)
         scanner->end = mdv_enumerator_next(scanner->enumerator) != MDV_OK;
+
     scanner->current = scanner->end ? 0 : mdv_enumerator_current(scanner->enumerator);
-    return scanner->current;
+
+    if (scanner->current)
+    {
+        *kvdata = *scanner->current;
+        return MDV_OK;
+    }
+
+    return MDV_FALSE;
 }
 
 

@@ -36,21 +36,22 @@ MU_TEST(op_scan_seq)
     mdv_op *scanner = mdv_scan_seq(storage);
     mu_check(scanner);
 
+    mdv_kvdata kvdata;
+
     for(int i = 0; i < 10; ++i)
     {
-        mdv_kvdata const *kvdata = mdv_op_next(scanner);
-        mu_check(kvdata);
+        mu_check(mdv_op_next(scanner, &kvdata) == MDV_OK);
 
-        mu_check(kvdata->key.size == sizeof(int));
-        mu_check(*(int*)kvdata->key.ptr == i);
+        mu_check(kvdata.key.size == sizeof(int));
+        mu_check(*(int*)kvdata.key.ptr == i);
 
         snprintf(tmp, sizeof tmp, "object-%u", i);
 
-        mu_check(kvdata->value.size == strlen(tmp) + 1);
-        mu_check(strcmp(kvdata->value.ptr, tmp) == 0);
+        mu_check(kvdata.value.size == strlen(tmp) + 1);
+        mu_check(strcmp(kvdata.value.ptr, tmp) == 0);
     }
 
-    mu_check(mdv_op_next(scanner) == 0);
+    mu_check(mdv_op_next(scanner, &kvdata) == MDV_FALSE);
 
     mdv_op_release(scanner);
 

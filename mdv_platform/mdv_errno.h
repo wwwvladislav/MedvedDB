@@ -11,7 +11,8 @@
 /// Common error definitions
 enum
 {
-    MDV_OK              = 0,    ///< Operation successfully completed.
+    MDV_OK              =  1,   ///< Operation successfully completed.
+    MDV_FALSE           =  0,   ///< Operation successfully completed.
     MDV_FAILED          = -1,   ///< Operation failed due the unknown error.
     MDV_INVALID_ARG     = -2,   ///< Function argument is invalid.
     MDV_INVALID_TYPE    = -3,   ///< Invalid type.

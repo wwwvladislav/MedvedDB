@@ -73,7 +73,7 @@ BINN_PRIVATE void copy_be16(u16 *pdest, u16 *psource) {
   dest[1] = source[0];
 #else // if BYTE_ORDER == BIG_ENDIAN
 #ifdef BINN_ONLY_ALIGNED_ACCESS
-  if (psource % 2 == 0){  // address aligned to 16 bit
+  if ((uintptr_t)psource % 2 == 0){  // address aligned to 16 bit
     *pdest = *psource;
   } else {
     unsigned char *source = (unsigned char *) psource;
@@ -97,7 +97,7 @@ BINN_PRIVATE void copy_be32(u32 *pdest, u32 *psource) {
   dest[3] = source[0];
 #else // if BYTE_ORDER == BIG_ENDIAN
 #ifdef BINN_ONLY_ALIGNED_ACCESS
-  if (psource % 4 == 0){  // address aligned to 32 bit
+  if ((uintptr_t)psource % 4 == 0){  // address aligned to 32 bit
     *pdest = *psource;
   } else {
     unsigned char *source = (unsigned char *) psource;
@@ -123,7 +123,7 @@ BINN_PRIVATE void copy_be64(u64 *pdest, u64 *psource) {
   }
 #else // if BYTE_ORDER == BIG_ENDIAN
 #ifdef BINN_ONLY_ALIGNED_ACCESS
-  if (psource % 8 == 0){  // address aligned to 64 bit
+  if ((uintptr_t)psource % 8 == 0){  // address aligned to 64 bit
     *pdest = *psource;
   } else {
     unsigned char *source = (unsigned char *) psource;
@@ -141,12 +141,18 @@ BINN_PRIVATE void copy_be64(u64 *pdest, u64 *psource) {
 
 /***************************************************************************/
 
-#ifndef WIN32
+#ifndef _MSC_VER
 #define stricmp strcasecmp
 #define strnicmp strncasecmp
 #endif
 
 BINN_PRIVATE BOOL IsValidBinnHeader(void *pbuf, int *ptype, int *pcount, int *psize, int *pheadersize);
+
+/***************************************************************************/
+
+char * APIENTRY binn_version() {
+  return BINN_VERSION;
+}
 
 /***************************************************************************/
 
@@ -530,21 +536,6 @@ BINN_PRIVATE unsigned char * AdvanceDataPos(unsigned char *p, unsigned char *pli
     p += 8;
     break;
   case BINN_STORAGE_BLOB:
-    if (p + sizeof(int) - 1 > plimit) return 0;
-    copy_be32((u32*)&DataSize, (u32*)p);
-    p += 4 + DataSize;
-    break;
-  case BINN_STORAGE_CONTAINER:
-    if (p > plimit) return 0;
-    DataSize = *((unsigned char*)p);
-    if (DataSize & 0x80) {
-      if (p + sizeof(int) - 1 > plimit) return 0;
-      copy_be32((u32*)&DataSize, (u32*)p);
-      DataSize &= 0x7FFFFFFF;
-    }
-    DataSize--;  // remove the type byte already added before
-    p += DataSize;
-    break;
   case BINN_STORAGE_STRING:
     if (p > plimit) return 0;
     DataSize = *((unsigned char*)p);
@@ -557,7 +548,20 @@ BINN_PRIVATE unsigned char * AdvanceDataPos(unsigned char *p, unsigned char *pli
       p++;
     }
     p += DataSize;
-    p++;  // null terminator.
+    if (storage_type == BINN_STORAGE_STRING) {
+      p++;  // null terminator.
+    }
+    break;
+  case BINN_STORAGE_CONTAINER:
+    if (p > plimit) return 0;
+    DataSize = *((unsigned char*)p);
+    if (DataSize & 0x80) {
+      if (p + sizeof(int) - 1 > plimit) return 0;
+      copy_be32((u32*)&DataSize, (u32*)p);
+      DataSize &= 0x7FFFFFFF;
+    }
+    DataSize--;  // remove the type byte already added before
+    p += DataSize;
     break;
   default:
     return 0;
@@ -567,6 +571,71 @@ BINN_PRIVATE unsigned char * AdvanceDataPos(unsigned char *p, unsigned char *pli
 
   return p;
 
+}
+
+/***************************************************************************/
+
+/*
+
+The id can be stored with 1 to 5 bytes
+
+S = signal bit
+X = bit part of id
+
+  0SXX XXXX
+  100S XXXX + 1 byte
+  101S XXXX + 2 bytes
+  110S XXXX + 3 bytes
+  1110 0000 + 4 bytes
+
+*/
+BINN_PRIVATE int read_map_id(unsigned char **pp, unsigned char *plimit) {
+  unsigned char *p, c, sign, type;
+  int id, extra_bytes;
+
+  p = *pp;
+
+  c = *p++;
+
+  if (c & 0x80) {
+    extra_bytes = ((c & 0x60) >> 5) + 1;
+    if (p + extra_bytes > plimit ) {
+      *pp = p + extra_bytes;
+      return 0;
+    }
+  }
+
+  type = c & 0xE0;
+  sign = c & 0x10;
+
+  if ((c & 0x80) == 0) {
+    sign = c & 0x40;
+    id = c & 0x3F;
+  } else if (type == 0x80) {
+    id = c & 0x0F;
+    id = (id << 8) | *p++;
+  } else if (type == 0xA0) {
+    id = c & 0x0F;
+    id = (id << 8) | *p++;
+    id = (id << 8) | *p++;
+  } else if (type == 0xC0) {
+    id = c & 0x0F;
+    id = (id << 8) | *p++;
+    id = (id << 8) | *p++;
+    id = (id << 8) | *p++;
+  } else if (type == 0xE0) {
+    copy_be32((u32*)&id, (u32*)p);
+    p += 4;
+  } else {
+    *pp = plimit + 2;
+    return 0;
+  }
+
+  if (sign) id = -id;
+
+  *pp = p;
+
+  return id;
 }
 
 /***************************************************************************/
@@ -581,8 +650,7 @@ BINN_PRIVATE unsigned char * SearchForID(unsigned char *p, int header_size, int 
 
   // search for the ID in all the arguments.
   for (i = 0; i < numitems; i++) {
-    copy_be32((u32*)&int32, (u32*)p);
-    p += 4;
+    int32 = read_map_id(&p, plimit);
     if (p > plimit) break;
     // Compare if the IDs are equal.
     if (int32 == id) return p;
@@ -597,7 +665,7 @@ BINN_PRIVATE unsigned char * SearchForID(unsigned char *p, int header_size, int 
 
 /***************************************************************************/
 
-BINN_PRIVATE unsigned char * SearchForKey(unsigned char *p, int header_size, int size, int numitems, char *key) {
+BINN_PRIVATE unsigned char * SearchForKey(unsigned char *p, int header_size, int size, int numitems, const char *key) {
   unsigned char len, *plimit, *base;
   int  i, keylen;
 
@@ -656,7 +724,7 @@ BINN_PRIVATE BOOL binn_list_add_raw(binn *item, int type, void *pvalue, int size
 
 /***************************************************************************/
 
-BINN_PRIVATE BOOL binn_object_set_raw(binn *item, char *key, int type, void *pvalue, int size) {
+BINN_PRIVATE BOOL binn_object_set_raw(binn *item, const char *key, int type, void *pvalue, int size) {
   unsigned char *p, len;
   int int32;
 
@@ -696,7 +764,8 @@ BINN_PRIVATE BOOL binn_object_set_raw(binn *item, char *key, int type, void *pva
 /***************************************************************************/
 
 BINN_PRIVATE BOOL binn_map_set_raw(binn *item, int id, int type, void *pvalue, int size) {
-  unsigned char *p;
+  unsigned char *base, *p, sign;
+  int id_size;
 
   if ((item == NULL) || (item->type != BINN_MAP) || (item->writable == FALSE)) return FALSE;
 
@@ -706,14 +775,39 @@ BINN_PRIVATE BOOL binn_map_set_raw(binn *item, int id, int type, void *pvalue, i
 
   // start adding it
 
-  if (CheckAllocation(item, 4) == FALSE) return FALSE;  // 4 bytes used for the id.
+  if (CheckAllocation(item, 5) == FALSE) return FALSE;  // max 5 bytes used for the id.
 
-  p = ((unsigned char *) item->pbuf) + item->used_size;
-  copy_be32((u32*)p, (u32*)&id);
-  item->used_size += 4;
+  p = base = ((unsigned char *) item->pbuf) + item->used_size;
+
+  sign = (id < 0);
+  if (sign) id = -id;
+
+  if (id <= 0x3F) {
+    *p++ = (sign << 6) | id;
+  } else if (id <= 0xFFF) {
+    *p++ = 0x80 | (sign << 4) | ((id & 0xF00) >> 8);
+    *p++ = id & 0xFF;
+  } else if (id <= 0xFFFFF) {
+    *p++ = 0xA0 | (sign << 4) | ((id & 0xF0000) >> 16);
+    *p++ = (id & 0xFF00) >> 8;
+    *p++ = id & 0xFF;
+  } else if (id <= 0xFFFFFFF) {
+    *p++ = 0xC0 | (sign << 4) | ((id & 0xF000000) >> 24);
+    *p++ = (id & 0xFF0000) >> 16;
+    *p++ = (id & 0xFF00) >> 8;
+    *p++ = id & 0xFF;
+  } else {
+    *p++ = 0xE0;
+    if (sign) id = -id;
+    copy_be32((u32*)p, (u32*)&id);
+    p += 4;
+  }
+
+  id_size = (p - base);
+  item->used_size += id_size;
 
   if (AddValue(item, type, pvalue, size) == FALSE) {
-    item->used_size -= 4;
+    item->used_size -= id_size;
     return FALSE;
   }
 
@@ -727,7 +821,7 @@ BINN_PRIVATE BOOL binn_map_set_raw(binn *item, int id, int type, void *pvalue, i
 
 BINN_PRIVATE void * compress_int(int *pstorage_type, int *ptype, void *psource) {
   int storage_type, storage_type2, type, type2=0;
-  int64  vint;
+  int64  vint = 0;
   uint64 vuint;
   char *pvalue;
 #if BYTE_ORDER == BIG_ENDIAN
@@ -860,7 +954,7 @@ BINN_PRIVATE BOOL AddValue(binn *item, int type, void *pvalue, int size) {
     case BINN_STORAGE_BLOB:
       if (size < 0) return FALSE;
       //if (size == 0) ...
-      ArgSize = size + 4;
+      ArgSize = size + 4; // at least this size
       break;
     case BINN_STORAGE_STRING:
       if (size < 0) return FALSE;
@@ -916,11 +1010,6 @@ BINN_PRIVATE BOOL AddValue(binn *item, int type, void *pvalue, int size) {
       item->used_size += 8;
       break;
     case BINN_STORAGE_BLOB:
-      copy_be32((u32*)p, (u32*)&size);
-      p += 4;
-      memcpy(p, pvalue, size);
-      item->used_size += 4 + size;
-      break;
     case BINN_STORAGE_STRING:
       if (size > 127) {
         int32 = size | 0x80000000;
@@ -933,9 +1022,11 @@ BINN_PRIVATE BOOL AddValue(binn *item, int type, void *pvalue, int size) {
         item->used_size++;
       }
       memcpy(p, pvalue, size);
-      p += size;
-      *((char *) p) = (char) 0;
-      size++;  // null terminator
+      if (storage_type == BINN_STORAGE_STRING) {
+        p += size;
+        *((char *) p) = (char) 0;
+        size++;  // null terminator
+      }
       item->used_size += size;
       break;
     case BINN_STORAGE_CONTAINER:
@@ -1306,7 +1397,7 @@ BOOL APIENTRY binn_is_valid_ex(void *ptr, int *ptype, int *pcount, int *psize) {
         break;
       case BINN_MAP:
         // increment the used space
-        p += 4;
+        read_map_id(&p, plimit);
         break;
       //case BINN_LIST:
       //  break;
@@ -1393,14 +1484,6 @@ BINN_PRIVATE BOOL GetValue(unsigned char *p, binn *value) {
     value->ptr = &value->vint64;
     break;
   case BINN_STORAGE_BLOB:
-    copy_be32((u32*)&value->size, (u32*)p);
-    p+=4;
-    value->ptr = p;
-    break;
-  case BINN_STORAGE_CONTAINER:
-    value->ptr = p2;  // <-- it returns the pointer to the container, not the data
-    if (IsValidBinnHeader(p2, NULL, &value->count, &value->size, NULL) == FALSE) return FALSE;
-    break;
   case BINN_STORAGE_STRING:
     DataSize = *((unsigned char*)p);
     if (DataSize & 0x80) {
@@ -1412,6 +1495,10 @@ BINN_PRIVATE BOOL GetValue(unsigned char *p, binn *value) {
     }
     value->size = DataSize;
     value->ptr = p;
+    break;
+  case BINN_STORAGE_CONTAINER:
+    value->ptr = p2;  // <-- it returns the pointer to the container, not the data
+    if (IsValidBinnHeader(p2, NULL, &value->count, &value->size, NULL) == FALSE) return FALSE;
     break;
   default:
     return FALSE;
@@ -1487,7 +1574,7 @@ BINN_PRIVATE void * store_value(binn *value) {
 /*** READ FUNCTIONS ********************************************************/
 /***************************************************************************/
 
-BOOL APIENTRY binn_object_get_value(void *ptr, char *key, binn *value) {
+BOOL APIENTRY binn_object_get_value(void *ptr, const char *key, binn *value) {
   int type, count, size=0, header_size;
   unsigned char *p;
 
@@ -1568,8 +1655,8 @@ BOOL APIENTRY binn_list_get_value(void* ptr, int pos, binn *value) {
 
 BINN_PRIVATE BOOL binn_read_pair(int expected_type, void *ptr, int pos, int *pid, char *pkey, binn *value) {
   int  type, count, size=0, header_size;
-  int  i, int32, id, counter=0;
-  unsigned char *p, *plimit, *base, *key, len;
+  int  i, int32, id = 0, counter=0;
+  unsigned char *p, *plimit, *base, *key = NULL, len = 0;
 
   ptr = binn_ptr(ptr);
 
@@ -1586,8 +1673,7 @@ BINN_PRIVATE BOOL binn_read_pair(int expected_type, void *ptr, int pos, int *pid
   for (i = 0; i < count; i++) {
     switch (type) {
       case BINN_MAP:
-        copy_be32((u32*)&int32, (u32*)p);
-        p += 4;
+        int32 = read_map_id(&p, plimit);
         if (p > plimit) return FALSE;
         id = int32;
         break;
@@ -1769,8 +1855,7 @@ BINN_PRIVATE BOOL binn_read_next_pair(int expected_type, binn_iter *iter, int *p
 
   switch (expected_type) {
     case BINN_MAP:
-      copy_be32((u32*)&int32, (u32*)p);
-      p += 4;
+      int32 = read_map_id(&p, iter->plimit);
       if (p > iter->plimit) return FALSE;
       id = int32;
       if (pid) *pid = id;
@@ -2154,7 +2239,7 @@ BINN_PRIVATE BOOL copy_raw_value(void *psource, void *pdest, int data_store) {
 /*************************************************************************************/
 
 BINN_PRIVATE BOOL copy_int_value(void *psource, void *pdest, int source_type, int dest_type) {
-  uint64 vuint64; int64 vint64;
+  uint64 vuint64 = 0; int64 vint64 = 0;
 
   switch (source_type) {
   case BINN_INT8:
@@ -2334,7 +2419,7 @@ BOOL APIENTRY binn_map_set(binn *map, int id, int type, void *pvalue, int size) 
 
 /*************************************************************************************/
 
-BOOL APIENTRY binn_object_set(binn *obj, char *key, int type, void *pvalue, int size) {
+BOOL APIENTRY binn_object_set(binn *obj, const char *key, int type, void *pvalue, int size) {
 
   if (GetWriteConvertedData(&type, &pvalue, &size) == FALSE) return FALSE;
 
@@ -2385,7 +2470,7 @@ BOOL APIENTRY binn_map_set_new(binn *map, int id, binn *value) {
 
 /*************************************************************************************/
 
-BOOL APIENTRY binn_object_set_new(binn *obj, char *key, binn *value) {
+BOOL APIENTRY binn_object_set_new(binn *obj, const char *key, binn *value) {
   BOOL retval;
 
   retval = binn_object_set_value(obj, key, value);
@@ -2432,7 +2517,7 @@ binn * APIENTRY binn_map_value(void *ptr, int id) {
 
 /*************************************************************************************/
 
-binn * APIENTRY binn_object_value(void *ptr, char *key) {
+binn * APIENTRY binn_object_value(void *ptr, const char *key) {
   binn *value;
 
   value = (binn *) binn_malloc(sizeof(binn));
@@ -2482,7 +2567,7 @@ void * APIENTRY binn_map_read(void *map, int id, int *ptype, int *psize) {
 
 /***************************************************************************/
 
-void * APIENTRY binn_object_read(void *obj, char *key, int *ptype, int *psize) {
+void * APIENTRY binn_object_read(void *obj, const char *key, int *ptype, int *psize) {
   binn value;
 
   if (binn_object_get_value(obj, key, &value) == FALSE) return NULL;
@@ -2543,7 +2628,7 @@ BOOL APIENTRY binn_map_get(void *ptr, int id, int type, void *pvalue, int *psize
 
 //   if (binn_object_get(obj, "multiplier", BINN_INT32, &multiplier, NULL) == FALSE) xxx;
 
-BOOL APIENTRY binn_object_get(void *ptr, char *key, int type, void *pvalue, int *psize) {
+BOOL APIENTRY binn_object_get(void *ptr, const char *key, int type, void *pvalue, int *psize) {
   binn value;
   int storage_type;
 
@@ -2844,7 +2929,7 @@ void * APIENTRY binn_map_object(void *map, int id) {
 
 /***************************************************************************/
 
-signed char APIENTRY binn_object_int8(void *obj, char *key) {
+signed char APIENTRY binn_object_int8(void *obj, const char *key) {
   signed char value;
 
   binn_object_get(obj, key, BINN_INT8, &value, NULL);
@@ -2852,7 +2937,7 @@ signed char APIENTRY binn_object_int8(void *obj, char *key) {
   return value;
 }
 
-short APIENTRY binn_object_int16(void *obj, char *key) {
+short APIENTRY binn_object_int16(void *obj, const char *key) {
   short value;
 
   binn_object_get(obj, key, BINN_INT16, &value, NULL);
@@ -2860,7 +2945,7 @@ short APIENTRY binn_object_int16(void *obj, char *key) {
   return value;
 }
 
-int APIENTRY binn_object_int32(void *obj, char *key) {
+int APIENTRY binn_object_int32(void *obj, const char *key) {
   int value;
 
   binn_object_get(obj, key, BINN_INT32, &value, NULL);
@@ -2868,7 +2953,7 @@ int APIENTRY binn_object_int32(void *obj, char *key) {
   return value;
 }
 
-int64 APIENTRY binn_object_int64(void *obj, char *key) {
+int64 APIENTRY binn_object_int64(void *obj, const char *key) {
   int64 value;
 
   binn_object_get(obj, key, BINN_INT64, &value, NULL);
@@ -2876,7 +2961,7 @@ int64 APIENTRY binn_object_int64(void *obj, char *key) {
   return value;
 }
 
-unsigned char APIENTRY binn_object_uint8(void *obj, char *key) {
+unsigned char APIENTRY binn_object_uint8(void *obj, const char *key) {
   unsigned char value;
 
   binn_object_get(obj, key, BINN_UINT8, &value, NULL);
@@ -2884,7 +2969,7 @@ unsigned char APIENTRY binn_object_uint8(void *obj, char *key) {
   return value;
 }
 
-unsigned short APIENTRY binn_object_uint16(void *obj, char *key) {
+unsigned short APIENTRY binn_object_uint16(void *obj, const char *key) {
   unsigned short value;
 
   binn_object_get(obj, key, BINN_UINT16, &value, NULL);
@@ -2892,7 +2977,7 @@ unsigned short APIENTRY binn_object_uint16(void *obj, char *key) {
   return value;
 }
 
-unsigned int APIENTRY binn_object_uint32(void *obj, char *key) {
+unsigned int APIENTRY binn_object_uint32(void *obj, const char *key) {
   unsigned int value;
 
   binn_object_get(obj, key, BINN_UINT32, &value, NULL);
@@ -2900,7 +2985,7 @@ unsigned int APIENTRY binn_object_uint32(void *obj, char *key) {
   return value;
 }
 
-uint64 APIENTRY binn_object_uint64(void *obj, char *key) {
+uint64 APIENTRY binn_object_uint64(void *obj, const char *key) {
   uint64 value;
 
   binn_object_get(obj, key, BINN_UINT64, &value, NULL);
@@ -2908,7 +2993,7 @@ uint64 APIENTRY binn_object_uint64(void *obj, char *key) {
   return value;
 }
 
-float APIENTRY binn_object_float(void *obj, char *key) {
+float APIENTRY binn_object_float(void *obj, const char *key) {
   float value;
 
   binn_object_get(obj, key, BINN_FLOAT32, &value, NULL);
@@ -2916,7 +3001,7 @@ float APIENTRY binn_object_float(void *obj, char *key) {
   return value;
 }
 
-double APIENTRY binn_object_double(void *obj, char *key) {
+double APIENTRY binn_object_double(void *obj, const char *key) {
   double value;
 
   binn_object_get(obj, key, BINN_FLOAT64, &value, NULL);
@@ -2924,7 +3009,7 @@ double APIENTRY binn_object_double(void *obj, char *key) {
   return value;
 }
 
-BOOL APIENTRY binn_object_bool(void *obj, char *key) {
+BOOL APIENTRY binn_object_bool(void *obj, const char *key) {
   BOOL value;
 
   binn_object_get(obj, key, BINN_BOOL, &value, NULL);
@@ -2932,13 +3017,13 @@ BOOL APIENTRY binn_object_bool(void *obj, char *key) {
   return value;
 }
 
-BOOL APIENTRY binn_object_null(void *obj, char *key) {
+BOOL APIENTRY binn_object_null(void *obj, const char *key) {
 
   return binn_object_get(obj, key, BINN_NULL, NULL, NULL);
 
 }
 
-char * APIENTRY binn_object_str(void *obj, char *key) {
+char * APIENTRY binn_object_str(void *obj, const char *key) {
   char *value;
 
   binn_object_get(obj, key, BINN_STRING, &value, NULL);
@@ -2946,7 +3031,7 @@ char * APIENTRY binn_object_str(void *obj, char *key) {
   return value;
 }
 
-void * APIENTRY binn_object_blob(void *obj, char *key, int *psize) {
+void * APIENTRY binn_object_blob(void *obj, const char *key, int *psize) {
   void *value;
 
   binn_object_get(obj, key, BINN_BLOB, &value, psize);
@@ -2954,7 +3039,7 @@ void * APIENTRY binn_object_blob(void *obj, char *key, int *psize) {
   return value;
 }
 
-void * APIENTRY binn_object_list(void *obj, char *key) {
+void * APIENTRY binn_object_list(void *obj, const char *key) {
   void *value;
 
   binn_object_get(obj, key, BINN_LIST, &value, NULL);
@@ -2962,7 +3047,7 @@ void * APIENTRY binn_object_list(void *obj, char *key) {
   return value;
 }
 
-void * APIENTRY binn_object_map(void *obj, char *key) {
+void * APIENTRY binn_object_map(void *obj, const char *key) {
   void *value;
 
   binn_object_get(obj, key, BINN_MAP, &value, NULL);
@@ -2970,7 +3055,7 @@ void * APIENTRY binn_object_map(void *obj, char *key) {
   return value;
 }
 
-void * APIENTRY binn_object_object(void *obj, char *key) {
+void * APIENTRY binn_object_object(void *obj, const char *key) {
   void *value;
 
   binn_object_get(obj, key, BINN_OBJECT, &value, NULL);
@@ -3333,7 +3418,7 @@ char * APIENTRY binn_get_str(binn *value) {
 
   if (type_family(value->type) == BINN_FAMILY_INT) {
     if (copy_int_value(value->ptr, &vint, value->type, BINN_INT64) == FALSE) return NULL;
-    sprintf(buf, "%" INT64_FORMAT, vint);
+    snprintf(buf, sizeof buf, "%" INT64_FORMAT, vint);
     goto loc_convert_value;
   }
 
@@ -3341,7 +3426,7 @@ char * APIENTRY binn_get_str(binn *value) {
   case BINN_FLOAT:
     value->vdouble = value->vfloat;
   case BINN_DOUBLE:
-    sprintf(buf, "%g", value->vdouble);
+    snprintf(buf, sizeof buf, "%g", value->vdouble);
     goto loc_convert_value;
   case BINN_STRING:
     return (char*) value->ptr;

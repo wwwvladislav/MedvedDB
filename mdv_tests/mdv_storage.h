@@ -6,5 +6,6 @@
 MU_TEST_SUITE(storage)
 {
     MU_RUN_TEST(op_scan_seq);
-    MU_RUN_TEST(op_project);
+    MU_RUN_TEST(op_project_range);
+    MU_RUN_TEST(op_project_by_indices);
 }

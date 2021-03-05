@@ -146,3 +146,149 @@ mdv_op * mdv_project_range(mdv_op *src, size_t from, size_t to)
 
     return (mdv_op *)projection;
 }
+
+
+typedef struct
+{
+    mdv_op                  base;
+    atomic_uint_fast32_t    ref_counter;
+    mdv_op                 *src;
+    mdv_kvdata              kvdata;
+    binn                   *current;
+    size_t                  size;
+    size_t                  indices[1];
+} mdv_project_by_indices_t;
+
+
+static mdv_op * mdv_project_by_indices_retain(mdv_op *op)
+{
+    mdv_project_by_indices_t *projection = (mdv_project_by_indices_t *)op;
+    atomic_fetch_add_explicit(&projection->ref_counter, 1, memory_order_acquire);
+    return  (mdv_op *)projection;
+}
+
+
+static uint32_t mdv_project_by_indices_release(mdv_op *op)
+{
+    uint32_t rc = 0;
+
+    if (op)
+    {
+        mdv_project_by_indices_t *projection = (mdv_project_by_indices_t *)op;
+
+        rc = atomic_fetch_sub_explicit(&projection->ref_counter, 1, memory_order_release) - 1;
+
+        if (!rc)
+        {
+            binn_free(projection->current);
+            mdv_op_release(projection->src);
+            memset(projection, sizeof *projection, 0);
+            mdv_free(projection, "roject_by_indices");
+        }
+    }
+
+    return rc;
+}
+
+
+static mdv_errno mdv_project_by_indices_reset(mdv_op *op)
+{
+    mdv_project_by_indices_t *projection = (mdv_project_by_indices_t *)op;
+    binn_free(projection->current);
+    projection->current = 0;
+    return mdv_op_reset(projection->src);
+}
+
+
+static mdv_errno mdv_project_by_indices_next(mdv_op *op, mdv_kvdata *kvdata)
+{
+    mdv_project_by_indices_t *projection = (mdv_project_by_indices_t *)op;
+
+    binn_free(projection->current);
+    projection->current = 0;
+
+    mdv_errno err = mdv_op_next(projection->src, &projection->kvdata);
+    if (err != MDV_OK)
+        return err;
+
+    binn list;
+
+    if(!binn_load(projection->kvdata.value.ptr, &list))
+    {
+        MDV_LOGE("Projection by indices is used only with lists");
+        return MDV_FAILED;
+    }
+
+    if (binn_type(&list) != BINN_LIST)
+    {
+        MDV_LOGE("Projection by indices is used only with lists");
+        return MDV_FAILED;
+    }
+
+    projection->current = binn_list();
+
+    if (!projection->current)
+    {
+        MDV_LOGE("No memory for projection list");
+        return MDV_NO_MEM;
+    }
+
+    binn_iter iter = {};
+    binn item = {};
+    size_t i = 0, j = 0;
+
+    binn_list_foreach(&list, item)
+    {
+        if (j >= projection->size)
+            break;
+
+        if (i == projection->indices[j])
+        {
+            if (!binn_list_add_value(projection->current, &item))
+            {
+                MDV_LOGE("No memory for projection list item");
+                return MDV_NO_MEM;
+            }
+            ++j;
+        }
+
+        ++i;
+    }
+
+    kvdata->key = projection->kvdata.key;
+    kvdata->value.ptr = binn_ptr(projection->current);
+    kvdata->value.size = binn_size(projection->current);
+
+    return MDV_OK;
+}
+
+
+mdv_op * mdv_project_by_indices(mdv_op *src, size_t size, size_t const *indices)
+{
+    mdv_project_by_indices_t *projection
+        = mdv_alloc(sizeof(mdv_project_by_indices_t) + size * sizeof *indices, "project_by_indices");
+
+    if (!projection)
+    {
+        MDV_LOGE("No free space of memory for new projection by indices operation");
+        return 0;
+    }
+
+    atomic_init(&projection->ref_counter, 1);
+    projection->src = mdv_op_retain(src);
+    projection->current = 0;
+    projection->size = size;
+    memcpy(projection->indices, indices, size * sizeof *indices);
+
+    static mdv_iop const vtbl =
+    {
+        .retain = mdv_project_by_indices_retain,
+        .release = mdv_project_by_indices_release,
+        .reset = mdv_project_by_indices_reset,
+        .next = mdv_project_by_indices_next
+    };
+
+    projection->base.vptr = &vtbl;
+
+    return (mdv_op *)projection;
+}

@@ -42,7 +42,7 @@ mdv_table_desc * mdv_table_desc_create(char const *name)
 
     mdv_list *strings = (mdv_list *)(ppfields + 1);
 
-    mdv_list_entry_base *tbl_name = mdv_list_push_back_ptr(strings, name, strlen(name) + 1);
+    mdv_list_entry_base *tbl_name = mdv_list_push_back_data(strings, name, strlen(name) + 1);
 
     if(!tbl_name)
     {
@@ -94,7 +94,7 @@ bool mdv_table_desc_append(mdv_table_desc *desc, mdv_field const *field)
         return false;
     }
 
-    mdv_list_entry_base *name = mdv_list_push_back_ptr(strings, field->name, strlen(field->name) + 1);
+    mdv_list_entry_base *name = mdv_list_push_back_data(strings, field->name, strlen(field->name) + 1);
 
     if(!name)
     {

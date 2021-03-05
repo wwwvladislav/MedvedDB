@@ -66,7 +66,8 @@ mdv_predicate * mdv_predicate_parse(char const *expression)
 
     mdv_rollbacker_push(rollbacker, mdv_vector_release, predicate->expr);
 
-    MDV_LOGW("Expression '%s' wasn't parsed. Default expression is used.", expression);
+    if (expression && *expression)
+        MDV_LOGW("Expression '%s' wasn't parsed. Default expression is used.", expression);
 
     mdv_vector_append(predicate->expr, MDV_EMPTY_PREDICATE, sizeof MDV_EMPTY_PREDICATE);
 

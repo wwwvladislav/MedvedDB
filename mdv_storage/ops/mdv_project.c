@@ -99,7 +99,7 @@ static mdv_errno mdv_project_range_next(mdv_op *op, mdv_kvdata *kvdata)
     {
         if (i >= projection->from)
         {
-            if (!binn_list_add_new(projection->current, &item))
+            if (!binn_list_add_value(projection->current, &item))
             {
                 MDV_LOGE("No memory for projection list item");
                 return MDV_NO_MEM;

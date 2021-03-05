@@ -207,7 +207,7 @@ void * mdv_hashmap_insert(mdv_hashmap *hm, void const *item, size_t size)
     }
 
     // Insert new value
-    mdv_list_entry_base * entry = mdv_list_push_back_ptr(bucket, item, size);
+    mdv_list_entry_base * entry = mdv_list_push_back_data(bucket, item, size);
 
     if (entry)
     {

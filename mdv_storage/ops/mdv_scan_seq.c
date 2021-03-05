@@ -37,7 +37,7 @@ static uint32_t mdv_scan_seq_release(mdv_op *op)
         if (!rc)
         {
             mdv_enumerator_release(scanner->enumerator);
-            memset(scanner, sizeof *scanner, 0);
+            memset(scanner, 0, sizeof *scanner);
             mdv_free(scanner, "scan_seq");
         }
     }

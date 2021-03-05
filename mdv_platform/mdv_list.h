@@ -56,7 +56,7 @@ typedef struct mdv_list
  * @return nonzero if new item is inserted
  * @return zero if non memory
  */
-mdv_list_entry_base * mdv_list_push_back_ptr(mdv_list *l, void const *val, size_t size);
+mdv_list_entry_base * mdv_list_push_back_data(mdv_list *l, void const *val, size_t size);
 
 
 /**
@@ -69,7 +69,7 @@ mdv_list_entry_base * mdv_list_push_back_ptr(mdv_list *l, void const *val, size_
  * @return NULL if non memory
  */
 #define mdv_list_push_back(l, val)          \
-    mdv_list_push_back_ptr(l, &(val), sizeof(val))
+    mdv_list_push_back_data(l, &(val), sizeof(val))
 
 
 /**

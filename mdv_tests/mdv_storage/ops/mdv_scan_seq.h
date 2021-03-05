@@ -52,6 +52,8 @@ MU_TEST(op_scan_seq)
     }
 
     mu_check(mdv_op_next(scanner, &kvdata) == MDV_FALSE);
+    mdv_op_reset(scanner);
+    mu_check(mdv_op_next(scanner, &kvdata) == MDV_OK);
 
     mdv_op_release(scanner);
 

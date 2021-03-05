@@ -3,7 +3,7 @@
 #include <string.h>
 
 
-mdv_list_entry_base * mdv_list_push_back_ptr(mdv_list *l, void const *val, size_t size)
+mdv_list_entry_base * mdv_list_push_back_data(mdv_list *l, void const *val, size_t size)
 {
     mdv_list_entry_base *entry = (mdv_list_entry_base *)mdv_alloc(offsetof(mdv_list_entry_base, data) + size, "list_entry");
 

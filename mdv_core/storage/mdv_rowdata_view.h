@@ -10,8 +10,8 @@
  */
 #pragma once
 #include "mdv_view.h"
-#include "mdv_predicate.h"
 #include "mdv_rowdata.h"
+#include <mdv_predicate.h>
 
 
 /**

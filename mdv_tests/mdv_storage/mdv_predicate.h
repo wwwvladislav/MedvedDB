@@ -1,10 +1,10 @@
 #pragma once
 #include <minunit.h>
-#include <storage/mdv_predicate.h>
+#include <mdv_predicate.h>
 #include <mdv_vm.h>
 
 
-static void mdv_core_storage_predicate_test_0()
+static void mdv_storage_predicate_test_0()
 {
     mdv_predicate *predicate = mdv_predicate_parse("");
     mu_check(predicate);
@@ -25,7 +25,7 @@ static void mdv_core_storage_predicate_test_0()
 }
 
 
-MU_TEST(core_storage_predicate)
+MU_TEST(storage_predicate)
 {
-    mdv_core_storage_predicate_test_0();
+    mdv_storage_predicate_test_0();
 }

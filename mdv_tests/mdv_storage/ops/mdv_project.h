@@ -1,5 +1,6 @@
 #pragma once
 #include "mdv_scan_list.h"
+#include "mdv_test_utils.h"
 
 #include <minunit.h>
 #include <binn.h>
@@ -9,34 +10,9 @@
 #include <string.h>
 
 
-static binn * create_row(size_t size, uint32_t init)
-{
-    binn *row = binn_list();
-    uint32_t n = init;
-    for (size_t i = 0; i < size; ++i)
-        binn_list_add_uint32(row, n++);
-    return row;
-}
-
-
-static mdv_list create_rows_list(size_t rows, size_t colums)
-{
-    mdv_list list = {};
-
-    for (size_t i = 0; i < rows; ++i)
-    {
-        binn *row = create_row(colums, 0);
-        mdv_list_push_back_data(&list, binn_ptr(row), binn_size(row));
-        binn_free(row);
-    }
-
-    return list;
-}
-
-
 MU_TEST(op_project_range)
 {
-    mdv_list table = create_rows_list(10, 10);
+    mdv_list table = create_test_rows_list(10, 10);
     mdv_op *scanner = mdv_scan_list(&table);
     mu_check(scanner);
 
@@ -84,7 +60,7 @@ MU_TEST(op_project_range)
 
 MU_TEST(op_project_by_indices)
 {
-    mdv_list table = create_rows_list(10, 10);
+    mdv_list table = create_test_rows_list(10, 10);
     mdv_op *scanner = mdv_scan_list(&table);
     mu_check(scanner);
 

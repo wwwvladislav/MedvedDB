@@ -91,7 +91,10 @@ mdv_errno mdv_vm_stack_pop(mdv_stack_base *stack, mdv_vm_datum *data);
  * @return On success, returns MDV_OK
  * @return On error, returns non zero error code
  */
-mdv_errno mdv_vm_run(mdv_stack_base *stack, mdv_vm_fn const *fns, size_t fns_count, uint8_t const *program);
+mdv_errno mdv_vm_run(mdv_stack_base  *stack,
+                     mdv_vm_fn const *fns,
+                     size_t           fns_count,
+                     uint8_t const   *program);
 
 
 /**

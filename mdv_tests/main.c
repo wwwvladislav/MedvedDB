@@ -19,7 +19,6 @@ int main(int argc, char *argv[])
 
     MU_RUN_SUITE(platform);
     MU_RUN_SUITE(types);
-    MU_RUN_SUITE(core);
     MU_RUN_SUITE(crypto);
     MU_RUN_SUITE(storage);
     MU_REPORT();

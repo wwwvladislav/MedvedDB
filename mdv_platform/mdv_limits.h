@@ -7,4 +7,4 @@
 #define MDV_MSG_SIZE_MAX            (1024u * 1024u)
 #define MDV_LINK_WEIGHT_MAX         (1024u * 1024u)
 #define MDV_BUFFER_SIZE             8192u
-#define MDV_BUFFERS_FILE_CAPACITY   524288u
+#define MDV_BUFFERS_FILE_CAPACITY   (1024u * 1024u)

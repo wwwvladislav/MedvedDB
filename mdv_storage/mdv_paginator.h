@@ -13,7 +13,7 @@
 
 
 /// Buffer identifier
-typedef uint64_t mdv_buffer_id_t;
+typedef uint64_t mdv_pageid;
 
 
 /// Buffers manager
@@ -56,12 +56,13 @@ uint32_t mdv_paginator_release(mdv_paginator *paginator);
 /**
  * @brief Allocates new buffer
  *
- * @param bm [in] buffers manager
+ * @param paginator [in] buffers manager
+ * @param size [in]      memory size to be allocated
  *
  * @return On success, returns non zero pointer to new buffer
  * @return On error, return NULL pointer
  */
-//mdv_buffer * mdv_buffer_manager_new(mdv_buffer_manager *bm);
+mdv_buffer * mdv_paginator_allocate(mdv_paginator *paginator, size_t size);
 
 
 typedef enum

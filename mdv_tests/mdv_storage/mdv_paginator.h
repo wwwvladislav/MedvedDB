@@ -31,6 +31,9 @@ MU_TEST(storage_paginator)
     mdv_paginator *paginator = mdv_paginator_open(5, 10, "./test_pages");
     mu_check(paginator);
 
+    mdv_buffer *buffer = mdv_paginator_allocate(paginator, 6);
+    (void)buffer;
+
     mu_check(mdv_paginator_release(paginator) == 0);
     mdv_rmdir("./test_pages");
 }

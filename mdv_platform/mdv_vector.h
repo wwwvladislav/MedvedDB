@@ -131,7 +131,7 @@ void * mdv_vector_append(mdv_vector *vector, void const *items, size_t count);
 /**
  * @brief Checks if the container has no elements
  */
-#define mdv_vector_empty(vector) (mdv_vector_size(vector) == 0)
+bool mdv_vector_empty(mdv_vector const *vector);
 
 
 /**

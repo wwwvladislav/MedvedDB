@@ -2,6 +2,7 @@
 #include "mdv_log.h"
 #include "mdv_string.h"
 #include "mdv_stack.h"
+#include "mdv_alloc.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -230,4 +231,104 @@ bool mdv_rmdir(char const *path)
     while(!mdv_stack_empty(dirs));
 
     return true;
+}
+
+
+typedef struct
+{
+    mdv_enumerator base;
+    DIR *pdir;
+    struct dirent *entry;
+} mdv_dir_enumerator_t;
+
+
+static mdv_enumerator * mdv_dir_enumerator_retain(mdv_enumerator *enumerator)
+{
+    atomic_fetch_add_explicit(&enumerator->rc, 1, memory_order_acquire);
+    return enumerator;
+}
+
+
+static uint32_t mdv_dir_enumerator_release(mdv_enumerator *enumerator)
+{
+    uint32_t rc = 0;
+
+    if (enumerator)
+    {
+        rc = atomic_fetch_sub_explicit(&enumerator->rc, 1, memory_order_release) - 1;
+
+        if (!rc)
+        {
+            mdv_dir_enumerator_t *impl = (mdv_dir_enumerator_t *)enumerator;
+            closedir(impl->pdir);
+            mdv_free(enumerator, "dir_enumerator");
+        }
+    }
+
+    return rc;
+}
+
+
+static mdv_errno mdv_dir_enumerator_reset(mdv_enumerator *enumerator)
+{
+    (void)enumerator;
+    return MDV_NO_IMPL;
+}
+
+
+static mdv_errno mdv_dir_enumerator_next(mdv_enumerator *enumerator)
+{
+    mdv_dir_enumerator_t *impl = (mdv_dir_enumerator_t *)enumerator;
+
+    while ((impl->entry = readdir(impl->pdir)) != 0
+            && impl->entry->d_type != DT_REG);
+
+    return impl->entry ? MDV_OK : MDV_FALSE;
+}
+
+
+static void * mdv_dir_enumerator_current(mdv_enumerator *enumerator)
+{
+    mdv_dir_enumerator_t *impl = (mdv_dir_enumerator_t *)enumerator;
+    if (!impl->entry)
+        return 0;
+    return impl->entry->d_name;
+}
+
+
+mdv_enumerator * mdv_dir_enumerator(char const *path)
+{
+    mdv_dir_enumerator_t *enumerator = mdv_alloc(sizeof(mdv_dir_enumerator_t), "dir_enumerator");
+
+    if (!enumerator)
+    {
+        MDV_LOGE("No memory for directory content enumerator");
+        return 0;
+    }
+
+    enumerator->pdir = opendir(path);
+
+    if (!enumerator->pdir)
+    {
+        MDV_LOGE("Directory '%s' could not be opened due the error: %d", path, mdv_error());
+        mdv_free(enumerator, "dir_enumerator");
+        return 0;
+    }
+
+    enumerator->entry = 0;
+
+    atomic_init(&enumerator->base.rc, 1);
+
+    static const mdv_ienumerator vtbl =
+    {
+        .retain = mdv_dir_enumerator_retain,
+        .release = mdv_dir_enumerator_release,
+        .reset = mdv_dir_enumerator_reset,
+        .next = mdv_dir_enumerator_next,
+        .current = mdv_dir_enumerator_current
+    };
+
+    enumerator->base.vptr = &vtbl;
+
+    return &enumerator->base;
 }

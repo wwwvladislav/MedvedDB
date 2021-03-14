@@ -202,6 +202,12 @@ bool mdv_vector_resize(mdv_vector *vector, size_t n)
 }
 
 
+bool mdv_vector_empty(mdv_vector const *vector)
+{
+    return !mdv_vector_size(vector);
+}
+
+
 void mdv_vector_clear(mdv_vector *vector)
 {
     vector->size = 0;

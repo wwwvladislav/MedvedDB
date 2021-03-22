@@ -9,7 +9,7 @@
  * @copyright Copyright (c) 2019, Vladislav Volkov
  */
 #pragma once
-#include "mdv_def.h"
+#include <mdv_def.h>
 
 
 /// Graph node

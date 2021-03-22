@@ -1,7 +1,7 @@
 #include "mdv_bloom.h"
 #include "mdv_hash.h"
 #include "mdv_alloc.h"
-#include "mdv_log.h"
+#include <mdv_log.h>
 #include <limits.h>
 #include <string.h>
 #include <stddef.h>

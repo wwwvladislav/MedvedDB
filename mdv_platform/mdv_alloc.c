@@ -120,15 +120,6 @@ void * mdv_realloc(void *ptr, size_t size, char const *name)
 }
 
 
-void *mdv_realloc2(void **ptr, size_t size, char const *name)
-{
-    void *new_ptr = mdv_realloc(*ptr, size, name);
-    if (new_ptr)
-        *ptr = new_ptr;
-    return new_ptr;
-}
-
-
 void mdv_free(void *ptr, char const *name)
 {
     if (ptr)
@@ -155,6 +146,6 @@ int mdv_allocations()
 mdv_allocator const mdv_default_allocator =
 {
     .alloc      = &mdv_alloc,
-    .realloc    = &mdv_realloc2,
+    .realloc    = &mdv_realloc,
     .free       = &mdv_free
 };

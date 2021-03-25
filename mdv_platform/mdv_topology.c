@@ -591,12 +591,9 @@ mdv_vector * mdv_topology_extradata(mdv_topology *topology)
 
 mdv_hashmap * mdv_topology_peers(mdv_topology *topology, mdv_uuid const *node)
 {
-    mdv_hashmap *peers = _mdv_hashmap_create(
-                                4,
-                                0,
-                                sizeof(mdv_uuid),
-                                (mdv_hash_fn)mdv_uuid_hash,
-                                (mdv_key_cmp_fn)mdv_uuid_cmp);
+    mdv_hashmap *peers = mdv_hashset_create(mdv_uuid, 4,
+                                            mdv_uuid_hash,
+                                            mdv_uuid_cmp);
 
     if (peers)
     {

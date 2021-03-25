@@ -57,6 +57,26 @@ mdv_hashmap * _mdv_hashmap_create(size_t         capacity,
                         (mdv_key_cmp_fn)&key_cmp_fn)
 
 
+/**
+ * @brief Initialize hash set.
+ *
+ * @details Allocates space for hash set and initializes fields.
+ *
+ * @param hm [in]         hash map
+ * @param type [in]       hash map items type
+ * @param capacity [in]   hash map capacity
+ * @param hash_fn [in]    hash function
+ * @param key_cmp_fn [in] Keys comparison function
+  *
+ * @return pointer to new hashmap or NULL
+ */
+#define mdv_hashset_create(type, capacity, hash_fn, key_cmp_fn)             \
+    _mdv_hashmap_create(capacity,                                           \
+                        0,                                                  \
+                        sizeof(type),                                       \
+                        (mdv_hash_fn)&hash_fn,                              \
+                        (mdv_key_cmp_fn)&key_cmp_fn)
+
 
 /**
  * @brief Retains hashmap.

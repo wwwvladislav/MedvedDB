@@ -455,12 +455,9 @@ static mdv_errno mdv_tracker_topology_broadcast(
                                 mdv_topology   *diff,
                                 mdv_hashmap    *peers)
 {
-    mdv_hashmap *dst = _mdv_hashmap_create(
-                                1,
-                                0,
-                                sizeof(mdv_uuid),
-                                (mdv_hash_fn)mdv_uuid_hash,
-                                (mdv_key_cmp_fn)mdv_uuid_cmp);
+    mdv_hashmap *dst = mdv_hashset_create(mdv_uuid, 1,
+                                          mdv_uuid_hash,
+                                          mdv_uuid_cmp);
 
     if (!dst)
     {

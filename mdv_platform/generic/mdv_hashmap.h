@@ -4,18 +4,11 @@
 #pragma once
 #include <mdv_def.h>
 #include <mdv_list.h>
+#include <mdv_functional.h>
 
 
 /// Hash map entry
 typedef mdv_list mdv_hashmap_bucket;
-
-
-/// Hash function type
-typedef size_t (*mdv_hash_fn)(void const *);
-
-
-/// Keys comparison function type
-typedef int (*mdv_key_cmp_fn)(void const *, void const *);
 
 
 /// Hash map
@@ -25,11 +18,11 @@ typedef struct mdv_hashmap mdv_hashmap;
 /// @cond Doxygen_Suppress
 
 
-mdv_hashmap * _mdv_hashmap_create(size_t         capacity,
-                                  uint32_t       key_offset,
-                                  uint32_t       key_size,
-                                  mdv_hash_fn    hash_fn,
-                                  mdv_key_cmp_fn key_cmp_fn);
+mdv_hashmap * _mdv_hashmap_create(size_t        capacity,
+                                  uint32_t      key_offset,
+                                  uint32_t      key_size,
+                                  mdv_hash_fn   hash_fn,
+                                  mdv_cmp_fn    key_cmp_fn);
 
 
 /// @endcond
@@ -40,7 +33,6 @@ mdv_hashmap * _mdv_hashmap_create(size_t         capacity,
  *
  * @details Allocates space for hash map and initializes fields.
  *
- * @param hm [in]         hash map
  * @param type [in]       hash map items type
  * @param key_field [in]  key field name in type
  * @param capacity [in]   hash map capacity
@@ -54,7 +46,7 @@ mdv_hashmap * _mdv_hashmap_create(size_t         capacity,
                         offsetof(type, key_field),                          \
                         sizeof(((type*)0)->key_field),                      \
                         (mdv_hash_fn)&hash_fn,                              \
-                        (mdv_key_cmp_fn)&key_cmp_fn)
+                        (mdv_cmp_fn)&key_cmp_fn)
 
 
 /**
@@ -62,7 +54,6 @@ mdv_hashmap * _mdv_hashmap_create(size_t         capacity,
  *
  * @details Allocates space for hash set and initializes fields.
  *
- * @param hm [in]         hash map
  * @param type [in]       hash map items type
  * @param capacity [in]   hash map capacity
  * @param hash_fn [in]    hash function
@@ -75,7 +66,7 @@ mdv_hashmap * _mdv_hashmap_create(size_t         capacity,
                         0,                                                  \
                         sizeof(type),                                       \
                         (mdv_hash_fn)&hash_fn,                              \
-                        (mdv_key_cmp_fn)&key_cmp_fn)
+                        (mdv_cmp_fn)&key_cmp_fn)
 
 
 /**

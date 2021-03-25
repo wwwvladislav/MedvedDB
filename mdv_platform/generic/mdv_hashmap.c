@@ -15,7 +15,7 @@ struct mdv_hashmap
     uint32_t             key_size;                          ///< key size
     mdv_hashmap_bucket  *buckets;                           ///< pointer to hash table
     mdv_hash_fn          hash_fn;                           ///< Hash function
-    mdv_key_cmp_fn       key_cmp_fn;                        ///< Keys comparison function (used if hash collision happens)
+    mdv_cmp_fn           key_cmp_fn;                        ///< Keys comparison function (used if hash collision happens)
 };
 
 
@@ -23,11 +23,11 @@ struct mdv_hashmap
 #define MDV_HASHMAP_LOAD_FACTOR 3 / 4
 
 
-mdv_hashmap * _mdv_hashmap_create(size_t         capacity,
-                                  uint32_t       key_offset,
-                                  uint32_t       key_size,
-                                  mdv_hash_fn    hash_fn,
-                                  mdv_key_cmp_fn key_cmp_fn)
+mdv_hashmap * _mdv_hashmap_create(size_t        capacity,
+                                  uint32_t      key_offset,
+                                  uint32_t      key_size,
+                                  mdv_hash_fn   hash_fn,
+                                  mdv_cmp_fn    key_cmp_fn)
 {
     mdv_hashmap *hm = mdv_alloc(sizeof(mdv_hashmap), "hashmap");
 

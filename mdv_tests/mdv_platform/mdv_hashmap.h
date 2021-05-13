@@ -3,12 +3,13 @@
 #include <mdv_hashmap.h>
 
 
-static size_t int_hash(int const *v)
+static size_t hashmap_hash(int const *v)
 {
     return *v;
 }
 
-static int int_keys_cmp(int const *a, int const *b)
+
+static int hashmap_keys_cmp(int const *a, int const *b)
 {
     return *a - *b;
 }
@@ -22,7 +23,7 @@ MU_TEST(platform_hashmap)
         int key;
     } map_entry;
 
-    mdv_hashmap *map = mdv_hashmap_create(map_entry, key, 5, int_hash, int_keys_cmp);
+    mdv_hashmap *map = mdv_hashmap_create(map_entry, key, 5, hashmap_hash, hashmap_keys_cmp);
 
     mu_check(map);
 

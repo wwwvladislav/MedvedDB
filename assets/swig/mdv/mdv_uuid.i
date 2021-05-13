@@ -43,7 +43,7 @@ typedef struct {} mdv_uuid;
         free($self);
     }
 
-    char const * toString()
+    char * toString()
     {
         char *tmp = malloc(MDV_UUID_STR_LEN);
 
@@ -53,6 +53,8 @@ typedef struct {} mdv_uuid;
             return 0;
         }
 
-        return mdv_uuid_to_str($self, tmp);
+        mdv_uuid_to_str($self, tmp);
+
+        return tmp;
     }
 }

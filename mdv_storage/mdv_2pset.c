@@ -7,7 +7,7 @@
 #include <mdv_log.h>
 
 
-static uint8_t MDV_OBJECTS_IDGEN = 0;
+static uint16_t MDV_OBJECTS_IDGEN = 0;
 
 static const size_t LMDB_MAP_SIZE = 4294963200u; ///< The maximum size of the LMDB map size.
 
@@ -528,7 +528,7 @@ static void * mdv_objects_enumerator_impl_current(mdv_enumerator *enumerator)
 }
 
 
-static mdv_enumerator * mdv_objects_enumerator_impl_create(mdv_2pset *objs, mdv_cursor_op op)
+static mdv_enumerator * mdv_objects_enumerator_impl_create(mdv_2pset *objs, mdv_data const *key, mdv_cursor_op op)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
@@ -541,6 +541,11 @@ static mdv_enumerator * mdv_objects_enumerator_impl_create(mdv_2pset *objs, mdv_
         MDV_LOGE("No memory for objects iterator");
         return 0;
     }
+
+    memset(enumerator, 0, sizeof(mdv_objects_enumerator_impl));
+
+    if (key)
+        enumerator->current.key = *key;
 
     mdv_rollbacker_push(rollbacker, mdv_free, enumerator, "objects_enumerator");
 
@@ -606,11 +611,11 @@ static mdv_enumerator * mdv_objects_enumerator_impl_create(mdv_2pset *objs, mdv_
 
 mdv_enumerator * mdv_2pset_enumerator(mdv_2pset *objs)
 {
-    return mdv_objects_enumerator_impl_create(objs, MDV_CURSOR_FIRST);
+    return mdv_objects_enumerator_impl_create(objs, 0, MDV_CURSOR_FIRST);
 }
 
 
 mdv_enumerator * mdv_2pset_enumerator_from(mdv_2pset *objs, mdv_data const *id)
 {
-    return mdv_objects_enumerator_impl_create(objs, MDV_CURSOR_SET_RANGE);
+    return mdv_objects_enumerator_impl_create(objs, id, MDV_CURSOR_SET_RANGE);
 }

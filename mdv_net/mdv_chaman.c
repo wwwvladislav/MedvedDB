@@ -601,7 +601,7 @@ static mdv_errno mdv_chaman_selector_reg(mdv_chaman         *chaman,
     {
         .fd = fd,
         .fn = mdv_chaman_select_handler,
-        .context_size = sizeof(mdv_selector_task),
+        .context_size = sizeof(mdv_selector_context),
         .context =
         {
             .type = MDV_CT_SELECTOR,

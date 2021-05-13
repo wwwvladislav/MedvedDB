@@ -74,7 +74,7 @@ static int mdv_mstlink_cmp(mdv_mstlink const *a, mdv_mstlink const *b)
 size_t mdv_mst_find(mdv_mstnode const *nodes, size_t nodes_count,
                     mdv_mstlink       *links, size_t links_count)
 {
-    mdv_mstset *subsets = mdv_aligned_alloc(sizeof(mdv_mstset), sizeof(mdv_mstset) * nodes_count, "MST subsets");
+    mdv_mstset *subsets = mdv_aligned_alloc(8, sizeof(mdv_mstset) * nodes_count, "MST subsets");
 
     if (!subsets)
     {

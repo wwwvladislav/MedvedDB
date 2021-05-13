@@ -24,6 +24,7 @@
 #include "mdv_platform/mdv_bitset.h"
 #include "mdv_platform/mdv_lrucache.h"
 #include "mdv_platform/mdv_vm.h"
+#include "mdv_platform/mdv_btree.h"
 
 
 MU_TEST_SUITE(platform)
@@ -53,4 +54,5 @@ MU_TEST_SUITE(platform)
     MU_RUN_TEST(platform_mst);
     MU_RUN_TEST(platform_lrucache);
     MU_RUN_TEST(platform_vm);
+    MU_RUN_TEST(platform_btree);
 }

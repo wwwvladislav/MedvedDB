@@ -5,7 +5,7 @@
 /// Data
 typedef struct mdv_data
 {
-    uint32_t    size;       ///< Data size
+    size_t      size;       ///< Data size
     void       *ptr;        ///< Data pointer
 } mdv_data;
 

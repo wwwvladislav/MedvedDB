@@ -81,15 +81,10 @@ int main(int argc, char *argv[])
                 if (!optarg)
                     return usage();
 
-                mdv_alloc_initialize();
-
                 service = mdv_service_create(optarg);
 
                 if (!service)
-                {
-                    mdv_alloc_finalize();
                     return -1;
-                }
 
                 break;
             }
@@ -113,8 +108,6 @@ int main(int argc, char *argv[])
     MDV_LOGI("Service is stoped");
 
     mdv_service_free(service);
-
-    mdv_alloc_finalize();
 
     return 0;
 }

@@ -1,5 +1,6 @@
 #include "mdv_algorithm.h"
 #include <string.h>
+#include <stdlib.h>
 
 
 void mdv_diff_u32(uint32_t const *set_a, uint32_t a_size,
@@ -70,7 +71,7 @@ void mdv_union_u32(uint32_t const *set_a, uint32_t a_size,
 
 uint32_t mdv_exclude(void       *set_a, size_t itmsize_a, size_t size_a,
                      void const *set_b, size_t itmsize_b, size_t size_b,
-                     int (*cmp)(const void *, const void *))
+                     mdv_cmp_fn  cmp)
 {
     char const *set_a_begin = set_a;
     char const *set_a_end   = (char*)set_a + size_a * itmsize_a;
@@ -105,4 +106,57 @@ uint32_t mdv_exclude(void       *set_a, size_t itmsize_a, size_t size_a,
     }
 
     return (set_out - set_a_begin) / itmsize_a;
+}
+
+
+void *mdv_bsearch(const void *key,
+                  const void *base,
+                  size_t      nmemb,
+                  size_t      size,
+                  mdv_cmp_fn  cmp)
+{
+    return bsearch(key, base, nmemb, size, cmp);
+}
+
+
+void mdv_qsort(void       *base,
+               size_t      nmemb,
+               size_t      size,
+               mdv_cmp_fn  cmp)
+{
+    qsort(base, nmemb, size, cmp);
+}
+
+
+void *mdv_lower_bound(const void *key,
+                      const void *base,
+                      size_t      nmemb,
+                      size_t      size,
+                      mdv_cmp_fn  cmp)
+{
+    if (!nmemb)
+        return 0;
+
+    char *arr = (char *)base;
+    char *a = arr;
+    char *b = arr + size * (nmemb - 1);
+
+    while(b > a)
+    {
+        size_t const n = (b - a) / size;
+        char *c = a + (n / 2) * size;
+
+        int diff = cmp(key, c);
+
+        if(diff < 0)
+            b = c - size;
+        else if(diff > 0)
+            a = c + size;
+        else
+            return c;
+    }
+
+    return cmp(key, b) > 0
+                ? b + size
+                : b;
 }

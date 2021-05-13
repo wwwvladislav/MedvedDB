@@ -10,7 +10,27 @@
  */
 #pragma once
 #include <mdv_def.h>
+#include <mdv_macros.h>
 #include <mdv_functional.h>
+
+
+typedef uint32_t mdv_pageid_t;
+
+
+typedef struct mdv_page
+{
+    mdv_pageid_t id;
+    uint8_t data[1];
+} mdv_page;
+
+
+typedef struct
+{
+    mdv_page * (*alloc)(size_t size);
+    void       (*free)(mdv_pageid_t);
+    mdv_page * (*retain)(mdv_pageid_t);
+    void       (*release)(mdv_pageid_t);
+} mdv_btree_allocator;
 
 
 /// BTree
@@ -21,6 +41,7 @@ typedef struct mdv_btree mdv_btree;
 
 
 mdv_btree * _mdv_btree_create(uint32_t      order,
+                              uint32_t      key_size,
                               uint32_t      item_size,
                               uint32_t      key_offset,
                               mdv_cmp_fn    key_cmp_fn);
@@ -43,6 +64,7 @@ mdv_btree * _mdv_btree_create(uint32_t      order,
  */
 #define mdv_btree_create(order, type, key_field, key_cmp_fn)            \
     _mdv_btree_create(order,                                            \
+                      mdv_sizeof_member(type, key_field),               \
                       sizeof(type),                                     \
                       offsetof(type, key_field),                        \
                       (mdv_cmp_fn)&key_cmp_fn)
@@ -92,12 +114,11 @@ size_t mdv_btree_size(mdv_btree const *btree);
  *
  * @param btree [in]    Btree
  * @param item [in]     New item to be inserted
- * @param size [in]     Item size
  *
  * @return nonzero pointer to new entry if item is inserted
  * @return 0 if no memory
  */
-void * mdv_btree_insert(mdv_btree *btree, void const *item, size_t size);
+void const * mdv_btree_insert(mdv_btree *btree, void const *item);
 
 
 /**
@@ -109,7 +130,7 @@ void * mdv_btree_insert(mdv_btree *btree, void const *item, size_t size);
  * @return On success, returns pointer to found entry
  * @return NULL if no entry found
  */
-void * mdv_btree_find(mdv_btree const *btree, void const *key);
+void const * mdv_btree_find(mdv_btree const *btree, void const *key);
 
 
 /**

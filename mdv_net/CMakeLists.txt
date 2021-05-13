@@ -13,5 +13,5 @@ add_library(mdv::net ALIAS mdv_net)
 
 target_include_directories(mdv_net PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(mdv_net PUBLIC mdv::platform mdv::zf_log mdv::rpmalloc
+target_link_libraries(mdv_net PUBLIC mdv::platform mdv::zf_log
                               PRIVATE Threads::Threads)

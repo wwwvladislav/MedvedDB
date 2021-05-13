@@ -15,15 +15,10 @@ typedef struct {} mdv_service;
 {
     mdv_service(char const *cfg)
     {
-        mdv_alloc_initialize();
-
         mdv_service *service = mdv_service_create_with_config(cfg);
 
         if (!service)
-        {
-            mdv_alloc_finalize();
             return 0;
-        }
 
         return service;
     }
@@ -31,7 +26,6 @@ typedef struct {} mdv_service;
     ~mdv_service()
     {
         mdv_service_free($self);
-        mdv_alloc_finalize();
     }
 
     bool start();

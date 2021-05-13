@@ -46,6 +46,24 @@ static int mdv_test_u32_cmp(void const *a, void const *b)
     }
 
 
+static void mdv_test_lower_bound()
+{
+    uint32_t arr[] = { 1, 2, 3, 4 };
+    uint32_t keys[] = { 0, 1, 2, 3, 4, 5 };
+    uint32_t *values[] = { arr + 0, arr + 0, arr + 1, arr + 2, arr + 3, arr + 4 };
+
+    for (unsigned i = 0; i < sizeof keys / sizeof *keys; ++i)
+    {
+        uint32_t *p = mdv_lower_bound(keys + i,
+                                      arr,
+                                      sizeof arr / sizeof *arr,
+                                      sizeof *arr,
+                                      mdv_test_u32_cmp);
+        mu_check(p == values[i]);
+    }
+}
+
+
 MU_TEST(platform_algorithm)
 {
     {   // Test 1
@@ -83,6 +101,8 @@ MU_TEST(platform_algorithm)
 
         mdv_test_union_and_diff(set_a, set_b, res_union, res_diff);
     }
+
+    mdv_test_lower_bound();
 }
 
 

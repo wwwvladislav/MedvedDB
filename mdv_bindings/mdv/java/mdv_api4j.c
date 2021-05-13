@@ -695,7 +695,7 @@ SWIGINTERN mdv_uuid *new_mdv_uuid(char const *str){
 SWIGINTERN void delete_mdv_uuid(mdv_uuid *self){
         free(self);
     }
-SWIGINTERN char const *mdv_uuid_toString(mdv_uuid *self){
+SWIGINTERN char *mdv_uuid_toString(mdv_uuid *self){
         char *tmp = malloc(MDV_UUID_STR_LEN);
 
         if(!tmp)
@@ -704,7 +704,9 @@ SWIGINTERN char const *mdv_uuid_toString(mdv_uuid *self){
             return 0;
         }
 
-        return mdv_uuid_to_str(self, tmp);
+        mdv_uuid_to_str(self, tmp);
+
+        return tmp;
     }
 
 #ifdef __cplusplus
@@ -3977,20 +3979,6 @@ SWIGEXPORT void JNICALL Java_mdv_mdvJNI_clientFinalize(JNIEnv *jenv, jclass jcls
   (void)jenv;
   (void)jcls;
   mdv_finalize();
-}
-
-
-SWIGEXPORT void JNICALL Java_mdv_mdvJNI_threadInitialize(JNIEnv *jenv, jclass jcls) {
-  (void)jenv;
-  (void)jcls;
-  mdv_thread_initialize();
-}
-
-
-SWIGEXPORT void JNICALL Java_mdv_mdvJNI_threadFinalize(JNIEnv *jenv, jclass jcls) {
-  (void)jenv;
-  (void)jcls;
-  mdv_thread_finalize();
 }
 
 

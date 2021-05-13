@@ -1,14 +1,10 @@
 #include "mdv_topology.h"
 #include "mdv_hashmap.h"
 #include "mdv_rollbacker.h"
-#include "mdv_algorithm.h"
+#include <mdv_algorithm.h>
 #include "mdv_log.h"
 #include <string.h>
-#include <stdlib.h>
 #include <stdatomic.h>
-
-
-typedef int (*mdv_qsort_comparer) (const void *, const void *);
 
 
 /// Topology description
@@ -495,10 +491,10 @@ mdv_topology * mdv_topology_create(mdv_vector *nodes,
         link->node[1] = node1->id;
     }
 
-    qsort(mdv_vector_data(nodes),
-          mdv_vector_size(nodes),
-          sizeof(mdv_toponode),
-          (mdv_qsort_comparer)mdv_node_cmp);
+    mdv_qsort(mdv_vector_data(nodes),
+              mdv_vector_size(nodes),
+              sizeof(mdv_toponode),
+              (mdv_cmp_fn)mdv_node_cmp);
 
     // restore linked node indices
 

@@ -41,11 +41,7 @@ static void *mdv_thread_function(void *arg)
 
     atomic_store_explicit(&thread_arg->is_started, 1, memory_order_release);
 
-    mdv_alloc_thread_initialize();
-
     void *ret = fn(arg);
-
-    mdv_alloc_thread_finalize();
 
     return ret;
 }

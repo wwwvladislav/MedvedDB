@@ -10,6 +10,7 @@
  */
 #pragma once
 #include <mdv_def.h>
+#include <mdv_functional.h>
 
 
 /**
@@ -57,7 +58,7 @@ void mdv_union_u32(uint32_t const *set_a, uint32_t a_size,
  */
 uint32_t mdv_exclude(void       *set_a, size_t itmsize_a, size_t size_a,
                      void const *set_b, size_t itmsize_b, size_t size_b,
-                     int (*cmp)(const void *a, const void *b));
+                     mdv_cmp_fn  cmp);
 
 
 /**
@@ -68,3 +69,53 @@ uint32_t mdv_exclude(void       *set_a, size_t itmsize_a, size_t size_a,
  * @param b [in]    Second value
  */
 #define mdv_swap(type, a, b) { type mdvtmp_85628935 = a; a = b; b = mdvtmp_85628935; }
+
+
+/**
+ * @brief Binary search of a sorted array
+ *
+ * @param key [in]      key to be found
+ * @param base [in]     initial array member
+ * @param nmemb [in]    array size
+ * @param size [in]     item size
+ * @param cmp [in]      comparison function
+ *
+ * @return found item or NULL
+ */
+void *mdv_bsearch(const void *key,
+                  const void *base,
+                  size_t      nmemb,
+                  size_t      size,
+                  mdv_cmp_fn  cmp);
+
+
+/**
+ * @brief Binary search of a sorted array
+ * @details Returns a pointer to the first element that is greater or equal to key
+ * @param key [in]      key to be found
+ * @param base [in]     initial array member
+ * @param nmemb [in]    array size
+ * @param size [in]     item size
+ * @param cmp [in]      comparison function
+ *
+ * @return found item or NULL
+ */
+void *mdv_lower_bound(const void *key,
+                      const void *base,
+                      size_t      nmemb,
+                      size_t      size,
+                      mdv_cmp_fn  cmp);
+
+
+/**
+ * @brief sort an array using quick sort algorithm
+ *
+ * @param base [in]     initial array member
+ * @param nmemb [in]    array size
+ * @param size [in]     item size
+ * @param cmp [in]      comparison function
+ */
+void mdv_qsort(void       *base,
+               size_t      nmemb,
+               size_t      size,
+               mdv_cmp_fn  cmp);

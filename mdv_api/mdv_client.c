@@ -25,25 +25,12 @@ bool mdv_initialize()
     // mdv_logf_set_level(ZF_LOG_VERBOSE);
     signal(SIGPIPE, SIG_IGN);
     mdv_binn_set_allocator();
-    return !mdv_alloc_initialize();
+    return true;
 }
 
 
 void mdv_finalize()
-{
-    mdv_alloc_finalize();
-}
-
-
-void mdv_thread_initialize()
-{
-    mdv_alloc_thread_initialize();
-}
-
-void mdv_thread_finalize()
-{
-    mdv_alloc_thread_finalize();
-}
+{}
 
 
 /// @cond Doxygen_Suppress

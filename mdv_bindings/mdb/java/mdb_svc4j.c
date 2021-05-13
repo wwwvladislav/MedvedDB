@@ -212,21 +212,15 @@ static void SWIGUNUSED SWIG_JavaThrowException(JNIEnv *jenv, SWIG_JavaExceptionC
 #include <mdv_alloc.h>
 
 SWIGINTERN mdv_service *new_mdv_service(char const *cfg){
-        mdv_alloc_initialize();
-
         mdv_service *service = mdv_service_create_with_config(cfg);
 
         if (!service)
-        {
-            mdv_alloc_finalize();
             return 0;
-        }
 
         return service;
     }
 SWIGINTERN void delete_mdv_service(mdv_service *self){
         mdv_service_free(self);
-        mdv_alloc_finalize();
     }
 
 #ifdef __cplusplus

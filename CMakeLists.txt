@@ -18,7 +18,9 @@ cmake_policy(SET CMP0015 NEW)
 # Options
 #*********************************************************
 option(BUILD_JNI "Build java native interface" ON)
+option(ENABLE_SANITIZER "Enable address sanitizer" OFF)
 
+include(cmake/sanitizer.cmake)
 
 #*********************************************************
 # Version

@@ -30,18 +30,6 @@ void mdv_finalize();
 
 
 /**
- * @brief Client thread initialization
- */
-void mdv_thread_initialize();
-
-
-/**
- * @brief Client thread finalization
- */
-void mdv_thread_finalize();
-
-
-/**
  * @brief Connect to DB
  *
  * @param config [in] client configuration

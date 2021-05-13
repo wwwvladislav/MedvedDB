@@ -16,5 +16,5 @@ target_include_directories(mdv_platform PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/generic)
 
 target_link_libraries(mdv_platform
-                      PUBLIC mdv::zf_log mdv::rpmalloc mdv::binn mdv::uuid4
+                      PUBLIC mdv::zf_log mdv::binn mdv::uuid4
                       PRIVATE Threads::Threads m)

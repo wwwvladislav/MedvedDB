@@ -6,25 +6,6 @@
 
 
 #define MDV_COUNT_ALLOCS_STAT
-//#define MDV_USE_STD_ALLOC
-
-
-#ifdef MDV_USE_STD_ALLOC
-
-#define rpmalloc_initialize() 0
-#define rpmalloc_finalize()
-#define rpmalloc_thread_initialize()
-#define rpmalloc_thread_finalize()
-#define rpmalloc(size)                      malloc(size)
-#define rpaligned_alloc(alignment, size)    aligned_alloc(alignment, size)
-#define rprealloc(ptr, size)                realloc(ptr, size)
-#define rpfree(ptr)                         free(ptr)
-
-#else
-
-#include <rpmalloc.h>
-
-#endif
 
 
 #ifdef MDV_COUNT_ALLOCS_STAT
@@ -63,33 +44,9 @@
 #endif
 
 
-int mdv_alloc_initialize()
-{
-    return rpmalloc_initialize();
-}
-
-
-void mdv_alloc_finalize()
-{
-    rpmalloc_finalize();
-}
-
-
-void mdv_alloc_thread_initialize()
-{
-    rpmalloc_thread_initialize();
-}
-
-
-void mdv_alloc_thread_finalize()
-{
-    rpmalloc_thread_finalize();
-}
-
-
 void * mdv_alloc(size_t size, char const *name)
 {
-    void *ptr = rpmalloc(size);
+    void *ptr = malloc(size);
     if (!ptr)
         MDV_LOGE("malloc(%zu) failed", size);
     else
@@ -100,7 +57,9 @@ void * mdv_alloc(size_t size, char const *name)
 
 void * mdv_aligned_alloc(size_t alignment, size_t size, char const *name)
 {
-    void *ptr = rpaligned_alloc(alignment, size);
+    size = ((size + alignment - 1) / alignment) * alignment;
+
+    void *ptr = aligned_alloc(alignment, size);
     if (!ptr)
         MDV_LOGE("aligned_alloc(%zu) failed", size);
     else
@@ -111,7 +70,7 @@ void * mdv_aligned_alloc(size_t alignment, size_t size, char const *name)
 
 void * mdv_realloc(void *ptr, size_t size, char const *name)
 {
-    void *new_ptr = rprealloc(ptr, size);
+    void *new_ptr = realloc(ptr, size);
     if (!new_ptr)
         MDV_LOGE("realloc(%p, %zu) failed", ptr, size);
     else
@@ -124,7 +83,7 @@ void mdv_free(void *ptr, char const *name)
 {
     if (ptr)
     {
-        rpfree(ptr);
+        free(ptr);
         MDV_DEALLOCATION(free, ptr, name);
     }
 }

@@ -7,8 +7,6 @@ add_subdirectory(lmdb)
 
 add_subdirectory(binn)
 
-add_subdirectory(rpmalloc)
-
 add_subdirectory(uuid4)
 
 add_subdirectory(linenoise)

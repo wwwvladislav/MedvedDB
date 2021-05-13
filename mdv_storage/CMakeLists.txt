@@ -12,5 +12,5 @@ add_library(mdv::storage ALIAS mdv_storage)
 target_include_directories(mdv_storage PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(mdv_storage
-                      PUBLIC mdv::platform mdv::zf_log mdv::rpmalloc mdv::uuid4 mdv::types
+                      PUBLIC mdv::platform mdv::zf_log mdv::uuid4 mdv::types
                       mdv::lmdb)

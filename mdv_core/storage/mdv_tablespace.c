@@ -552,7 +552,7 @@ static mdv_table * mdv_tablespace_log_create_table(mdv_tablespace *tablespace, m
     size_t const op_size = offsetof(mdv_trlog_op, payload)
                             + binn_obj_size;
 
-    mdv_trlog_op *op = mdv_aligned_alloc(sizeof(uint64_t), op_size, "trlog_op");
+    mdv_trlog_op *op = mdv_alloc(op_size, "trlog_op");
 
     if (!op)
     {
@@ -621,7 +621,7 @@ static mdv_errno mdv_tablespace_log_rowset(mdv_tablespace *tablespace, mdv_uuid 
                             + sizeof *table_id
                             + binn_rowset_size;
 
-    mdv_trlog_op *op = mdv_aligned_alloc(sizeof(uint64_t), op_size, "trlog_op");
+    mdv_trlog_op *op = mdv_alloc(op_size, "trlog_op");
 
     if (!op)
     {

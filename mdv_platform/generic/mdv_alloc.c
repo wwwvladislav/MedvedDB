@@ -55,19 +55,6 @@ void * mdv_alloc(size_t size, char const *name)
 }
 
 
-void * mdv_aligned_alloc(size_t alignment, size_t size, char const *name)
-{
-    size = ((size + alignment - 1) / alignment) * alignment;
-
-    void *ptr = aligned_alloc(alignment, size);
-    if (!ptr)
-        MDV_LOGE("aligned_alloc(%zu) failed", size);
-    else
-        MDV_ALLOCATION(aligned_alloc, ptr, size, name);
-    return ptr;
-}
-
-
 void * mdv_realloc(void *ptr, size_t size, char const *name)
 {
     void *new_ptr = realloc(ptr, size);

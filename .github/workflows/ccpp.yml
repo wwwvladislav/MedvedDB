@@ -8,7 +8,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: configure
-      run: cmake .
+      run: cmake -DENABLE_SANITIZER=ON .
     - name: make
       run: cmake --build .
     - name: test

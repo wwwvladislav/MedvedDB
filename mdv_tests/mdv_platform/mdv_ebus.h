@@ -24,7 +24,7 @@ static uint32_t mdv_event_test_release(mdv_event *base)
     mdv_event_test *event = (mdv_event_test *)base;
     int rc = atomic_fetch_sub(&event->rc, 1) - 1;
     if (!rc)
-        mdv_free(event, "test_event");
+        mdv_free(event);
     return rc;
 }
 
@@ -66,12 +66,12 @@ MU_TEST(platform_ebus)
     mdv_ebus *ebus = mdv_ebus_create(&config);
     mu_check(ebus);
 
-    mdv_event_test *event_0 = mdv_alloc(sizeof(mdv_event_test), "test_event");
+    mdv_event_test *event_0 = mdv_alloc(sizeof(mdv_event_test));
     event_0->base.vptr = &ievent_test;
     event_0->base.type = 0;
     event_0->rc = 1;
 
-    mdv_event_test *event_1 = mdv_alloc(sizeof(mdv_event_test), "test_event");
+    mdv_event_test *event_1 = mdv_alloc(sizeof(mdv_event_test));
     event_1->base.vptr = &ievent_test;
     event_1->base.type = 1;
     event_1->rc = 1;

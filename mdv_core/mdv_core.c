@@ -41,7 +41,7 @@ mdv_core * mdv_core_create()
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(10);
 
-    mdv_core *core = mdv_alloc(sizeof(mdv_core), "core");
+    mdv_core *core = mdv_alloc(sizeof(mdv_core));
 
     if (!core)
     {
@@ -50,7 +50,7 @@ mdv_core * mdv_core_create()
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, core, "core");
+    mdv_rollbacker_push(rollbacker, mdv_free, core);
 
 
     // DB meta information storage
@@ -292,7 +292,7 @@ void mdv_core_free(mdv_core *core)
         mdv_storage_release(core->storage.metainf);
         mdv_tablespace_close(core->storage.tablespace);
         mdv_ebus_release(core->ebus);
-        mdv_free(core, "core");
+        mdv_free(core);
     }
 }
 

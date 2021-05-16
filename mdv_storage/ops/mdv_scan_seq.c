@@ -38,7 +38,7 @@ static uint32_t mdv_scan_seq_release(mdv_op *op)
         {
             mdv_enumerator_release(scanner->enumerator);
             memset(scanner, 0, sizeof *scanner);
-            mdv_free(scanner, "scan_seq");
+            mdv_free(scanner);
         }
     }
 
@@ -81,7 +81,7 @@ mdv_op * mdv_scan_seq(mdv_2pset *objects)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
-    mdv_scan_seq_t *scanner = mdv_alloc(sizeof(mdv_scan_seq_t), "scan_seq");
+    mdv_scan_seq_t *scanner = mdv_alloc(sizeof(mdv_scan_seq_t));
 
     if (!scanner)
     {
@@ -90,7 +90,7 @@ mdv_op * mdv_scan_seq(mdv_2pset *objects)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, scanner, "scan_seq");
+    mdv_rollbacker_push(rollbacker, mdv_free, scanner);
 
     scanner->enumerator = mdv_2pset_enumerator(objects);
 

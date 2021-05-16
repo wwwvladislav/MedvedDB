@@ -35,7 +35,7 @@ mdv_tables * mdv_tables_open(char const *root_dir)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
-    mdv_tables *tables = mdv_alloc(sizeof(mdv_tables), "tables");
+    mdv_tables *tables = mdv_alloc(sizeof(mdv_tables));
 
     if (!tables)
     {
@@ -44,7 +44,7 @@ mdv_tables * mdv_tables_open(char const *root_dir)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, tables, "tables");
+    mdv_rollbacker_push(rollbacker, mdv_free, tables);
 
     tables->desc = mdv_table_create(&MDV_SYSTBL_TABLES, &MDV_TABLES_DESC);
 
@@ -92,7 +92,7 @@ uint32_t mdv_tables_release(mdv_tables *tables)
     if (!rc)
     {
         mdv_table_release(tables->desc);
-        mdv_free(tables, "tables");
+        mdv_free(tables);
     }
 
     return rc;
@@ -207,7 +207,7 @@ static mdv_rowset * mdv_tables_slice_impl(mdv_tables           *tables,
                 ++i;
             }
             else if (fst == 0)
-                mdv_free(row, "rowlist_entry");
+                mdv_free(row);
             else
             {
                 MDV_LOGE("Table filter failed");

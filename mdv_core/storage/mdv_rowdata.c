@@ -19,7 +19,7 @@ mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_uuid const *table)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
-    mdv_rowdata *rowdata = mdv_alloc(sizeof(mdv_rowdata), "rowdata");
+    mdv_rowdata *rowdata = mdv_alloc(sizeof(mdv_rowdata));
 
     if (!rowdata)
     {
@@ -28,7 +28,7 @@ mdv_rowdata * mdv_rowdata_open(char const *dir, mdv_uuid const *table)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, rowdata, "rowdata");
+    mdv_rollbacker_push(rollbacker, mdv_free, rowdata);
 
     rowdata->table = *table;
 
@@ -68,7 +68,7 @@ uint32_t mdv_rowdata_release(mdv_rowdata *rowdata)
 
     if (!rc)
     {
-        mdv_free(rowdata, "rowdata");
+        mdv_free(rowdata);
     }
 
     return rc;
@@ -210,7 +210,7 @@ static mdv_rowset * mdv_rowdata_slice_impl(mdv_enumerator       *enumerator,
                 ++i;
             }
             else if (fst == 0)
-                mdv_free(row, "rowlist_entry");
+                mdv_free(row);
             else
             {
                 MDV_LOGE("Rowdata filter failed");

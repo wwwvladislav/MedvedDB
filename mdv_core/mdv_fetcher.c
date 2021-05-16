@@ -212,7 +212,7 @@ static void mdv_fetcher_finalize(mdv_job_base *job)
     mdv_view_release(ctx->view);
     mdv_fetcher_release(fetcher);
     atomic_fetch_sub_explicit(&fetcher->active_jobs, 1, memory_order_relaxed);
-    mdv_free(job, "fetcher_job");
+    mdv_free(job);
 }
 
 
@@ -227,7 +227,7 @@ static mdv_errno mdv_fetcher_job_emit(mdv_fetcher *fetcher, mdv_evt_view_fetch c
         return MDV_FAILED;
     }
 
-    mdv_fetcher_job *job = mdv_alloc(sizeof(mdv_fetcher_job), "fetcher_job");
+    mdv_fetcher_job *job = mdv_alloc(sizeof(mdv_fetcher_job));
 
     if (!job)
     {
@@ -252,7 +252,7 @@ static mdv_errno mdv_fetcher_job_emit(mdv_fetcher *fetcher, mdv_evt_view_fetch c
         MDV_LOGE("Data fetch job failed");
         mdv_view_release(view);
         mdv_fetcher_release(fetcher);
-        mdv_free(job, "fetcher_job");
+        mdv_free(job);
         *err_msg = "Data fetch job failed";
     }
     else
@@ -503,7 +503,7 @@ mdv_fetcher * mdv_fetcher_create(mdv_ebus *ebus, mdv_jobber_config const *jconfi
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
 
-    mdv_fetcher *fetcher = mdv_alloc(sizeof(mdv_fetcher), "fetcher");
+    mdv_fetcher *fetcher = mdv_alloc(sizeof(mdv_fetcher));
 
     if (!fetcher)
     {
@@ -512,7 +512,7 @@ mdv_fetcher * mdv_fetcher_create(mdv_ebus *ebus, mdv_jobber_config const *jconfi
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, fetcher, "fetcher");
+    mdv_rollbacker_push(rollbacker, mdv_free, fetcher);
 
     atomic_init(&fetcher->rc, 1);
     atomic_init(&fetcher->active_jobs, 0);
@@ -598,7 +598,7 @@ static void mdv_fetcher_free(mdv_fetcher *fetcher)
     mdv_mutex_free(&fetcher->mutex);
 
     memset(fetcher, 0, sizeof(*fetcher));
-    mdv_free(fetcher, "fetcher");
+    mdv_free(fetcher);
 }
 
 

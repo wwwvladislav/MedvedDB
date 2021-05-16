@@ -118,8 +118,7 @@ typedef struct mdv_datums {} mdv_datums;
     mdv_datums(uint32_t size)
     {
         mdv_datums *datums = mdv_alloc(offsetof(mdv_datums, data)
-                                        + sizeof(mdv_datum*) * size,
-                                       "datums");
+                                        + sizeof(mdv_datum*) * size);
 
         if(!datums)
             return 0;
@@ -135,7 +134,7 @@ typedef struct mdv_datums {} mdv_datums;
     {
         for(uint32_t i = 0; i < $self->size; ++i)
             mdv_datum_free($self->data[i]);
-        mdv_free($self, "datums");
+        mdv_free($self);
     }
 
     uint32_t cols() const

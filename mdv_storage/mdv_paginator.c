@@ -87,7 +87,7 @@ static mdv_errno mdv_pages_storage_open(
 
     mdv_rollbacker_push(rollbacker, mdv_descriptor_close, fd);
 
-    mdv_pages_storage *storage = mdv_alloc(sizeof(mdv_pages_storage), "pages_storage");
+    mdv_pages_storage *storage = mdv_alloc(sizeof(mdv_pages_storage));
 
     if (!storage)
     {
@@ -96,7 +96,7 @@ static mdv_errno mdv_pages_storage_open(
         return MDV_NO_MEM;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, storage, "pages_storage");
+    mdv_rollbacker_push(rollbacker, mdv_free, storage);
 
     atomic_init(&storage->rc, 1);
 
@@ -273,7 +273,7 @@ mdv_paginator * mdv_paginator_open(size_t capacity, size_t page_size, char const
 
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(6);
 
-    mdv_paginator *paginator = mdv_alloc(sizeof(mdv_paginator), "paginator");
+    mdv_paginator *paginator = mdv_alloc(sizeof(mdv_paginator));
 
     if (!paginator)
     {
@@ -282,7 +282,7 @@ mdv_paginator * mdv_paginator_open(size_t capacity, size_t page_size, char const
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, paginator, "paginator");
+    mdv_rollbacker_push(rollbacker, mdv_free, paginator);
 
     paginator->free_pages = mdv_hashmap_create(mdv_free_pages, size, 4, mdv_size_hash, mdv_size_cmp);
 
@@ -360,7 +360,7 @@ static void mdv_paginator_free(mdv_paginator *paginator)
     mdv_mutex_free(&paginator->storages_mutex);
     mdv_mutex_free(&paginator->buffers_mutex);
     memset(paginator, 0, sizeof *paginator);
-    mdv_free(paginator, "paginator");
+    mdv_free(paginator);
 }
 
 

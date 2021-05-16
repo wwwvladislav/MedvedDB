@@ -53,7 +53,7 @@ mdv_btree * _mdv_btree_create(uint32_t             order,
                               mdv_cmp_fn           key_cmp_fn,
                               mdv_btree_allocator *allocator)
 {
-    mdv_btree *btree = mdv_alloc(sizeof(mdv_btree), "btree");
+    mdv_btree *btree = mdv_alloc(sizeof(mdv_btree));
 
     if (!btree)
     {
@@ -80,7 +80,7 @@ static void mdv_btree_free(mdv_btree *btree)
 {
     btree->allocator->release(btree->allocator);
     memset(btree, 0, sizeof *btree);
-    mdv_free(btree, "btree");
+    mdv_free(btree);
 }
 
 

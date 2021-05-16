@@ -716,7 +716,7 @@ mdv_channel * mdv_user_create(mdv_descriptor  fd,
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
-    mdv_user *user = mdv_alloc(sizeof(mdv_user), "userctx");
+    mdv_user *user = mdv_alloc(sizeof(mdv_user));
 
     if (!user)
     {
@@ -725,7 +725,7 @@ mdv_channel * mdv_user_create(mdv_descriptor  fd,
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, user, "userctx");
+    mdv_rollbacker_push(rollbacker, mdv_free, user);
 
     MDV_LOGD("User %p initialization", user);
 
@@ -823,7 +823,7 @@ static void mdv_user_free(mdv_user *user)
         mdv_dispatcher_free(user->dispatcher);
         mdv_safeptr_free(user->topology);
         mdv_ebus_release(user->ebus);
-        mdv_free(user, "userctx");
+        mdv_free(user);
         MDV_LOGD("User %p freed", user);
     }
 }

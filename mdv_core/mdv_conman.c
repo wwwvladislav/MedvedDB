@@ -147,7 +147,7 @@ mdv_conman * mdv_conman_create(mdv_conman_config const *conman_config, mdv_ebus 
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(4);
 
-    mdv_conman *conman = mdv_alloc(sizeof(mdv_conman), "conman");
+    mdv_conman *conman = mdv_alloc(sizeof(mdv_conman));
 
     if (!conman)
     {
@@ -156,7 +156,7 @@ mdv_conman * mdv_conman_create(mdv_conman_config const *conman_config, mdv_ebus 
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, conman, "conman");
+    mdv_rollbacker_push(rollbacker, mdv_free, conman);
 
     conman->uuid     = conman_config->uuid;
 
@@ -240,7 +240,7 @@ void mdv_conman_free(mdv_conman *conman)
         mdv_safeptr_free(conman->topology);
         mdv_ebus_release(conman->ebus);
 
-        mdv_free(conman, "conman");
+        mdv_free(conman);
     }
 }
 

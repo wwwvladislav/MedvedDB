@@ -60,7 +60,7 @@ mdv_errno mdv_read_msg(mdv_descriptor fd, mdv_msg *msg)
 
             if (msg->hdr.size)
             {
-                msg->payload = mdv_alloc(msg->hdr.size, "mdv_msg.payload");
+                msg->payload = mdv_alloc(msg->hdr.size);
 
                 if (!msg->payload)
                 {
@@ -96,6 +96,6 @@ mdv_errno mdv_read_msg(mdv_descriptor fd, mdv_msg *msg)
 
 void mdv_free_msg(mdv_msg *msg)
 {
-    mdv_free(msg->payload, "mdv_msg.payload");
+    mdv_free(msg->payload);
     memset(msg, 0, sizeof *msg);
 }

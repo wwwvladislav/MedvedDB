@@ -40,7 +40,7 @@ uint32_t mdv_evt_create_table_release(mdv_evt_create_table *evt)
     uint32_t rc = mdv_event_release(&evt->base);
 
     if (!rc)
-        mdv_free(desc, "table_desc");
+        mdv_free(desc);
 
     return rc;
 }

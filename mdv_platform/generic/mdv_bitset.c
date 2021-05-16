@@ -23,7 +23,7 @@ static size_t mdv_bitset_capacity_calc(size_t size)
 
 mdv_bitset * mdv_bitset_create(size_t size, mdv_allocator const *allocator)
 {
-    mdv_bitset *bitset = allocator->alloc(offsetof(mdv_bitset, bits) + mdv_bitset_capacity_calc(size) / CHAR_BIT, "bitset");
+    mdv_bitset *bitset = allocator->alloc(offsetof(mdv_bitset, bits) + mdv_bitset_capacity_calc(size) / CHAR_BIT);
 
     if (!bitset)
     {
@@ -45,7 +45,7 @@ mdv_bitset * mdv_bitset_create(size_t size, mdv_allocator const *allocator)
 static void mdv_bitset_free(mdv_bitset *bitset)
 {
     if (bitset)
-        bitset->allocator->free(bitset, "bitset");
+        bitset->allocator->free(bitset);
 }
 
 

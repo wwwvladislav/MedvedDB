@@ -48,7 +48,7 @@ static mdv_table * mdv_table_create_impl(mdv_uuid const       *id,
 
     size_t const size = mdv_table_size(desc, mask, &fields_count);
 
-    mdv_table *table = mdv_alloc(size, "table");
+    mdv_table *table = mdv_alloc(size);
 
     if (!table)
     {
@@ -124,7 +124,7 @@ uint32_t mdv_table_release(mdv_table *table)
     uint32_t rc = atomic_fetch_sub_explicit(&table->rc, 1, memory_order_release) - 1;
 
     if (!rc)
-        mdv_free(table, "table");
+        mdv_free(table);
 
     return rc;
 }

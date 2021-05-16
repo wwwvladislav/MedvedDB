@@ -2,18 +2,17 @@
 #include <mdv_def.h>
 
 
-void *mdv_alloc(size_t size, char const *name);
-void *mdv_realloc(void *ptr, size_t size, char const *name);
-void  mdv_free(void *ptr, char const *name);
-int   mdv_allocations();
+void *mdv_alloc(size_t size);
+void *mdv_realloc(void *ptr, size_t size);
+void  mdv_free(void *ptr);
 
 
 /// Memeory allocator
 typedef struct
 {
-    void * (*alloc)(size_t size, char const *name);
-    void * (*realloc)(void *ptr, size_t size, char const *name);
-    void (*free)(void *ptr, char const *name);
+    void * (*alloc)(size_t size);
+    void * (*realloc)(void *ptr, size_t size);
+    void (*free)(void *ptr);
 } mdv_allocator;
 
 

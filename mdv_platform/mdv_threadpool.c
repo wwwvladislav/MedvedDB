@@ -90,7 +90,7 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
 
     size_t const mem_size = offsetof(mdv_threadpool, data_space) + config->size * sizeof(mdv_thread);
 
-    mdv_threadpool *tp = (mdv_threadpool *)mdv_alloc(mem_size, "threadpool");
+    mdv_threadpool *tp = (mdv_threadpool *)mdv_alloc(mem_size);
 
     if(!tp)
     {
@@ -103,7 +103,7 @@ mdv_threadpool * mdv_threadpool_create(mdv_threadpool_config const *config)
 
     tp->config = *config;
 
-    mdv_rollbacker_push(rollbacker, mdv_free, tp, "threadpool");
+    mdv_rollbacker_push(rollbacker, mdv_free, tp);
 
 
     tp->epollfd = mdv_epoll_create();
@@ -217,7 +217,7 @@ void mdv_threadpool_free(mdv_threadpool *threadpool)
         mdv_eventfd_close(threadpool->stopfd);
         mdv_hashmap_release(threadpool->tasks);
         mdv_mutex_free(&threadpool->tasks_mtx);
-        mdv_free(threadpool, "threadpool");
+        mdv_free(threadpool);
     }
 }
 

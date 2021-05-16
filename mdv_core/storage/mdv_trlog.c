@@ -110,7 +110,7 @@ mdv_trlog * mdv_trlog_open(mdv_ebus *ebus, char const *dir, mdv_uuid const *uuid
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
-    mdv_trlog *trlog = mdv_alloc(sizeof(mdv_trlog), "trlog");
+    mdv_trlog *trlog = mdv_alloc(sizeof(mdv_trlog));
 
     if (!trlog)
     {
@@ -119,7 +119,7 @@ mdv_trlog * mdv_trlog_open(mdv_ebus *ebus, char const *dir, mdv_uuid const *uuid
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, trlog, "trlog");
+    mdv_rollbacker_push(rollbacker, mdv_free, trlog);
 
     trlog->uuid = *uuid;
     trlog->id = id;
@@ -186,7 +186,7 @@ uint32_t mdv_trlog_release(mdv_trlog *trlog)
                                  sizeof mdv_trlog_handlers / sizeof *mdv_trlog_handlers);
 
         mdv_ebus_release(trlog->ebus);
-        mdv_free(trlog, "trlog");
+        mdv_free(trlog);
     }
 
     return rc;
@@ -445,7 +445,7 @@ static size_t mdv_trlog_read(mdv_trlog                    *trlog,
     {
         uint64_t const id = *(uint64_t*)entry.key.ptr;
 
-        mdv_trlog_entry *op = mdv_alloc(sizeof(mdv_trlog_entry) + entry.value.size, "trlog_entry");
+        mdv_trlog_entry *op = mdv_alloc(sizeof(mdv_trlog_entry) + entry.value.size);
 
         if (!op)
         {
@@ -528,7 +528,7 @@ size_t mdv_trlog_range_read(mdv_trlog                    *trlog,
         if(id >= to)
             mdv_map_foreach_break(entry);
 
-        mdv_trlog_entry *op = mdv_alloc(sizeof(mdv_trlog_entry) + entry.value.size, "trlog_entry");
+        mdv_trlog_entry *op = mdv_alloc(sizeof(mdv_trlog_entry) + entry.value.size);
 
         if (!op)
         {

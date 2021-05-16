@@ -37,7 +37,7 @@ static uint32_t mdv_scan_list_release(mdv_op *op)
         if (!rc)
         {
             memset(scanner, 0, sizeof *scanner);
-            mdv_free(scanner, "scan_list");
+            mdv_free(scanner);
         }
     }
 
@@ -87,7 +87,7 @@ static mdv_errno mdv_scan_list_next(mdv_op *op, mdv_kvdata *kvdata)
 
 mdv_op * mdv_scan_list(mdv_list const *list)
 {
-    mdv_scan_list_t *scanner = mdv_alloc(sizeof(mdv_scan_list_t), "scan_list");
+    mdv_scan_list_t *scanner = mdv_alloc(sizeof(mdv_scan_list_t));
 
     if (!scanner)
     {

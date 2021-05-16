@@ -24,7 +24,7 @@ static uint32_t mdv_btree_test_allocator_release(mdv_btree_allocator *allocator)
     uint32_t rc = --test_allocator->rc;
     if (!rc)
     {
-        mdv_free(test_allocator, "mdv_btree_test_allocator");
+        mdv_free(test_allocator);
     }
     return rc;
 }
@@ -58,7 +58,7 @@ static void mdv_btree_test_allocator_page_release(mdv_pageid_t id)
 
 static mdv_btree_test_allocator * mdv_btree_test_allocator_create()
 {
-    mdv_btree_test_allocator *allocator = mdv_alloc(sizeof(mdv_btree_test_allocator), "mdv_btree_test_allocator");
+    mdv_btree_test_allocator *allocator = mdv_alloc(sizeof(mdv_btree_test_allocator));
     allocator->base.retain = mdv_btree_test_allocator_retain;
     allocator->base.release = mdv_btree_test_allocator_release;
     allocator->base.page_alloc = mdv_btree_test_allocator_page_alloc;

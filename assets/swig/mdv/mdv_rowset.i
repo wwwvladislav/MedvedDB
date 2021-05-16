@@ -75,7 +75,7 @@ typedef struct {} mdv_rows_enumerator;
 
     mdv_rows_enumerator * get_enumerator()
     {
-        mdv_rows_enumerator *enumerator = mdv_alloc(sizeof(mdv_rows_enumerator), "rows_enumerator");
+        mdv_rows_enumerator *enumerator = mdv_alloc(sizeof(mdv_rows_enumerator));
 
         if(!enumerator)
             return 0;
@@ -84,7 +84,7 @@ typedef struct {} mdv_rows_enumerator;
 
         if (!enumerator->enumerator)
         {
-            mdv_free(enumerator, "rows_enumerator");
+            mdv_free(enumerator);
             return 0;
         }
 
@@ -102,7 +102,7 @@ typedef struct {} mdv_rows_enumerator;
     {
         mdv_table_release($self->table);
         mdv_enumerator_release($self->enumerator);
-        mdv_free($self, "rows_enumerator");
+        mdv_free($self);
     }
 
     bool reset()

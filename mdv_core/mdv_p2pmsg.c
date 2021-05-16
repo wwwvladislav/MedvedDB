@@ -365,7 +365,7 @@ bool mdv_unbinn_p2p_trlog_data(binn const *obj, mdv_msg_p2p_trlog_data *msg)
             break;
         }
 
-        mdv_trlog_entry *op = mdv_alloc(sizeof(mdv_trlog_entry) + payload_size, "trlog_entry");
+        mdv_trlog_entry *op = mdv_alloc(sizeof(mdv_trlog_entry) + payload_size);
 
         if (!op)
         {

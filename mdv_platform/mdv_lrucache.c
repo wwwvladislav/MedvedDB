@@ -44,7 +44,7 @@ mdv_lrucache * mdv_lrucache_create(size_t capacity)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
-    mdv_lrucache *cache = mdv_alloc(sizeof(mdv_lrucache), "lru_cache");
+    mdv_lrucache *cache = mdv_alloc(sizeof(mdv_lrucache));
 
     if (!cache)
     {
@@ -53,7 +53,7 @@ mdv_lrucache * mdv_lrucache_create(size_t capacity)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, cache, "lru_cache");
+    mdv_rollbacker_push(rollbacker, mdv_free, cache);
 
     atomic_init(&cache->rc, 1);
 
@@ -93,7 +93,7 @@ static void mdv_lrucache_free(mdv_lrucache *cache)
 {
     mdv_hashmap_release(cache->keys);
     mdv_list_clear(&cache->values);
-    mdv_free(cache, "lru_cache");
+    mdv_free(cache);
 }
 
 
@@ -139,7 +139,7 @@ bool mdv_lrucache_put(mdv_lrucache *cache, mdv_lruitem new_item, mdv_lruitem *ol
 
     if(mdv_hashmap_size(cache->keys) < cache->capacity)
     {
-        mdv_lrulist_entry *lrulist_entry = mdv_alloc(sizeof(mdv_lrulist_entry), "lrulist_entry");
+        mdv_lrulist_entry *lrulist_entry = mdv_alloc(sizeof(mdv_lrulist_entry));
 
         if(!lrulist_entry)
         {
@@ -159,7 +159,7 @@ bool mdv_lrucache_put(mdv_lrucache *cache, mdv_lruitem new_item, mdv_lruitem *ol
         if (!mdv_hashmap_insert(cache->keys, &lrumap_entry, sizeof lrumap_entry))
         {
             MDV_LOGE("No memory for lrumap_entry");
-            mdv_free(lrulist_entry, "lrulist_entry");
+            mdv_free(lrulist_entry);
             return false;
         }
 

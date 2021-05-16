@@ -109,13 +109,13 @@ static void mdv_syncerlog_data_send_finalize(mdv_job_base *job)
     mdv_trlog_release(ctx->trlog);
     atomic_fetch_sub_explicit(&syncer->active_jobs, 1, memory_order_relaxed);
     mdv_syncerlog_release(syncer);
-    mdv_free(job, "syncer_data_send_job");
+    mdv_free(job);
 }
 
 
 static mdv_errno mdv_syncerlog_data_send_job_emit(mdv_syncerlog *syncerlog, mdv_trlog *trlog, uint64_t lrange, uint64_t rrange)
 {
-    mdv_syncerlog_data_send_job *job = mdv_alloc(sizeof(mdv_syncerlog_data_send_job), "syncer_data_send_job");
+    mdv_syncerlog_data_send_job *job = mdv_alloc(sizeof(mdv_syncerlog_data_send_job));
 
     if (!job)
     {
@@ -137,7 +137,7 @@ static mdv_errno mdv_syncerlog_data_send_job_emit(mdv_syncerlog *syncerlog, mdv_
         MDV_LOGE("Data synchronization job failed");
         mdv_trlog_release(trlog);
         mdv_syncerlog_release(syncerlog);
-        mdv_free(job, "syncer_data_send_job");
+        mdv_free(job);
     }
     else
         atomic_fetch_add_explicit(&syncerlog->active_jobs, 1, memory_order_relaxed);
@@ -293,7 +293,7 @@ mdv_syncerlog * mdv_syncerlog_create(mdv_uuid const *uuid, mdv_uuid const *peer,
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
-    mdv_syncerlog *syncerlog = mdv_alloc(sizeof(mdv_syncerlog), "syncerlog");
+    mdv_syncerlog *syncerlog = mdv_alloc(sizeof(mdv_syncerlog));
 
     if (!syncerlog)
     {
@@ -302,7 +302,7 @@ mdv_syncerlog * mdv_syncerlog_create(mdv_uuid const *uuid, mdv_uuid const *peer,
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, syncerlog, "syncerlog");
+    mdv_rollbacker_push(rollbacker, mdv_free, syncerlog);
 
     atomic_init(&syncerlog->rc, 1);
     atomic_init(&syncerlog->requests, 0);
@@ -375,7 +375,7 @@ static void mdv_syncerlog_free(mdv_syncerlog *syncerlog)
                 mdv_uuid_to_str(&syncerlog->trlog, trlog_uuid_str));
 
     memset(syncerlog, 0, sizeof(*syncerlog));
-    mdv_free(syncerlog, "syncerlog");
+    mdv_free(syncerlog);
 }
 
 

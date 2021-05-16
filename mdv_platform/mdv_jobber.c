@@ -64,7 +64,7 @@ mdv_jobber * mdv_jobber_create(mdv_jobber_config const *config)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
-    mdv_jobber *jobber = mdv_alloc(offsetof(mdv_jobber, jobs) + config->queue.count * sizeof(mdv_jobber_queue), "jobber");
+    mdv_jobber *jobber = mdv_alloc(offsetof(mdv_jobber, jobs) + config->queue.count * sizeof(mdv_jobber_queue));
 
     if (!jobber)
     {
@@ -73,7 +73,7 @@ mdv_jobber * mdv_jobber_create(mdv_jobber_config const *config)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, jobber, "jobber");
+    mdv_rollbacker_push(rollbacker, mdv_free, jobber);
 
     atomic_init(&jobber->rc, 1);
     atomic_init(&jobber->idx, 0);
@@ -159,7 +159,7 @@ static void mdv_jobber_free(mdv_jobber *jobber)
         mdv_queuefd_free(jobber->jobs[i]);
     }
 
-    mdv_free(jobber, "jobber");
+    mdv_free(jobber);
 }
 
 

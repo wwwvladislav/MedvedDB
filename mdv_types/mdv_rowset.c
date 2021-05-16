@@ -46,7 +46,7 @@ static uint32_t mdv_rowset_impl_release(mdv_rowset *rowset)
         {
             mdv_list_clear(&impl->rows);
             mdv_table_release(impl->table);
-            mdv_free(impl, "mem_rowset");
+            mdv_free(impl);
         }
     }
 
@@ -89,7 +89,7 @@ static size_t mdv_rowset_impl_append(mdv_rowset *rowset, mdv_data const **rows, 
             row_size += row[j].size;
 
         // Memory allocation for new row
-        mdv_rowlist_entry *entry = mdv_alloc(row_size, "rowlist_entry");
+        mdv_rowlist_entry *entry = mdv_alloc(row_size);
 
         if (!entry)
         {
@@ -145,7 +145,7 @@ static uint32_t mdv_rowset_enumerator_impl_release(mdv_enumerator *enumerator)
         if (!rc)
         {
             mdv_rowset_release(&impl->rowset->base);
-            mdv_free(enumerator, "rowset_enumerator");
+            mdv_free(enumerator);
         }
     }
 
@@ -184,7 +184,7 @@ static void * mdv_rowset_enumerator_impl_current(mdv_enumerator *enumerator)
 
 static mdv_enumerator * mdv_rowset_enumerator_impl_create(mdv_rowset *rowset)
 {
-    mdv_rowset_enumerator_impl *enumerator = mdv_alloc(sizeof(mdv_rowset_enumerator_impl), "rowset_enumerator");
+    mdv_rowset_enumerator_impl *enumerator = mdv_alloc(sizeof(mdv_rowset_enumerator_impl));
 
     if (!enumerator)
     {
@@ -221,7 +221,7 @@ static mdv_enumerator * mdv_rowset_impl_enumerator(mdv_rowset *rowset)
 
 mdv_rowset * mdv_rowset_create(mdv_table *table)
 {
-    mdv_rowset_impl *impl = mdv_alloc(sizeof(mdv_rowset_impl), "mem_rowset");
+    mdv_rowset_impl *impl = mdv_alloc(sizeof(mdv_rowset_impl));
 
     if (!impl)
     {

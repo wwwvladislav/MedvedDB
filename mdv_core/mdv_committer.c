@@ -77,13 +77,13 @@ static void mdv_committer_finalize(mdv_job_base *job)
     mdv_committer         *committer = ctx->committer;
     mdv_committer_release(committer);
     atomic_fetch_sub_explicit(&committer->active_jobs, 1, memory_order_relaxed);
-    mdv_free(job, "committer_job");
+    mdv_free(job);
 }
 
 
 static mdv_errno mdv_committer_job_emit(mdv_committer *committer, mdv_log_committer *log_committer)
 {
-    mdv_committer_job *job = mdv_alloc(sizeof(mdv_committer_job), "committer_job");
+    mdv_committer_job *job = mdv_alloc(sizeof(mdv_committer_job));
 
     if (!job)
     {
@@ -102,7 +102,7 @@ static mdv_errno mdv_committer_job_emit(mdv_committer *committer, mdv_log_commit
     {
         MDV_LOGE("Data committer job failed");
         mdv_committer_release(committer);
-        mdv_free(job, "committer_job");
+        mdv_free(job);
     }
     else
         atomic_fetch_add_explicit(&committer->active_jobs, 1, memory_order_relaxed);
@@ -184,7 +184,7 @@ mdv_committer * mdv_committer_create(mdv_ebus *ebus, mdv_jobber_config const *jc
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(6);
 
-    mdv_committer *committer = mdv_alloc(sizeof(mdv_committer), "committer");
+    mdv_committer *committer = mdv_alloc(sizeof(mdv_committer));
 
     if (!committer)
     {
@@ -193,7 +193,7 @@ mdv_committer * mdv_committer_create(mdv_ebus *ebus, mdv_jobber_config const *jc
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, committer, "committer");
+    mdv_rollbacker_push(rollbacker, mdv_free, committer);
 
     atomic_init(&committer->rc, 1);
     atomic_init(&committer->active_jobs, 0);
@@ -288,7 +288,7 @@ static void mdv_committer_free(mdv_committer *committer)
 
     memset(committer, 0, sizeof(*committer));
 
-    mdv_free(committer, "committer");
+    mdv_free(committer);
 }
 
 

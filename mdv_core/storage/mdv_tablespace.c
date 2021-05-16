@@ -367,7 +367,7 @@ mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid, mdv_ebus *ebus, mdv_t
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(8);
 
-    mdv_tablespace *tablespace = mdv_alloc(sizeof(mdv_tablespace), "tablespace");
+    mdv_tablespace *tablespace = mdv_alloc(sizeof(mdv_tablespace));
 
     if (!tablespace)
     {
@@ -376,7 +376,7 @@ mdv_tablespace * mdv_tablespace_open(mdv_uuid const *uuid, mdv_ebus *ebus, mdv_t
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, tablespace, "tablespace");
+    mdv_rollbacker_push(rollbacker, mdv_free, tablespace);
 
     tablespace->uuid = *uuid;
 
@@ -506,7 +506,7 @@ void mdv_tablespace_close(mdv_tablespace *tablespace)
         mdv_safeptr_free(tablespace->storage_ids);
 
         memset(tablespace, 0, sizeof(*tablespace));
-        mdv_free(tablespace, "tablespace");
+        mdv_free(tablespace);
     }
 }
 
@@ -552,7 +552,7 @@ static mdv_table * mdv_tablespace_log_create_table(mdv_tablespace *tablespace, m
     size_t const op_size = offsetof(mdv_trlog_op, payload)
                             + binn_obj_size;
 
-    mdv_trlog_op *op = mdv_alloc(op_size, "trlog_op");
+    mdv_trlog_op *op = mdv_alloc(op_size);
 
     if (!op)
     {
@@ -560,7 +560,7 @@ static mdv_table * mdv_tablespace_log_create_table(mdv_tablespace *tablespace, m
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, op, "trlog_op");
+    mdv_rollbacker_push(rollbacker, mdv_free, op);
 
     op->size = op_size;
     op->type = MDV_OP_TABLE_CREATE;
@@ -621,7 +621,7 @@ static mdv_errno mdv_tablespace_log_rowset(mdv_tablespace *tablespace, mdv_uuid 
                             + sizeof *table_id
                             + binn_rowset_size;
 
-    mdv_trlog_op *op = mdv_alloc(op_size, "trlog_op");
+    mdv_trlog_op *op = mdv_alloc(op_size);
 
     if (!op)
     {
@@ -629,7 +629,7 @@ static mdv_errno mdv_tablespace_log_rowset(mdv_tablespace *tablespace, mdv_uuid 
         return MDV_NO_MEM;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, op, "trlog_op");
+    mdv_rollbacker_push(rollbacker, mdv_free, op);
 
     op->size = op_size;
     op->type = MDV_OP_ROW_INSERT;

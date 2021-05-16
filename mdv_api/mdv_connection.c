@@ -32,7 +32,7 @@ static mdv_channel * mdv_connection_retain_impl(mdv_channel *channel)
 static void mdv_connection_free(mdv_connection *con)
 {
     mdv_dispatcher_free(con->dispatcher);
-    mdv_free(con, "connection");
+    mdv_free(con);
     MDV_LOGD("Connection %p freed", con);
 }
 
@@ -88,7 +88,7 @@ mdv_connection * mdv_connection_create(mdv_descriptor fd, mdv_uuid const *uuid)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
-    mdv_connection *con = mdv_alloc(sizeof(mdv_connection), "connection");
+    mdv_connection *con = mdv_alloc(sizeof(mdv_connection));
 
     if (!con)
     {
@@ -98,7 +98,7 @@ mdv_connection * mdv_connection_create(mdv_descriptor fd, mdv_uuid const *uuid)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, con, "connection");
+    mdv_rollbacker_push(rollbacker, mdv_free, con);
 
     MDV_LOGD("Connection %p initialization", con);
 

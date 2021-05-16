@@ -4,19 +4,19 @@
 
 static void * mdv_alloc_binn(size_t size)
 {
-    return mdv_alloc(size, "binn");
+    return mdv_alloc(size);
 }
 
 
 static void * mdv_realloc_binn(void *ptr, size_t size)
 {
-    return mdv_realloc(ptr, size, "binn");
+    return mdv_realloc(ptr, size);
 }
 
 
 static void mdv_free_binn(void *ptr)
 {
-    mdv_free(ptr, "binn");
+    mdv_free(ptr);
 }
 
 

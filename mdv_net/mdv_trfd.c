@@ -23,7 +23,7 @@ static mdv_transport * mdv_trfd_retain(mdv_transport *tr)
 static void mdv_trfd_free(mdv_trfd *trfd)
 {
     mdv_descriptor_close(trfd->fd);
-    mdv_free(trfd, "trfd");
+    mdv_free(trfd);
 }
 
 
@@ -87,7 +87,7 @@ static mdv_descriptor mdv_trfd_fd(mdv_transport *tr)
 
 mdv_transport * mdv_trfd_create(mdv_descriptor fd)
 {
-    mdv_trfd *trfd = mdv_alloc(sizeof(mdv_trfd), "trfd");
+    mdv_trfd *trfd = mdv_alloc(sizeof(mdv_trfd));
 
     if (!trfd)
     {

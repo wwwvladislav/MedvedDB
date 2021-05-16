@@ -13,8 +13,8 @@ typedef struct {} NAME;
 
 %extend NAME
 {
-    NAME(int size)                      { return mdv_alloc(sizeof(TYPE) * size, "carray"); }
-    ~NAME()                             { mdv_free(self, "carray"); }
+    NAME(int size)                      { return mdv_alloc(sizeof(TYPE) * size); }
+    ~NAME()                             { mdv_free(self); }
     TYPE get(size_t idx)                { return self[idx]; }
     void set(size_t idx, TYPE value)    { self[idx] = value; }
 };

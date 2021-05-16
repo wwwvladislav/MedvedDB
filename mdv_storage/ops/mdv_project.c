@@ -41,7 +41,7 @@ static uint32_t mdv_project_range_release(mdv_op *op)
             binn_free(projection->current);
             mdv_op_release(projection->src);
             memset(projection, sizeof *projection, 0);
-            mdv_free(projection, "project_range");
+            mdv_free(projection);
         }
     }
 
@@ -120,7 +120,7 @@ static mdv_errno mdv_project_range_next(mdv_op *op, mdv_kvdata *kvdata)
 
 mdv_op * mdv_project_range(mdv_op *src, size_t from, size_t to)
 {
-    mdv_project_range_t *projection = mdv_alloc(sizeof(mdv_project_range_t), "project_range");
+    mdv_project_range_t *projection = mdv_alloc(sizeof(mdv_project_range_t));
 
     if (!projection)
     {
@@ -183,7 +183,7 @@ static uint32_t mdv_project_by_indices_release(mdv_op *op)
             binn_free(projection->current);
             mdv_op_release(projection->src);
             memset(projection, sizeof *projection, 0);
-            mdv_free(projection, "roject_by_indices");
+            mdv_free(projection);
         }
     }
 
@@ -266,7 +266,7 @@ static mdv_errno mdv_project_by_indices_next(mdv_op *op, mdv_kvdata *kvdata)
 mdv_op * mdv_project_by_indices(mdv_op *src, size_t size, size_t const *indices)
 {
     mdv_project_by_indices_t *projection
-        = mdv_alloc(sizeof(mdv_project_by_indices_t) + size * sizeof *indices, "project_by_indices");
+        = mdv_alloc(sizeof(mdv_project_by_indices_t) + size * sizeof *indices);
 
     if (!projection)
     {

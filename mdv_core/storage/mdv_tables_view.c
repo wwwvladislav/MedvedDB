@@ -28,7 +28,7 @@ static void mdv_tables_view_free(mdv_tables_view *view)
     mdv_tables_release(view->source);
     mdv_table_release(view->table_slice);
     mdv_bitset_release(view->fields);
-    mdv_free(view, "tables_view");
+    mdv_free(view);
 }
 
 
@@ -103,7 +103,7 @@ mdv_view * mdv_tables_view_create(mdv_tables    *source,
                                   mdv_bitset    *fields,
                                   mdv_predicate *predicate)
 {
-    mdv_tables_view *view = (mdv_tables_view *)mdv_alloc(sizeof(mdv_tables_view), "tables_view");
+    mdv_tables_view *view = (mdv_tables_view *)mdv_alloc(sizeof(mdv_tables_view));
 
     if (!view)
     {
@@ -128,7 +128,7 @@ mdv_view * mdv_tables_view_create(mdv_tables    *source,
     if (!view->table_slice)
     {
         MDV_LOGE("View creation failed.");
-        mdv_free(view, "tables_view");
+        mdv_free(view);
         return 0;
     }
 

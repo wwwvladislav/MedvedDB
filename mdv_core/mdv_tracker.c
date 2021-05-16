@@ -746,7 +746,7 @@ mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid,
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(8);
 
-    mdv_tracker *tracker = mdv_alloc(sizeof(mdv_tracker), "tracker");
+    mdv_tracker *tracker = mdv_alloc(sizeof(mdv_tracker));
 
     if (!tracker)
     {
@@ -755,7 +755,7 @@ mdv_tracker * mdv_tracker_create(mdv_uuid const *uuid,
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, tracker, "tracker");
+    mdv_rollbacker_push(rollbacker, mdv_free, tracker);
 
     atomic_init(&tracker->rc, 1);
     atomic_init(&tracker->max_id, 0);
@@ -876,7 +876,7 @@ static void mdv_tracker_free(mdv_tracker *tracker)
 
     memset(tracker, 0, sizeof *tracker);
 
-    mdv_free(tracker, "tracker");
+    mdv_free(tracker);
 }
 
 

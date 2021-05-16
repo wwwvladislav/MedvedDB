@@ -54,7 +54,7 @@ mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
 
-    mdv_dispatcher *pd = (mdv_dispatcher *)mdv_alloc(sizeof(mdv_dispatcher), "dispatcher");
+    mdv_dispatcher *pd = (mdv_dispatcher *)mdv_alloc(sizeof(mdv_dispatcher));
 
     if (!pd)
     {
@@ -63,7 +63,7 @@ mdv_dispatcher * mdv_dispatcher_create(mdv_descriptor fd)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, pd, "dispatcher");
+    mdv_rollbacker_push(rollbacker, mdv_free, pd);
 
     memset(&pd->message, 0, sizeof pd->message);
 
@@ -155,7 +155,7 @@ void mdv_dispatcher_free(mdv_dispatcher *pd)
         mdv_mutex_free(&pd->fd_mutex);
         mdv_mutex_free(&pd->requests_mutex);
         memset(pd, 0, sizeof *pd);
-        mdv_free(pd, "dispatcher");
+        mdv_free(pd);
     }
 }
 

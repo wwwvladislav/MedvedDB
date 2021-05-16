@@ -273,7 +273,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
 
     // Allocate memory for client
 
-    mdv_client *client = mdv_alloc(sizeof(mdv_client), "client");
+    mdv_client *client = mdv_alloc(sizeof(mdv_client));
 
     if (!client)
     {
@@ -282,7 +282,7 @@ mdv_client * mdv_client_connect(mdv_client_config const *config)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, client, "client");
+    mdv_rollbacker_push(rollbacker, mdv_free, client);
 
     memset(client, 0, sizeof *client);
 
@@ -380,7 +380,7 @@ void mdv_client_close(mdv_client *client)
     {
         mdv_chaman_free(client->chaman);
         mdv_safeptr_free(client->connection);
-        mdv_free(client, "client");
+        mdv_free(client);
     }
 }
 
@@ -491,7 +491,7 @@ mdv_table * mdv_get_table(mdv_client *client, mdv_uuid const *uuid)
                 if (desc)
                 {
                     tbl = mdv_table_create(uuid, desc);
-                    mdv_free(desc, "table_desc");
+                    mdv_free(desc);
                     break;
                 }
                 // fallthrough
@@ -709,7 +709,7 @@ static uint32_t mdv_rowset_enumerator_impl_release(mdv_enumerator *enumerator)
             mdv_enumerator_release(impl->fset_enumerator);
             mdv_rowset_release(impl->fset);
             memset(impl, 0, sizeof *impl);
-            mdv_free(enumerator, "rowset_enumerator");
+            mdv_free(enumerator);
         }
     }
 
@@ -819,8 +819,7 @@ static void * mdv_rowset_enumerator_impl_current(mdv_enumerator *enumerator)
 static mdv_enumerator * mdv_rowset_enumerator_impl_create(mdv_rowset_impl *rowset)
 {
     mdv_rowset_enumerator_impl *enumerator =
-                mdv_alloc(sizeof(mdv_rowset_enumerator_impl),
-                        "rowset_enumerator");
+                mdv_alloc(sizeof(mdv_rowset_enumerator_impl));
 
     if (!enumerator)
     {
@@ -872,7 +871,7 @@ static uint32_t mdv_rowset_impl_release(mdv_rowset *rowset)
         if (!rc)
         {
             mdv_table_release(impl->table);
-            mdv_free(impl, "rowset");
+            mdv_free(impl);
         }
     }
 
@@ -913,7 +912,7 @@ static mdv_enumerator * mdv_rowset_impl_enumerator(mdv_rowset *rowset)
 
 static mdv_rowset * mdv_rowset_impl_create(mdv_client *client, mdv_table *table, uint32_t view_id)
 {
-    mdv_rowset_impl *rowset = mdv_alloc(sizeof(mdv_rowset_impl), "rowset");
+    mdv_rowset_impl *rowset = mdv_alloc(sizeof(mdv_rowset_impl));
 
     if (!rowset)
     {

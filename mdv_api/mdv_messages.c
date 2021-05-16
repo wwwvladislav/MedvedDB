@@ -79,7 +79,7 @@ void mdv_msg_create_table_free(mdv_msg_create_table *msg)
 {
     if (msg->desc)
     {
-        mdv_free(msg->desc, "table_desc");
+        mdv_free(msg->desc);
         msg->desc = 0;
     }
 }

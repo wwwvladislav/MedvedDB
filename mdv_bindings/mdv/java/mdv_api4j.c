@@ -323,92 +323,92 @@ SWIGINTERN void SWIG_JavaException(JNIEnv *jenv, int code, const char *msg) {
 
 typedef bool ArrayOfBool;
 
-SWIGINTERN ArrayOfBool *new_ArrayOfBool(int size){ return mdv_alloc(sizeof(bool) * size, "carray"); }
-SWIGINTERN void delete_ArrayOfBool(ArrayOfBool *self){ mdv_free(self, "carray"); }
+SWIGINTERN ArrayOfBool *new_ArrayOfBool(int size){ return mdv_alloc(sizeof(bool) * size); }
+SWIGINTERN void delete_ArrayOfBool(ArrayOfBool *self){ mdv_free(self); }
 SWIGINTERN bool ArrayOfBool_get(ArrayOfBool *self,size_t idx){ return self[idx]; }
 SWIGINTERN void ArrayOfBool_set(ArrayOfBool *self,size_t idx,bool value){ self[idx] = value; }
 
 typedef char ArrayOfChar;
 
-SWIGINTERN ArrayOfChar *new_ArrayOfChar(int size){ return mdv_alloc(sizeof(char) * size, "carray"); }
-SWIGINTERN void delete_ArrayOfChar(ArrayOfChar *self){ mdv_free(self, "carray"); }
+SWIGINTERN ArrayOfChar *new_ArrayOfChar(int size){ return mdv_alloc(sizeof(char) * size); }
+SWIGINTERN void delete_ArrayOfChar(ArrayOfChar *self){ mdv_free(self); }
 SWIGINTERN char ArrayOfChar_get(ArrayOfChar *self,size_t idx){ return self[idx]; }
 SWIGINTERN void ArrayOfChar_set(ArrayOfChar *self,size_t idx,char value){ self[idx] = value; }
 
 typedef uint8_t ArrayOfByte;
 
-SWIGINTERN ArrayOfByte *new_ArrayOfByte(int size){ return mdv_alloc(sizeof(uint8_t) * size, "carray"); }
-SWIGINTERN void delete_ArrayOfByte(ArrayOfByte *self){ mdv_free(self, "carray"); }
+SWIGINTERN ArrayOfByte *new_ArrayOfByte(int size){ return mdv_alloc(sizeof(uint8_t) * size); }
+SWIGINTERN void delete_ArrayOfByte(ArrayOfByte *self){ mdv_free(self); }
 SWIGINTERN uint8_t ArrayOfByte_get(ArrayOfByte *self,size_t idx){ return self[idx]; }
 SWIGINTERN void ArrayOfByte_set(ArrayOfByte *self,size_t idx,uint8_t value){ self[idx] = value; }
 
 typedef uint8_t ArrayOfUint8;
 
-SWIGINTERN ArrayOfUint8 *new_ArrayOfUint8(int size){ return mdv_alloc(sizeof(uint8_t) * size, "carray"); }
-SWIGINTERN void delete_ArrayOfUint8(ArrayOfUint8 *self){ mdv_free(self, "carray"); }
+SWIGINTERN ArrayOfUint8 *new_ArrayOfUint8(int size){ return mdv_alloc(sizeof(uint8_t) * size); }
+SWIGINTERN void delete_ArrayOfUint8(ArrayOfUint8 *self){ mdv_free(self); }
 SWIGINTERN uint8_t ArrayOfUint8_get(ArrayOfUint8 *self,size_t idx){ return self[idx]; }
 SWIGINTERN void ArrayOfUint8_set(ArrayOfUint8 *self,size_t idx,uint8_t value){ self[idx] = value; }
 
 typedef int8_t ArrayOfInt8;
 
-SWIGINTERN ArrayOfInt8 *new_ArrayOfInt8(int size){ return mdv_alloc(sizeof(int8_t) * size, "carray"); }
-SWIGINTERN void delete_ArrayOfInt8(ArrayOfInt8 *self){ mdv_free(self, "carray"); }
+SWIGINTERN ArrayOfInt8 *new_ArrayOfInt8(int size){ return mdv_alloc(sizeof(int8_t) * size); }
+SWIGINTERN void delete_ArrayOfInt8(ArrayOfInt8 *self){ mdv_free(self); }
 SWIGINTERN int8_t ArrayOfInt8_get(ArrayOfInt8 *self,size_t idx){ return self[idx]; }
 SWIGINTERN void ArrayOfInt8_set(ArrayOfInt8 *self,size_t idx,int8_t value){ self[idx] = value; }
 
 typedef uint16_t ArrayOfUint16;
 
-SWIGINTERN ArrayOfUint16 *new_ArrayOfUint16(int size){ return mdv_alloc(sizeof(uint16_t) * size, "carray"); }
-SWIGINTERN void delete_ArrayOfUint16(ArrayOfUint16 *self){ mdv_free(self, "carray"); }
+SWIGINTERN ArrayOfUint16 *new_ArrayOfUint16(int size){ return mdv_alloc(sizeof(uint16_t) * size); }
+SWIGINTERN void delete_ArrayOfUint16(ArrayOfUint16 *self){ mdv_free(self); }
 SWIGINTERN uint16_t ArrayOfUint16_get(ArrayOfUint16 *self,size_t idx){ return self[idx]; }
 SWIGINTERN void ArrayOfUint16_set(ArrayOfUint16 *self,size_t idx,uint16_t value){ self[idx] = value; }
 
 typedef int16_t ArrayOfInt16;
 
-SWIGINTERN ArrayOfInt16 *new_ArrayOfInt16(int size){ return mdv_alloc(sizeof(int16_t) * size, "carray"); }
-SWIGINTERN void delete_ArrayOfInt16(ArrayOfInt16 *self){ mdv_free(self, "carray"); }
+SWIGINTERN ArrayOfInt16 *new_ArrayOfInt16(int size){ return mdv_alloc(sizeof(int16_t) * size); }
+SWIGINTERN void delete_ArrayOfInt16(ArrayOfInt16 *self){ mdv_free(self); }
 SWIGINTERN int16_t ArrayOfInt16_get(ArrayOfInt16 *self,size_t idx){ return self[idx]; }
 SWIGINTERN void ArrayOfInt16_set(ArrayOfInt16 *self,size_t idx,int16_t value){ self[idx] = value; }
 
 typedef uint32_t ArrayOfUint32;
 
-SWIGINTERN ArrayOfUint32 *new_ArrayOfUint32(int size){ return mdv_alloc(sizeof(uint32_t) * size, "carray"); }
-SWIGINTERN void delete_ArrayOfUint32(ArrayOfUint32 *self){ mdv_free(self, "carray"); }
+SWIGINTERN ArrayOfUint32 *new_ArrayOfUint32(int size){ return mdv_alloc(sizeof(uint32_t) * size); }
+SWIGINTERN void delete_ArrayOfUint32(ArrayOfUint32 *self){ mdv_free(self); }
 SWIGINTERN uint32_t ArrayOfUint32_get(ArrayOfUint32 *self,size_t idx){ return self[idx]; }
 SWIGINTERN void ArrayOfUint32_set(ArrayOfUint32 *self,size_t idx,uint32_t value){ self[idx] = value; }
 
 typedef int32_t ArrayOfInt32;
 
-SWIGINTERN ArrayOfInt32 *new_ArrayOfInt32(int size){ return mdv_alloc(sizeof(int32_t) * size, "carray"); }
-SWIGINTERN void delete_ArrayOfInt32(ArrayOfInt32 *self){ mdv_free(self, "carray"); }
+SWIGINTERN ArrayOfInt32 *new_ArrayOfInt32(int size){ return mdv_alloc(sizeof(int32_t) * size); }
+SWIGINTERN void delete_ArrayOfInt32(ArrayOfInt32 *self){ mdv_free(self); }
 SWIGINTERN int32_t ArrayOfInt32_get(ArrayOfInt32 *self,size_t idx){ return self[idx]; }
 SWIGINTERN void ArrayOfInt32_set(ArrayOfInt32 *self,size_t idx,int32_t value){ self[idx] = value; }
 
 typedef uint64_t ArrayOfUint64;
 
-SWIGINTERN ArrayOfUint64 *new_ArrayOfUint64(int size){ return mdv_alloc(sizeof(uint64_t) * size, "carray"); }
-SWIGINTERN void delete_ArrayOfUint64(ArrayOfUint64 *self){ mdv_free(self, "carray"); }
+SWIGINTERN ArrayOfUint64 *new_ArrayOfUint64(int size){ return mdv_alloc(sizeof(uint64_t) * size); }
+SWIGINTERN void delete_ArrayOfUint64(ArrayOfUint64 *self){ mdv_free(self); }
 SWIGINTERN uint64_t ArrayOfUint64_get(ArrayOfUint64 *self,size_t idx){ return self[idx]; }
 SWIGINTERN void ArrayOfUint64_set(ArrayOfUint64 *self,size_t idx,uint64_t value){ self[idx] = value; }
 
 typedef int64_t ArrayOfInt64;
 
-SWIGINTERN ArrayOfInt64 *new_ArrayOfInt64(int size){ return mdv_alloc(sizeof(int64_t) * size, "carray"); }
-SWIGINTERN void delete_ArrayOfInt64(ArrayOfInt64 *self){ mdv_free(self, "carray"); }
+SWIGINTERN ArrayOfInt64 *new_ArrayOfInt64(int size){ return mdv_alloc(sizeof(int64_t) * size); }
+SWIGINTERN void delete_ArrayOfInt64(ArrayOfInt64 *self){ mdv_free(self); }
 SWIGINTERN int64_t ArrayOfInt64_get(ArrayOfInt64 *self,size_t idx){ return self[idx]; }
 SWIGINTERN void ArrayOfInt64_set(ArrayOfInt64 *self,size_t idx,int64_t value){ self[idx] = value; }
 
 typedef float ArrayOfFloat;
 
-SWIGINTERN ArrayOfFloat *new_ArrayOfFloat(int size){ return mdv_alloc(sizeof(float) * size, "carray"); }
-SWIGINTERN void delete_ArrayOfFloat(ArrayOfFloat *self){ mdv_free(self, "carray"); }
+SWIGINTERN ArrayOfFloat *new_ArrayOfFloat(int size){ return mdv_alloc(sizeof(float) * size); }
+SWIGINTERN void delete_ArrayOfFloat(ArrayOfFloat *self){ mdv_free(self); }
 SWIGINTERN float ArrayOfFloat_get(ArrayOfFloat *self,size_t idx){ return self[idx]; }
 SWIGINTERN void ArrayOfFloat_set(ArrayOfFloat *self,size_t idx,float value){ self[idx] = value; }
 
 typedef double ArrayOfDouble;
 
-SWIGINTERN ArrayOfDouble *new_ArrayOfDouble(int size){ return mdv_alloc(sizeof(double) * size, "carray"); }
-SWIGINTERN void delete_ArrayOfDouble(ArrayOfDouble *self){ mdv_free(self, "carray"); }
+SWIGINTERN ArrayOfDouble *new_ArrayOfDouble(int size){ return mdv_alloc(sizeof(double) * size); }
+SWIGINTERN void delete_ArrayOfDouble(ArrayOfDouble *self){ mdv_free(self); }
 SWIGINTERN double ArrayOfDouble_get(ArrayOfDouble *self,size_t idx){ return self[idx]; }
 SWIGINTERN void ArrayOfDouble_set(ArrayOfDouble *self,size_t idx,double value){ self[idx] = value; }
 
@@ -449,8 +449,7 @@ mdv_datums_functions(double,    double);
 
 SWIGINTERN struct mdv_datums *new_mdv_datums(uint32_t size){
         mdv_datums *datums = mdv_alloc(offsetof(mdv_datums, data)
-                                        + sizeof(mdv_datum*) * size,
-                                       "datums");
+                                        + sizeof(mdv_datum*) * size);
 
         if(!datums)
             return 0;
@@ -464,7 +463,7 @@ SWIGINTERN struct mdv_datums *new_mdv_datums(uint32_t size){
 SWIGINTERN void delete_mdv_datums(struct mdv_datums *self){
         for(uint32_t i = 0; i < self->size; ++i)
             mdv_datum_free(self->data[i]);
-        mdv_free(self, "datums");
+        mdv_free(self);
     }
 SWIGINTERN uint32_t mdv_datums_cols(struct mdv_datums const *self){
         return self->size;
@@ -575,7 +574,7 @@ SWIGINTERN bool mdv_rowset_add(mdv_rowset *self,mdv_datums const *row){
         return mdv_rowset_append(self, rows, 1) == 1;
     }
 SWIGINTERN mdv_rows_enumerator *mdv_rowset_get_enumerator(mdv_rowset *self){
-        mdv_rows_enumerator *enumerator = mdv_alloc(sizeof(mdv_rows_enumerator), "rows_enumerator");
+        mdv_rows_enumerator *enumerator = mdv_alloc(sizeof(mdv_rows_enumerator));
 
         if(!enumerator)
             return 0;
@@ -584,7 +583,7 @@ SWIGINTERN mdv_rows_enumerator *mdv_rowset_get_enumerator(mdv_rowset *self){
 
         if (!enumerator->enumerator)
         {
-            mdv_free(enumerator, "rows_enumerator");
+            mdv_free(enumerator);
             return 0;
         }
 
@@ -595,7 +594,7 @@ SWIGINTERN mdv_rows_enumerator *mdv_rowset_get_enumerator(mdv_rowset *self){
 SWIGINTERN void delete_mdv_rows_enumerator(mdv_rows_enumerator *self){
         mdv_table_release(self->table);
         mdv_enumerator_release(self->enumerator);
-        mdv_free(self, "rows_enumerator");
+        mdv_free(self);
     }
 SWIGINTERN bool mdv_rows_enumerator_reset(mdv_rows_enumerator *self){
         return mdv_enumerator_reset(self->enumerator) == MDV_OK;

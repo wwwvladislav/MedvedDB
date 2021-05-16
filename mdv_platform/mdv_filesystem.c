@@ -261,7 +261,7 @@ static uint32_t mdv_dir_enumerator_release(mdv_enumerator *enumerator)
         {
             mdv_dir_enumerator_t *impl = (mdv_dir_enumerator_t *)enumerator;
             closedir(impl->pdir);
-            mdv_free(enumerator, "dir_enumerator");
+            mdv_free(enumerator);
         }
     }
 
@@ -298,7 +298,7 @@ static void * mdv_dir_enumerator_current(mdv_enumerator *enumerator)
 
 mdv_enumerator * mdv_dir_enumerator(char const *path)
 {
-    mdv_dir_enumerator_t *enumerator = mdv_alloc(sizeof(mdv_dir_enumerator_t), "dir_enumerator");
+    mdv_dir_enumerator_t *enumerator = mdv_alloc(sizeof(mdv_dir_enumerator_t));
 
     if (!enumerator)
     {
@@ -311,7 +311,7 @@ mdv_enumerator * mdv_dir_enumerator(char const *path)
     if (!enumerator->pdir)
     {
         MDV_LOGE("Directory '%s' could not be opened due the error: %d", path, mdv_error());
-        mdv_free(enumerator, "dir_enumerator");
+        mdv_free(enumerator);
         return 0;
     }
 

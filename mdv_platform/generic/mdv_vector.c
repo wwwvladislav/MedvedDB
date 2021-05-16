@@ -20,7 +20,7 @@ mdv_vector mdv_empty_vector = {};
 
 mdv_vector * mdv_vector_create(size_t capacity, size_t item_size, mdv_allocator const *allocator)
 {
-    mdv_vector *vector = allocator->alloc(sizeof(mdv_vector), "vector");
+    mdv_vector *vector = allocator->alloc(sizeof(mdv_vector));
 
     if (!vector)
     {
@@ -34,12 +34,12 @@ mdv_vector * mdv_vector_create(size_t capacity, size_t item_size, mdv_allocator 
     vector->capacity = capacity;
     vector->size = 0;
     vector->item_size = item_size;
-    vector->data = allocator->alloc(capacity * item_size, "vector.data");
+    vector->data = allocator->alloc(capacity * item_size);
 
     if (!vector->data)
     {
         MDV_LOGE("No memory for vector");
-        allocator->free(vector, "vector");
+        allocator->free(vector);
         return 0;
     }
 
@@ -86,8 +86,8 @@ uint32_t mdv_vector_release(mdv_vector *vector)
 
     if (!refs)
     {
-        vector->allocator->free(vector->data, "vector.data");
-        vector->allocator->free(vector, "vector");
+        vector->allocator->free(vector->data);
+        vector->allocator->free(vector);
     }
 
     return refs;
@@ -126,7 +126,7 @@ static bool mdv_vector_resize_if_required(mdv_vector *vector, size_t append)
 
     if (new_capacity > vector->capacity)
     {
-        uint8_t *new_data = vector->allocator->realloc(vector->data, vector->item_size * new_capacity, "vector.data");
+        uint8_t *new_data = vector->allocator->realloc(vector->data, vector->item_size * new_capacity);
         if (!new_data)
             return false;
         vector->data = new_data;

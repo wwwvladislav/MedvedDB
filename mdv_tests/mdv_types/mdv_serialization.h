@@ -177,7 +177,7 @@ static void test_row_slice_serialization()
     mu_check(memcmp(rowlist_entry->data.fields[0].ptr, row[0].ptr, row[0].size) == 0);
     mu_check(memcmp(rowlist_entry->data.fields[1].ptr, row[2].ptr, row[2].size) == 0);
 
-    mdv_free(rowlist_entry, "rowlist_entry");
+    mdv_free(rowlist_entry);
     binn_free(&serialized_row);
     mdv_bitset_release(mask);
 }

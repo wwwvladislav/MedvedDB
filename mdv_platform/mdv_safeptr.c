@@ -17,7 +17,7 @@ mdv_safeptr * mdv_safeptr_create(void *ptr,
                                  mdv_safeptr_retain_fn retain,
                                  mdv_safeptr_release_fn release)
 {
-    mdv_safeptr *safeptr = mdv_alloc(sizeof(mdv_safeptr), "safeptr");
+    mdv_safeptr *safeptr = mdv_alloc(sizeof(mdv_safeptr));
 
     if (!safeptr)
     {
@@ -27,7 +27,7 @@ mdv_safeptr * mdv_safeptr_create(void *ptr,
 
     if (mdv_mutex_create(&safeptr->mutex) != MDV_OK)
     {
-        mdv_free(safeptr, "safeptr");
+        mdv_free(safeptr);
         return 0;
     }
 
@@ -46,7 +46,7 @@ void mdv_safeptr_free(mdv_safeptr *safeptr)
         if(safeptr->ptr)
             safeptr->release(safeptr->ptr);
         mdv_mutex_free(&safeptr->mutex);
-        mdv_free(safeptr, "safeptr");
+        mdv_free(safeptr);
     }
 }
 

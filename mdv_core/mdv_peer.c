@@ -146,10 +146,10 @@ static void      mdv_peer_disconnected(mdv_peer *peer);
 static mdv_errno mdv_peer_reply(mdv_peer *peer, mdv_msg const *msg);
 
 
-static char * mdv_string_dup(char const *str, char const *name)
+static char * mdv_string_dup(char const *str)
 {
     size_t len = strlen(str);
-    char *dup_str = mdv_alloc(len + 1, name);
+    char *dup_str = mdv_alloc(len + 1);
     if (dup_str)
         memcpy(dup_str, str, len + 1);
     return dup_str;
@@ -197,9 +197,9 @@ static mdv_errno mdv_peer_hello_handler(mdv_msg const *msg, void *arg)
 
     MDV_LOGI("<<<<< %s '%s'", mdv_uuid_to_str(&peer->peer_uuid, uuid_str), mdv_p2p_msg_name(msg->hdr.id));
 
-    mdv_free(peer->peer_addr, "peer_addr");
+    mdv_free(peer->peer_addr);
 
-    peer->peer_addr = mdv_string_dup(req.listen, "peer_addr");
+    peer->peer_addr = mdv_string_dup(req.listen);
 
     if (!peer->peer_addr)
     {
@@ -764,7 +764,7 @@ mdv_channel * mdv_peer_create(mdv_descriptor  fd,
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
-    mdv_peer *peer = mdv_alloc(sizeof(mdv_peer), "peerctx");
+    mdv_peer *peer = mdv_alloc(sizeof(mdv_peer));
 
     if (!peer)
     {
@@ -773,7 +773,7 @@ mdv_channel * mdv_peer_create(mdv_descriptor  fd,
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, peer, "peerctx");
+    mdv_rollbacker_push(rollbacker, mdv_free, peer);
 
     MDV_LOGD("Peer %p initialization", peer);
 
@@ -872,8 +872,8 @@ static void mdv_peer_free(mdv_peer *peer)
         mdv_peer_disconnected(peer);
         mdv_dispatcher_free(peer->dispatcher);
         mdv_ebus_release(peer->ebus);
-        mdv_free(peer->peer_addr, "peer_addr");
-        mdv_free(peer, "peerctx");
+        mdv_free(peer->peer_addr);
+        mdv_free(peer);
         MDV_LOGD("Peer %p freed", peer);
     }
 }

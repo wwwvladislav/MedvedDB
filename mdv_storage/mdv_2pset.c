@@ -73,7 +73,7 @@ mdv_2pset * mdv_2pset_open(char const *root_dir, char const *storage_name)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
-    mdv_2pset *objs = mdv_alloc(sizeof(mdv_2pset), "objects");
+    mdv_2pset *objs = mdv_alloc(sizeof(mdv_2pset));
 
     if (!objs)
     {
@@ -82,7 +82,7 @@ mdv_2pset * mdv_2pset_open(char const *root_dir, char const *storage_name)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, objs, "objects");
+    mdv_rollbacker_push(rollbacker, mdv_free, objs);
 
     objs->storage = mdv_storage_open(root_dir,
                                      storage_name,
@@ -139,7 +139,7 @@ uint32_t mdv_2pset_release(mdv_2pset *objs)
     if (!rc)
     {
         mdv_mutex_free(&objs->idgen_mutex);
-        mdv_free(objs, "objects");
+        mdv_free(objs);
     }
 
     return rc;
@@ -492,7 +492,7 @@ static uint32_t mdv_objects_enumerator_impl_release(mdv_enumerator *enumerator)
             mdv_transaction_abort(&impl->transaction);
             mdv_map_close(&impl->map);
             mdv_2pset_release(impl->objects);
-            mdv_free(enumerator, "objects_enumerator");
+            mdv_free(enumerator);
         }
     }
 
@@ -533,8 +533,7 @@ static mdv_enumerator * mdv_objects_enumerator_impl_create(mdv_2pset *objs, mdv_
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(3);
 
     mdv_objects_enumerator_impl *enumerator =
-            mdv_alloc(sizeof(mdv_objects_enumerator_impl),
-                      "objects_enumerator");
+            mdv_alloc(sizeof(mdv_objects_enumerator_impl));
 
     if (!enumerator)
     {
@@ -547,7 +546,7 @@ static mdv_enumerator * mdv_objects_enumerator_impl_create(mdv_2pset *objs, mdv_
     if (key)
         enumerator->current.key = *key;
 
-    mdv_rollbacker_push(rollbacker, mdv_free, enumerator, "objects_enumerator");
+    mdv_rollbacker_push(rollbacker, mdv_free, enumerator);
 
     atomic_init(&enumerator->base.rc, 1);
 

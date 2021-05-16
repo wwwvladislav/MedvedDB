@@ -98,7 +98,7 @@ mdv_lmdb * mdv_storage_open(char const *path, char const *name, uint32_t dbs_num
 
     #undef MDV_DB_CALL
 
-    mdv_lmdb *pstorage = (mdv_lmdb *)mdv_alloc(sizeof(mdv_lmdb), "storage");
+    mdv_lmdb *pstorage = (mdv_lmdb *)mdv_alloc(sizeof(mdv_lmdb));
     if (!pstorage)
     {
         MDV_LOGE("Memory allocation failed");
@@ -131,7 +131,7 @@ uint32_t mdv_storage_release(mdv_lmdb *pstorage)
         if (!rc)
         {
             mdb_env_close(pstorage->env);
-            mdv_free(pstorage, "storage");
+            mdv_free(pstorage);
         }
     }
 

@@ -32,7 +32,7 @@ mdv_syncerino * mdv_syncerino_create(mdv_uuid const *uuid, mdv_uuid const *peer,
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(5);
 
-    mdv_syncerino *syncerino = mdv_alloc(sizeof(mdv_syncerino), "syncerino");
+    mdv_syncerino *syncerino = mdv_alloc(sizeof(mdv_syncerino));
 
     if (!syncerino)
     {
@@ -41,7 +41,7 @@ mdv_syncerino * mdv_syncerino_create(mdv_uuid const *uuid, mdv_uuid const *peer,
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, syncerino, "syncerino");
+    mdv_rollbacker_push(rollbacker, mdv_free, syncerino);
 
     atomic_init(&syncerino->rc, 1);
     syncerino->uuid = *uuid;
@@ -99,7 +99,7 @@ static void mdv_syncerino_free(mdv_syncerino *syncerino)
     mdv_hashmap_release(syncerino->trlogs);
     mdv_mutex_free(&syncerino->mutex);
     memset(syncerino, 0, sizeof(*syncerino));
-    mdv_free(syncerino, "syncerino");
+    mdv_free(syncerino);
 }
 
 

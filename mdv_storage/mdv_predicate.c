@@ -39,7 +39,7 @@ mdv_predicate * mdv_predicate_parse(char const *expression)
 {
     mdv_rollbacker *rollbacker = mdv_rollbacker_create(2);
 
-    mdv_predicate *predicate = mdv_alloc(sizeof(mdv_predicate), "predicate");
+    mdv_predicate *predicate = mdv_alloc(sizeof(mdv_predicate));
 
     if (!predicate)
     {
@@ -48,7 +48,7 @@ mdv_predicate * mdv_predicate_parse(char const *expression)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, predicate, "predicate");
+    mdv_rollbacker_push(rollbacker, mdv_free, predicate);
 
     atomic_init(&predicate->rc, 1);
 
@@ -87,7 +87,7 @@ mdv_predicate * mdv_predicate_retain(mdv_predicate *predicate)
 static void mdv_predicate_free(mdv_predicate *predicate)
 {
     mdv_vector_release(predicate->expr);
-    mdv_free(predicate, "predicate");
+    mdv_free(predicate);
 }
 
 

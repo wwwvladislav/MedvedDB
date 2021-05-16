@@ -32,8 +32,7 @@ struct mdv_datum
         mdv_datum_##name *datum =                               \
             mdv_alloc(                                          \
                 offsetof(mdv_datum_##name, data)                \
-                    + sizeof(T) * count,                        \
-                    "datum_"#name);                             \
+                    + sizeof(T) * count);                       \
         if (!datum)                                             \
         {                                                       \
             MDV_LOGE("No memory for new datum " #name);         \
@@ -106,7 +105,7 @@ mdv_datum * mdv_datum_create(mdv_field_type type, void const *v, uint32_t size)
 
 void mdv_datum_free(mdv_datum *datum)
 {
-    mdv_free(datum, "datum");
+    mdv_free(datum);
 }
 
 

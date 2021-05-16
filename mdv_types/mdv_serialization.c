@@ -253,7 +253,7 @@ mdv_table_desc * mdv_unbinn_table_desc(binn const *obj)
     }
 
     // Allocate memory for table desc
-    mdv_table_desc *table = mdv_alloc(size, "table_desc");
+    mdv_table_desc *table = mdv_alloc(size);
 
     if (!table)
     {
@@ -280,7 +280,7 @@ mdv_table_desc * mdv_unbinn_table_desc(binn const *obj)
         if (i > table->size)
         {
             MDV_LOGE("unbinn_table_desc failed");
-            mdv_free(table, "table_desc");
+            mdv_free(table);
             return 0;
         }
 
@@ -292,7 +292,7 @@ mdv_table_desc * mdv_unbinn_table_desc(binn const *obj)
             || !binn_object_get_str(&value, "N", &field_name))
         {
             MDV_LOGE("unbinn_table_desc failed");
-            mdv_free(table, "table_desc");
+            mdv_free(table);
             return 0;
         }
 
@@ -372,7 +372,7 @@ mdv_table * mdv_unbinn_table(binn const *obj)
 
     mdv_table *table = mdv_table_create(&id, desc);
 
-    mdv_free(desc, "table_desc");
+    mdv_free(desc);
 
     if (!table)
     {
@@ -460,7 +460,7 @@ mdv_rowlist_entry * mdv_unbinn_table_as_row_slice(binn const        *obj,
                 + sizeof(mdv_data) * fields_num;
 
     // Memory allocation for new row
-    mdv_rowlist_entry *entry = mdv_alloc(row_size, "rowlist_entry");
+    mdv_rowlist_entry *entry = mdv_alloc(row_size);
 
     if (!entry)
     {
@@ -680,7 +680,7 @@ mdv_rowlist_entry * mdv_unbinn_row_slice(binn const *list,
         return 0;
 
     // Memory allocation for new row
-    mdv_rowlist_entry *entry = mdv_alloc(row_size, "rowlist_entry");
+    mdv_rowlist_entry *entry = mdv_alloc(row_size);
 
     if (!entry)
     {
@@ -713,7 +713,7 @@ mdv_rowlist_entry * mdv_unbinn_row_slice(binn const *list,
             if (!binn_get(&value, fields[n].type, dataspace))
             {
                 MDV_LOGE("unbinn_table failed");
-                mdv_free(entry, "rowlist_entry");
+                mdv_free(entry);
                 return 0;
             }
 
@@ -744,7 +744,7 @@ mdv_rowlist_entry * mdv_unbinn_row_slice(binn const *list,
                 if (!binn_get(&arr_value, fields[n].type, dataspace))
                 {
                     MDV_LOGE("unbinn_table failed");
-                    mdv_free(row, "row");
+                    mdv_free(row);
                     return 0;
                 }
 

@@ -147,7 +147,7 @@ static int mdv_u32_keys_cmp(uint32_t const *a, uint32_t const *b)
 
 mdv_event * mdv_event_create(mdv_event_type type, size_t size)
 {
-    mdv_event *event = mdv_alloc(size, "event");
+    mdv_event *event = mdv_alloc(size);
 
     if (!event)
     {
@@ -184,7 +184,7 @@ uint32_t mdv_event_release(mdv_event *event)
     {
         rc = atomic_fetch_sub_explicit(&event->rc, 1, memory_order_release) - 1;
         if (!rc)
-            mdv_free(event, "event");
+            mdv_free(event);
     }
 
     return rc;
@@ -197,8 +197,7 @@ mdv_ebus * mdv_ebus_create(mdv_ebus_config const *config)
 
     mdv_ebus *ebus = mdv_alloc(sizeof(mdv_ebus)
                                 + sizeof(mdv_evt_queue) * config->event.queues_count
-                                + sizeof(atomic_uint_fast32_t) * (1 + config->event.max_id),
-                                "ebus");
+                                + sizeof(atomic_uint_fast32_t) * (1 + config->event.max_id));
 
     if (!ebus)
     {
@@ -207,7 +206,7 @@ mdv_ebus * mdv_ebus_create(mdv_ebus_config const *config)
         return 0;
     }
 
-    mdv_rollbacker_push(rollbacker, mdv_free, ebus, "ebus");
+    mdv_rollbacker_push(rollbacker, mdv_free, ebus);
 
     atomic_init(&ebus->rc, 1);
     atomic_init(&ebus->idx, 0);
@@ -341,7 +340,7 @@ static void mdv_ebus_free(mdv_ebus *ebus)
 
     mdv_mutex_free(&ebus->mutex);
 
-    mdv_free(ebus, "ebus");
+    mdv_free(ebus);
 }
 
 

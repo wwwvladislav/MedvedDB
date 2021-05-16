@@ -37,7 +37,7 @@ static uint32_t mdv_select_release(mdv_op *op)
             mdv_predicate_release(select->predicate);
             mdv_op_release(select->src);
             memset(select, sizeof *select, 0);
-            mdv_free(select, "select");
+            mdv_free(select);
         }
     }
 
@@ -72,7 +72,7 @@ static mdv_errno mdv_select_next(mdv_op *op, mdv_kvdata *kvdata)
 
 mdv_op * mdv_select(mdv_op *src, mdv_predicate *predicate)
 {
-    mdv_select_t *select = mdv_alloc(sizeof(mdv_select_t), "select");
+    mdv_select_t *select = mdv_alloc(sizeof(mdv_select_t));
 
     if (!select)
     {

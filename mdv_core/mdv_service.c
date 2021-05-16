@@ -40,7 +40,7 @@ static mdv_service * mdv_service_create_impl()
     // Serializatior allocator
     mdv_binn_set_allocator();
 
-    mdv_service *svc = mdv_alloc(sizeof(mdv_service),  "service");
+    mdv_service *svc = mdv_alloc(sizeof(mdv_service));
 
     if(!svc)
     {
@@ -54,7 +54,7 @@ static mdv_service * mdv_service_create_impl()
     if (!svc->core)
     {
         MDV_LOGE("Core creation failed");
-        mdv_free(svc, "service");
+        mdv_free(svc);
         return 0;
     }
 
@@ -95,7 +95,7 @@ void mdv_service_free(mdv_service *svc)
     if(svc)
     {
         mdv_core_free(svc->core);
-        mdv_free(svc, "service");
+        mdv_free(svc);
     }
 }
 

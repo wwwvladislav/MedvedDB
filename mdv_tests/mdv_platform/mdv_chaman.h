@@ -47,7 +47,7 @@ static uint32_t mdv_test_channel_release_impl(mdv_channel *channel)
         if (!rc)
         {
             atomic_fetch_add_explicit(&mdv_close_count, 1, memory_order_relaxed);
-            mdv_free(channel, "test_channel") ;
+            mdv_free(channel) ;
         }
     }
 
@@ -123,7 +123,7 @@ static mdv_channel * mdv_test_channel_create_impl(mdv_descriptor    fd,
                                                   mdv_channel_dir   dir,
                                                   mdv_uuid const   *channel_id)
 {
-    mdv_test_channel *channel = mdv_alloc(sizeof(mdv_test_channel), "test_channel");
+    mdv_test_channel *channel = mdv_alloc(sizeof(mdv_test_channel));
 
     static const mdv_ichannel vtbl =
     {

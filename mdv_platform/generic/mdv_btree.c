@@ -28,6 +28,7 @@ struct mdv_btree
     uint32_t             key_size;                          ///< Key size
     uint32_t             item_size;                         ///< Item size
     uint32_t             key_offset;                        ///< key offset inside btree value
+    mdv_btree_allocator *allocator;                         ///< Pages allocator
     mdv_cmp_fn           key_cmp_fn;                        ///< Keys comparison function
     mdv_btree_node      *root;                              ///< Root node
 };
@@ -45,11 +46,12 @@ inline static uint32_t mdv_btree_keys_max(mdv_btree const *btree)
 }
 
 
-mdv_btree * _mdv_btree_create(uint32_t      order,
-                              uint32_t      key_size,
-                              uint32_t      item_size,
-                              uint32_t      key_offset,
-                              mdv_cmp_fn    key_cmp_fn)
+mdv_btree * _mdv_btree_create(uint32_t             order,
+                              uint32_t             key_size,
+                              uint32_t             item_size,
+                              uint32_t             key_offset,
+                              mdv_cmp_fn           key_cmp_fn,
+                              mdv_btree_allocator *allocator)
 {
     mdv_btree *btree = mdv_alloc(sizeof(mdv_btree), "btree");
 
@@ -66,6 +68,7 @@ mdv_btree * _mdv_btree_create(uint32_t      order,
     btree->key_size     = key_size;
     btree->item_size    = item_size;
     btree->key_offset   = key_offset;
+    btree->allocator    = allocator->retain(allocator);
     btree->key_cmp_fn   = key_cmp_fn;
     btree->root         = 0;
 
@@ -75,6 +78,7 @@ mdv_btree * _mdv_btree_create(uint32_t      order,
 
 static void mdv_btree_free(mdv_btree *btree)
 {
+    btree->allocator->release(btree->allocator);
     memset(btree, 0, sizeof *btree);
     mdv_free(btree, "btree");
 }

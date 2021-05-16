@@ -24,13 +24,17 @@ typedef struct mdv_page
 } mdv_page;
 
 
-typedef struct
+typedef struct mdv_btree_allocator mdv_btree_allocator;
+
+struct mdv_btree_allocator
 {
-    mdv_page * (*alloc)(size_t size);
-    void       (*free)(mdv_pageid_t);
-    mdv_page * (*retain)(mdv_pageid_t);
-    void       (*release)(mdv_pageid_t);
-} mdv_btree_allocator;
+    mdv_btree_allocator * (*retain)(mdv_btree_allocator *);
+    uint32_t              (*release)(mdv_btree_allocator *);
+    mdv_page *            (*page_alloc)(size_t);
+    void                  (*page_free)(mdv_pageid_t);
+    mdv_page *            (*page_retain)(mdv_pageid_t);
+    void                  (*page_release)(mdv_pageid_t);
+};
 
 
 /// BTree
@@ -40,11 +44,12 @@ typedef struct mdv_btree mdv_btree;
 /// @cond Doxygen_Suppress
 
 
-mdv_btree * _mdv_btree_create(uint32_t      order,
-                              uint32_t      key_size,
-                              uint32_t      item_size,
-                              uint32_t      key_offset,
-                              mdv_cmp_fn    key_cmp_fn);
+mdv_btree * _mdv_btree_create(uint32_t             order,
+                              uint32_t             key_size,
+                              uint32_t             item_size,
+                              uint32_t             key_offset,
+                              mdv_cmp_fn           key_cmp_fn,
+                              mdv_btree_allocator *allocator);
 
 
 /// @endcond
@@ -59,15 +64,17 @@ mdv_btree * _mdv_btree_create(uint32_t      order,
  * @param type [in]       items type
  * @param key_field [in]  key field name in type
  * @param key_cmp_fn [in] Keys comparison function
+ * @param allocator [in]  Pages allocator
   *
  * @return pointer to new btree or NULL
  */
-#define mdv_btree_create(order, type, key_field, key_cmp_fn)            \
+#define mdv_btree_create(order, type, key_field, key_cmp_fn, allocator) \
     _mdv_btree_create(order,                                            \
                       mdv_sizeof_member(type, key_field),               \
                       sizeof(type),                                     \
                       offsetof(type, key_field),                        \
-                      (mdv_cmp_fn)&key_cmp_fn)
+                      (mdv_cmp_fn)&key_cmp_fn,                          \
+                      allocator)
 
 
 /**
